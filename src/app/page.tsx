@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import HeroSection from '@/components/HeroSection'
 import DestinationShowcase from '@/components/DestinationShowcase'
+import ExploreSection from '@/components/ExploreSection'
 import DealsSection from '@/components/DealsSection'
 import AppFeaturesSection from '@/components/AppFeaturesSection'
 import Footer from '@/components/Footer'
@@ -46,6 +47,7 @@ export default async function HomePage() {
     <main className="min-h-screen bg-white">
       <HeroSection />
       <DestinationShowcase attractions={attractions} />
+      <ExploreSection />
       <AppFeaturesSection />
       <DealsSection deals={deals} />
       <Footer />
