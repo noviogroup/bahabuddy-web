@@ -52,6 +52,7 @@ export default async function SharePage({ params }: { params: { code: string } }
   if (!shareLink) notFound()
 
   // Increment view count via raw SQL increment (fire-and-forget)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase.rpc('increment_share_view' as any, { code: params.code }).then(() => {})
 
   const [tripRes, flightsRes, accRes, activitiesRes] = await Promise.all([
@@ -131,7 +132,7 @@ export default async function SharePage({ params }: { params: { code: string } }
 
         {accommodations.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">🏨 Where we're staying</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">🏨 Where we&apos;re staying</h2>
             <div className="space-y-3">
               {accommodations.map(a => (
                 <div key={a.id} className="bg-white rounded-xl border border-blue-100 p-4">

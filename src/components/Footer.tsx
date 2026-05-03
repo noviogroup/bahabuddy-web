@@ -2,7 +2,7 @@ import Link from 'next/link'
 
 export default function Footer() {
   return (
-    <footer className="bg-blue-950 text-blue-200">
+    <footer className="bg-[#0A1628] text-white/60">
       <div className="max-w-6xl mx-auto px-4 py-14">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
           {/* Brand */}
@@ -11,7 +11,7 @@ export default function Footer() {
               <span className="text-2xl">🏝️</span>
               <span className="text-xl font-bold text-white">Baha Buddy</span>
             </div>
-            <p className="text-sm text-blue-300 leading-relaxed mb-4 max-w-sm">
+            <p className="text-sm text-white/50 leading-relaxed mb-4 max-w-sm">
               Your AI-powered Bahamas travel companion. Plan trips, find deals, and explore 700+
               islands — all from one app.
             </p>
@@ -41,12 +41,14 @@ export default function Footer() {
             <ul className="space-y-2 text-sm">
               {[
                 { href: '/', label: 'Home' },
+                { href: '/destinations', label: 'Destinations' },
+                { href: '/deals', label: 'Deals & Packages' },
                 { href: '/login', label: 'Sign In' },
               ].map((link) => (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className="text-blue-300 hover:text-white transition-colors"
+                    className="text-white/50 hover:text-white transition-colors"
                   >
                     {link.label}
                   </Link>
@@ -67,7 +69,7 @@ export default function Footer() {
                     href={link.href}
                     target={link.external ? '_blank' : undefined}
                     rel={link.external ? 'noopener noreferrer' : undefined}
-                    className="text-blue-300 hover:text-white transition-colors"
+                    className="text-white/50 hover:text-white transition-colors"
                   >
                     {link.label}
                   </a>
@@ -77,7 +79,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-blue-900 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-blue-400">
+        <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-white/30">
           <p>© {new Date().getFullYear()} Novio Group. All rights reserved.</p>
           <p>Built with ❤️ for Bahamas travelers everywhere</p>
         </div>

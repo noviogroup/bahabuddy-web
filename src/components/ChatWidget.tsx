@@ -16,16 +16,18 @@ interface TripContext {
 
 interface ChatWidgetProps {
   tripContext?: TripContext
+  initialQuery?: string
 }
 
-export default function ChatWidget({ tripContext }: ChatWidgetProps) {
-  const [open, setOpen] = useState(false)
+export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProps) {
+  const [open, setOpen] = useState(!!initialQuery)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const didAutoSend = useRef(false)
 
   useEffect(() => {
     if (open && messages.length === 0) {
@@ -35,6 +37,18 @@ export default function ChatWidget({ tripContext }: ChatWidgetProps) {
       }])
     }
   }, [open, messages.length])
+
+  // When greeting appears and we have an initialQuery, auto-send it
+  useEffect(() => {
+    if (initialQuery && messages.length === 1 && !didAutoSend.current) {
+      didAutoSend.current = true
+      const timer = setTimeout(() => {
+        sendQuery(initialQuery)
+      }, 400)
+      return () => clearTimeout(timer)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length, initialQuery])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -46,11 +60,10 @@ export default function ChatWidget({ tripContext }: ChatWidgetProps) {
     }
   }, [open])
 
-  const sendMessage = useCallback(async () => {
-    const text = input.trim()
-    if (!text || loading) return
+  const sendQuery = useCallback(async (text: string) => {
+    if (!text.trim() || loading) return
 
-    const userMsg: Message = { role: 'user', content: text }
+    const userMsg: Message = { role: 'user', content: text.trim() }
     const newHistory = [...messages, userMsg]
     setMessages(newHistory)
     setInput('')
@@ -66,8 +79,8 @@ export default function ChatWidget({ tripContext }: ChatWidgetProps) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text,
-          history: messages.slice(-10), // last 10 messages for context
+          message: text.trim(),
+          history: messages.slice(-10),
           tripContext,
         }),
         signal: abortRef.current.signal,
@@ -118,7 +131,11 @@ export default function ChatWidget({ tripContext }: ChatWidgetProps) {
     } finally {
       setLoading(false)
     }
-  }, [input, loading, messages, tripContext])
+  }, [loading, messages, tripContext])
+
+  const sendMessage = useCallback(() => {
+    sendQuery(input)
+  }, [input, sendQuery])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -190,7 +207,7 @@ export default function ChatWidget({ tripContext }: ChatWidgetProps) {
               {['Best islands for snorkeling?', 'When should I visit?', 'Top things to do in Nassau'].map(prompt => (
                 <button
                   key={prompt}
-                  onClick={() => { setInput(prompt); setTimeout(sendMessage, 0) }}
+                  onClick={() => sendQuery(prompt)}
                   className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full hover:bg-blue-100 transition-colors border border-blue-100"
                 >
                   {prompt}

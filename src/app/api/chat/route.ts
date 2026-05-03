@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
             }
           }
-        } catch (err) {
+        } catch {
           const errData = JSON.stringify({ type: 'error', message: 'Something went wrong. Please try again.' })
           controller.enqueue(encoder.encode(`data: ${errData}\n\n`))
         } finally {
