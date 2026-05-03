@@ -4,6 +4,7 @@ import DestinationShowcase from '@/components/DestinationShowcase'
 import DealsSection from '@/components/DealsSection'
 import AppFeaturesSection from '@/components/AppFeaturesSection'
 import Footer from '@/components/Footer'
+import ChatWidget from '@/components/ChatWidget'
 
 export const revalidate = 3600 // ISR — revalidate every hour
 
@@ -48,6 +49,7 @@ export default async function HomePage() {
       <AppFeaturesSection />
       <DealsSection deals={deals} />
       <Footer />
+      <ChatWidget />
     </main>
   )
 }

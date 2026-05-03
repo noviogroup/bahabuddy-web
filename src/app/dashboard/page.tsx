@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Trip } from '@/types/database'
 import SignOutButton from '@/components/SignOutButton'
+import ChatWidget from '@/components/ChatWidget'
 
 function formatDate(d: string | null) {
   if (!d) return null
@@ -118,6 +119,7 @@ export default async function DashboardPage() {
           </div>
         )}
       </main>
+      <ChatWidget />
     </div>
   )
 }

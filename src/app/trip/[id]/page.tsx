@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/database'
 import ShareButton from '@/components/ShareButton'
+import ChatWidget from '@/components/ChatWidget'
 
 function fmt(d: string | null) {
   if (!d) return '—'
@@ -226,6 +227,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
           </div>
         )}
       </main>
+      <ChatWidget tripContext={{ name: trip.name, islands: trip.islands ?? [], date_start: trip.date_start ?? undefined, date_end: trip.date_end ?? undefined }} />
     </div>
   )
 }
