@@ -1,13 +1,53 @@
-export default function Home() {
+import { createClient } from '@/lib/supabase/server'
+import HeroSection from '@/components/HeroSection'
+import DestinationShowcase from '@/components/DestinationShowcase'
+import DealsSection from '@/components/DealsSection'
+import AppFeaturesSection from '@/components/AppFeaturesSection'
+import Footer from '@/components/Footer'
+
+export const revalidate = 3600 // ISR — revalidate every hour
+
+async function getAttractions() {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('bahamas_attractions')
+      .select('id, name, category, island, description, image_url, tags')
+      .order('created_at', { ascending: false })
+      .limit(6)
+    if (error) return []
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
+async function getDeals() {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('bahamas_deals')
+      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(6)
+    if (error) return []
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
+export default async function HomePage() {
+  const [attractions, deals] = await Promise.all([getAttractions(), getDeals()])
+
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-blue-50 to-cyan-50">
-      <div className="text-center px-4">
-        <h1 className="text-5xl font-bold text-blue-900 mb-4">Baha Buddy</h1>
-        <p className="text-xl text-blue-700 mb-8">
-          Your AI-powered Bahamas travel companion
-        </p>
-        <p className="text-gray-500">Landing page coming soon</p>
-      </div>
+    <main className="min-h-screen bg-white">
+      <HeroSection />
+      <DestinationShowcase attractions={attractions} />
+      <AppFeaturesSection />
+      <DealsSection deals={deals} />
+      <Footer />
     </main>
   )
 }
