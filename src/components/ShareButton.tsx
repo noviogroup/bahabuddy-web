@@ -48,7 +48,7 @@ export default function ShareButton({ tripId }: Props) {
     <button
       onClick={share}
       disabled={loading}
-      className="flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-700 border border-blue-200 rounded-lg px-3 py-1.5 hover:bg-blue-50 transition-colors disabled:opacity-50 shrink-0"
+      className="flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-700 border border-brand-200 rounded-lg px-3 py-1.5 hover:bg-brand-50 transition-colors disabled:opacity-50 shrink-0"
     >
       {copied ? '✓ Copied!' : loading ? 'Generating...' : '🔗 Share'}
     </button>

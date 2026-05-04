@@ -64,7 +64,7 @@ export default function ExploreSection() {
     <section className="py-24 bg-gray-950">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-teal-400 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-400 text-sm font-semibold tracking-widest uppercase mb-3">
             Curated Collections
           </p>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-4 tracking-tight">
@@ -81,7 +81,7 @@ export default function ExploreSection() {
             <button
               key={col.id}
               onClick={() => handleCollection(col.prompt)}
-              className="relative rounded-2xl overflow-hidden aspect-[4/3] group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+              className="relative rounded-2xl overflow-hidden aspect-[4/3] group text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
               aria-label={`Explore: ${col.title}`}
             >
               {/* Background image via CSS */}

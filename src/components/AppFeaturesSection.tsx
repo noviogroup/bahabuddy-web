@@ -42,7 +42,7 @@ export default function AppFeaturesSection() {
     <section className="py-24 bg-stone-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-teal-600 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-600 text-sm font-semibold tracking-widest uppercase mb-3">
             Everything You Need
           </p>
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
@@ -57,7 +57,7 @@ export default function AppFeaturesSection() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
           {FEATURES.map((feature) => (
             <div key={feature.title} className="group">
-              <div className="w-12 h-12 bg-teal-50 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-teal-100 transition-colors">
+              <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-brand-100 transition-colors">
                 {feature.icon}
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>

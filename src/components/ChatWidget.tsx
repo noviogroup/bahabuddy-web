@@ -149,7 +149,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
         aria-label={open ? 'Close chat' : 'Chat with Baha Buddy'}
       >
         {open ? (
@@ -168,13 +168,13 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
         <div className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
           style={{ maxHeight: 'calc(100vh - 8rem)' }}>
           {/* Header */}
-          <div className="bg-gradient-to-r from-blue-600 to-cyan-500 px-4 py-3 flex items-center gap-3">
+          <div className="bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 flex items-center gap-3">
             <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center text-lg shrink-0">
               🌊
             </div>
             <div>
               <p className="text-white font-semibold text-sm leading-tight">Baha Buddy</p>
-              <p className="text-blue-100 text-xs">Your Bahamas travel guide</p>
+              <p className="text-brand-100 text-xs">Your Bahamas travel guide</p>
             </div>
           </div>
 
@@ -184,7 +184,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
               <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-sm'
+                    ? 'bg-brand-600 text-white rounded-br-sm'
                     : 'bg-gray-100 text-gray-800 rounded-bl-sm'
                 }`}>
                   {msg.content}
@@ -208,7 +208,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                 <button
                   key={prompt}
                   onClick={() => sendQuery(prompt)}
-                  className="text-xs bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full hover:bg-blue-100 transition-colors border border-blue-100"
+                  className="text-xs bg-brand-50 text-brand-700 px-2.5 py-1 rounded-full hover:bg-brand-100 transition-colors border border-brand-100"
                 >
                   {prompt}
                 </button>
@@ -225,13 +225,13 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
               onKeyDown={handleKeyDown}
               placeholder="Ask me anything about the Bahamas…"
               rows={1}
-              className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 focus:border-transparent text-gray-800 placeholder-gray-400"
+              className="flex-1 resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-300 focus:border-transparent text-gray-800 placeholder-gray-400"
               style={{ maxHeight: '80px' }}
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || loading}
-              className="w-9 h-9 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-colors shrink-0"
+              className="w-9 h-9 bg-brand-600 hover:bg-brand-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-colors shrink-0"
               aria-label="Send"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

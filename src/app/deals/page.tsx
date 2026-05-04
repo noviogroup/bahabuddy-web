@@ -42,10 +42,10 @@ const FALLBACK_DEALS: Deal[] = [
 const DEAL_TYPES = ['All', 'accommodation', 'tour', 'package', 'activity']
 
 const DEAL_TYPE_CONFIG: Record<string, { label: string; color: string; badge: string }> = {
-  accommodation: { label: 'Hotel', color: 'bg-blue-50 text-blue-700 border border-blue-100', badge: 'bg-blue-600/80 text-white' },
-  tour: { label: 'Tour', color: 'bg-teal-50 text-teal-700 border border-teal-100', badge: 'bg-teal-600/80 text-white' },
+  accommodation: { label: 'Hotel', color: 'bg-brand-50 text-brand-700 border border-brand-100', badge: 'bg-brand-600/80 text-white' },
+  tour: { label: 'Tour', color: 'bg-brand-50 text-brand-700 border border-brand-100', badge: 'bg-brand-600/80 text-white' },
   package: { label: 'Package', color: 'bg-purple-50 text-purple-700 border border-purple-100', badge: 'bg-purple-600/80 text-white' },
-  activity: { label: 'Activity', color: 'bg-amber-50 text-amber-700 border border-amber-100', badge: 'bg-amber-500/80 text-white' },
+  activity: { label: 'Activity', color: 'bg-gold-50 text-gold-700 border border-gold-100', badge: 'bg-gold-500/80 text-white' },
 }
 
 function formatPrice(price: number | null, unit: string | null): string {
@@ -95,20 +95,20 @@ export default async function DealsPage({
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-900">Baha Buddy</Link>
+          <Link href="/" className="text-xl font-bold text-brand-900">Baha Buddy</Link>
           <div className="flex items-center gap-4">
             <Link href="/destinations" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Destinations</Link>
-            <Link href="/login" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">Sign in</Link>
+            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
           </div>
         </div>
       </header>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-teal-800 via-teal-700 to-cyan-600 text-white">
+      <div className="bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 text-white">
         <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-teal-200 text-sm font-semibold tracking-widest uppercase mb-3">Current Deals</p>
+          <p className="text-brand-200 text-sm font-semibold tracking-widest uppercase mb-3">Current Deals</p>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Bahamas Deals &amp; Packages</h1>
-          <p className="text-teal-100 text-lg max-w-xl mx-auto">
+          <p className="text-brand-100 text-lg max-w-xl mx-auto">
             Curated stays, tours, and island packages — matched to your travel style.
           </p>
         </div>
@@ -125,7 +125,7 @@ export default async function DealsPage({
                 href={`/deals?type=${type}`}
                 className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
                   activeType === type
-                    ? 'bg-teal-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -146,7 +146,7 @@ export default async function DealsPage({
           <div className="text-center py-20 text-gray-400">
             <div className="text-4xl mb-3">🌴</div>
             <p className="text-lg font-medium text-gray-600">No deals found</p>
-            <Link href="/deals" className="inline-block mt-4 text-teal-600 hover:text-teal-700 text-sm font-medium">
+            <Link href="/deals" className="inline-block mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">
               Clear filters →
             </Link>
           </div>
@@ -170,7 +170,7 @@ export default async function DealsPage({
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-teal-200 to-blue-300 flex items-center justify-center">
+                      <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
                         <span className="text-5xl opacity-50">🌴</span>
                       </div>
                     )}
@@ -188,7 +188,7 @@ export default async function DealsPage({
                       <p className="text-xs text-gray-400 mb-2 font-medium">{deal.resort_name}</p>
                     )}
 
-                    <p className="text-lg font-bold text-teal-700 mb-2">
+                    <p className="text-lg font-bold text-brand-700 mb-2">
                       {formatPrice(deal.price_from_usd, deal.price_unit)}
                     </p>
 
@@ -199,7 +199,7 @@ export default async function DealsPage({
                     {deal.highlights && deal.highlights.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-4">
                         {deal.highlights.slice(0, 3).map(h => (
-                          <span key={h} className="text-xs bg-teal-50 text-teal-700 rounded-full px-3 py-0.5 font-medium">
+                          <span key={h} className="text-xs bg-brand-50 text-brand-700 rounded-full px-3 py-0.5 font-medium">
                             ✓ {h}
                           </span>
                         ))}
@@ -208,7 +208,7 @@ export default async function DealsPage({
 
                     <Link
                       href={`/dashboard?q=${encodeURIComponent(`Tell me more about: ${deal.title}`)}`}
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl py-2.5 transition-colors text-center block"
+                      className="w-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl py-2.5 transition-colors text-center block"
                     >
                       Ask Baha Buddy →
                     </Link>
@@ -220,15 +220,15 @@ export default async function DealsPage({
         )}
 
         {/* App CTA */}
-        <div className="mt-16 bg-gradient-to-r from-teal-600 to-blue-600 rounded-2xl p-8 text-center text-white">
+        <div className="mt-16 bg-gradient-to-r from-brand-600 to-brand-600 rounded-2xl p-8 text-center text-white">
           <h2 className="text-2xl font-bold mb-2">Get personalized deal recommendations</h2>
-          <p className="text-teal-100 mb-6">Tell Baha Buddy your dates and budget — we&apos;ll find the best deals for you.</p>
+          <p className="text-brand-100 mb-6">Tell Baha Buddy your dates and budget — we&apos;ll find the best deals for you.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="https://apps.apple.com/app/baha-buddy"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-white text-teal-700 font-semibold rounded-xl px-6 py-3 hover:bg-teal-50 transition-colors text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold rounded-xl px-6 py-3 hover:bg-brand-50 transition-colors text-sm"
             >
               🍎 Download on iOS
             </a>

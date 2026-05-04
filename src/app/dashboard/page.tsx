@@ -13,9 +13,9 @@ function formatDate(d: string | null) {
 function statusColor(status: Trip['status']) {
   const map: Record<Trip['status'], string> = {
     draft: 'bg-gray-100 text-gray-600',
-    planned: 'bg-blue-100 text-blue-700',
+    planned: 'bg-brand-100 text-brand-700',
     booked: 'bg-green-100 text-green-700',
-    active: 'bg-teal-100 text-teal-700',
+    active: 'bg-brand-100 text-brand-700',
     completed: 'bg-purple-100 text-purple-700',
     cancelled: 'bg-red-100 text-red-600',
   }
@@ -40,7 +40,7 @@ export default async function DashboardPage() {
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-900">Baha Buddy</Link>
+          <Link href="/" className="text-xl font-bold text-brand-900">Baha Buddy</Link>
           <div className="flex items-center gap-4">
             <span className="text-sm text-gray-500 hidden sm:block">{user.email}</span>
             <SignOutButton />
@@ -71,7 +71,7 @@ export default async function DashboardPage() {
                 className="bg-white rounded-2xl border border-gray-200 p-5 hover:shadow-md transition-shadow group"
               >
                 {trip.hero_image_url && (
-                  <div className="h-32 rounded-xl overflow-hidden mb-4 bg-blue-50">
+                  <div className="h-32 rounded-xl overflow-hidden mb-4 bg-brand-50">
                     <img
                       src={trip.hero_image_url}
                       alt={trip.name}
@@ -80,7 +80,7 @@ export default async function DashboardPage() {
                   </div>
                 )}
                 <div className="flex items-start justify-between gap-2">
-                  <h2 className="font-semibold text-gray-900 group-hover:text-blue-700 transition-colors line-clamp-1">
+                  <h2 className="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors line-clamp-1">
                     {trip.name}
                   </h2>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${statusColor(trip.status)}`}>
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
                 {trip.islands && trip.islands.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-3">
                     {trip.islands.slice(0, 3).map(island => (
-                      <span key={island} className="text-xs bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded-full">
+                      <span key={island} className="text-xs bg-brand-50 text-brand-700 px-2 py-0.5 rounded-full">
                         {island}
                       </span>
                     ))}

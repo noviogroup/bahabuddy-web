@@ -70,10 +70,10 @@ const FALLBACK_DEALS: Deal[] = [
 ]
 
 const DEAL_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
-  accommodation: { label: 'Hotel', color: 'bg-blue-50 text-blue-700' },
-  tour: { label: 'Tour', color: 'bg-teal-50 text-teal-700' },
+  accommodation: { label: 'Hotel', color: 'bg-brand-50 text-brand-700' },
+  tour: { label: 'Tour', color: 'bg-brand-50 text-brand-700' },
   package: { label: 'Package', color: 'bg-purple-50 text-purple-700' },
-  activity: { label: 'Activity', color: 'bg-amber-50 text-amber-700' },
+  activity: { label: 'Activity', color: 'bg-gold-50 text-gold-700' },
 }
 
 function formatPrice(price: number | null, unit: string | null): string {
@@ -100,7 +100,7 @@ export default function DealsSection({ deals }: Props) {
     <section className="py-24 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-teal-600 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-600 text-sm font-semibold tracking-widest uppercase mb-3">
             Current Deals
           </p>
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
@@ -135,7 +135,7 @@ export default function DealsSection({ deals }: Props) {
                       sizes="(max-width: 640px) 100vw, 50vw"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-teal-200 to-blue-300 flex items-center justify-center">
+                    <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
                       <span className="text-5xl opacity-50">🌴</span>
                     </div>
                   )}
@@ -149,7 +149,7 @@ export default function DealsSection({ deals }: Props) {
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <h3 className="text-base font-bold text-gray-900 leading-snug">{deal.title}</h3>
                     <div className="text-right flex-shrink-0">
-                      <div className="text-base font-bold text-teal-700 whitespace-nowrap">
+                      <div className="text-base font-bold text-brand-700 whitespace-nowrap">
                         {formatPrice(deal.price_from_usd, deal.price_unit)}
                       </div>
                     </div>
@@ -168,7 +168,7 @@ export default function DealsSection({ deals }: Props) {
                       {deal.highlights.slice(0, 3).map((h) => (
                         <span
                           key={h}
-                          className="text-xs bg-teal-50 text-teal-700 rounded-full px-3 py-0.5 font-medium"
+                          className="text-xs bg-brand-50 text-brand-700 rounded-full px-3 py-0.5 font-medium"
                         >
                           ✓ {h}
                         </span>

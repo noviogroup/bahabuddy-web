@@ -56,7 +56,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
             ← Back
           </Link>
           <span className="text-gray-300">|</span>
-          <Link href="/" className="text-sm font-bold text-blue-900">Baha Buddy</Link>
+          <Link href="/" className="text-sm font-bold text-brand-900">Baha Buddy</Link>
         </div>
       </header>
 
@@ -64,7 +64,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
         {/* Trip Header */}
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           {trip.hero_image_url && (
-            <div className="h-48 bg-blue-100">
+            <div className="h-48 bg-brand-100">
               <img src={trip.hero_image_url} alt={trip.name} className="w-full h-full object-cover" />
             </div>
           )}
@@ -83,7 +83,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
 
             <div className="flex flex-wrap gap-2 mt-4">
               {trip.islands?.map(island => (
-                <span key={island} className="bg-cyan-50 text-cyan-700 text-sm px-3 py-1 rounded-full">
+                <span key={island} className="bg-brand-50 text-brand-700 text-sm px-3 py-1 rounded-full">
                   {island}
                 </span>
               ))}

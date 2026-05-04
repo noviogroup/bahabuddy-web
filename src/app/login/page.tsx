@@ -55,7 +55,7 @@ function LoginForm() {
         <button
           onClick={() => setMode('magic')}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
-            mode === 'magic' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+            mode === 'magic' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
           Magic Link
@@ -63,7 +63,7 @@ function LoginForm() {
         <button
           onClick={() => setMode('password')}
           className={`flex-1 py-2 text-sm font-medium transition-colors ${
-            mode === 'password' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'
+            mode === 'password' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'
           }`}
         >
           Password
@@ -92,13 +92,13 @@ function LoginForm() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-brand-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Sending...' : 'Send Magic Link'}
           </button>
@@ -113,7 +113,7 @@ function LoginForm() {
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder="you@example.com"
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <div>
@@ -123,13 +123,13 @@ function LoginForm() {
               required
               value={password}
               onChange={e => setPassword(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
           </div>
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full bg-brand-600 text-white rounded-lg py-2.5 text-sm font-medium hover:bg-brand-700 disabled:opacity-50 transition-colors"
           >
             {loading ? 'Signing in...' : 'Sign In'}
           </button>
@@ -145,11 +145,11 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-50 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-brand-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-blue-900">Baha Buddy</h1>
-          <p className="text-blue-600 mt-1">Sign in to access your trips</p>
+          <h1 className="text-3xl font-bold text-brand-900">Baha Buddy</h1>
+          <p className="text-brand-600 mt-1">Sign in to access your trips</p>
         </div>
         <Suspense fallback={<div className="bg-white rounded-2xl shadow-lg p-8 animate-pulse h-64" />}>
           <LoginForm />

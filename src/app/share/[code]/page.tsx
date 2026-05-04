@@ -70,13 +70,13 @@ export default async function SharePage({ params }: { params: { code: string } }
   const activities = (activitiesRes.data ?? []) as TripActivity[]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-cyan-50">
-      <header className="bg-white/80 backdrop-blur border-b border-blue-100 sticky top-0 z-10">
+    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-brand-50">
+      <header className="bg-white/80 backdrop-blur border-b border-brand-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="font-bold text-blue-900">Baha Buddy</Link>
+          <Link href="/" className="font-bold text-brand-900">Baha Buddy</Link>
           <Link
             href="/login"
-            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
           >
             Plan your own trip →
           </Link>
@@ -84,7 +84,7 @@ export default async function SharePage({ params }: { params: { code: string } }
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-blue-100 overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-sm border border-brand-100 overflow-hidden">
           {trip.hero_image_url && (
             <div className="h-48">
               <img src={trip.hero_image_url} alt={trip.name} className="w-full h-full object-cover" />
@@ -97,7 +97,7 @@ export default async function SharePage({ params }: { params: { code: string } }
             )}
             <div className="flex flex-wrap gap-2 mt-3">
               {trip.islands?.map(island => (
-                <span key={island} className="bg-cyan-50 text-cyan-700 text-sm px-3 py-1 rounded-full">
+                <span key={island} className="bg-brand-50 text-brand-700 text-sm px-3 py-1 rounded-full">
                   {island}
                 </span>
               ))}
@@ -114,7 +114,7 @@ export default async function SharePage({ params }: { params: { code: string } }
             <h2 className="text-lg font-semibold text-gray-900 mb-3">✈️ Flights</h2>
             <div className="space-y-3">
               {flights.map(f => (
-                <div key={f.id} className="bg-white rounded-xl border border-blue-100 p-4">
+                <div key={f.id} className="bg-white rounded-xl border border-brand-100 p-4">
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">{f.origin}</span>
                     <span className="text-gray-400">→</span>
@@ -135,7 +135,7 @@ export default async function SharePage({ params }: { params: { code: string } }
             <h2 className="text-lg font-semibold text-gray-900 mb-3">🏨 Where we&apos;re staying</h2>
             <div className="space-y-3">
               {accommodations.map(a => (
-                <div key={a.id} className="bg-white rounded-xl border border-blue-100 p-4">
+                <div key={a.id} className="bg-white rounded-xl border border-brand-100 p-4">
                   <h3 className="font-semibold text-gray-900">{a.name}</h3>
                   {a.island && <p className="text-sm text-gray-500">{a.island}</p>}
                   {(a.check_in || a.check_out) && (
@@ -150,7 +150,7 @@ export default async function SharePage({ params }: { params: { code: string } }
         {activities.length > 0 && (
           <section>
             <h2 className="text-lg font-semibold text-gray-900 mb-3">🗓 The plan</h2>
-            <div className="bg-white rounded-xl border border-blue-100 p-4 space-y-3">
+            <div className="bg-white rounded-xl border border-brand-100 p-4 space-y-3">
               {activities.map(a => (
                 <div key={a.id} className="flex gap-2 text-sm">
                   <span className="text-gray-400 shrink-0">Day {a.day_number} · {a.time_slot}</span>
@@ -161,12 +161,12 @@ export default async function SharePage({ params }: { params: { code: string } }
           </section>
         )}
 
-        <div className="bg-blue-600 rounded-2xl p-6 text-center text-white">
+        <div className="bg-brand-600 rounded-2xl p-6 text-center text-white">
           <p className="font-semibold text-lg mb-1">Plan your own Bahamas trip</p>
-          <p className="text-blue-200 text-sm mb-4">AI-powered itineraries, deals, and more.</p>
+          <p className="text-brand-200 text-sm mb-4">AI-powered itineraries, deals, and more.</p>
           <Link
             href="/"
-            className="inline-block bg-white text-blue-700 font-medium px-6 py-2.5 rounded-full hover:bg-blue-50 transition-colors text-sm"
+            className="inline-block bg-white text-brand-700 font-medium px-6 py-2.5 rounded-full hover:bg-brand-50 transition-colors text-sm"
           >
             Get Baha Buddy
           </Link>

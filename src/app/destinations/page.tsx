@@ -39,8 +39,8 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Island: 'bg-teal-500/80 text-white',
-  Beach: 'bg-amber-500/80 text-white',
+  Island: 'bg-brand-500/80 text-white',
+  Beach: 'bg-gold-500/80 text-white',
   'Water Activity': 'bg-sky-500/80 text-white',
   Culture: 'bg-purple-500/80 text-white',
   Nature: 'bg-emerald-500/80 text-white',
@@ -89,20 +89,20 @@ export default async function DestinationsPage({
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-blue-900">Baha Buddy</Link>
+          <Link href="/" className="text-xl font-bold text-brand-900">Baha Buddy</Link>
           <div className="flex items-center gap-4">
             <Link href="/deals" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Deals</Link>
-            <Link href="/login" className="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors">Sign in</Link>
+            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
           </div>
         </div>
       </header>
 
       {/* Hero banner */}
-      <div className="bg-gradient-to-br from-blue-900 via-blue-800 to-teal-700 text-white">
+      <div className="bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 text-white">
         <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-teal-300 text-sm font-semibold tracking-widest uppercase mb-3">Explore the Bahamas</p>
+          <p className="text-brand-300 text-sm font-semibold tracking-widest uppercase mb-3">Explore the Bahamas</p>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">700+ Islands to Discover</h1>
-          <p className="text-blue-200 text-lg max-w-xl mx-auto">
+          <p className="text-brand-200 text-lg max-w-xl mx-auto">
             From Nassau&apos;s buzz to hidden sandbars — find your perfect Bahamas escape.
           </p>
         </div>
@@ -119,7 +119,7 @@ export default async function DestinationsPage({
                 href={`/destinations?category=${cat}${activeIsland ? `&island=${encodeURIComponent(activeIsland)}` : ''}`}
                 className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
                   activeCategory === cat
-                    ? 'bg-teal-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -132,7 +132,7 @@ export default async function DestinationsPage({
           {allIslands.length > 0 && (
             <div className="sm:ml-auto">
               <select
-                className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-teal-400 cursor-pointer"
+                className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 cursor-pointer"
                 value={activeIsland}
                 onChange={() => {}} // handled via Link navigation below
               >
@@ -152,7 +152,7 @@ export default async function DestinationsPage({
               href={`/destinations?category=${activeCategory}`}
               className={`text-xs rounded-full px-3 py-1 font-medium transition-colors ${
                 !activeIsland
-                  ? 'bg-blue-100 text-blue-700'
+                  ? 'bg-brand-100 text-brand-700'
                   : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
               }`}
             >
@@ -164,7 +164,7 @@ export default async function DestinationsPage({
                 href={`/destinations?category=${activeCategory}&island=${encodeURIComponent(island)}`}
                 className={`text-xs rounded-full px-3 py-1 font-medium transition-colors ${
                   activeIsland === island
-                    ? 'bg-blue-100 text-blue-700'
+                    ? 'bg-brand-100 text-brand-700'
                     : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
                 }`}
               >
@@ -187,7 +187,7 @@ export default async function DestinationsPage({
             <div className="text-4xl mb-3">🏝️</div>
             <p className="text-lg font-medium text-gray-600">No destinations found</p>
             <p className="text-sm mt-1">Try a different filter or island.</p>
-            <Link href="/destinations" className="inline-block mt-4 text-teal-600 hover:text-teal-700 text-sm font-medium">
+            <Link href="/destinations" className="inline-block mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">
               Clear filters →
             </Link>
           </div>
@@ -212,7 +212,7 @@ export default async function DestinationsPage({
                         sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-teal-200 to-blue-300 flex items-center justify-center">
+                      <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
                         <span className="text-5xl opacity-50">🏝️</span>
                       </div>
                     )}
@@ -236,7 +236,7 @@ export default async function DestinationsPage({
                     {attraction.tags && attraction.tags.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-4">
                         {attraction.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="text-xs bg-teal-50 text-teal-700 rounded-full px-3 py-0.5 font-medium">
+                          <span key={tag} className="text-xs bg-brand-50 text-brand-700 rounded-full px-3 py-0.5 font-medium">
                             {tag}
                           </span>
                         ))}
@@ -245,7 +245,7 @@ export default async function DestinationsPage({
 
                     <Link
                       href={planUrl}
-                      className="w-full bg-teal-600 hover:bg-teal-700 text-white text-sm font-semibold rounded-xl py-2.5 transition-colors text-center block"
+                      className="w-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl py-2.5 transition-colors text-center block"
                     >
                       Plan this trip →
                     </Link>
@@ -257,15 +257,15 @@ export default async function DestinationsPage({
         )}
 
         {/* CTA */}
-        <div className="mt-16 bg-gradient-to-r from-blue-600 to-teal-500 rounded-2xl p-8 text-center text-white">
+        <div className="mt-16 bg-gradient-to-r from-brand-600 to-brand-500 rounded-2xl p-8 text-center text-white">
           <h2 className="text-2xl font-bold mb-2">Ready to plan your Bahamas trip?</h2>
-          <p className="text-blue-100 mb-6">Download Baha Buddy and get AI-powered itineraries in seconds.</p>
+          <p className="text-brand-100 mb-6">Download Baha Buddy and get AI-powered itineraries in seconds.</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <a
               href="https://apps.apple.com/app/baha-buddy"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-white text-blue-700 font-semibold rounded-xl px-6 py-3 hover:bg-blue-50 transition-colors text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold rounded-xl px-6 py-3 hover:bg-brand-50 transition-colors text-sm"
             >
               🍎 Download on iOS
             </a>

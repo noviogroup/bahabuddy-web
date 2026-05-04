@@ -62,14 +62,14 @@ export default function HeroSection() {
       <div className="relative flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
         {/* Eyebrow */}
         <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm border border-white/25 rounded-full px-4 py-1.5 text-sm font-medium mb-8 tracking-wide">
-          <span className="w-1.5 h-1.5 rounded-full bg-teal-400 inline-block" />
+          <span className="w-1.5 h-1.5 rounded-full bg-gold-400 inline-block" />
           Your AI Bahamas Travel Companion
         </div>
 
         {/* Headline */}
         <h1 className="text-5xl md:text-6xl lg:text-[4.5rem] font-bold tracking-tight leading-[1.05] mb-5 max-w-3xl">
           Where in the{' '}
-          <span className="text-teal-300">Bahamas</span>{' '}
+          <span className="text-gold-300">Bahamas</span>{' '}
           do you want to go?
         </h1>
 
@@ -89,7 +89,7 @@ export default function HeroSection() {
             />
             <button
               type="submit"
-              className="bg-teal-500 hover:bg-teal-400 active:bg-teal-600 text-white rounded-xl px-5 py-3 font-semibold text-sm transition-colors flex items-center gap-2 flex-shrink-0 shadow-lg"
+              className="bg-brand-500 hover:bg-brand-400 active:bg-brand-600 text-white rounded-xl px-5 py-3 font-semibold text-sm transition-colors flex items-center gap-2 flex-shrink-0 shadow-lg"
             >
               Plan my trip
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -156,7 +156,7 @@ export default function HeroSection() {
               { value: '24/7', label: 'Travel Assistant' },
             ].map((stat) => (
               <div key={stat.label}>
-                <div className="text-xl font-bold text-teal-300">{stat.value}</div>
+                <div className="text-xl font-bold text-gold-300">{stat.value}</div>
                 <div className="text-xs text-white/60 mt-0.5 tracking-wide uppercase">{stat.label}</div>
               </div>
             ))}
