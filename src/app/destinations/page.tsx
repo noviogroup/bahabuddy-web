@@ -49,6 +49,22 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const ALL_CATEGORIES = ['All', 'Island', 'Beach', 'Water Activity', 'Culture', 'Nature', 'Dining']
 
+// Islands with dedicated detail pages
+const ISLAND_DETAIL_SLUGS: Record<string, string> = {
+  'Nassau': 'nassau',
+  'Nassau / New Providence': 'nassau',
+  'New Providence': 'nassau',
+  'Exuma': 'exumas',
+  'Exumas': 'exumas',
+  'The Exumas': 'exumas',
+  'Eleuthera': 'eleuthera',
+  'Harbour Island': 'harbour-island',
+  'Harbor Island': 'harbour-island',
+  'Andros': 'andros',
+  'Grand Bahama': 'grand-bahama',
+  'Freeport': 'grand-bahama',
+}
+
 async function getAttractions() {
   try {
     const supabase = await createClient()
@@ -158,19 +174,26 @@ export default async function DestinationsPage({
             >
               All Islands
             </Link>
-            {allIslands.slice(0, 8).map(island => (
-              <Link
-                key={island}
-                href={`/destinations?category=${activeCategory}&island=${encodeURIComponent(island)}`}
-                className={`text-xs rounded-full px-3 py-1 font-medium transition-colors ${
-                  activeIsland === island
-                    ? 'bg-brand-100 text-brand-700'
-                    : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
-                }`}
-              >
-                {island}
-              </Link>
-            ))}
+            {allIslands.slice(0, 8).map(island => {
+              const detailSlug = ISLAND_DETAIL_SLUGS[island]
+              const href = detailSlug
+                ? `/destinations/${detailSlug}`
+                : `/destinations?category=${activeCategory}&island=${encodeURIComponent(island)}`
+              return (
+                <Link
+                  key={island}
+                  href={href}
+                  className={`text-xs rounded-full px-3 py-1 font-medium transition-colors ${
+                    activeIsland === island
+                      ? 'bg-brand-100 text-brand-700'
+                      : 'bg-gray-50 text-gray-500 hover:bg-gray-100'
+                  }`}
+                >
+                  {island}
+                  {detailSlug && <span className="ml-1 opacity-60">→</span>}
+                </Link>
+              )
+            })}
           </div>
         )}
 
