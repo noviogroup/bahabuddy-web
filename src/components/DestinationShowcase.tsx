@@ -1,7 +1,6 @@
 'use client'
 
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 
 interface Attraction {
   id: string
@@ -85,10 +84,9 @@ interface Props {
 
 export default function DestinationShowcase({ attractions }: Props) {
   const items = attractions.length > 0 ? attractions : FALLBACK_ATTRACTIONS
-  const router = useRouter()
 
   const handlePlan = (name: string) => {
-    router.push(`/dashboard?q=${encodeURIComponent(`Plan a trip to ${name} in the Bahamas`)}`)
+    window.location.href = `/dashboard?q=${encodeURIComponent(`Plan a trip to ${name} in the Bahamas`)}`
   }
 
   return (

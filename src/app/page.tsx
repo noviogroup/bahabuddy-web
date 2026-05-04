@@ -7,7 +7,7 @@ import AppFeaturesSection from '@/components/AppFeaturesSection'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 
-export const revalidate = 3600 // ISR — revalidate every hour
+export const dynamic = 'force-dynamic'
 
 async function getAttractions() {
   try {

@@ -5,6 +5,8 @@ import type { Metadata } from 'next'
 import SignOutButton from '@/components/SignOutButton'
 import TripBuilder from '@/components/TripBuilder'
 
+export const dynamic = 'force-dynamic'
+
 export const metadata: Metadata = {
   title: 'Plan a Trip — Baha Buddy',
 }

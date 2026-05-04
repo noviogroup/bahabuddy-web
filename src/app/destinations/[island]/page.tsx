@@ -206,7 +206,7 @@ export async function generateMetadata({
   }
 }
 
-export const revalidate = 3600
+export const dynamic = 'force-dynamic'
 
 const CATEGORY_COLORS: Record<string, string> = {
   Island: 'bg-brand-500/80 text-white',

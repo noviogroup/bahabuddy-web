@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   },
 }
 
-export const revalidate = 1800
+export const dynamic = 'force-dynamic'
 
 interface Deal {
   id: string

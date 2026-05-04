@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/database'
 import type { Metadata } from 'next'
 
+export const dynamic = 'force-dynamic'
+
 function fmt(d: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

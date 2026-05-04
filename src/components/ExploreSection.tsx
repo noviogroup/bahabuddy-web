@@ -1,6 +1,5 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
 
 const COLLECTIONS = [
   {
@@ -54,10 +53,8 @@ const COLLECTIONS = [
 ]
 
 export default function ExploreSection() {
-  const router = useRouter()
-
   const handleCollection = (prompt: string) => {
-    router.push(`/dashboard?q=${encodeURIComponent(prompt)}`)
+    window.location.href = `/dashboard?q=${encodeURIComponent(prompt)}`
   }
 
   return (

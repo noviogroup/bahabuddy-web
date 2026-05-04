@@ -5,6 +5,8 @@ import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/datab
 import ShareButton from '@/components/ShareButton'
 import ChatWidget from '@/components/ChatWidget'
 
+export const dynamic = 'force-dynamic'
+
 function fmt(d: string | null) {
   if (!d) return '—'
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

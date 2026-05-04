@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 
@@ -20,12 +19,11 @@ const QUICK_CHIPS = [
 
 export default function HeroSection() {
   const [query, setQuery] = useState('')
-  const router = useRouter()
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!query.trim()) return
-    router.push(`/dashboard?q=${encodeURIComponent(query.trim())}`)
+    window.location.href = `/dashboard?q=${encodeURIComponent(query.trim())}`
   }
 
   const handleChip = (prompt: string) => {
