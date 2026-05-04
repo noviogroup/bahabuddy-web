@@ -49,18 +49,32 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
-          <p className="text-gray-500 text-sm mt-1">Your Bahamas travel plans, all in one place.</p>
+        <div className="mb-6 flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
+            <p className="text-gray-500 text-sm mt-1">Your Bahamas travel plans, all in one place.</p>
+          </div>
+          <Link
+            href="/dashboard/trips/new"
+            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition-colors shrink-0"
+          >
+            + Plan a Trip
+          </Link>
         </div>
 
         {tripList.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
             <div className="text-4xl mb-3">🌊</div>
             <h2 className="text-lg font-semibold text-gray-700 mb-2">No trips yet</h2>
-            <p className="text-gray-500 text-sm">
-              Start planning on the Baha Buddy app to see your trips here.
+            <p className="text-gray-500 text-sm mb-4">
+              Plan your first Bahamas adventure — it only takes a minute.
             </p>
+            <Link
+              href="/dashboard/trips/new"
+              className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition-colors"
+            >
+              + Plan a Trip
+            </Link>
           </div>
         ) : (
           <div className="grid gap-4 sm:grid-cols-2">
