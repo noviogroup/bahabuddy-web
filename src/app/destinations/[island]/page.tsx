@@ -115,6 +115,7 @@ interface Deal {
   image_url: string | null
   highlights: string[]
   tags: string[]
+  valid_through: string | null
 }
 
 function formatPrice(price: number | null, unit: string | null): string {
@@ -132,28 +133,36 @@ function formatPrice(price: number | null, unit: string | null): string {
 async function getIslandAttractions(dbNames: string[]): Promise<Attraction[]> {
   try {
     const supabase = await createClient()
-    // Try each db name variant and merge results
     const allResults: Attraction[] = []
     for (const name of dbNames) {
       const { data } = await supabase
         .from('bahamas_attractions')
         .select('id, name, category, island, description, image_url, tags')
         .ilike('island', `%${name}%`)
-        .limit(12)
+        .limit(24)
       if (data && data.length > 0) {
         allResults.push(...(data as Attraction[]))
       }
     }
-    // Deduplicate by id
     const seen = new Set<string>()
     return allResults.filter(a => {
       if (seen.has(a.id)) return false
       seen.add(a.id)
       return true
-    }).slice(0, 12)
+    })
   } catch {
     return []
   }
+}
+
+function groupAttractionsByCategory(attractions: Attraction[]): Map<string, Attraction[]> {
+  const groups = new Map<string, Attraction[]>()
+  for (const attraction of attractions) {
+    const cat = attraction.category || 'Other'
+    if (!groups.has(cat)) groups.set(cat, [])
+    groups.get(cat)!.push(attraction)
+  }
+  return groups
 }
 
 async function getIslandDeals(slug: string, dbNames: string[]): Promise<Deal[]> {
@@ -165,7 +174,7 @@ async function getIslandDeals(slug: string, dbNames: string[]): Promise<Deal[]> 
     for (const term of searchTerms) {
       const { data } = await supabase
         .from('bahamas_deals')
-        .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags')
+        .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through')
         .ilike('island', `%${term}%`)
         .limit(6)
       if (data && data.length > 0) {
@@ -232,11 +241,12 @@ export default async function IslandPage({
   const config = ISLAND_CONFIGS.find(i => i.slug === params.island)
   if (!config) notFound()
 
-  const [attractions, deals] = await Promise.all([
+  const [attractionsList, deals] = await Promise.all([
     getIslandAttractions(config.dbNames),
     getIslandDeals(config.slug, config.dbNames),
   ])
 
+  const attractionsByCategory = groupAttractionsByCategory(attractionsList)
   const chatUrl = `/dashboard?q=${encodeURIComponent(`Plan a trip to ${config.name} in the Bahamas`)}`
 
   return (
@@ -301,7 +311,7 @@ export default async function IslandPage({
           <p className="text-gray-600 text-lg leading-relaxed">{config.description}</p>
         </div>
 
-        {/* Attractions */}
+        {/* Attractions — grouped by category */}
         <section className="mb-14">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Things to Do</h2>
@@ -313,47 +323,67 @@ export default async function IslandPage({
             </Link>
           </div>
 
-          {attractions.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {attractions.map(attraction => {
-                const categoryColor = CATEGORY_COLORS[attraction.category] ?? 'bg-gray-600/80 text-white'
+          {attractionsByCategory.size > 0 ? (
+            <div className="space-y-10">
+              {Array.from(attractionsByCategory.entries()).map(([category, items]) => {
+                const categoryColor = CATEGORY_COLORS[category] ?? 'bg-gray-600/80 text-white'
                 return (
-                  <div
-                    key={attraction.id}
-                    className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col border border-gray-100"
-                  >
-                    <div className="relative aspect-video overflow-hidden bg-stone-200">
-                      {attraction.image_url ? (
-                        <Image
-                          src={attraction.image_url}
-                          alt={attraction.name}
-                          fill
-                          className="object-cover group-hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                          <span className="text-5xl opacity-50">🏝️</span>
-                        </div>
-                      )}
-                      <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${categoryColor}`}>
-                        {attraction.category}
-                      </div>
-                    </div>
-                    <div className="p-4 flex flex-col flex-1">
-                      <h3 className="text-base font-bold text-gray-900 mb-1">{attraction.name}</h3>
-                      <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
-                        {attraction.description}
-                      </p>
-                      {attraction.tags && attraction.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
-                          {attraction.tags.slice(0, 3).map(tag => (
-                            <span key={tag} className="text-xs bg-brand-50 text-brand-700 rounded-full px-2.5 py-0.5 font-medium">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
+                  <div key={category}>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                      <span className={`text-xs font-bold rounded-full px-3 py-1 ${categoryColor}`}>
+                        {category}
+                      </span>
+                      <span className="text-sm text-gray-400 font-normal">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
+                    </h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {items.map(attraction => {
+                        const learnMoreUrl = `/dashboard?q=${encodeURIComponent(`Tell me about ${attraction.name} in ${config.name}, Bahamas`)}`
+                        return (
+                          <div
+                            key={attraction.id}
+                            className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col border border-gray-100"
+                          >
+                            <div className="relative aspect-video overflow-hidden bg-stone-200">
+                              {attraction.image_url ? (
+                                <Image
+                                  src={attraction.image_url}
+                                  alt={attraction.name}
+                                  fill
+                                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
+                                  <span className="text-5xl opacity-50">🏝️</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="p-4 flex flex-col flex-1">
+                              <h4 className="text-base font-bold text-gray-900 mb-1">{attraction.name}</h4>
+                              <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
+                                {attraction.description}
+                              </p>
+                              <div className="flex items-center justify-between mt-auto">
+                                {attraction.tags && attraction.tags.length > 0 && (
+                                  <div className="flex flex-wrap gap-1">
+                                    {attraction.tags.slice(0, 2).map(tag => (
+                                      <span key={tag} className="text-xs bg-brand-50 text-brand-700 rounded-full px-2.5 py-0.5 font-medium">
+                                        {tag}
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+                                <Link
+                                  href={learnMoreUrl}
+                                  className="text-xs font-semibold text-brand-600 hover:text-brand-700 transition-colors whitespace-nowrap ml-2"
+                                >
+                                  Learn More →
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
                 )
@@ -406,14 +436,36 @@ export default async function IslandPage({
                     <div className="p-4 flex flex-col flex-1">
                       <h3 className="text-base font-bold text-gray-900 mb-1">{deal.title}</h3>
                       {deal.resort_name && (
-                        <p className="text-xs text-gray-400 mb-1">{deal.resort_name}</p>
+                        <p className="text-xs text-gray-400 mb-1 font-medium">{deal.resort_name}</p>
                       )}
+                      <p className="text-base font-bold text-brand-700 mb-1">
+                        {formatPrice(deal.price_from_usd, deal.price_unit)}
+                      </p>
                       <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
                         {deal.description}
                       </p>
-                      <p className="text-sm font-bold text-brand-700">
-                        {formatPrice(deal.price_from_usd, deal.price_unit)}
-                      </p>
+                      {deal.highlights && deal.highlights.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {deal.highlights.slice(0, 2).map(h => (
+                            <span key={h} className="text-xs bg-brand-50 text-brand-700 rounded-full px-2.5 py-0.5 font-medium">
+                              ✓ {h}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex items-center justify-between gap-2 mt-auto">
+                        {deal.valid_through && (
+                          <span className="text-xs text-gray-400">
+                            Expires {new Date(deal.valid_through).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                          </span>
+                        )}
+                        <Link
+                          href={`/dashboard?q=${encodeURIComponent(`I'd like to book: ${deal.title}`)}`}
+                          className="ml-auto text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+                        >
+                          Book Now →
+                        </Link>
+                      </div>
                     </div>
                   </div>
                 )

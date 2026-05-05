@@ -28,15 +28,16 @@ interface Deal {
   image_url: string | null
   highlights: string[]
   tags: string[]
+  valid_through: string | null
 }
 
 const FALLBACK_DEALS: Deal[] = [
-  { id: '1', title: 'Nassau Beach Resort — Summer Escape', deal_type: 'accommodation', island: 'nassau', resort_name: 'British Colonial Hotel', description: 'Beachfront resort in the heart of Nassau with pools, watersports, and world-class dining.', price_from_usd: 189, price_unit: 'per_night', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg', highlights: ['Beachfront', 'Pool', 'Watersports'], tags: ['Beach', 'Luxury'] },
-  { id: '2', title: 'Exuma Swimming Pigs Day Tour', deal_type: 'tour', island: 'exuma', resort_name: null, description: 'Full-day boat tour to Big Major Cay to swim with the famous swimming pigs, plus snorkeling at pristine reefs.', price_from_usd: 149, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', highlights: ['Swimming Pigs', 'Snorkeling', 'Boat Tour'], tags: ['Tour', 'Family', 'Adventure'] },
-  { id: '3', title: '7-Night Island-Hopping Package', deal_type: 'package', island: null, resort_name: null, description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas. Flights and hotels included.', price_from_usd: 2299, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg', highlights: ['3 Islands', 'Flights Included', 'Hotels Included'], tags: ['Package', 'Adventure', 'Island-Hopping'] },
-  { id: '4', title: 'Harbour Island Pink Sand Experience', deal_type: 'accommodation', island: 'harbour-island', resort_name: 'Pink Sands Resort', description: 'Stay steps from the world-famous pink sand beach. Golf cart rental included.', price_from_usd: 450, price_unit: 'per_night', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg', highlights: ['Pink Sand Beach', 'Golf Cart', 'Boutique'], tags: ['Luxury', 'Romantic', 'Boutique'] },
-  { id: '5', title: 'Abacos Sailing Charter', deal_type: 'activity', island: 'abacos', resort_name: null, description: 'Full-day private sailing charter through the Abacos Cays with a local captain. Includes snorkeling stop and lunch.', price_from_usd: 895, price_unit: 'per_charter', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg', highlights: ['Private Charter', 'Lunch Included', 'Snorkeling'], tags: ['Sailing', 'Luxury', 'Adventure'] },
-  { id: '6', title: 'Long Island Dive Package', deal_type: 'package', island: 'long-island', resort_name: null, description: 'Dive Dean\'s Blue Hole — the deepest known blue hole in the world. 3-night package with accommodation and 5 dives included.', price_from_usd: 799, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', highlights: ['Dean\'s Blue Hole', '5 Dives', 'Accommodation'], tags: ['Diving', 'Adventure', 'Remote'] },
+  { id: '1', title: 'Nassau Beach Resort — Summer Escape', deal_type: 'accommodation', island: 'nassau', resort_name: 'British Colonial Hotel', description: 'Beachfront resort in the heart of Nassau with pools, watersports, and world-class dining.', price_from_usd: 189, price_unit: 'per_night', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg', highlights: ['Beachfront', 'Pool', 'Watersports'], tags: ['Beach', 'Luxury'], valid_through: null },
+  { id: '2', title: 'Exuma Swimming Pigs Day Tour', deal_type: 'tour', island: 'exuma', resort_name: null, description: 'Full-day boat tour to Big Major Cay to swim with the famous swimming pigs, plus snorkeling at pristine reefs.', price_from_usd: 149, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', highlights: ['Swimming Pigs', 'Snorkeling', 'Boat Tour'], tags: ['Tour', 'Family', 'Adventure'], valid_through: null },
+  { id: '3', title: '7-Night Island-Hopping Package', deal_type: 'package', island: null, resort_name: null, description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas. Flights and hotels included.', price_from_usd: 2299, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg', highlights: ['3 Islands', 'Flights Included', 'Hotels Included'], tags: ['Package', 'Adventure', 'Island-Hopping'], valid_through: null },
+  { id: '4', title: 'Harbour Island Pink Sand Experience', deal_type: 'accommodation', island: 'harbour-island', resort_name: 'Pink Sands Resort', description: 'Stay steps from the world-famous pink sand beach. Golf cart rental included.', price_from_usd: 450, price_unit: 'per_night', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg', highlights: ['Pink Sand Beach', 'Golf Cart', 'Boutique'], tags: ['Luxury', 'Romantic', 'Boutique'], valid_through: null },
+  { id: '5', title: 'Abacos Sailing Charter', deal_type: 'activity', island: 'abacos', resort_name: null, description: 'Full-day private sailing charter through the Abacos Cays with a local captain. Includes snorkeling stop and lunch.', price_from_usd: 895, price_unit: 'per_charter', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg', highlights: ['Private Charter', 'Lunch Included', 'Snorkeling'], tags: ['Sailing', 'Luxury', 'Adventure'], valid_through: null },
+  { id: '6', title: 'Long Island Dive Package', deal_type: 'package', island: 'long-island', resort_name: null, description: 'Dive Dean\'s Blue Hole — the deepest known blue hole in the world. 3-night package with accommodation and 5 dives included.', price_from_usd: 799, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', highlights: ['Dean\'s Blue Hole', '5 Dives', 'Accommodation'], tags: ['Diving', 'Adventure', 'Remote'], valid_through: null },
 ]
 
 const DEAL_TYPES = ['All', 'accommodation', 'tour', 'package', 'activity']
@@ -65,7 +66,7 @@ async function getDeals() {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('bahamas_deals')
-      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags')
+      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(50)
@@ -206,11 +207,17 @@ export default async function DealsPage({
                       </div>
                     )}
 
+                    {deal.valid_through && (
+                      <p className="text-xs text-gray-400 mb-3">
+                        Expires {new Date(deal.valid_through).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    )}
+
                     <Link
-                      href={`/dashboard?q=${encodeURIComponent(`Tell me more about: ${deal.title}`)}`}
+                      href={`/dashboard?q=${encodeURIComponent(`I'd like to book: ${deal.title}`)}`}
                       className="w-full bg-brand-600 hover:bg-brand-700 text-white text-sm font-semibold rounded-xl py-2.5 transition-colors text-center block"
                     >
-                      Ask Baha Buddy →
+                      Book Now →
                     </Link>
                   </div>
                 </div>

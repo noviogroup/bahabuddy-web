@@ -29,7 +29,7 @@ async function getDeals() {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('bahamas_deals')
-      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags')
+      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
       .limit(6)

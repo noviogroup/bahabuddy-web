@@ -1,4 +1,5 @@
 import Image from 'next/image'
+import Link from 'next/link'
 
 interface Deal {
   id: string
@@ -12,6 +13,7 @@ interface Deal {
   image_url: string | null
   highlights: string[]
   tags: string[]
+  valid_through?: string | null
 }
 
 const FALLBACK_DEALS: Deal[] = [
@@ -159,12 +161,12 @@ export default function DealsSection({ deals }: Props) {
                     <p className="text-xs text-gray-400 mb-2 font-medium">{deal.resort_name}</p>
                   )}
 
-                  <p className="text-sm text-gray-500 leading-relaxed mb-4 flex-1">
+                  <p className="text-sm text-gray-500 leading-relaxed mb-3 flex-1">
                     {deal.description}
                   </p>
 
                   {deal.highlights && deal.highlights.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 mb-4">
                       {deal.highlights.slice(0, 3).map((h) => (
                         <span
                           key={h}
@@ -175,6 +177,20 @@ export default function DealsSection({ deals }: Props) {
                       ))}
                     </div>
                   )}
+
+                  <div className="flex items-center justify-between gap-2 mt-auto">
+                    {deal.valid_through && (
+                      <span className="text-xs text-gray-400">
+                        Expires {new Date(deal.valid_through).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </span>
+                    )}
+                    <Link
+                      href={`/dashboard?q=${encodeURIComponent(`I'd like to book: ${deal.title}`)}`}
+                      className="ml-auto text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+                    >
+                      Book Now →
+                    </Link>
+                  </div>
                 </div>
               </div>
             )
