@@ -190,7 +190,7 @@ export default function DealsSection({ deals }: Props) {
               href="https://apps.apple.com/app/baha-buddy"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl px-6 py-3 font-medium transition-colors text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl px-6 py-3 font-medium transition-colors text-sm"
             >
               Get the iOS App
             </a>
@@ -198,7 +198,7 @@ export default function DealsSection({ deals }: Props) {
               href="https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white rounded-xl px-6 py-3 font-medium transition-colors text-sm"
+              className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl px-6 py-3 font-medium transition-colors text-sm"
             >
               Get the Android App
             </a>

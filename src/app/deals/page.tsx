@@ -104,11 +104,11 @@ export default async function DealsPage({
       </header>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-brand-800 via-brand-700 to-brand-600 text-white">
+      <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white">
         <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-brand-200 text-sm font-semibold tracking-widest uppercase mb-3">Current Deals</p>
+          <p className="text-brand-100 text-sm font-semibold tracking-widest uppercase mb-3">Current Deals</p>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Bahamas Deals &amp; Packages</h1>
-          <p className="text-brand-100 text-lg max-w-xl mx-auto">
+          <p className="text-white/80 text-lg max-w-xl mx-auto">
             Curated stays, tours, and island packages — matched to your travel style.
           </p>
         </div>

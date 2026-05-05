@@ -114,11 +114,11 @@ export default async function DestinationsPage({
       </header>
 
       {/* Hero banner */}
-      <div className="bg-gradient-to-br from-brand-900 via-brand-800 to-brand-700 text-white">
+      <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white">
         <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-brand-300 text-sm font-semibold tracking-widest uppercase mb-3">Explore the Bahamas</p>
+          <p className="text-brand-100 text-sm font-semibold tracking-widest uppercase mb-3">Explore the Bahamas</p>
           <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">700+ Islands to Discover</h1>
-          <p className="text-brand-200 text-lg max-w-xl mx-auto">
+          <p className="text-white/80 text-lg max-w-xl mx-auto">
             From Nassau&apos;s buzz to hidden sandbars — find your perfect Bahamas escape.
           </p>
         </div>
