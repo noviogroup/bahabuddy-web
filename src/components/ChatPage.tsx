@@ -11,6 +11,7 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   cards?: CardData[]
+  savedTripId?: string
 }
 
 const GREETING: Message = {
@@ -19,10 +20,10 @@ const GREETING: Message = {
 }
 
 const SUGGESTED_PROMPTS = [
+  'Plan a 5-day trip to the Exumas',
   'Best islands for snorkeling?',
   'When should I visit?',
   'Top things to do in Nassau',
-  'Family-friendly resorts in Exuma',
 ]
 
 interface ChatPageProps {
@@ -54,7 +55,6 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Load threads from Supabase on mount
   const loadThreads = useCallback(async () => {
     const { data } = await supabase
       .from('chat_threads')
@@ -79,7 +79,7 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
 
   const selectConversation = useCallback(async (conv: Conversation) => {
     setActiveThreadId(conv.id)
-    setMessages([GREETING]) // show greeting while loading
+    setMessages([GREETING])
 
     const { data: rows } = await supabase
       .from('chat_messages')
@@ -146,7 +146,6 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
           try {
             const parsed = JSON.parse(line.slice(6))
             if (parsed.type === 'thread_id') {
-              // New thread was created server-side — track it and refresh sidebar
               setActiveThreadId(parsed.threadId)
               loadThreads()
             } else if (parsed.type === 'text_delta') {
@@ -157,15 +156,18 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
                 return updated
               })
             } else if (parsed.type === 'done') {
+              const savedTripId: string | undefined = parsed.tripId
               const { text: cleanText, cards } = parseCardsFromContent(fullText)
-              if (cards.length > 0) {
-                setMessages(prev => {
-                  const updated = [...prev]
-                  updated[updated.length - 1] = { role: 'assistant', content: cleanText, cards: cards as CardData[] }
-                  return updated
-                })
-              }
-              // Refresh threads to update preview/timestamp in sidebar
+              setMessages(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1] = {
+                  role: 'assistant',
+                  content: cleanText,
+                  cards: cards.length > 0 ? (cards as CardData[]) : undefined,
+                  savedTripId,
+                }
+                return updated
+              })
               loadThreads()
             }
           } catch {
@@ -181,7 +183,7 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
           const updated = [...prev]
           const last = updated[updated.length - 1]
           if (!last.cards && cards.length > 0) {
-            updated[updated.length - 1] = { role: 'assistant', content: cleanText, cards: cards as CardData[] }
+            updated[updated.length - 1] = { ...last, content: cleanText, cards: cards as CardData[] }
           }
           return updated
         })
@@ -266,7 +268,7 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
               <div className="text-5xl mb-4">🌊</div>
               <h1 className="text-2xl font-bold text-white mb-2">Baha Buddy</h1>
               <p className="text-gray-400 text-sm max-w-md mb-8">
-                Your personal AI travel guide for the Bahamas. Ask me about islands, restaurants, activities, or let me help plan your perfect trip.
+                Your personal AI travel guide for the Bahamas. Ask me about islands, restaurants, activities, or let me plan your perfect trip.
               </p>
               <div className="grid grid-cols-2 gap-2 w-full max-w-md">
                 {SUGGESTED_PROMPTS.map(prompt => (
@@ -309,6 +311,25 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
                       {msg.cards.map((card, ci) => (
                         <RichCardRenderer key={ci} cardData={card} onSendMessage={sendQuery} />
                       ))}
+                    </div>
+                  )}
+                  {/* Trip saved banner */}
+                  {msg.role === 'assistant' && msg.savedTripId && (
+                    <div className="mt-3 w-full max-w-[90%]">
+                      <div className="bg-green-900/40 border border-green-700/50 rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2 text-green-300 text-sm">
+                          <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                          <span>Trip saved to your dashboard</span>
+                        </div>
+                        <Link
+                          href={`/trip/${msg.savedTripId}`}
+                          className="shrink-0 bg-green-600 hover:bg-green-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          View Trip →
+                        </Link>
+                      </div>
                     </div>
                   )}
                 </div>

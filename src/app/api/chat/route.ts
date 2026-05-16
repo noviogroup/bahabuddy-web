@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
-import { parseCardsFromContent, deriveTitleFromMessage } from '@/lib/chat-utils'
+import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -56,6 +56,26 @@ interface ChatMessage {
   content: string
 }
 
+interface SummaryCard {
+  card_type: 'summary'
+  trip_name?: string
+  days?: number
+  islands?: string[]
+  total_cost?: number
+  travelers?: number
+}
+
+function extractSummaryCard(cards: ParsedCard[]): SummaryCard | null {
+  for (const card of cards) {
+    if (card.card_type === 'summary') return card as unknown as SummaryCard
+    if (card.card_type === 'mixed' && Array.isArray(card.cards)) {
+      const nested = card.cards.find(c => c.card_type === 'summary')
+      if (nested) return nested as unknown as SummaryCard
+    }
+  }
+  return null
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { message, history = [], tripContext, threadId } = await req.json()
@@ -69,9 +89,9 @@ export async function POST(req: NextRequest) {
 
     let systemPrompt = SYSTEM_PROMPT
     let activeThreadId: string | null = threadId ?? null
+    let userProfile: { party_size?: number; party_type?: string } | null = null
 
     if (user) {
-      // Personalize system prompt
       try {
         const { data: profile } = await supabase
           .from('users')
@@ -80,6 +100,7 @@ export async function POST(req: NextRequest) {
           .single()
 
         if (profile) {
+          userProfile = profile
           systemPrompt += `\n\nUser context: ${profile.display_name ? `Name: ${profile.display_name}.` : ''} Travel party: ${profile.party_size || 1} ${profile.party_type || 'traveler'}(s). Interests: ${(profile.interest_tags || []).join(', ') || 'general travel'}.`
         }
 
@@ -90,7 +111,6 @@ export async function POST(req: NextRequest) {
         // continue without profile
       }
 
-      // Create thread if not provided
       if (!activeThreadId) {
         const { data: thread } = await supabase
           .from('chat_threads')
@@ -104,7 +124,6 @@ export async function POST(req: NextRequest) {
         activeThreadId = thread?.id ?? null
       }
 
-      // Save user message
       if (activeThreadId) {
         await supabase.from('chat_messages').insert({
           thread_id: activeThreadId,
@@ -129,7 +148,6 @@ export async function POST(req: NextRequest) {
 
     const stream = new ReadableStream({
       async start(controller) {
-        // Emit thread ID so client can track the session
         if (isNewThread) {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'thread_id', threadId: activeThreadId })}\n\n`))
         }
@@ -149,7 +167,8 @@ export async function POST(req: NextRequest) {
               const data = JSON.stringify({ type: 'text_delta', delta: event.delta.text })
               controller.enqueue(encoder.encode(`data: ${data}\n\n`))
             } else if (event.type === 'message_stop') {
-              // Persist assistant response to Supabase
+              let savedTripId: string | null = null
+
               if (user && activeThreadId && fullAssistantText) {
                 try {
                   const { text: cleanText, cards } = parseCardsFromContent(fullAssistantText)
@@ -164,11 +183,64 @@ export async function POST(req: NextRequest) {
                     last_message_preview: cleanText.slice(0, 100),
                     updated_at: new Date().toISOString(),
                   }).eq('id', activeThreadId)
+
+                  // Auto-save trip when Buddy returns a complete trip summary
+                  const summaryCard = extractSummaryCard(cards)
+                  if (summaryCard && user) {
+                    try {
+                      const tripName = summaryCard.trip_name || deriveTitleFromMessage(message)
+                      const { data: newTrip } = await supabase
+                        .from('trips')
+                        .insert({
+                          user_id: user.id,
+                          name: tripName,
+                          status: 'draft',
+                          islands: summaryCard.islands ?? [],
+                          party_size: summaryCard.travelers ?? userProfile?.party_size ?? 1,
+                          party_type: userProfile?.party_type ?? 'solo',
+                          budget_estimate: summaryCard.total_cost ?? null,
+                        })
+                        .select('id')
+                        .single()
+
+                      if (newTrip) {
+                        savedTripId = newTrip.id
+
+                        // Save day_plan activities if present
+                        const dayPlans = cards.flatMap(c => {
+                          if (c.card_type === 'day_plan') return [c]
+                          if (c.card_type === 'mixed' && Array.isArray(c.cards)) {
+                            return c.cards.filter(nc => nc.card_type === 'day_plan')
+                          }
+                          return []
+                        })
+
+                        if (dayPlans.length > 0) {
+                          const activities = dayPlans.flatMap((dp, idx) => {
+                            const dayNum = (dp.day_number as number) ?? idx + 1
+                            return [
+                              dp.morning ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'morning', activity_name: dp.morning as string, sort_order: 0 } : null,
+                              dp.afternoon ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'afternoon', activity_name: dp.afternoon as string, sort_order: 1 } : null,
+                              dp.evening ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'evening', activity_name: dp.evening as string, sort_order: 2 } : null,
+                            ].filter(Boolean)
+                          })
+                          if (activities.length > 0) {
+                            await supabase.from('trip_activities').insert(activities)
+                          }
+                        }
+                      }
+                    } catch {
+                      // trip save failure doesn't break the response
+                    }
+                  }
                 } catch {
                   // DB save failure doesn't break the response
                 }
               }
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'done' })}\n\n`))
+
+              const donePayload: Record<string, unknown> = { type: 'done' }
+              if (savedTripId) donePayload.tripId = savedTripId
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify(donePayload)}\n\n`))
             }
           }
         } catch {

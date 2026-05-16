@@ -5,7 +5,6 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { Trip } from '@/types/database'
 import SignOutButton from '@/components/SignOutButton'
-import DashboardChatLauncher from '@/components/DashboardChatLauncher'
 
 function formatDate(d: string | null) {
   if (!d) return null
@@ -53,15 +52,6 @@ export default async function DashboardPage() {
           <Link href="/" className="text-xl font-bold text-brand-900">Baha Buddy</Link>
           <div className="flex items-center gap-3">
             <Link
-              href="/dashboard/chat"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-              </svg>
-              <span className="hidden sm:block">Chat with Buddy</span>
-            </Link>
-            <Link
               href="/profile"
               className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-800 transition-colors"
               title="Profile"
@@ -77,31 +67,46 @@ export default async function DashboardPage() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <div className="mb-6 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">My Trips</h1>
-            <p className="text-gray-500 text-sm mt-1">Your Bahamas travel plans, all in one place.</p>
+        {/* Hero: Chat CTA */}
+        <Link
+          href="/dashboard/chat"
+          className="block mb-10 bg-white border border-gray-200 rounded-2xl p-8 text-center hover:shadow-lg transition-shadow group"
+        >
+          <div className="text-5xl mb-3">🌊</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1 group-hover:text-brand-700 transition-colors">
+            Chat with Baha Buddy
+          </h1>
+          <p className="text-gray-500 text-sm mb-5 max-w-md mx-auto">
+            Tell me about your dream Bahamas trip and I&apos;ll plan it for you.
+          </p>
+          <div className="inline-flex items-center gap-2 bg-brand-600 group-hover:bg-brand-700 text-white font-semibold rounded-xl px-6 py-3 text-sm transition-colors">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            Start a conversation
           </div>
-          <Link
-            href="/dashboard/trips/new"
-            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl px-4 py-2.5 text-sm transition-colors shrink-0"
-          >
-            + Plan a Trip
-          </Link>
+        </Link>
+
+        {/* Trips section */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-700">Trips Buddy planned for you</h2>
         </div>
 
         {tripList.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-            <div className="text-4xl mb-3">🌊</div>
-            <h2 className="text-lg font-semibold text-gray-700 mb-2">No trips yet</h2>
-            <p className="text-gray-500 text-sm mb-4">
-              Plan your first Bahamas adventure — it only takes a minute.
+            <div className="text-4xl mb-3">🗺️</div>
+            <h3 className="text-base font-semibold text-gray-700 mb-2">No trips yet</h3>
+            <p className="text-gray-500 text-sm mb-5">
+              Start a conversation with Buddy — he will plan your trip.
             </p>
             <Link
-              href="/dashboard/trips/new"
+              href="/dashboard/chat"
               className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl px-5 py-2.5 text-sm transition-colors"
             >
-              + Plan a Trip
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+              </svg>
+              Chat with Buddy
             </Link>
           </div>
         ) : (
@@ -122,9 +127,9 @@ export default async function DashboardPage() {
                   </div>
                 )}
                 <div className="flex items-start justify-between gap-2">
-                  <h2 className="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors line-clamp-1">
+                  <h3 className="font-semibold text-gray-900 group-hover:text-brand-700 transition-colors line-clamp-1">
                     {trip.name}
-                  </h2>
+                  </h3>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full shrink-0 ${statusColor(trip.status)}`}>
                     {trip.status}
                   </span>
@@ -161,7 +166,6 @@ export default async function DashboardPage() {
           </div>
         )}
       </main>
-      <DashboardChatLauncher />
     </div>
   )
 }
