@@ -4,45 +4,13 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { RichCardRenderer, parseCardsFromContent, type CardData } from './RichCards'
-import ConversationSidebar, {
-  type Conversation,
-  loadConversations,
-  saveConversations,
-} from './ConversationSidebar'
+import ConversationSidebar, { type Conversation } from './ConversationSidebar'
+import { createClient } from '@/lib/supabase/client'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
   cards?: CardData[]
-}
-
-const MESSAGES_KEY = 'bb_messages_'
-
-function loadMessages(convId: string): Message[] {
-  try {
-    const raw = localStorage.getItem(MESSAGES_KEY + convId)
-    return raw ? JSON.parse(raw) : []
-  } catch {
-    return []
-  }
-}
-
-function saveMessages(convId: string, messages: Message[]) {
-  try {
-    localStorage.setItem(MESSAGES_KEY + convId, JSON.stringify(messages))
-  } catch {
-    // storage unavailable
-  }
-}
-
-function generateId() {
-  return Math.random().toString(36).slice(2) + Date.now().toString(36)
-}
-
-function deriveTitleFromMessage(text: string): string {
-  const cleaned = text.trim().replace(/[^\w\s]/g, ' ').trim()
-  const words = cleaned.split(/\s+/).slice(0, 6).join(' ')
-  return words.length > 0 ? words : 'New Chat'
 }
 
 const GREETING: Message = {
@@ -63,7 +31,11 @@ interface ChatPageProps {
 
 export default function ChatPage({ userEmail }: ChatPageProps) {
   const searchParams = useSearchParams()
-  const [activeConvId, setActiveConvId] = useState<string | null>(null)
+  const supabase = createClient()
+
+  const [threads, setThreads] = useState<Conversation[]>([])
+  const [threadsLoading, setThreadsLoading] = useState(true)
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -82,54 +54,54 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Load threads from Supabase on mount
+  const loadThreads = useCallback(async () => {
+    const { data } = await supabase
+      .from('chat_threads')
+      .select('id, title, last_message_preview, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(50)
+    if (data) setThreads(data as Conversation[])
+    setThreadsLoading(false)
+  }, [supabase])
+
+  useEffect(() => {
+    loadThreads()
+  }, [loadThreads])
+
   const startNewConversation = useCallback(() => {
-    setActiveConvId(null)
+    setActiveThreadId(null)
     setMessages([GREETING])
     setInput('')
     abortRef.current?.abort()
     setTimeout(() => inputRef.current?.focus(), 100)
   }, [])
 
-  const selectConversation = useCallback((conv: Conversation) => {
-    const saved = loadMessages(conv.id)
-    setActiveConvId(conv.id)
-    setMessages(saved.length > 0 ? saved : [GREETING])
-    setInput('')
-  }, [])
+  const selectConversation = useCallback(async (conv: Conversation) => {
+    setActiveThreadId(conv.id)
+    setMessages([GREETING]) // show greeting while loading
 
-  const persistMessages = useCallback((convId: string, msgs: Message[], firstUserMsg?: string) => {
-    saveMessages(convId, msgs)
+    const { data: rows } = await supabase
+      .from('chat_messages')
+      .select('role, content, card_data')
+      .eq('thread_id', conv.id)
+      .order('created_at', { ascending: true })
 
-    const convs = loadConversations()
-    const existing = convs.find(c => c.id === convId)
-    const userMessages = msgs.filter(m => m.role === 'user')
-
-    if (existing) {
-      existing.updatedAt = Date.now()
-      existing.messageCount = userMessages.length
-      saveConversations(convs)
+    if (rows && rows.length > 0) {
+      const loaded: Message[] = rows.map(row => ({
+        role: row.role as 'user' | 'assistant',
+        content: row.content,
+        cards: row.card_data ? (row.card_data as CardData[]) : undefined,
+      }))
+      setMessages(loaded)
     } else {
-      const title = firstUserMsg ? deriveTitleFromMessage(firstUserMsg) : 'New Chat'
-      const newConv: Conversation = {
-        id: convId,
-        title,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-        messageCount: userMessages.length,
-      }
-      saveConversations([newConv, ...convs])
+      setMessages([GREETING])
     }
-
-    window.dispatchEvent(new Event('bb_conversations_updated'))
-  }, [])
+    setInput('')
+  }, [supabase])
 
   const sendQuery = useCallback(async (text: string) => {
     if (!text.trim() || loading) return
-
-    const convId = activeConvId ?? generateId()
-    if (!activeConvId) setActiveConvId(convId)
-
-    const isFirstUserMessage = messages.filter(m => m.role === 'user').length === 0
 
     const userMsg: Message = { role: 'user', content: text.trim() }
     const newHistory = [...messages, userMsg]
@@ -138,8 +110,7 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
     setLoading(true)
 
     const assistantMsg: Message = { role: 'assistant', content: '' }
-    const withAssistant = [...newHistory, assistantMsg]
-    setMessages(withAssistant)
+    setMessages([...newHistory, assistantMsg])
 
     abortRef.current = new AbortController()
 
@@ -150,6 +121,7 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
         body: JSON.stringify({
           message: text.trim(),
           history: messages.slice(-10),
+          threadId: activeThreadId,
         }),
         signal: abortRef.current.signal,
       })
@@ -173,7 +145,11 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
           if (!line.startsWith('data: ')) continue
           try {
             const parsed = JSON.parse(line.slice(6))
-            if (parsed.type === 'text_delta') {
+            if (parsed.type === 'thread_id') {
+              // New thread was created server-side — track it and refresh sidebar
+              setActiveThreadId(parsed.threadId)
+              loadThreads()
+            } else if (parsed.type === 'text_delta') {
               fullText += parsed.delta
               setMessages(prev => {
                 const updated = [...prev]
@@ -185,10 +161,12 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
               if (cards.length > 0) {
                 setMessages(prev => {
                   const updated = [...prev]
-                  updated[updated.length - 1] = { role: 'assistant', content: cleanText, cards }
+                  updated[updated.length - 1] = { role: 'assistant', content: cleanText, cards: cards as CardData[] }
                   return updated
                 })
               }
+              // Refresh threads to update preview/timestamp in sidebar
+              loadThreads()
             }
           } catch {
             // skip malformed lines
@@ -196,17 +174,16 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
         }
       }
 
+      // Final parse in case done event was missed
       if (fullText) {
         const { text: cleanText, cards } = parseCardsFromContent(fullText)
         setMessages(prev => {
           const updated = [...prev]
           const last = updated[updated.length - 1]
           if (!last.cards && cards.length > 0) {
-            updated[updated.length - 1] = { role: 'assistant', content: cleanText, cards }
+            updated[updated.length - 1] = { role: 'assistant', content: cleanText, cards: cards as CardData[] }
           }
-          const finalMsgs = updated
-          persistMessages(convId, finalMsgs, isFirstUserMessage ? text.trim() : undefined)
-          return finalMsgs
+          return updated
         })
       }
     } catch (err: unknown) {
@@ -222,7 +199,7 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
     } finally {
       setLoading(false)
     }
-  }, [loading, messages, activeConvId, persistMessages])
+  }, [loading, messages, activeThreadId, loadThreads])
 
   const sendMessage = useCallback(() => sendQuery(input), [input, sendQuery])
 
@@ -240,7 +217,9 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
       {/* Sidebar */}
       {sidebarOpen && (
         <ConversationSidebar
-          activeId={activeConvId}
+          conversations={threads}
+          loading={threadsLoading}
+          activeId={activeThreadId}
           onSelect={selectConversation}
           onNew={startNewConversation}
         />
@@ -283,7 +262,6 @@ export default function ChatPage({ userEmail }: ChatPageProps) {
         {/* Messages area */}
         <div className="flex-1 overflow-y-auto">
           {isNewChat ? (
-            /* Welcome screen */
             <div className="flex flex-col items-center justify-center h-full px-4 text-center">
               <div className="text-5xl mb-4">🌊</div>
               <h1 className="text-2xl font-bold text-white mb-2">Baha Buddy</h1>
