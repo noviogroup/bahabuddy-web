@@ -6,6 +6,7 @@ import ShareButton from '@/components/ShareButton'
 import ChatWidget from '@/components/ChatWidget'
 import TripMap, { buildMarkersFromTripData } from '@/components/TripMap'
 import TripTabView from '@/components/TripTabView'
+import TripBudget from '@/components/TripBudget'
 
 export const dynamic = 'force-dynamic'
 
@@ -53,6 +54,16 @@ export default async function TripPage({ params }: { params: { id: string } }) {
   const dayGroups = groupActivities(activities)
 
   const mapMarkers = buildMarkersFromTripData(activities, accommodations, flights)
+
+  // Budget calculations
+  const flightTotal = flights.reduce((sum, f) => sum + (f.price ?? 0), 0)
+  const hotelTotal = accommodations.reduce((sum, a) => {
+    if (!a.price_per_night) return sum
+    const nights = a.check_in && a.check_out
+      ? Math.max(1, Math.round((new Date(a.check_out).getTime() - new Date(a.check_in).getTime()) / 86400000))
+      : 1
+    return sum + a.price_per_night * nights
+  }, 0)
 
   // ── Timeline JSX (passed as prop to client tab wrapper) ──
   const timelineContent = (
@@ -242,6 +253,14 @@ export default async function TripPage({ params }: { params: { id: string } }) {
         <TripTabView
           timelineContent={timelineContent}
           mapContent={<TripMap markers={mapMarkers} />}
+          budgetContent={
+            <TripBudget
+              budgetEstimate={trip.budget_estimate}
+              budgetActual={trip.budget_actual}
+              flightTotal={flightTotal}
+              hotelTotal={hotelTotal}
+            />
+          }
           hasMapData={mapMarkers.length > 0}
         />
       </main>
