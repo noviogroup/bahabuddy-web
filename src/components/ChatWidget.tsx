@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { RichCardRenderer, parseCardsFromContent, type CardData } from './RichCards'
 
 interface Message {
   role: 'user' | 'assistant'
   content: string
+  cards?: CardData[]
 }
 
 interface TripContext {
@@ -112,10 +114,33 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                 updated[updated.length - 1] = { role: 'assistant', content: fullText }
                 return updated
               })
+            } else if (parsed.type === 'done') {
+              const { text, cards } = parseCardsFromContent(fullText)
+              if (cards.length > 0) {
+                setMessages(prev => {
+                  const updated = [...prev]
+                  updated[updated.length - 1] = { role: 'assistant', content: text, cards }
+                  return updated
+                })
+              }
             }
           } catch {
             // skip malformed lines
           }
+        }
+      }
+      // Final parse if done event was missed
+      if (fullText) {
+        const { text, cards } = parseCardsFromContent(fullText)
+        if (cards.length > 0) {
+          setMessages(prev => {
+            const updated = [...prev]
+            const last = updated[updated.length - 1]
+            if (!last.cards) {
+              updated[updated.length - 1] = { role: 'assistant', content: text, cards }
+            }
+            return updated
+          })
         }
       }
     } catch (err: unknown) {
@@ -181,7 +206,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
           {/* Messages */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
             {messages.map((msg, i) => (
-              <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
                   msg.role === 'user'
                     ? 'bg-brand-600 text-white rounded-br-sm'
@@ -196,6 +221,13 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                     </span>
                   )}
                 </div>
+                {msg.role === 'assistant' && msg.cards && msg.cards.length > 0 && (
+                  <div className="w-full max-w-[95%] mt-1">
+                    {msg.cards.map((card, ci) => (
+                      <RichCardRenderer key={ci} cardData={card} onSendMessage={(q) => sendQuery(q)} />
+                    ))}
+                  </div>
+                )}
               </div>
             ))}
             <div ref={messagesEndRef} />

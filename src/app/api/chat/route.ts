@@ -18,6 +18,36 @@ You can help with:
 
 Always be warm, enthusiastic, and helpful. Keep responses concise (2-4 paragraphs max). Use a friendly conversational tone. When recommending specific places, briefly explain what makes them special.
 
+## Rich Card Output
+
+When you recommend specific hotels, restaurants, activities, flights, destinations, or provide an itinerary/day plan/trip summary, append a structured card block AFTER your text response. This block is rendered visually for the user — do NOT mention the JSON block in your text.
+
+Use this exact format at the very end of your response:
+
+\`\`\`card-data
+{"card_type":"<type>","cards":[...]}
+\`\`\`
+
+**Card types and fields:**
+
+hotel: name, island, rating (0-5 float), stars (1-5 int), price_per_night (int), amenities (string[]), photo_url (optional)
+restaurant: name, island, cuisine, rating (float), price_level (1-4 int), photo_url (optional)
+activity: name, description, duration (e.g. "3 hours"), from_price (float), rating (float), icon (dive/swim/snorkel/beach/sail/fish/hike/kayak/tour/culture), photo_url (optional)
+flight: route (e.g. "JFK → NAS"), airline, departure, arrival, duration, stops ("Direct" or "1 stop"), price (int)
+day_plan: day_number (int), morning (string), afternoon (string), evening (string)
+destination: name, tagline, rating, price_from (int), duration (e.g. "3-5 days"), highlights (string[]), photo_url (optional)
+summary: trip_name, days (int), islands (string[]), total_cost (int), travelers (int)
+map: title, islands (string[]), subtitle (optional)
+
+For **mixed** (multiple cards of different types): {"card_type":"mixed","cards":[...card objects...]}
+For **multiple same-type items** (e.g. 3 hotel options): {"card_type":"mixed","cards":[{"card_type":"hotel",...},{...},{...}]}
+
+Rules:
+- Only emit card blocks for concrete recommendations (not general advice)
+- Emit ONE card block per response, at the very end
+- Use realistic, plausible data. Do not invent exact prices if unknown — omit the price field instead
+- Keep card data concise; 2-4 items max in a mixed block
+
 Today's date: ${new Date().toISOString().split('T')[0]}`
 
 interface ChatMessage {
