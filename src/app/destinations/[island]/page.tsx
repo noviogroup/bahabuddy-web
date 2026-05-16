@@ -10,7 +10,7 @@ interface IslandConfig {
   slug: string
   name: string
   tagline: string
-  dbNames: string[] // names used in bahamas_attractions.island
+  dbSlug: string // exact value used in bahamas_attractions.island and bahamas_deals.island
   heroImage: string
   bestTime: string
   vibe: string
@@ -23,7 +23,7 @@ const ISLAND_CONFIGS: IslandConfig[] = [
     slug: 'nassau',
     name: 'Nassau',
     tagline: 'The vibrant heart of the Bahamas — culture, beaches, and endless energy.',
-    dbNames: ['Nassau', 'Nassau / New Providence', 'New Providence'],
+    dbSlug: 'nassau-paradise-island',
     heroImage: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
     bestTime: 'November – April',
     vibe: 'Culture & Beaches',
@@ -35,7 +35,7 @@ const ISLAND_CONFIGS: IslandConfig[] = [
     slug: 'exumas',
     name: 'The Exumas',
     tagline: 'Swimming pigs, turquoise sandbars, and the world\'s most pristine waters.',
-    dbNames: ['Exuma', 'Exumas', 'The Exumas', 'Great Exuma'],
+    dbSlug: 'the-exumas',
     heroImage: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
     bestTime: 'December – May',
     vibe: 'Adventure & Nature',
@@ -47,7 +47,7 @@ const ISLAND_CONFIGS: IslandConfig[] = [
     slug: 'eleuthera',
     name: 'Eleuthera',
     tagline: 'Pink sand beaches, Glass Window Bridge, and unhurried island living.',
-    dbNames: ['Eleuthera'],
+    dbSlug: 'eleuthera-harbour-island',
     heroImage: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
     bestTime: 'November – May',
     vibe: 'Off-the-Beaten-Path',
@@ -59,7 +59,7 @@ const ISLAND_CONFIGS: IslandConfig[] = [
     slug: 'harbour-island',
     name: 'Harbour Island',
     tagline: 'Golf carts, pink sand, and the most charming village in the Bahamas.',
-    dbNames: ['Harbour Island', 'Harbor Island'],
+    dbSlug: 'eleuthera-harbour-island',
     heroImage: 'https://tempo.cdn.tambourine.com/windsong/media/cache/queenshighway-5f525b6953653-1500x643.jpg',
     bestTime: 'November – April',
     vibe: 'Romantic & Boutique',
@@ -71,7 +71,7 @@ const ISLAND_CONFIGS: IslandConfig[] = [
     slug: 'andros',
     name: 'Andros',
     tagline: 'The untamed wilderness — the Bahamas\' largest and most mysterious island.',
-    dbNames: ['Andros'],
+    dbSlug: 'andros',
     heroImage: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
     bestTime: 'December – May',
     vibe: 'Wilderness & Diving',
@@ -83,7 +83,7 @@ const ISLAND_CONFIGS: IslandConfig[] = [
     slug: 'grand-bahama',
     name: 'Grand Bahama',
     tagline: 'Diving, nature trails, and a city vibe just minutes from Florida.',
-    dbNames: ['Grand Bahama', 'Freeport', 'Freeport / Grand Bahama'],
+    dbSlug: 'grand-bahama',
     heroImage: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
     bestTime: 'November – April',
     vibe: 'Diving & Nature',
@@ -130,26 +130,15 @@ function formatPrice(price: number | null, unit: string | null): string {
   return `From $${price.toLocaleString()}${unit ? (units[unit] ?? '') : ''}`
 }
 
-async function getIslandAttractions(dbNames: string[]): Promise<Attraction[]> {
+async function getIslandAttractions(dbSlug: string): Promise<Attraction[]> {
   try {
     const supabase = await createClient()
-    const allResults: Attraction[] = []
-    for (const name of dbNames) {
-      const { data } = await supabase
-        .from('bahamas_attractions')
-        .select('id, name, category, island, description, image_url, tags')
-        .ilike('island', `%${name}%`)
-        .limit(24)
-      if (data && data.length > 0) {
-        allResults.push(...(data as Attraction[]))
-      }
-    }
-    const seen = new Set<string>()
-    return allResults.filter(a => {
-      if (seen.has(a.id)) return false
-      seen.add(a.id)
-      return true
-    })
+    const { data } = await supabase
+      .from('bahamas_attractions')
+      .select('id, name, category, island, description, image_url, tags')
+      .eq('island', dbSlug)
+      .limit(24)
+    return (data as Attraction[]) ?? []
   } catch {
     return []
   }
@@ -165,28 +154,16 @@ function groupAttractionsByCategory(attractions: Attraction[]): Map<string, Attr
   return groups
 }
 
-async function getIslandDeals(slug: string, dbNames: string[]): Promise<Deal[]> {
+async function getIslandDeals(dbSlug: string): Promise<Deal[]> {
   try {
     const supabase = await createClient()
-    const allResults: Deal[] = []
-    // Try slug and db names
-    const searchTerms = [slug, ...dbNames]
-    for (const term of searchTerms) {
-      const { data } = await supabase
-        .from('bahamas_deals')
-        .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through')
-        .ilike('island', `%${term}%`)
-        .limit(6)
-      if (data && data.length > 0) {
-        allResults.push(...(data as Deal[]))
-      }
-    }
-    const seen = new Set<string>()
-    return allResults.filter(d => {
-      if (seen.has(d.id)) return false
-      seen.add(d.id)
-      return true
-    }).slice(0, 6)
+    const { data } = await supabase
+      .from('bahamas_deals')
+      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through')
+      .eq('island', dbSlug)
+      .eq('is_active', true)
+      .limit(6)
+    return (data as Deal[]) ?? []
   } catch {
     return []
   }
@@ -218,12 +195,35 @@ export async function generateMetadata({
 export const dynamic = 'force-dynamic'
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Island: 'bg-brand-500/80 text-white',
-  Beach: 'bg-gold-500/80 text-white',
-  'Water Activity': 'bg-sky-500/80 text-white',
-  Culture: 'bg-purple-500/80 text-white',
-  Nature: 'bg-emerald-500/80 text-white',
-  Dining: 'bg-rose-500/80 text-white',
+  attraction: 'bg-brand-500/80 text-white',
+  beach: 'bg-gold-500/80 text-white',
+  beach_bar: 'bg-amber-500/80 text-white',
+  cultural: 'bg-purple-500/80 text-white',
+  diving: 'bg-sky-600/80 text-white',
+  event: 'bg-pink-500/80 text-white',
+  fishing: 'bg-teal-600/80 text-white',
+  food_culture: 'bg-rose-500/80 text-white',
+  landmark: 'bg-stone-600/80 text-white',
+  national_park: 'bg-emerald-600/80 text-white',
+  natural_wonder: 'bg-emerald-500/80 text-white',
+  snorkeling: 'bg-cyan-500/80 text-white',
+  wildlife: 'bg-lime-600/80 text-white',
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  attraction: 'Attractions',
+  beach: 'Beaches',
+  beach_bar: 'Beach Bars',
+  cultural: 'Culture',
+  diving: 'Diving',
+  event: 'Events',
+  fishing: 'Fishing',
+  food_culture: 'Food & Drink',
+  landmark: 'Landmarks',
+  national_park: 'National Parks',
+  natural_wonder: 'Natural Wonders',
+  snorkeling: 'Snorkeling',
+  wildlife: 'Wildlife',
 }
 
 const DEAL_TYPE_BADGE: Record<string, string> = {
@@ -242,8 +242,8 @@ export default async function IslandPage({
   if (!config) notFound()
 
   const [attractionsList, deals] = await Promise.all([
-    getIslandAttractions(config.dbNames),
-    getIslandDeals(config.slug, config.dbNames),
+    getIslandAttractions(config.dbSlug),
+    getIslandDeals(config.dbSlug),
   ])
 
   const attractionsByCategory = groupAttractionsByCategory(attractionsList)
@@ -316,7 +316,7 @@ export default async function IslandPage({
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Things to Do</h2>
             <Link
-              href={`/destinations?island=${encodeURIComponent(config.dbNames[0])}`}
+              href={`/destinations?island=${encodeURIComponent(config.dbSlug)}`}
               className="text-sm text-brand-600 hover:text-brand-700 font-medium"
             >
               View all →
@@ -331,7 +331,7 @@ export default async function IslandPage({
                   <div key={category}>
                     <h3 className="text-lg font-semibold text-gray-700 mb-4 flex items-center gap-2">
                       <span className={`text-xs font-bold rounded-full px-3 py-1 ${categoryColor}`}>
-                        {category}
+                        {CATEGORY_LABELS[category] ?? category}
                       </span>
                       <span className="text-sm text-gray-400 font-normal">{items.length} {items.length === 1 ? 'place' : 'places'}</span>
                     </h3>
