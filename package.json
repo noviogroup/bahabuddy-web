@@ -10,9 +10,15 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@portabletext/react": "^6.2.0",
+    "@sanity/client": "^7.22.0",
+    "@sanity/image-url": "^1.1.0",
+    "@stripe/react-stripe-js": "^2.8.0",
+    "@stripe/stripe-js": "^4.10.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
     "next": "14.2.35",
+    "next-sanity": "^9.12.3",
     "react": "^18",
     "react-dom": "^18"
   },

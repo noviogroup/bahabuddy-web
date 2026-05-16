@@ -2,54 +2,142 @@ import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
+import { TOOL_DEFINITIONS, executeTool, toolProgressLabel } from '@/lib/chat-tools'
+import type { CardData } from '@/components/RichCards'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
-const SYSTEM_PROMPT = `You are Baha Buddy, a friendly and knowledgeable AI travel assistant specializing exclusively in The Bahamas. You help travelers plan unforgettable Bahamas vacations.
+/**
+ * BUDDY_SYSTEM_PROMPT — canonical mobile system prompt, now with tool_use.
+ *
+ * Source: /Baha-Buddy-V2/supabase/functions/claude-chat-proxy/system-prompt.ts
+ *
+ * Differences from the B.14 web prompt (which had a Knowledge Mode stub):
+ *   - Adds TOOL USE RULES section pointing at the 9 wired tools
+ *   - Updates CARD OUTPUT FORMAT — tells Claude that hotel/restaurant/
+ *     activity/flight/destination cards are emitted by the SERVER from
+ *     tool results. Claude only composes day_plan / summary / map cards
+ *     via a fenced JSON block.
+ *
+ * Cached via cache_control: ephemeral. Date placeholders substituted per
+ * request — these break the cache once per day, which is fine.
+ *
+ * Template-literal escape note: any raw backtick inside this string must
+ * be escaped as a backslash-backtick (one `\` followed by one backtick).
+ * The string contains several triple-backtick code fences for the model
+ * — each backtick in those fences is individually escaped. A single
+ * un-escaped backtick prematurely terminates the template literal and
+ * cascades into a parser error spanning the rest of the file.
+ */
+const BUDDY_SYSTEM_PROMPT = `You are Buddy, the AI travel companion inside the Baha Buddy app. You specialize exclusively in the Bahamas — every island, every hotel, every restaurant, every hidden gem.
 
-You can help with:
-- Island recommendations (Nassau/Paradise Island, Exumas, Harbour Island, Eleuthera, Abacos, Bimini, Grand Bahama, Long Island, and more)
-- Activities and attractions: snorkeling, diving, swimming with pigs, beach hopping, fishing, boating
-- Where to eat: local restaurants, seafood, conch dishes, rum bars
-- Accommodation advice: resorts, boutique hotels, vacation rentals
-- Getting around: ferries, domestic flights, water taxis, car rentals
-- Best travel times, weather, packing tips
-- Bahamas culture, history, and local customs
-- Trip budgeting and practical tips
+## WHO YOU ARE
+You are a stylized Bahamian guide — a cool island brother with relaxed, confident energy. The kind of guy who leans back in a beach chair and says "I got you" and means it completely. You know every island intimately. You are not a search engine. You are not a booking form. You are a knowledgeable, warm, culturally grounded island friend.
 
-Always be warm, enthusiastic, and helpful. Keep responses concise (2-4 paragraphs max). Use a friendly conversational tone. When recommending specific places, briefly explain what makes them special.
+## PERSONALITY TRAITS (Always Present)
+- Cool and confident — never anxious, never over-eager, never robotic
+- Knowledgeable — you know every island, every spot, every season
+- Proactive — you offer opinions and suggestions, don't just wait for questions
+- Culturally grounded — authentic Bahamian cultural awareness, occasional local phrases
+- Respectful — never pushy about bookings or upsells
+- Concise — respond with personality but don't ramble. Keep text responses under 200 words unless building an itinerary.
 
-## Rich Card Output
+## FORMATTING RULES (Critical — this is a chat app, NOT a document)
+- Write in natural conversational prose. NO Markdown headers (#), NO bullet lists (- or *), NO numbered lists.
+- For emphasis, you may use **bold** sparingly for place names or key phrases only.
+- When presenting options or itinerary ideas, write them as short flowing paragraphs, not formatted lists.
+- Use line breaks between distinct ideas but keep the tone like you're texting a friend, not writing a report.
+- Example of what NOT to do: "**Option 1: Split Island Trip**\\n- Days 1-2: Exuma\\n- Days 3-4: Harbour Island"
+- Example of what TO do: "Here's what I'd do — spend the first two days in Exuma swimming with the pigs and exploring the cays, then hop over to Harbour Island for a couple days of pink sand and sunset dining."
+- Never use emoji excessively. One per message max, and only when it adds warmth.
 
-When you recommend specific hotels, restaurants, activities, flights, destinations, or provide an itinerary/day plan/trip summary, append a structured card block AFTER your text response. This block is rendered visually for the user — do NOT mention the JSON block in your text.
+## ADAPTIVE TONE RULES
+Detect the trip context from user messages and their profile, then shift your tone accordingly:
 
-Use this exact format at the very end of your response:
+**Luxury / Honeymoon** — When the user says "honeymoon," "anniversary," "upscale," or their interest_tags include Romance + Luxury:
+→ Polished, elevated, tasteful. Recommend private experiences and premium options first.
+→ Example: "I've got the perfect spot — Harbour Island, pink sand, private cabana dining at sunset."
+
+**Budget / Backpacking** — When the user mentions budget constraints, asks for "cheap" options, or party_type is Solo:
+→ Friendly, resourceful, real. Highlight local spots and value options.
+→ Example: "Yo, you don't need to spend big to eat good. Let me show you where the locals go."
+
+**Family Vacation** — When children_count > 0 or the user mentions kids:
+→ Warm, practical, reassuring. Flag kid-friendly activities, calm beaches, family resorts.
+→ Example: "The kids are gonna lose their minds at Atlantis. And Cabbage Beach is super calm for little ones."
+
+**Adventure / Group** — When interest_tags include Adventure or party_type is Friends:
+→ Energetic, exciting, social. Highlight active experiences and nightlife.
+→ Example: "You want to swim with sharks? Say less. Dean's Blue Hole is calling your name."
+
+**Solo Explorer** — When party_type is Solo and interests suggest exploration:
+→ Cool, encouraging, insider-ish.
+→ Example: "Solo in the Bahamas? You're about to have the best time. Let me put you on some hidden gems."
+
+## TOOL USE RULES
+You have 9 tools wired to live data. ALWAYS use these before recommending specific places — never hallucinate names.
+
+**get_hotels(island_id, price_range?, min_rating?, limit?)** — Curated Bahamas hotel catalog. Call when the user asks where to stay.
+**get_restaurants(island_id, cuisine_type?, price_range?, limit?)** — Curated restaurant catalog. Call when the user asks about food/dining.
+**get_activities(island_id, vibe_tags?, kid_friendly?, limit?)** — Tours, attractions, experiences. Call when the user asks "what should I do".
+**search_flights(origin_city, destination, departure_date, return_date?, passengers?)** — Live Duffel API. Call when the user asks about flights.
+**get_trip_details(trip_id)** — Pull current trip state.
+**get_user_profile()** — Extra profile context beyond what's in user context.
+**create_itinerary_item(trip_id, day_number, time_slot, activity_type, name, notes?)** — Adds to the user's trip. Call when they say "add this".
+**get_weather(island_id)** — Current + 7-day forecast (Open-Meteo).
+**get_island_info(island_id)** — Static overview, highlights, best time to visit.
+
+**Tool use guidelines:**
+- Call tools BEFORE recommending specific places. Match your text to what tools returned.
+- If a tool returns empty results, say so honestly: "I checked and couldn't find anything matching that on [island]. Want me to look at other islands?"
+- When building itineraries, batch tool calls so day plans are built from real data.
+- Limit to 3-4 tool calls per response — keeps latency reasonable. If you need more, ask the user to narrow the ask.
+- For general questions ("best time to visit," "what's the food like"), you may answer from knowledge without tools.
+
+## CARD OUTPUT FORMAT
+The web app renders cards differently depending on the source:
+
+**SERVER-RENDERED (do NOT emit JSON for these):**
+- hotel, restaurant, activity, flight, destination cards are created automatically by the system from your tool call results.
+- Just call the appropriate tool and write conversational prose. The cards render alongside your text.
+
+**YOU emit (use a \`\`\`card-data fence):**
+When you're SYNTHESIZING from multiple tools or producing a higher-level summary, emit a card block:
 
 \`\`\`card-data
 {"card_type":"<type>","cards":[...]}
 \`\`\`
 
-**Card types and fields:**
+Card types YOU emit:
+- **day_plan**: day_number (int), morning, afternoon, evening (each a short string)
+- **summary**: trip_name, days (int), islands (string[]), total_cost (int), travelers (int)
+- **map**: title, subtitle, islands (string[])
 
-hotel: name, island, rating (0-5 float), stars (1-5 int), price_per_night (int), amenities (string[]), photo_url (optional)
-restaurant: name, island, cuisine, rating (float), price_level (1-4 int), photo_url (optional)
-activity: name, description, duration (e.g. "3 hours"), from_price (float), rating (float), icon (dive/swim/snorkel/beach/sail/fish/hike/kayak/tour/culture), photo_url (optional)
-flight: route (e.g. "JFK → NAS"), airline, departure, arrival, duration, stops ("Direct" or "1 stop"), price (int)
-day_plan: day_number (int), morning (string), afternoon (string), evening (string)
-destination: name, tagline, rating, price_from (int), duration (e.g. "3-5 days"), highlights (string[]), photo_url (optional)
-summary: trip_name, days (int), islands (string[]), total_cost (int), travelers (int)
-map: title, islands (string[]), subtitle (optional)
-
-For **mixed** (multiple cards of different types): {"card_type":"mixed","cards":[...card objects...]}
-For **multiple same-type items** (e.g. 3 hotel options): {"card_type":"mixed","cards":[{"card_type":"hotel",...},{...},{...}]}
+For multiple day_plans across a trip, use mixed:
+\`\`\`card-data
+{"card_type":"mixed","cards":[{"card_type":"day_plan","day_number":1,"morning":"...","afternoon":"...","evening":"..."},{...}]}
+\`\`\`
 
 Rules:
-- Only emit card blocks for concrete recommendations (not general advice)
+- Only emit card blocks for synthesized content (day plans you composed, trip summaries you built)
+- Never emit hotel/restaurant/activity/flight cards — the server already did that from your tools
 - Emit ONE card block per response, at the very end
-- Use realistic, plausible data. Do not invent exact prices if unknown — omit the price field instead
-- Keep card data concise; 2-4 items max in a mixed block
+- Pull islands from the user's plan, not made-up data
 
-Today's date: ${new Date().toISOString().split('T')[0]}`
+## SCOPE & GUARDRAILS
+- **Bahamas only.** If asked about other destinations: "I'm your Bahamas expert! For other spots, I'd recommend a general travel planner. But hey — have you considered the Bahamas instead? 😎"
+- **Privacy first.** Never repeat or display passport data, payment info, or sensitive fields.
+- **Booking flow:** Present Summary Card → user confirms → Payment Card → hand off to Stripe. Never auto-initiate payments.
+- **Frustration handling:** If the user seems frustrated, acknowledge warmly and offer to start fresh or try a different approach.
+- **No medical/legal advice.** For health or safety questions, recommend consulting local authorities or travel advisories.
+
+## DATE AWARENESS (Critical)
+- Today's date is **{{TODAY_DATE}}** and the current year is **{{CURRENT_YEAR}}**.
+- When a user says dates like "June 3" without specifying a year, ALWAYS assume the NEXT upcoming occurrence. If that date has already passed this year, use next year.
+- Never recommend trip dates in the past. All trip planning dates MUST be today or in the future.
+- When calling search_flights, ALWAYS use YYYY-MM-DD format with the correct future year.
+- Example: If today is March 6, 2026 and the user says "June 3 to June 10", use departure_date "2026-06-03", return_date "2026-06-10".
+- Example: If today is March 6, 2026 and the user says "February 14", that has already passed this year, so use "2027-02-14".`
 
 interface ChatMessage {
   role: 'user' | 'assistant'
@@ -76,6 +164,59 @@ function extractSummaryCard(cards: ParsedCard[]): SummaryCard | null {
   return null
 }
 
+function buildUserContext(opts: {
+  profile?: {
+    display_name?: string | null
+    party_type?: string | null
+    party_size?: number | null
+    interest_tags?: string[] | null
+    city?: string | null
+    country?: string | null
+    children_count?: number | null
+    children_ages?: number[] | null
+  } | null
+  tripContext?: { name?: string; islands?: string[]; date_start?: string; date_end?: string; id?: string } | null
+}): string {
+  const p = opts.profile
+  const t = opts.tripContext
+  const lines: string[] = ['## CURRENT USER CONTEXT']
+
+  if (p) {
+    if (p.display_name) lines.push(`Name: ${p.display_name}`)
+    if (p.city || p.country) lines.push(`Location: ${[p.city, p.country].filter(Boolean).join(', ')}`)
+    const partySize = p.party_size ?? 1
+    const partyType = p.party_type ?? 'solo'
+    const kids = (p.children_count ?? 0) > 0
+      ? `, ${p.children_count} children ages ${(p.children_ages ?? []).join(', ')}`
+      : ''
+    lines.push(`Travel Party: ${partyType} (${partySize} travelers${kids})`)
+    const tags = p.interest_tags ?? []
+    if (tags.length) lines.push(`Interests: ${tags.join(', ')}`)
+  } else {
+    lines.push('Guest user — limited profile available')
+  }
+
+  if (t) {
+    const islands = (t.islands ?? []).join(', ') || 'TBD'
+    const dates = t.date_start || t.date_end
+      ? ` — ${t.date_start ?? '?'} to ${t.date_end ?? '?'}`
+      : ''
+    lines.push(`\nActive Trip: "${t.name ?? 'Unnamed trip'}" — Islands: ${islands}${dates}`)
+    if (t.id) lines.push(`Active Trip ID: ${t.id}`)
+  } else {
+    lines.push('\nNo active trip yet.')
+  }
+
+  return lines.join('\n')
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// Agentic loop config
+// ──────────────────────────────────────────────────────────────────────────
+const MAX_TURNS = 4        // hard cap on tool→model round-trips per request
+const MAX_TOOL_CALLS = 8   // hard cap on total tool invocations per request
+const MODEL = 'claude-sonnet-4-5'
+
 export async function POST(req: NextRequest) {
   try {
     const { message, history = [], tripContext, threadId } = await req.json()
@@ -87,26 +228,26 @@ export async function POST(req: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
-    let systemPrompt = SYSTEM_PROMPT
     let activeThreadId: string | null = threadId ?? null
-    let userProfile: { party_size?: number; party_type?: string } | null = null
+    let userProfile: {
+      display_name?: string | null
+      party_type?: string | null
+      party_size?: number | null
+      interest_tags?: string[] | null
+      city?: string | null
+      country?: string | null
+      children_count?: number | null
+      children_ages?: number[] | null
+    } | null = null
 
     if (user) {
       try {
         const { data: profile } = await supabase
           .from('users')
-          .select('display_name, party_type, party_size, interest_tags')
+          .select('display_name, party_type, party_size, interest_tags, city, country, children_count, children_ages')
           .eq('id', user.id)
           .single()
-
-        if (profile) {
-          userProfile = profile
-          systemPrompt += `\n\nUser context: ${profile.display_name ? `Name: ${profile.display_name}.` : ''} Travel party: ${profile.party_size || 1} ${profile.party_type || 'traveler'}(s). Interests: ${(profile.interest_tags || []).join(', ') || 'general travel'}.`
-        }
-
-        if (tripContext) {
-          systemPrompt += `\n\nActive trip: ${tripContext.name || 'Unnamed trip'}. Islands: ${(tripContext.islands || []).join(', ') || 'TBD'}. Dates: ${tripContext.date_start || 'TBD'} to ${tripContext.date_end || 'TBD'}.`
-        }
+        if (profile) userProfile = profile
       } catch {
         // continue without profile
       }
@@ -134,8 +275,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // ── Build system prompt (date substitution + cache_control) ───────
+    const today = new Date()
+    const todayISO = today.toISOString().split('T')[0]
+    const year = today.getFullYear().toString()
+    const staticPrompt = BUDDY_SYSTEM_PROMPT
+      .replace(/\{\{TODAY_DATE\}\}/g, todayISO)
+      .replace(/\{\{CURRENT_YEAR\}\}/g, year)
+
+    const userContext = buildUserContext({ profile: userProfile, tripContext })
+
+    // ── Conversation history ──────────────────────────────────────────
+    // Note: messages array is mutable across the agentic loop — each tool
+    // result gets appended as a user-role tool_result message.
     const messages: Anthropic.MessageParam[] = [
-      ...(history as ChatMessage[]).map((m) => ({
+      ...(history as ChatMessage[]).map(m => ({
         role: m.role,
         content: m.content,
       })),
@@ -143,109 +297,191 @@ export async function POST(req: NextRequest) {
     ]
 
     const encoder = new TextEncoder()
-    let fullAssistantText = ''
-    const isNewThread = user && activeThreadId && !threadId
+    const isNewThread = !!user && !!activeThreadId && !threadId
 
     const stream = new ReadableStream({
       async start(controller) {
-        if (isNewThread) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'thread_id', threadId: activeThreadId })}\n\n`))
+        const send = (event: Record<string, unknown>) => {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
         }
 
+        if (isNewThread) send({ type: 'thread_id', threadId: activeThreadId })
+
+        let allText = ''                  // accumulated text across all loop turns
+        const allCards: CardData[] = []   // server-emitted cards from tool results
+        let toolCallCount = 0
+
         try {
-          const response = await client.messages.create({
-            model: 'claude-haiku-4-5-20251001',
-            max_tokens: 1024,
-            system: systemPrompt,
-            messages,
-            stream: true,
-          })
+          // ── Agentic loop ─────────────────────────────────────────────
+          for (let turn = 0; turn < MAX_TURNS; turn++) {
+            const response = await client.messages.stream({
+              model: MODEL,
+              max_tokens: 2048,
+              system: [
+                { type: 'text', text: staticPrompt, cache_control: { type: 'ephemeral' } },
+                { type: 'text', text: userContext },
+              ],
+              tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
+              messages,
+            })
 
-          for await (const event of response) {
-            if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-              fullAssistantText += event.delta.text
-              const data = JSON.stringify({ type: 'text_delta', delta: event.delta.text })
-              controller.enqueue(encoder.encode(`data: ${data}\n\n`))
-            } else if (event.type === 'message_stop') {
-              let savedTripId: string | null = null
+            // Stream text deltas to client during this turn
+            let turnText = ''
+            for await (const event of response) {
+              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                turnText += event.delta.text
+                send({ type: 'text_delta', delta: event.delta.text })
+              }
+            }
+            allText += turnText
 
-              if (user && activeThreadId && fullAssistantText) {
-                try {
-                  const { text: cleanText, cards } = parseCardsFromContent(fullAssistantText)
-                  await supabase.from('chat_messages').insert({
-                    thread_id: activeThreadId,
-                    role: 'assistant',
-                    content: cleanText,
-                    card_type: cards.length > 0 ? (cards[0].card_type ?? 'none') : 'none',
-                    card_data: cards.length > 0 ? cards : null,
-                  })
-                  await supabase.from('chat_threads').update({
-                    last_message_preview: cleanText.slice(0, 100),
-                    updated_at: new Date().toISOString(),
-                  }).eq('id', activeThreadId)
+            // Get final message to inspect tool_use blocks + stop_reason
+            const finalMessage = await response.finalMessage()
 
-                  // Auto-save trip when Buddy returns a complete trip summary
-                  const summaryCard = extractSummaryCard(cards)
-                  if (summaryCard && user) {
-                    try {
-                      const tripName = summaryCard.trip_name || deriveTitleFromMessage(message)
-                      const { data: newTrip } = await supabase
-                        .from('trips')
-                        .insert({
-                          user_id: user.id,
-                          name: tripName,
-                          status: 'draft',
-                          islands: summaryCard.islands ?? [],
-                          party_size: summaryCard.travelers ?? userProfile?.party_size ?? 1,
-                          party_type: userProfile?.party_type ?? 'solo',
-                          budget_estimate: summaryCard.total_cost ?? null,
-                        })
-                        .select('id')
-                        .single()
+            // Collect tool_use blocks
+            const toolUses = finalMessage.content.filter(
+              (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
+            )
 
-                      if (newTrip) {
-                        savedTripId = newTrip.id
+            if (toolUses.length === 0 || finalMessage.stop_reason !== 'tool_use') {
+              // No tools requested — we're done
+              break
+            }
 
-                        // Save day_plan activities if present
-                        const dayPlans = cards.flatMap(c => {
-                          if (c.card_type === 'day_plan') return [c]
-                          if (c.card_type === 'mixed' && Array.isArray(c.cards)) {
-                            return c.cards.filter(nc => nc.card_type === 'day_plan')
-                          }
-                          return []
-                        })
+            // Append assistant turn (text + tool_use blocks) to messages
+            messages.push({ role: 'assistant', content: finalMessage.content })
 
-                        if (dayPlans.length > 0) {
-                          const activities = dayPlans.flatMap((dp, idx) => {
-                            const dayNum = (dp.day_number as number) ?? idx + 1
-                            return [
-                              dp.morning ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'morning', activity_name: dp.morning as string, sort_order: 0 } : null,
-                              dp.afternoon ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'afternoon', activity_name: dp.afternoon as string, sort_order: 1 } : null,
-                              dp.evening ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'evening', activity_name: dp.evening as string, sort_order: 2 } : null,
-                            ].filter(Boolean)
-                          })
-                          if (activities.length > 0) {
-                            await supabase.from('trip_activities').insert(activities)
-                          }
-                        }
-                      }
-                    } catch {
-                      // trip save failure doesn't break the response
-                    }
-                  }
-                } catch {
-                  // DB save failure doesn't break the response
-                }
+            // Execute each tool, build tool_result blocks
+            const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
+            for (const toolUse of toolUses) {
+              if (toolCallCount >= MAX_TOOL_CALLS) {
+                toolResultBlocks.push({
+                  type: 'tool_result',
+                  tool_use_id: toolUse.id,
+                  content: JSON.stringify({
+                    error: 'Tool call limit reached for this request. Wrap up your response or ask the user to narrow.',
+                  }),
+                })
+                continue
+              }
+              toolCallCount++
+
+              send({ type: 'tool_start', tool: toolUse.name, label: toolProgressLabel(toolUse.name) })
+
+              const toolResult = await executeTool(
+                toolUse.name,
+                (toolUse.input ?? {}) as Record<string, unknown>,
+                supabase,
+                user?.id ?? null,
+              )
+
+              // Accumulate server-emitted cards
+              if (toolResult.cards && toolResult.cards.length > 0) {
+                allCards.push(...toolResult.cards)
               }
 
-              const donePayload: Record<string, unknown> = { type: 'done' }
-              if (savedTripId) donePayload.tripId = savedTripId
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify(donePayload)}\n\n`))
+              send({ type: 'tool_complete', tool: toolUse.name })
+
+              toolResultBlocks.push({
+                type: 'tool_result',
+                tool_use_id: toolUse.id,
+                content: JSON.stringify(toolResult.data),
+              })
+            }
+
+            // Append tool results as a user message and loop
+            messages.push({ role: 'user', content: toolResultBlocks })
+          }
+
+          // ── Parse synthesized cards from Claude's text (day_plan / summary / map)
+          const { text: cleanText, cards: fenceCards } = parseCardsFromContent(allText)
+
+          // Combine: server-emitted (concrete data) + Claude-emitted (synthesized).
+          // Concrete data first so users see the lookup results before the summary.
+          const combinedCards: CardData[] = [
+            ...allCards,
+            ...(fenceCards as CardData[]),
+          ]
+
+          // ── Persistence + trip auto-save ─────────────────────────────
+          let savedTripId: string | null = null
+          if (user && activeThreadId) {
+            try {
+              await supabase.from('chat_messages').insert({
+                thread_id: activeThreadId,
+                role: 'assistant',
+                content: cleanText,
+                card_type: combinedCards.length > 0 ? (combinedCards[0].card_type ?? 'none') : 'none',
+                card_data: combinedCards.length > 0 ? combinedCards : null,
+              })
+              await supabase
+                .from('chat_threads')
+                .update({
+                  last_message_preview: cleanText.slice(0, 100),
+                  updated_at: new Date().toISOString(),
+                })
+                .eq('id', activeThreadId)
+
+              // Auto-save trip if Claude emitted a summary card
+              const summaryCard = extractSummaryCard(fenceCards as ParsedCard[])
+              if (summaryCard) {
+                const tripName = summaryCard.trip_name || deriveTitleFromMessage(message)
+                const { data: newTrip } = await supabase
+                  .from('trips')
+                  .insert({
+                    user_id: user.id,
+                    name: tripName,
+                    status: 'draft',
+                    islands: summaryCard.islands ?? [],
+                    party_size: summaryCard.travelers ?? userProfile?.party_size ?? 1,
+                    party_type: userProfile?.party_type ?? 'solo',
+                    budget_estimate: summaryCard.total_cost ?? null,
+                  })
+                  .select('id')
+                  .single()
+                if (newTrip) {
+                  savedTripId = newTrip.id
+
+                  // Save day_plan activities from synthesized cards
+                  const dayPlans = (fenceCards as ParsedCard[]).flatMap(c => {
+                    if (c.card_type === 'day_plan') return [c]
+                    if (c.card_type === 'mixed' && Array.isArray(c.cards)) {
+                      return c.cards.filter(nc => nc.card_type === 'day_plan')
+                    }
+                    return []
+                  })
+
+                  if (dayPlans.length > 0) {
+                    const activities = dayPlans.flatMap((dp, idx) => {
+                      const dayNum = (dp.day_number as number) ?? idx + 1
+                      return [
+                        dp.morning ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'morning', activity_name: dp.morning as string, sort_order: 0 } : null,
+                        dp.afternoon ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'afternoon', activity_name: dp.afternoon as string, sort_order: 1 } : null,
+                        dp.evening ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'evening', activity_name: dp.evening as string, sort_order: 2 } : null,
+                      ].filter((x): x is NonNullable<typeof x> => x !== null)
+                    })
+                    if (activities.length > 0) {
+                      await supabase.from('trip_activities').insert(activities)
+                    }
+                  }
+                }
+              }
+            } catch (persistErr) {
+              console.error('Persistence error:', persistErr)
+              // continue — response still goes to client
             }
           }
-        } catch {
-          const errData = JSON.stringify({ type: 'error', message: 'Something went wrong. Please try again.' })
-          controller.enqueue(encoder.encode(`data: ${errData}\n\n`))
+
+          // ── Emit final events ────────────────────────────────────────
+          if (combinedCards.length > 0) {
+            send({ type: 'cards', cards: combinedCards })
+          }
+          const donePayload: Record<string, unknown> = { type: 'done' }
+          if (savedTripId) donePayload.tripId = savedTripId
+          send(donePayload)
+        } catch (err) {
+          console.error('Chat agentic loop error:', err)
+          send({ type: 'error', message: 'Something went wrong. Please try again.' })
         } finally {
           controller.close()
         }

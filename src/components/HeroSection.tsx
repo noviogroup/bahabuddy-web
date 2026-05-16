@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { BahaLogo } from '@/components/ui'
 
 const HERO_IMAGE = 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg'
 
@@ -47,13 +48,24 @@ export default function HeroSection() {
 
       {/* Nav */}
       <div className="relative flex items-center justify-between max-w-6xl mx-auto px-6 pt-6 w-full">
-        <span className="text-xl font-bold tracking-tight">Baha Buddy</span>
-        <Link
-          href="/login"
-          className="text-sm text-white/80 hover:text-white transition-colors border border-white/25 rounded-full px-4 py-1.5"
-        >
-          Sign in
-        </Link>
+        <BahaLogo href="/" size="md" className="brightness-0 invert" />
+        <nav className="flex items-center gap-4">
+          <Link href="/destinations" className="text-sm text-white/70 hover:text-white transition-colors hidden sm:block">
+            Destinations
+          </Link>
+          <Link href="/guides" className="text-sm text-white/70 hover:text-white transition-colors hidden sm:block">
+            Guides
+          </Link>
+          <Link href="/deals" className="text-sm text-white/70 hover:text-white transition-colors hidden sm:block">
+            Deals
+          </Link>
+          <Link
+            href="/login"
+            className="text-sm text-white/80 hover:text-white transition-colors border border-white/25 rounded-full px-4 py-1.5"
+          >
+            Sign in
+          </Link>
+        </nav>
       </div>
 
       {/* Hero content — centered */}
