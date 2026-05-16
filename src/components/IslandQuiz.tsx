@@ -191,7 +191,7 @@ export default function IslandQuiz() {
           <div className="text-6xl mb-6">🌴</div>
           <h1 className="text-3xl font-extrabold text-gray-900 mb-3">What Bahamas Island Are You?</h1>
           <p className="text-gray-500 mb-10 text-lg leading-relaxed">
-            Answer 5 quick questions and we'll match you to your perfect Bahamian island escape.
+            Answer 5 quick questions and we&apos;ll match you to your perfect Bahamian island escape.
           </p>
           <button
             onClick={() => setStep(1)}

@@ -142,7 +142,7 @@ function Step1Name({ name, onChange, onNext }: {
       <div className="text-center mb-10">
         <div className="text-5xl mb-5">👋</div>
         <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Welcome to Baha Buddy!</h1>
-        <p className="text-gray-500">Let's personalize your Bahamas experience. First — what should we call you?</p>
+        <p className="text-gray-500">Let&apos;s personalize your Bahamas experience. First — what should we call you?</p>
       </div>
 
       <div className="mb-8">
@@ -180,8 +180,8 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
     <div>
       <div className="text-center mb-8">
         <div className="text-5xl mb-5">🌊</div>
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">What's your travel vibe?</h2>
-        <p className="text-gray-500 text-sm">Pick everything that resonates — we'll tailor your recommendations.</p>
+        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">What&apos;s your travel vibe?</h2>
+        <p className="text-gray-500 text-sm">Pick everything that resonates — we&apos;ll tailor your recommendations.</p>
       </div>
 
       <div className="grid grid-cols-2 gap-3 mb-8">

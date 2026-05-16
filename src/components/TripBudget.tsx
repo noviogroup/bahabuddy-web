@@ -132,7 +132,7 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
       <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-start gap-3">
         <span className="text-xl">💡</span>
         <p className="text-sm text-brand-700">
-          Activity costs aren't tracked yet. Open the Baha Buddy app to add dining, tours, and activities to your budget.
+          Activity costs aren&apos;t tracked yet. Open the Baha Buddy app to add dining, tours, and activities to your budget.
         </p>
       </div>
     </div>

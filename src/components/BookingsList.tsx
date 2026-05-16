@@ -29,7 +29,7 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
         <div className="text-4xl mb-3">🎫</div>
         <h2 className="text-lg font-semibold text-gray-700 mb-2">No bookings yet</h2>
         <p className="text-gray-400 text-sm mb-6">
-          Add flights and hotels in the Baha Buddy app — they'll appear here.
+          Add flights and hotels in the Baha Buddy app — they&apos;ll appear here.
         </p>
         <Link
           href="/dashboard"
