@@ -3,6 +3,7 @@ import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/database'
 import ShareButton from '@/components/ShareButton'
+import InviteCompanions from '@/components/InviteCompanions'
 import ChatWidget from '@/components/ChatWidget'
 import TripMap, { buildMarkersFromTripData } from '@/components/TripMap'
 import TripTabView from '@/components/TripTabView'
@@ -216,7 +217,10 @@ export default async function TripPage({ params }: { params: { id: string } }) {
                   </p>
                 )}
               </div>
-              <ShareButton tripId={trip.id} />
+              <div className="flex items-center gap-2">
+                <ShareButton tripId={trip.id} />
+                <InviteCompanions tripId={trip.id} />
+              </div>
             </div>
 
             <div className="flex flex-wrap gap-2 mt-4">

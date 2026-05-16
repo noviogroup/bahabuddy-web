@@ -47,11 +47,15 @@ export default async function SharePage({ params }: { params: { code: string } }
 
   const { data: shareLink } = await supabase
     .from('share_links')
-    .select('trip_id')
+    .select('trip_id, share_type, expires_at')
     .eq('short_code', params.code)
     .single()
 
   if (!shareLink) notFound()
+
+  const isCollaborative = shareLink.share_type === 'collaborative'
+  const isExpired = shareLink.expires_at ? new Date(shareLink.expires_at) < new Date() : false
+  if (isExpired) notFound()
 
   // Increment view count via raw SQL increment (fire-and-forget)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -86,6 +90,16 @@ export default async function SharePage({ params }: { params: { code: string } }
       </header>
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+        {isCollaborative && (
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl px-5 py-4 flex items-start gap-3">
+            <span className="text-2xl">👥</span>
+            <div>
+              <p className="font-semibold text-purple-900 text-sm">You&apos;ve been invited to view this trip</p>
+              <p className="text-purple-600 text-xs mt-0.5">Read-only access — you can see all the details but can&apos;t make changes.</p>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl shadow-sm border border-brand-100 overflow-hidden">
           {trip.hero_image_url && (
             <div className="h-48">
