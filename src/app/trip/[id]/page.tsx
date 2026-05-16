@@ -7,6 +7,7 @@ import ChatWidget from '@/components/ChatWidget'
 import TripMap, { buildMarkersFromTripData } from '@/components/TripMap'
 import TripTabView from '@/components/TripTabView'
 import TripBudget from '@/components/TripBudget'
+import TripReceipts from '@/components/TripReceipts'
 
 export const dynamic = 'force-dynamic'
 
@@ -263,6 +264,9 @@ export default async function TripPage({ params }: { params: { id: string } }) {
           }
           hasMapData={mapMarkers.length > 0}
         />
+
+        {/* Receipts */}
+        <TripReceipts tripId={trip.id} />
       </main>
       <ChatWidget tripContext={{ name: trip.name, islands: trip.islands ?? [], date_start: trip.date_start ?? undefined, date_end: trip.date_end ?? undefined }} />
     </div>
