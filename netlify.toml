@@ -5,6 +5,7 @@
 [build.environment]
   NODE_VERSION = "20"
   NODE_ENV = "production"
+  NEXT_PRIVATE_STANDALONE = "true"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
