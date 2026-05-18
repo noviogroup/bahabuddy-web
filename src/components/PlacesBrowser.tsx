@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { FALLBACK_IMAGE } from '@/lib/baha-images'
 
 export interface Place {
   id: string
@@ -12,6 +13,12 @@ export interface Place {
   description: string
   image_url: string | null
   tags: string[]
+  rating: number | null
+  review_count: number | null
+  amenities: string[] | null
+  price_range: string | null
+  short_description: string | null
+  enriched_at: string | null
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -25,8 +32,6 @@ const CATEGORY_COLORS: Record<string, string> = {
   Nature: 'bg-green-600/80 text-white',
   Dining: 'bg-rose-500/80 text-white',
 }
-
-const FALLBACK_IMAGE = 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg'
 
 function categoryColor(cat: string): string {
   return CATEGORY_COLORS[cat] ?? 'bg-gray-500/80 text-white'
@@ -141,54 +146,108 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
   )
 }
 
+function StarRating({ rating, reviewCount }: { rating: number | null; reviewCount: number | null }) {
+  if (!rating) return null
+  const full = Math.floor(rating)
+  const half = rating - full >= 0.5
+  return (
+    <div className="flex items-center gap-1">
+      <div className="flex" aria-label={`${rating} out of 5 stars`}>
+        {Array.from({ length: 5 }, (_, i) => (
+          <span key={i} className={`text-xs ${i < full ? 'text-amber-400' : i === full && half ? 'text-amber-300' : 'text-gray-200'}`}>★</span>
+        ))}
+      </div>
+      <span className="text-xs font-semibold text-gray-700">{rating.toFixed(1)}</span>
+      {reviewCount != null && reviewCount > 0 && (
+        <span className="text-xs text-gray-400">({reviewCount})</span>
+      )}
+    </div>
+  )
+}
+
+const AMENITY_ICONS: Record<string, string> = {
+  pool: '🏊', spa: '💆', beach: '🏖️', parking: '🅿️', wifi: '📶',
+  restaurant: '🍽️', bar: '🍸', gym: '🏋️', 'room service': '🛎️',
+  'pet friendly': '🐾', 'water sports': '🚤', diving: '🤿',
+  snorkeling: '🤿', fishing: '🎣', golf: '⛳', tennis: '🎾',
+  'kids club': '👶', casino: '🎰', marina: '⚓', kayaking: '🛶',
+}
+
 function PlaceCard({ place }: { place: Place }) {
-  const chatUrl = buildChatUrl(place)
+  const detailUrl = `/explore/places/${place.id}`
   const imgSrc = place.image_url || FALLBACK_IMAGE
+  const isEnriched = !!place.enriched_at
 
   return (
-    <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow group">
-      {/* Image */}
-      <div className="relative h-40 overflow-hidden">
-        <Image
-          src={imgSrc}
-          alt={place.name}
-          fill
-          className="object-cover group-hover:scale-105 transition-transform duration-500"
-          unoptimized
-        />
-        {/* Category badge */}
-        <span className={`absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${categoryColor(place.category)}`}>
-          {place.category}
-        </span>
-      </div>
+    <Link href={detailUrl} className="block">
+      <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group h-full flex flex-col">
+        {/* Image */}
+        <div className="relative h-40 overflow-hidden">
+          <Image
+            src={imgSrc}
+            alt={place.name}
+            fill
+            className="object-cover group-hover:scale-105 transition-transform duration-500"
+            unoptimized
+          />
+          <span className={`absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-sm ${categoryColor(place.category)}`}>
+            {place.category}
+          </span>
+          {place.price_range && (
+            <span className="absolute top-2.5 right-2.5 px-2 py-1 rounded-full text-xs font-semibold backdrop-blur-sm bg-white/80 text-gray-700">
+              {place.price_range}
+            </span>
+          )}
+        </div>
 
-      {/* Body */}
-      <div className="p-3.5">
-        <h3 className="font-bold text-gray-900 text-sm leading-snug mb-0.5 line-clamp-1">{place.name}</h3>
-        {place.island && (
-          <p className="text-xs text-brand-500 font-medium mb-1.5">{place.island}</p>
-        )}
-        <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3">{place.description}</p>
-
-        {/* Tags */}
-        {place.tags && place.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {place.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
-                {tag}
-              </span>
-            ))}
+        {/* Body */}
+        <div className="p-3.5 flex flex-col flex-1">
+          <h3 className="font-bold text-gray-900 text-sm leading-snug mb-0.5 line-clamp-1">{place.name}</h3>
+          <div className="flex items-center gap-2 mb-1.5">
+            {place.island && (
+              <p className="text-xs text-brand-500 font-medium">{place.island}</p>
+            )}
+            {isEnriched && <StarRating rating={place.rating} reviewCount={place.review_count} />}
           </div>
-        )}
+          <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
+            {place.short_description || place.description}
+          </p>
 
-        {/* CTA */}
-        <Link
-          href={chatUrl}
-          className="block w-full text-center text-xs font-semibold py-2 rounded-xl bg-brand-50 text-brand-600 hover:bg-brand-100 transition-colors border border-brand-100"
-        >
-          Ask Buddy about this →
-        </Link>
+          {/* Amenity icons */}
+          {isEnriched && place.amenities && place.amenities.length > 0 && (
+            <div className="flex gap-1.5 mb-3">
+              {place.amenities.slice(0, 5).map((a) => {
+                const icon = AMENITY_ICONS[a.toLowerCase()] ?? '✦'
+                return (
+                  <span key={a} title={a} className="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-md text-xs">
+                    {icon}
+                  </span>
+                )
+              })}
+              {place.amenities.length > 5 && (
+                <span className="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-md text-xs text-gray-400 font-medium">
+                  +{place.amenities.length - 5}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Tags */}
+          {place.tags && place.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {place.tags.slice(0, 3).map((tag) => (
+                <span key={tag} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+                  {tag}
+                </span>
+              ))}
+            </div>
+          )}
+
+          <span className="block w-full text-center text-xs font-semibold py-2 rounded-xl bg-brand-50 text-brand-600 group-hover:bg-brand-100 transition-colors border border-brand-100 mt-auto">
+            View details →
+          </span>
+        </div>
       </div>
-    </div>
+    </Link>
   )
 }
