@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { BahaLogo } from '@/components/ui'
 import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/database'
 import type { Metadata } from 'next'
 
@@ -79,7 +80,7 @@ export default async function SharePage({ params }: { params: { code: string } }
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-brand-50">
       <header className="bg-white/80 backdrop-blur border-b border-brand-100 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link href="/" className="font-bold text-brand-900">Baha Buddy</Link>
+          <BahaLogo href="/" size="sm" />
           <Link
             href="/login"
             className="text-sm text-brand-600 hover:text-brand-700 font-medium"
@@ -91,12 +92,9 @@ export default async function SharePage({ params }: { params: { code: string } }
 
       <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         {isCollaborative && (
-          <div className="bg-purple-50 border border-purple-200 rounded-2xl px-5 py-4 flex items-start gap-3">
-            <span className="text-2xl">👥</span>
-            <div>
-              <p className="font-semibold text-purple-900 text-sm">You&apos;ve been invited to view this trip</p>
-              <p className="text-purple-600 text-xs mt-0.5">Read-only access — you can see all the details but can&apos;t make changes.</p>
-            </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-2xl px-5 py-4">
+            <p className="font-semibold text-purple-900 text-sm">You&apos;ve been invited to view this trip</p>
+            <p className="text-purple-600 text-xs mt-0.5">Read-only access — you can see all the details but can&apos;t make changes.</p>
           </div>
         )}
 
@@ -119,8 +117,8 @@ export default async function SharePage({ params }: { params: { code: string } }
               ))}
             </div>
             <div className="flex gap-4 mt-4 text-sm text-gray-500">
-              <span>👥 {trip.party_size} {trip.party_type}</span>
-              <span className="capitalize">📋 {trip.status}</span>
+              <span>{trip.party_size} {trip.party_type}</span>
+              <span className="capitalize">{trip.status}</span>
             </div>
           </div>
         </div>
@@ -148,7 +146,7 @@ export default async function SharePage({ params }: { params: { code: string } }
 
         {accommodations.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">🏨 Where we&apos;re staying</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Where we&apos;re staying</h2>
             <div className="space-y-3">
               {accommodations.map(a => (
                 <div key={a.id} className="bg-white rounded-xl border border-brand-100 p-4">
@@ -165,7 +163,7 @@ export default async function SharePage({ params }: { params: { code: string } }
 
         {activities.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">🗓 The plan</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">The plan</h2>
             <div className="bg-white rounded-xl border border-brand-100 p-4 space-y-3">
               {activities.map(a => (
                 <div key={a.id} className="flex gap-2 text-sm">

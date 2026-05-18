@@ -5,6 +5,8 @@ import Image from 'next/image'
 import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import IslandFilterSelect from '@/components/destinations/IslandFilterSelect'
+import { BahaImages } from '@/lib/baha-images'
 
 export const metadata: Metadata = {
   title: 'Destinations — Explore the Bahamas | Baha Buddy',
@@ -28,15 +30,15 @@ interface Attraction {
 }
 
 const FALLBACK_ATTRACTIONS: Attraction[] = [
-  { id: '1', name: 'Nassau', category: 'Island', island: 'Nassau', description: 'The vibrant capital city — colorful colonial architecture, world-class dining, and stunning beaches.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg', tags: ['Culture', 'Beaches', 'Shopping'] },
-  { id: '2', name: 'Exuma', category: 'Island', island: 'Exuma', description: 'Home to the famous swimming pigs and the world\'s most pristine turquoise waters and sandbars.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', tags: ['Swimming Pigs', 'Snorkeling', 'Secluded'] },
-  { id: '3', name: 'Eleuthera', category: 'Island', island: 'Eleuthera', description: 'Stunning pink sand beaches, Glass Window Bridge, and a laidback island lifestyle away from crowds.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg', tags: ['Pink Sand', 'Surfing', 'Off-the-beaten-path'] },
-  { id: '4', name: 'Harbour Island', category: 'Island', island: 'Harbour Island', description: 'Famous for its charming pink sand beach and colorful colonial cottages. Golf carts are the main transport.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/queenshighway-5f525b6953653-1500x643.jpg', tags: ['Pink Sand', 'Boutique', 'Romantic'] },
-  { id: '5', name: 'The Abacos', category: 'Island', island: 'Abacos', description: 'The sailing capital of the Bahamas with charming Loyalist Cays, world-class marinas, and crystal-clear waters.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg', tags: ['Sailing', 'Boating', 'Fishing'] },
-  { id: '6', name: 'Paradise Island', category: 'Island', island: 'Paradise Island', description: 'Connected to Nassau by bridge, home to Atlantis Resort, casinos, and stunning white-sand beaches.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg', tags: ['Resorts', 'Atlantis', 'Family'] },
-  { id: '7', name: 'Bimini', category: 'Island', island: 'Bimini', description: 'The closest Bahamian island to Florida — famous for deep-sea fishing, sharks, and the Road to Atlantis legend.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg', tags: ['Fishing', 'Diving', 'Adventure'] },
-  { id: '8', name: 'Long Island', category: 'Island', island: 'Long Island', description: 'Remote and strikingly beautiful — dramatic cliffs, Dean\'s Blue Hole, and pristine beaches with barely any crowds.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', tags: ['Remote', 'Diving', 'Scenic'] },
-  { id: '9', name: 'Grand Bahama', category: 'Island', island: 'Grand Bahama', description: 'Home to Freeport — one of the Caribbean\'s top diving destinations with stunning underwater caves and reefs.', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg', tags: ['Diving', 'Freeport', 'Caves'] },
+  { id: '1', name: 'Nassau', category: 'Island', island: 'Nassau', description: 'The vibrant capital city — colorful colonial architecture, world-class dining, and stunning beaches.', image_url: BahaImages.nassau, tags: ['Culture', 'Beaches', 'Shopping'] },
+  { id: '2', name: 'Exuma', category: 'Island', island: 'Exuma', description: 'Home to the famous swimming pigs and the world\'s most pristine turquoise waters and sandbars.', image_url: BahaImages.exumas, tags: ['Swimming Pigs', 'Snorkeling', 'Secluded'] },
+  { id: '3', name: 'Eleuthera', category: 'Island', island: 'Eleuthera', description: 'Stunning pink sand beaches, Glass Window Bridge, and a laidback island lifestyle away from crowds.', image_url: BahaImages.eleuthera, tags: ['Pink Sand', 'Surfing', 'Off-the-beaten-path'] },
+  { id: '4', name: 'Harbour Island', category: 'Island', island: 'Harbour Island', description: 'Famous for its charming pink sand beach and colorful colonial cottages. Golf carts are the main transport.', image_url: BahaImages.bahamasLifestyle, tags: ['Pink Sand', 'Boutique', 'Romantic'] },
+  { id: '5', name: 'The Abacos', category: 'Island', island: 'Abacos', description: 'The sailing capital of the Bahamas with charming Loyalist Cays, world-class marinas, and crystal-clear waters.', image_url: BahaImages.abacos, tags: ['Sailing', 'Boating', 'Fishing'] },
+  { id: '6', name: 'Paradise Island', category: 'Island', island: 'Paradise Island', description: 'Connected to Nassau by bridge, home to Atlantis Resort, casinos, and stunning white-sand beaches.', image_url: BahaImages.snorkeling, tags: ['Resorts', 'Atlantis', 'Family'] },
+  { id: '7', name: 'Bimini', category: 'Island', island: 'Bimini', description: 'The closest Bahamian island to Florida — famous for deep-sea fishing, sharks, and the Road to Atlantis legend.', image_url: BahaImages.bimini, tags: ['Fishing', 'Diving', 'Adventure'] },
+  { id: '8', name: 'Long Island', category: 'Island', island: 'Long Island', description: 'Remote and strikingly beautiful — dramatic cliffs, Dean\'s Blue Hole, and pristine beaches with barely any crowds.', image_url: BahaImages.longIsland, tags: ['Remote', 'Diving', 'Scenic'] },
+  { id: '9', name: 'Grand Bahama', category: 'Island', island: 'Grand Bahama', description: 'Home to Freeport — one of the Caribbean\'s top diving destinations with stunning underwater caves and reefs.', image_url: BahaImages.grandBahama, tags: ['Diving', 'Freeport', 'Caves'] },
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -50,20 +52,28 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const ALL_CATEGORIES = ['All', 'Island', 'Beach', 'Water Activity', 'Culture', 'Nature', 'Dining']
 
-// Islands with dedicated detail pages
+// Map island display names to their mobile-canonical slugs used by
+// the canonical island-detail route at /explore/island/[id]. Keys cover
+// the variants the data layer might emit (e.g. "Nassau", "Nassau / New
+// Providence", "New Providence" all point at the same combined page).
 const ISLAND_DETAIL_SLUGS: Record<string, string> = {
-  'Nassau': 'nassau',
-  'Nassau / New Providence': 'nassau',
-  'New Providence': 'nassau',
-  'Exuma': 'exumas',
-  'Exumas': 'exumas',
-  'The Exumas': 'exumas',
-  'Eleuthera': 'eleuthera',
+  'Nassau': 'nassau-paradise-island',
+  'Nassau / New Providence': 'nassau-paradise-island',
+  'New Providence': 'nassau-paradise-island',
+  'Paradise Island': 'paradise-island',
+  'Exuma': 'the-exumas',
+  'Exumas': 'the-exumas',
+  'The Exumas': 'the-exumas',
+  'Eleuthera': 'eleuthera-harbour-island',
   'Harbour Island': 'harbour-island',
   'Harbor Island': 'harbour-island',
   'Andros': 'andros',
   'Grand Bahama': 'grand-bahama',
   'Freeport': 'grand-bahama',
+  'Bimini': 'bimini',
+  'Long Island': 'long-island',
+  'Abacos': 'abacos',
+  'The Abacos': 'abacos',
 }
 
 async function getAttractions() {
@@ -146,19 +156,16 @@ export default async function DestinationsPage({
             ))}
           </div>
 
-          {/* Island filter */}
+          {/* Island filter — extracted to a Client Component because
+              <select onChange={fn}> can't live inside a Server Component
+              (functions can't cross the RSC boundary). */}
           {allIslands.length > 0 && (
             <div className="sm:ml-auto">
-              <select
-                className="text-sm border border-gray-200 rounded-xl px-3 py-2 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-400 cursor-pointer"
-                value={activeIsland}
-                onChange={() => {}} // handled via Link navigation below
-              >
-                <option value="">All Islands</option>
-                {allIslands.map(island => (
-                  <option key={island} value={island}>{island}</option>
-                ))}
-              </select>
+              <IslandFilterSelect
+                islands={allIslands}
+                activeIsland={activeIsland}
+                activeCategory={activeCategory}
+              />
             </div>
           )}
         </div>
@@ -179,7 +186,7 @@ export default async function DestinationsPage({
             {allIslands.slice(0, 8).map(island => {
               const detailSlug = ISLAND_DETAIL_SLUGS[island]
               const href = detailSlug
-                ? `/destinations/${detailSlug}`
+                ? `/explore/island/${detailSlug}`
                 : `/destinations?category=${activeCategory}&island=${encodeURIComponent(island)}`
               return (
                 <Link
@@ -209,7 +216,6 @@ export default async function DestinationsPage({
         {/* Grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
-            <div className="text-4xl mb-3">🏝️</div>
             <p className="text-lg font-medium text-gray-600">No destinations found</p>
             <p className="text-sm mt-1">Try a different filter or island.</p>
             <Link href="/destinations" className="inline-block mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">
@@ -238,7 +244,7 @@ export default async function DestinationsPage({
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                        <span className="text-5xl opacity-50">🏝️</span>
+                        <span className="text-6xl opacity-50" aria-hidden="true">🏝️</span>
                       </div>
                     )}
                     <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${categoryColor}`}>
@@ -249,7 +255,6 @@ export default async function DestinationsPage({
                   <div className="p-5 flex flex-col flex-1">
                     {attraction.island && (
                       <div className="flex items-center gap-1 text-xs text-gray-400 mb-2 font-medium">
-                        <span>🏝️</span>
                         <span>{attraction.island}</span>
                       </div>
                     )}
@@ -292,7 +297,7 @@ export default async function DestinationsPage({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold rounded-xl px-6 py-3 hover:bg-brand-50 transition-colors text-sm"
             >
-              🍎 Download on iOS
+              Download on iOS
             </a>
             <a
               href="https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy"
@@ -300,7 +305,7 @@ export default async function DestinationsPage({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/30 text-white font-semibold rounded-xl px-6 py-3 hover:bg-white/20 transition-colors text-sm"
             >
-              🤖 Download on Android
+              Download on Android
             </a>
           </div>
         </div>

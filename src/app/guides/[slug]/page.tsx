@@ -5,7 +5,30 @@ import type { Metadata } from 'next'
 import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import PortableTextBody from '@/components/PortableTextBody'
-import { fetchDiscoverArticleBySlug, fetchAllArticleSlugs } from '@/lib/sanity/queries'
+import { fetchArticleBySlug, fetchAllArticleSlugs } from '@/lib/sanity/queries'
+import { ARTICLE_CATEGORY_LABEL } from '@/lib/sanity/types'
+
+/**
+ * /guides/[slug] — Marketing-side article reader.
+ *
+ * Sanity-only (no hardcoded fallback) because this is the public
+ * marketing surface. If no article exists with the slug, we render
+ * the 404 page. The dashboard equivalent at
+ * `/explore/articles/[slug]` keeps a hardcoded fallback so the
+ * authenticated experience still has content even before Studio is
+ * populated.
+ *
+ * History:
+ *   - Pre-Session 13: queried the placeholder `discoverArticle` type
+ *     with `fetchDiscoverArticleBySlug`. Read `article.body`,
+ *     `article.buddyPrompt`, `article.readTime` (string).
+ *   - Session 13: aligned to the canonical Studio `article` schema.
+ *     `readTime` (string) → `readTimeMinutes` (number) formatted at
+ *     render. Studio doesn't have a dedicated `buddyPrompt` field —
+ *     derived from the title at render time.
+ *
+ * Caching: 1-hour revalidation matches the index page.
+ */
 
 export const revalidate = 3600
 
@@ -19,7 +42,7 @@ export async function generateMetadata({
 }: {
   params: { slug: string }
 }): Promise<Metadata> {
-  const article = await fetchDiscoverArticleBySlug(params.slug)
+  const article = await fetchArticleBySlug(params.slug)
   if (!article) return { title: 'Guide Not Found | Baha Buddy' }
   return {
     title: `${article.title} — Bahamas Travel Guide`,
@@ -32,11 +55,22 @@ export async function generateMetadata({
   }
 }
 
+function formatReadTime(minutes: number | null): string {
+  if (!minutes || minutes < 1) return '5 min'
+  return `${Math.round(minutes)} min`
+}
+
 export default async function GuidePage({ params }: { params: { slug: string } }) {
-  const article = await fetchDiscoverArticleBySlug(params.slug)
+  const article = await fetchArticleBySlug(params.slug)
   if (!article) notFound()
 
-  const planHref = `/dashboard?q=${encodeURIComponent(article.buddyPrompt)}`
+  const categoryLabel = ARTICLE_CATEGORY_LABEL[article.category] ?? article.category
+  const readTime = formatReadTime(article.readTimeMinutes)
+  // Studio doesn't have a dedicated buddyPrompt field — synthesize one
+  // from the title. Future Studio extension: add a string field if
+  // editors want hand-tuned prompts.
+  const buddyPrompt = `Tell me more about ${article.title}`
+  const planHref = `/dashboard?q=${encodeURIComponent(buddyPrompt)}`
 
   return (
     <div className="min-h-screen bg-white">
@@ -86,10 +120,10 @@ export default async function GuidePage({ params }: { params: { slug: string } }
             <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
             <div className="absolute top-4 left-4 flex items-center gap-2">
               <span className="bg-white/95 text-brand-700 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full">
-                {article.category}
+                {categoryLabel}
               </span>
               <span className="bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-full">
-                {article.readTime}
+                {readTime}
               </span>
             </div>
           </div>

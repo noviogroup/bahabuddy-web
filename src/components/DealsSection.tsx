@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { BahaImages } from '@/lib/baha-images'
 
 interface Deal {
   id: string
@@ -26,7 +27,7 @@ const FALLBACK_DEALS: Deal[] = [
     description: 'Beachfront resort in the heart of Nassau with pools, watersports, and world-class dining.',
     price_from_usd: 189,
     price_unit: 'per_night',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
+    image_url: BahaImages.nassau,
     highlights: ['Beachfront', 'Pool', 'Watersports'],
     tags: ['Beach', 'Luxury'],
   },
@@ -39,7 +40,7 @@ const FALLBACK_DEALS: Deal[] = [
     description: 'Full-day boat tour to Big Major Cay to swim with the famous swimming pigs, plus snorkeling.',
     price_from_usd: 149,
     price_unit: 'per_person',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
+    image_url: BahaImages.exumas,
     highlights: ['Swimming Pigs', 'Snorkeling', 'Boat Tour'],
     tags: ['Tour', 'Family', 'Adventure'],
   },
@@ -52,7 +53,7 @@ const FALLBACK_DEALS: Deal[] = [
     description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas.',
     price_from_usd: 2299,
     price_unit: 'per_person',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg',
+    image_url: BahaImages.snorkeling,
     highlights: ['3 Islands', 'Flights Included', 'Hotels Included'],
     tags: ['Package', 'Adventure', 'Island-Hopping'],
   },
@@ -65,7 +66,7 @@ const FALLBACK_DEALS: Deal[] = [
     description: 'Stay steps from the world-famous pink sand beach on Harbour Island. Golf cart included.',
     price_from_usd: 450,
     price_unit: 'per_night',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
+    image_url: BahaImages.eleuthera,
     highlights: ['Pink Sand Beach', 'Golf Cart', 'Boutique'],
     tags: ['Luxury', 'Romantic', 'Boutique'],
   },
@@ -138,7 +139,7 @@ export default function DealsSection({ deals }: Props) {
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                      <span className="text-5xl opacity-50">🌴</span>
+                      
                     </div>
                   )}
 

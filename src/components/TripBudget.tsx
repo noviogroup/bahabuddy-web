@@ -35,7 +35,6 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
   if (!hasAnyData) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center">
-        <div className="text-4xl mb-3">💰</div>
         <p className="text-gray-400 text-sm">No budget data yet — add flights and hotels in the Baha Buddy app to track spending.</p>
       </div>
     )
@@ -45,7 +44,7 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
     <div className="space-y-4">
       {/* Budget overview */}
       <div className="bg-white rounded-2xl border border-gray-200 p-5">
-        <h2 className="text-base font-bold text-gray-900 mb-4">💰 Budget Overview</h2>
+        <h2 className="text-base font-bold text-gray-900 mb-4">Budget Overview</h2>
 
         {/* Progress bar */}
         {budgetEstimate && budgetEstimate > 0 && (
@@ -96,7 +95,7 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
       {/* Category breakdown */}
       {(flightTotal > 0 || hotelTotal > 0) && (
         <div className="bg-white rounded-2xl border border-gray-200 p-5">
-          <h2 className="text-base font-bold text-gray-900 mb-4">📊 Spending Breakdown</h2>
+          <h2 className="text-base font-bold text-gray-900 mb-4">Spending Breakdown</h2>
 
           <div className="space-y-3">
             {categories
@@ -130,7 +129,7 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
 
       {/* Activity tip */}
       <div className="bg-brand-50 border border-brand-100 rounded-2xl p-4 flex items-start gap-3">
-        <span className="text-xl">💡</span>
+        
         <p className="text-sm text-brand-700">
           Activity costs aren&apos;t tracked yet. Open the Baha Buddy app to add dining, tours, and activities to your budget.
         </p>

@@ -2,8 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
+import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import { BahaImages } from '@/lib/baha-images'
 
 export const metadata: Metadata = {
   title: 'Bahamas Deals & Packages | Baha Buddy',
@@ -32,12 +34,12 @@ interface Deal {
 }
 
 const FALLBACK_DEALS: Deal[] = [
-  { id: '1', title: 'Nassau Beach Resort — Summer Escape', deal_type: 'accommodation', island: 'nassau', resort_name: 'British Colonial Hotel', description: 'Beachfront resort in the heart of Nassau with pools, watersports, and world-class dining.', price_from_usd: 189, price_unit: 'per_night', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg', highlights: ['Beachfront', 'Pool', 'Watersports'], tags: ['Beach', 'Luxury'], valid_through: null },
-  { id: '2', title: 'Exuma Swimming Pigs Day Tour', deal_type: 'tour', island: 'exuma', resort_name: null, description: 'Full-day boat tour to Big Major Cay to swim with the famous swimming pigs, plus snorkeling at pristine reefs.', price_from_usd: 149, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', highlights: ['Swimming Pigs', 'Snorkeling', 'Boat Tour'], tags: ['Tour', 'Family', 'Adventure'], valid_through: null },
-  { id: '3', title: '7-Night Island-Hopping Package', deal_type: 'package', island: null, resort_name: null, description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas. Flights and hotels included.', price_from_usd: 2299, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg', highlights: ['3 Islands', 'Flights Included', 'Hotels Included'], tags: ['Package', 'Adventure', 'Island-Hopping'], valid_through: null },
-  { id: '4', title: 'Harbour Island Pink Sand Experience', deal_type: 'accommodation', island: 'harbour-island', resort_name: 'Pink Sands Resort', description: 'Stay steps from the world-famous pink sand beach. Golf cart rental included.', price_from_usd: 450, price_unit: 'per_night', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg', highlights: ['Pink Sand Beach', 'Golf Cart', 'Boutique'], tags: ['Luxury', 'Romantic', 'Boutique'], valid_through: null },
-  { id: '5', title: 'Abacos Sailing Charter', deal_type: 'activity', island: 'abacos', resort_name: null, description: 'Full-day private sailing charter through the Abacos Cays with a local captain. Includes snorkeling stop and lunch.', price_from_usd: 895, price_unit: 'per_charter', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg', highlights: ['Private Charter', 'Lunch Included', 'Snorkeling'], tags: ['Sailing', 'Luxury', 'Adventure'], valid_through: null },
-  { id: '6', title: 'Long Island Dive Package', deal_type: 'package', island: 'long-island', resort_name: null, description: 'Dive Dean\'s Blue Hole — the deepest known blue hole in the world. 3-night package with accommodation and 5 dives included.', price_from_usd: 799, price_unit: 'per_person', image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg', highlights: ['Dean\'s Blue Hole', '5 Dives', 'Accommodation'], tags: ['Diving', 'Adventure', 'Remote'], valid_through: null },
+  { id: '1', title: 'Nassau Beach Resort — Summer Escape', deal_type: 'accommodation', island: 'nassau', resort_name: 'British Colonial Hotel', description: 'Beachfront resort in the heart of Nassau with pools, watersports, and world-class dining.', price_from_usd: 189, price_unit: 'per_night', image_url: BahaImages.nassau, highlights: ['Beachfront', 'Pool', 'Watersports'], tags: ['Beach', 'Luxury'], valid_through: null },
+  { id: '2', title: 'Exuma Swimming Pigs Day Tour', deal_type: 'tour', island: 'exuma', resort_name: null, description: 'Full-day boat tour to Big Major Cay to swim with the famous swimming pigs, plus snorkeling at pristine reefs.', price_from_usd: 149, price_unit: 'per_person', image_url: BahaImages.exumas, highlights: ['Swimming Pigs', 'Snorkeling', 'Boat Tour'], tags: ['Tour', 'Family', 'Adventure'], valid_through: null },
+  { id: '3', title: '7-Night Island-Hopping Package', deal_type: 'package', island: null, resort_name: null, description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas. Flights and hotels included.', price_from_usd: 2299, price_unit: 'per_person', image_url: BahaImages.snorkeling, highlights: ['3 Islands', 'Flights Included', 'Hotels Included'], tags: ['Package', 'Adventure', 'Island-Hopping'], valid_through: null },
+  { id: '4', title: 'Harbour Island Pink Sand Experience', deal_type: 'accommodation', island: 'harbour-island', resort_name: 'Pink Sands Resort', description: 'Stay steps from the world-famous pink sand beach. Golf cart rental included.', price_from_usd: 450, price_unit: 'per_night', image_url: BahaImages.eleuthera, highlights: ['Pink Sand Beach', 'Golf Cart', 'Boutique'], tags: ['Luxury', 'Romantic', 'Boutique'], valid_through: null },
+  { id: '5', title: 'Abacos Sailing Charter', deal_type: 'activity', island: 'abacos', resort_name: null, description: 'Full-day private sailing charter through the Abacos Cays with a local captain. Includes snorkeling stop and lunch.', price_from_usd: 895, price_unit: 'per_charter', image_url: BahaImages.abacos, highlights: ['Private Charter', 'Lunch Included', 'Snorkeling'], tags: ['Sailing', 'Luxury', 'Adventure'], valid_through: null },
+  { id: '6', title: 'Long Island Dive Package', deal_type: 'package', island: 'long-island', resort_name: null, description: 'Dive Dean\'s Blue Hole — the deepest known blue hole in the world. 3-night package with accommodation and 5 dives included.', price_from_usd: 799, price_unit: 'per_person', image_url: BahaImages.exumas, highlights: ['Dean\'s Blue Hole', '5 Dives', 'Accommodation'], tags: ['Diving', 'Adventure', 'Remote'], valid_through: null },
 ]
 
 const DEAL_TYPES = ['All', 'accommodation', 'tour', 'package', 'activity']
@@ -96,7 +98,7 @@ export default async function DealsPage({
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="text-xl font-bold text-brand-900">Baha Buddy</Link>
+          <BahaLogo href="/" size="md" />
           <div className="flex items-center gap-4">
             <Link href="/destinations" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Destinations</Link>
             <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
@@ -145,7 +147,6 @@ export default async function DealsPage({
         {/* Grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
-            <div className="text-4xl mb-3">🌴</div>
             <p className="text-lg font-medium text-gray-600">No deals found</p>
             <Link href="/deals" className="inline-block mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium">
               Clear filters →
@@ -172,7 +173,7 @@ export default async function DealsPage({
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                        <span className="text-5xl opacity-50">🌴</span>
+                        <span className="text-6xl opacity-50" aria-hidden="true">🌴</span>
                       </div>
                     )}
                     <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${typeConfig.badge}`}>
@@ -237,7 +238,7 @@ export default async function DealsPage({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold rounded-xl px-6 py-3 hover:bg-brand-50 transition-colors text-sm"
             >
-              🍎 Download on iOS
+              Download on iOS
             </a>
             <a
               href="https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy"
@@ -245,7 +246,7 @@ export default async function DealsPage({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 bg-white/10 border border-white/30 text-white font-semibold rounded-xl px-6 py-3 hover:bg-white/20 transition-colors text-sm"
             >
-              🤖 Download on Android
+              Download on Android
             </a>
           </div>
         </div>

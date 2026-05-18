@@ -1,36 +1,30 @@
 const FEATURES = [
   {
-    icon: '🤖',
     title: 'AI Trip Planner',
     description:
       'Chat with Baha Buddy AI to build custom itineraries tailored to your travel style, budget, and party size.',
   },
   {
-    icon: '✈️',
     title: 'Flight Search',
     description:
       'Compare real-time flight prices and book directly from the app. Duffel-powered for the best rates.',
   },
   {
-    icon: '🏨',
     title: 'Hotel Booking',
     description:
       'Browse thousands of hotels and resorts across the Bahamas with live availability and pricing.',
   },
   {
-    icon: '🗺️',
     title: 'Island Explorer',
     description:
       'Swipe through 700+ islands and cays. Find hidden beaches, local restaurants, and authentic experiences.',
   },
   {
-    icon: '📋',
     title: 'Saved Itineraries',
     description:
       'Your trips are always backed up. Switch to web when you need a bigger screen or share with travel partners.',
   },
   {
-    icon: '💰',
     title: 'Deals & Packages',
     description:
       'Get notified about exclusive Bahamas deals — all-inclusive packages, island-hopping tours, and more.',
@@ -55,10 +49,10 @@ export default function AppFeaturesSection() {
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-          {FEATURES.map((feature) => (
+          {FEATURES.map((feature, index) => (
             <div key={feature.title} className="group">
-              <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center text-2xl mb-4 group-hover:bg-brand-100 transition-colors">
-                {feature.icon}
+              <div className="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center text-sm font-bold text-brand-700 mb-4 group-hover:bg-brand-100 transition-colors">
+                {index + 1}
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2">{feature.title}</h3>
               <p className="text-gray-500 leading-relaxed text-sm">{feature.description}</p>

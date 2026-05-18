@@ -1,6 +1,7 @@
 'use client'
 
 import Image from 'next/image'
+import { BahaImages } from '@/lib/baha-images'
 
 interface Attraction {
   id: string
@@ -19,7 +20,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Nassau',
     description: 'The vibrant capital city of the Bahamas — colorful colonial architecture, world-class dining, and stunning beaches.',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
+    image_url: BahaImages.nassau,
     tags: ['Culture', 'Beaches', 'Shopping'],
   },
   {
@@ -28,7 +29,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Exuma',
     description: 'Home to the swimming pigs and some of the world\'s most pristine turquoise waters and sandbars.',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
+    image_url: BahaImages.exumas,
     tags: ['Swimming Pigs', 'Snorkeling', 'Secluded'],
   },
   {
@@ -37,7 +38,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Eleuthera',
     description: 'Stunning pink sand beaches, Glass Window Bridge, and a laidback island lifestyle away from the crowds.',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
+    image_url: BahaImages.eleuthera,
     tags: ['Pink Sand', 'Surfing', 'Off-the-beaten-path'],
   },
   {
@@ -46,7 +47,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Harbour Island',
     description: 'Famous for its charming pink sand beach and colorful colonial cottages. Golf carts are the main transport.',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/queenshighway-5f525b6953653-1500x643.jpg',
+    image_url: BahaImages.bahamasLifestyle,
     tags: ['Pink Sand', 'Boutique', 'Romantic'],
   },
   {
@@ -55,7 +56,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Abacos',
     description: 'The sailing capital of the Bahamas with charming Loyalist Cays, world-class marinas, and crystal-clear waters.',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg',
+    image_url: BahaImages.abacos,
     tags: ['Sailing', 'Boating', 'Fishing'],
   },
   {
@@ -64,7 +65,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Paradise Island',
     description: 'Connected to Nassau by bridge, home to Atlantis Resort, casinos, and stunning white-sand beaches.',
-    image_url: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg',
+    image_url: BahaImages.snorkeling,
     tags: ['Resorts', 'Atlantis', 'Family'],
   },
 ]
@@ -126,7 +127,7 @@ export default function DestinationShowcase({ attractions }: Props) {
                     />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                      <span className="text-5xl opacity-50">🏝️</span>
+                      <span className="text-6xl opacity-50" aria-hidden="true">🏝️</span>
                     </div>
                   )}
 
@@ -148,7 +149,6 @@ export default function DestinationShowcase({ attractions }: Props) {
                   {/* Island meta */}
                   {attraction.island && (
                     <div className="flex items-center gap-1 text-xs text-gray-400 mb-2 font-medium">
-                      <span>🏝️</span>
                       <span>{attraction.island}</span>
                     </div>
                   )}

@@ -43,8 +43,8 @@ import {
   ISLAND_CONFIGS,
   getIslandConfig,
   getIslandDbSlug,
-  getIslandHeroImage,
 } from '@/lib/island-config'
+import { getIslandHero } from '@/lib/islands'
 import { fetchDestinationByIsland } from '@/lib/sanity/queries'
 
 import { BahaLogo } from '@/components/ui'
@@ -195,13 +195,18 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const config = getIslandConfig(params.id)
-  const sanity = await fetchDestinationByIsland(params.id)
+  const [sanity, dbHero] = await Promise.all([
+    fetchDestinationByIsland(params.id),
+    config ? getIslandHero(config.slug) : Promise.resolve(undefined),
+  ])
 
   if (!config && !sanity) return {}
 
   const name = sanity?.name ?? config?.name ?? params.id
   const tagline = sanity?.tagline ?? config?.tagline ?? ''
-  const heroUrl = sanity?.imageUrl ?? (config ? getIslandHeroImage(config) : undefined)
+  // Sanity hero wins when published; otherwise the DB-sourced URL from
+  // `islands.hero_image_url`. We no longer fall back to BahaImages here.
+  const heroUrl = sanity?.imageUrl ?? dbHero
 
   return {
     title: `${name} — Bahamas Travel Guide | Baha Buddy`,
@@ -227,19 +232,21 @@ export default async function IslandDetailPage({ params }: PageProps) {
   const dbSlug = config ? getIslandDbSlug(config) : params.id
 
   // Sanity + Supabase fetches in parallel.
-  const [sanity, attractions, deals] = await Promise.all([
+  const [sanity, attractions, deals, dbHero] = await Promise.all([
     fetchDestinationByIsland(params.id),
     getIslandAttractions(dbSlug),
     getIslandDeals(dbSlug),
+    config ? getIslandHero(config.slug) : Promise.resolve(''),
   ])
 
   // Neither hardcoded nor Sanity knows this slug → 404
   if (!config && !sanity) notFound()
 
-  // Derived display fields (Sanity wins where present, config fills gaps)
+  // Derived display fields (Sanity wins where present, config fills gaps).
+  // Hero priority: Sanity image > islands table (DB) > empty (gradient placeholder).
   const name = sanity?.name ?? config!.name
   const tagline = sanity?.tagline ?? config?.tagline ?? ''
-  const heroUrl = sanity?.imageUrl ?? (config ? getIslandHeroImage(config) : '')
+  const heroUrl = sanity?.imageUrl ?? dbHero
   const bestTime = sanity?.bestTimeToVisit ?? config?.bestTime ?? 'Year-round'
   const vibe = config?.vibe ?? 'Island life'
   const tripLength = config?.tripLength ?? '3–5 days'
@@ -496,7 +503,6 @@ function AttractionCard({
             />
           ) : (
             <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-              <span className="text-5xl opacity-50" aria-hidden="true">🏝️</span>
             </div>
           )}
           {isEnriched && attraction.rating && (
@@ -552,7 +558,7 @@ function DealCard({ deal }: { deal: Deal }) {
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-gold-200 to-gold-300 flex items-center justify-center">
-            <span className="text-5xl opacity-50" aria-hidden="true">🌊</span>
+            
           </div>
         )}
         <div

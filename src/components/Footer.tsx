@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { BahaLogo } from '@/components/ui'
 
 export default function Footer() {
   return (
@@ -7,9 +8,8 @@ export default function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10 mb-10">
           {/* Brand */}
           <div className="md:col-span-2">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-2xl">🏝️</span>
-              <span className="text-xl font-bold text-gray-900">Baha Buddy</span>
+            <div className="mb-3">
+              <BahaLogo href="/" size="lg" />
             </div>
             <p className="text-sm text-gray-500 leading-relaxed mb-4 max-w-sm">
               Your AI-powered Bahamas travel companion. Plan trips, find deals, and explore 700+
@@ -22,7 +22,7 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg px-3 py-2 transition-colors"
               >
-                🍎 App Store
+                App Store
               </a>
               <a
                 href="https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy"
@@ -30,7 +30,7 @@ export default function Footer() {
                 rel="noopener noreferrer"
                 className="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg px-3 py-2 transition-colors"
               >
-                🤖 Google Play
+                Google Play
               </a>
             </div>
           </div>

@@ -37,11 +37,6 @@ function categoryColor(cat: string): string {
   return CATEGORY_COLORS[cat] ?? 'bg-gray-500/80 text-white'
 }
 
-function buildChatUrl(place: Place): string {
-  const prompt = `Tell me about ${place.name}${place.island ? ` in ${place.island}` : ''}, Bahamas. What should I know before visiting?`
-  return `/dashboard/chat?q=${encodeURIComponent(prompt)}`
-}
-
 interface Props {
   places: Place[]
   allIslands: string[]
@@ -71,8 +66,7 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
           <div className="flex flex-col sm:flex-row gap-3">
             {/* Search */}
             <div className="relative flex-1">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-lg">🔍</span>
-              <input
+                            <input
                 type="search"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -124,7 +118,6 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
 
         {filtered.length === 0 ? (
           <div className="text-center py-24">
-            <div className="text-5xl mb-4">🗺️</div>
             <h3 className="text-lg font-semibold text-gray-700 mb-2">No places found</h3>
             <p className="text-gray-400 text-sm mb-6">Try adjusting your search or filters.</p>
             <button
@@ -163,14 +156,6 @@ function StarRating({ rating, reviewCount }: { rating: number | null; reviewCoun
       )}
     </div>
   )
-}
-
-const AMENITY_ICONS: Record<string, string> = {
-  pool: '🏊', spa: '💆', beach: '🏖️', parking: '🅿️', wifi: '📶',
-  restaurant: '🍽️', bar: '🍸', gym: '🏋️', 'room service': '🛎️',
-  'pet friendly': '🐾', 'water sports': '🚤', diving: '🤿',
-  snorkeling: '🤿', fishing: '🎣', golf: '⛳', tennis: '🎾',
-  'kids club': '👶', casino: '🎰', marina: '⚓', kayaking: '🛶',
 }
 
 function PlaceCard({ place }: { place: Place }) {
@@ -216,14 +201,15 @@ function PlaceCard({ place }: { place: Place }) {
           {/* Amenity icons */}
           {isEnriched && place.amenities && place.amenities.length > 0 && (
             <div className="flex gap-1.5 mb-3">
-              {place.amenities.slice(0, 5).map((a) => {
-                const icon = AMENITY_ICONS[a.toLowerCase()] ?? '✦'
-                return (
-                  <span key={a} title={a} className="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-md text-xs">
-                    {icon}
-                  </span>
-                )
-              })}
+              {place.amenities.slice(0, 5).map((a) => (
+                <span
+                  key={a}
+                  title={a}
+                  className="text-[10px] font-medium bg-gray-50 text-gray-600 rounded-md px-1.5 py-0.5 capitalize"
+                >
+                  {a}
+                </span>
+              ))}
               {place.amenities.length > 5 && (
                 <span className="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-md text-xs text-gray-400 font-medium">
                   +{place.amenities.length - 5}

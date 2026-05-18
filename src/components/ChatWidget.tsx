@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { BuddyAvatar } from '@/components/ui'
 import { RichCardRenderer, parseCardsFromContent, type CardData } from './RichCards'
 
 interface Message {
@@ -35,7 +36,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
     if (open && messages.length === 0) {
       setMessages([{
         role: 'assistant',
-        content: "Hey there! I'm Baha Buddy 🌊 Your personal Bahamas travel guide. Ask me anything — best islands, where to eat, things to do, or help planning your trip!",
+        content: "Hey there! I'm Baha Buddy. Your personal Bahamas travel guide. Ask me anything — best islands, where to eat, things to do, or help planning your trip!",
       }])
     }
   }, [open, messages.length])
@@ -174,7 +175,9 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="fixed bottom-6 right-6 z-50 w-14 h-14 bg-brand-600 hover:bg-brand-700 text-white rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105"
+        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+          open ? 'bg-brand-600 hover:bg-brand-700 text-white' : 'bg-white border border-gray-200 hover:shadow-card-hover p-0.5'
+        }`}
         aria-label={open ? 'Close chat' : 'Chat with Baha Buddy'}
       >
         {open ? (
@@ -182,9 +185,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
         ) : (
-          <svg className="w-7 h-7" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-          </svg>
+          <BuddyAvatar size="sm" state="idle" className="!w-12 !h-12" />
         )}
       </button>
 
@@ -194,9 +195,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
           style={{ maxHeight: 'calc(100vh - 8rem)' }}>
           {/* Header */}
           <div className="bg-gradient-to-r from-brand-600 to-brand-500 px-4 py-3 flex items-center gap-3">
-            <div className="w-9 h-9 bg-white/20 rounded-full flex items-center justify-center text-lg shrink-0">
-              🌊
-            </div>
+            <BuddyAvatar size="sm" state="idle" className="shrink-0 ring-2 ring-white/30" />
             <div>
               <p className="text-white font-semibold text-sm leading-tight">Baha Buddy</p>
               <p className="text-brand-100 text-xs">Your Bahamas travel guide</p>

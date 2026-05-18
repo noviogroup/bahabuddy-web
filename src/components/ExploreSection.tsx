@@ -1,5 +1,7 @@
 'use client'
 
+import { BahaImages } from '@/lib/baha-images'
+
 
 const COLLECTIONS = [
   {
@@ -7,48 +9,42 @@ const COLLECTIONS = [
     title: 'Top Beaches in Nassau',
     tagCount: '12 beaches',
     prompt: 'Show me the top beaches in Nassau Bahamas',
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
-    emoji: '🏖️',
+    image: BahaImages.nassau,
   },
   {
     id: 'exuma-rum',
     title: 'Best Rum Bars in Exuma',
     tagCount: '8 bars',
     prompt: 'Best rum bars and drinks spots in Exuma Bahamas',
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
-    emoji: '🍹',
+    image: BahaImages.exumas,
   },
   {
     id: 'snorkelling',
     title: 'Family Snorkelling Spots',
     tagCount: '15 spots',
     prompt: 'Best family-friendly snorkelling spots in the Bahamas',
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/cache/exumacaylands-5f5033a0c216a-1500x643.jpg',
-    emoji: '🤿',
+    image: BahaImages.snorkeling,
   },
   {
     id: 'luxury-resorts',
     title: 'Luxury Resorts',
     tagCount: '20 resorts',
     prompt: 'Top luxury resorts in the Bahamas',
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/cache/queenshighway-5f525b6953653-1500x643.jpg',
-    emoji: '🏨',
+    image: BahaImages.bahamasLifestyle,
   },
   {
     id: 'swimming-pigs',
     title: 'Swimming with Pigs',
     tagCount: '5 tours',
     prompt: 'How to swim with the pigs in Exuma Bahamas — best tours and tips',
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
-    emoji: '🐷',
+    image: BahaImages.eleuthera,
   },
   {
     id: 'junkanoo',
     title: 'Junkanoo Culture',
     tagCount: '10 experiences',
     prompt: 'Junkanoo festival and cultural experiences in the Bahamas',
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg',
-    emoji: '🥁',
+    image: BahaImages.abacos,
   },
 ]
 
@@ -92,7 +88,6 @@ export default function ExploreSection() {
 
               {/* Content */}
               <div className="absolute inset-0 flex flex-col justify-end p-6">
-                <div className="text-2xl mb-2">{col.emoji}</div>
                 <h3 className="text-white text-xl font-bold leading-tight mb-1">
                   {col.title}
                 </h3>

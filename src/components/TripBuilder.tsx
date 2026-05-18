@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { BahaDateRangePicker } from '@/components/ui'
 
 interface Attraction {
   id: string
@@ -34,10 +35,10 @@ const ISLANDS = [
   'Bimini',
 ]
 
-const TIME_SLOTS: Array<{ value: 'morning' | 'afternoon' | 'evening'; label: string; emoji: string }> = [
-  { value: 'morning', label: 'Morning', emoji: '🌅' },
-  { value: 'afternoon', label: 'Afternoon', emoji: '☀️' },
-  { value: 'evening', label: 'Evening', emoji: '🌙' },
+const TIME_SLOTS: Array<{ value: 'morning' | 'afternoon' | 'evening'; label: string }> = [
+  { value: 'morning', label: 'Morning' },
+  { value: 'afternoon', label: 'Afternoon' },
+  { value: 'evening', label: 'Evening' },
 ]
 
 function daysBetween(start: string, end: string): number {
@@ -96,7 +97,7 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
     return () => clearTimeout(timer)
   }, [query, search])
 
-  const slotEmoji = TIME_SLOTS.find(s => s.value === timeSlot)?.emoji ?? ''
+  const slotLabel = TIME_SLOTS.find(s => s.value === timeSlot)?.label ?? timeSlot
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
@@ -106,7 +107,7 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
         <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-gray-100">
           <div>
             <h3 className="font-semibold text-gray-900">Add to Day {dayNumber}</h3>
-            <p className="text-xs text-gray-400">{slotEmoji} {timeSlot}</p>
+            <p className="text-xs text-gray-400">{slotLabel}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
         </div>
@@ -327,27 +328,17 @@ export default function TripBuilder() {
           </select>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Start date</label>
-            <input
-              type="date"
-              value={startDate}
-              onChange={e => setStartDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">End date</label>
-            <input
-              type="date"
-              value={endDate}
-              min={startDate}
-              onChange={e => setEndDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-            />
-          </div>
-        </div>
+        <BahaDateRangePicker
+          label="Travel dates"
+          layout="field"
+          start={startDate}
+          end={endDate}
+          onChange={(start, end) => {
+            setStartDate(start)
+            setEndDate(end)
+          }}
+          placeholder="Add dates"
+        />
 
         {startDate && endDate && (
           <p className="text-sm text-brand-600 font-medium">
@@ -373,14 +364,14 @@ export default function TripBuilder() {
               </div>
 
               <div className="divide-y divide-gray-50">
-                {TIME_SLOTS.map(({ value: slot, label, emoji }) => {
+                {TIME_SLOTS.map(({ value: slot, label }) => {
                   const slotItems = dayActivities.filter(a => a.timeSlot === slot)
 
                   return (
                     <div key={slot} className="px-5 py-3">
                       <div className="flex items-center justify-between mb-2">
                         <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
-                          {emoji} {label}
+                          {label}
                         </p>
                         <button
                           onClick={() => openModal(dayNum, slot)}

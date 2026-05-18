@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
+import { BahaImages } from '@/lib/baha-images'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -12,13 +13,11 @@ interface QuizOption {
 }
 
 interface QuizQuestion {
-  emoji: string
   question: string
   options: QuizOption[]
 }
 
 interface IslandResult {
-  emoji: string
   personality: string
   description: string
   traits: string[]
@@ -28,7 +27,6 @@ interface IslandResult {
 
 const QUESTIONS: QuizQuestion[] = [
   {
-    emoji: '☀️',
     question: "It's Saturday morning. What are you doing?",
     options: [
       { label: 'Brunch at the hottest new spot', scores: { Nassau: 3, 'Harbour Island': 1 } },
@@ -38,7 +36,6 @@ const QUESTIONS: QuizQuestion[] = [
     ],
   },
   {
-    emoji: '🍽️',
     question: 'Pick your ideal dinner vibe:',
     options: [
       { label: 'Candlelit table, ocean view, cocktails', scores: { 'Harbour Island': 3, Nassau: 1 } },
@@ -48,7 +45,6 @@ const QUESTIONS: QuizQuestion[] = [
     ],
   },
   {
-    emoji: '📸',
     question: 'Your dream vacation photo looks like:',
     options: [
       { label: 'Crystal clear water, no one else around', scores: { 'Long Island': 3, Andros: 1 } },
@@ -58,7 +54,6 @@ const QUESTIONS: QuizQuestion[] = [
     ],
   },
   {
-    emoji: '👥',
     question: 'How do you feel about crowds?',
     options: [
       { label: 'Love the energy — more people, more fun', scores: { Nassau: 3 } },
@@ -68,70 +63,63 @@ const QUESTIONS: QuizQuestion[] = [
     ],
   },
   {
-    emoji: '✨',
-    question: 'Pick an emoji that speaks to your soul:',
+    question: 'What speaks to your soul?',
     options: [
-      { label: '🐷 The unexpected adventure', scores: { Exuma: 3 } },
-      { label: '🌸 Quiet beauty and elegance', scores: { 'Harbour Island': 3 } },
-      { label: '🎣 The great outdoors and open water', scores: { Bimini: 3 } },
-      { label: '🤿 Deep exploration and discovery', scores: { Andros: 2, 'Long Island': 2 } },
+      { label: 'The unexpected adventure', scores: { Exuma: 3 } },
+      { label: 'Quiet beauty and elegance', scores: { 'Harbour Island': 3 } },
+      { label: 'The great outdoors and open water', scores: { Bimini: 3 } },
+      { label: 'Deep exploration and discovery', scores: { Andros: 2, 'Long Island': 2 } },
     ],
   },
 ]
 
 const ISLAND_RESULTS: Record<string, IslandResult> = {
   Nassau: {
-    emoji: '🏝️',
     personality: 'The Social Butterfly',
     description:
       "You love energy, variety, and being where the action is. Nassau's got world-class resorts, buzzing nightlife, Fish Fry on Fridays, and enough culture to keep you exploring for days.",
     traits: ['Nightlife lover', 'Foodie', 'Culture seeker', 'Social'],
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
+    image: BahaImages.nassau,
     chatPrompt: 'Plan me a trip to Nassau in the Bahamas based on my quiz results! I love energy, nightlife, and culture.',
   },
   Exuma: {
-    emoji: '🐷',
     personality: 'The Adventure Seeker',
     description:
       "You're all about experiences that make people say \"wait, you did WHAT?\" Swimming pigs, nurse sharks, underwater caves — Exuma is your playground.",
     traits: ['Thrill chaser', 'Photographer', 'Spontaneous', 'Nature lover'],
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
+    image: BahaImages.exumas,
     chatPrompt: 'Plan me a trip to Exuma in the Bahamas! I love adventure, wildlife, and unique experiences.',
   },
   'Harbour Island': {
-    emoji: '🌸',
     personality: 'The Romantic Soul',
     description:
       "You appreciate beauty, quiet elegance, and moments that take your breath away. Harbour Island's pink sand beach and charming cottages are made for you.",
     traits: ['Romantic', 'Aesthetic', 'Relaxed', 'Luxury-minded'],
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/cache/queenshighway-5f525b6953653-1500x643.jpg',
+    image: BahaImages.bahamasLifestyle,
     chatPrompt: 'Plan me a romantic trip to Harbour Island in the Bahamas! I love pink sand, elegance, and peaceful vibes.',
   },
   'Long Island': {
-    emoji: '💎',
     personality: 'The Hidden Gem Hunter',
     description:
       "You don't follow the crowd — you find what the crowd hasn't discovered yet. Long Island's Dean's Blue Hole and empty beaches are your kind of paradise.",
     traits: ['Independent', 'Curious', 'Budget-savvy', 'Off the grid'],
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
+    image: BahaImages.eleuthera,
     chatPrompt: "Plan me a trip to Long Island in the Bahamas! I love hidden gems, diving, and getting off the beaten path.",
   },
   Andros: {
-    emoji: '🤿',
     personality: 'The Deep Explorer',
     description:
       "You're drawn to what's beneath the surface — literally. Andros has the third-largest barrier reef on earth, legendary blue holes, and wild untamed nature.",
     traits: ['Diver', 'Eco-conscious', 'Adventurous', 'Introspective'],
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
+    image: BahaImages.nassau,
     chatPrompt: 'Plan me a trip to Andros in the Bahamas! I love diving, reefs, blue holes, and untouched nature.',
   },
   Bimini: {
-    emoji: '🎣',
     personality: 'The Ocean Soul',
     description:
       "You belong on the water. Whether it's deep-sea fishing, swimming with dolphins, or just feeling the salt air — Bimini is your happy place.",
     traits: ['Angler', 'Water lover', 'Laid-back', 'Weekend warrior'],
-    image: 'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
+    image: BahaImages.exumas,
     chatPrompt: 'Plan me a trip to Bimini in the Bahamas! I love fishing, the ocean, dolphins, and laid-back island life.',
   },
 }
@@ -188,7 +176,6 @@ export default function IslandQuiz() {
     return (
       <div className="min-h-screen bg-gradient-to-b from-brand-50 to-white flex flex-col items-center justify-center px-4 py-16">
         <div className="max-w-md w-full text-center">
-          <div className="text-6xl mb-6">🌴</div>
           <h1 className="text-3xl font-extrabold text-gray-900 mb-3">What Bahamas Island Are You?</h1>
           <p className="text-gray-500 mb-10 text-lg leading-relaxed">
             Answer 5 quick questions and we&apos;ll match you to your perfect Bahamian island escape.
@@ -248,7 +235,6 @@ export default function IslandQuiz() {
           <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full text-center py-8">
             <p className="text-white/70 text-base font-medium mb-2">You are…</p>
             <h2 className="text-5xl font-extrabold text-white mb-2 leading-tight">{result}</h2>
-            <div className="text-5xl mb-6">{data.emoji}</div>
 
             {/* Info card */}
             <div className="bg-white/15 backdrop-blur-sm border border-white/25 rounded-3xl p-6 mb-6 text-left">
@@ -275,7 +261,7 @@ export default function IslandQuiz() {
               href={chatUrl}
               className="block w-full bg-white text-brand-600 font-bold py-4 rounded-2xl text-center text-base hover:bg-gray-100 transition-colors shadow-xl"
             >
-              Plan my {result} trip with Buddy 🤖
+              Plan my {result} trip with Buddy
             </Link>
             <Link
               href={`/destinations/${result.toLowerCase().replace(/ /g, '-')}`}
@@ -330,7 +316,6 @@ export default function IslandQuiz() {
       <div className="flex-1 flex flex-col px-4 py-8">
         <div className="max-w-lg mx-auto w-full">
           <div className="text-center mb-8">
-            <div className="text-5xl mb-5">{question.emoji}</div>
             <h2 className="text-2xl font-extrabold text-gray-900 leading-snug">{question.question}</h2>
           </div>
 

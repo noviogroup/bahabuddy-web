@@ -1,7 +1,17 @@
 import type { Metadata } from 'next'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bahabuddy.app'
+
+// Brand typography — Plus Jakarta Sans across all weights (matches mobile BahaTypography).
+// Exposed as a CSS variable so tailwind.config.ts can reference it via `var(--font-plus-jakarta)`.
+const plusJakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700', '800'],
+  variable: '--font-plus-jakarta',
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -60,7 +70,8 @@ export const metadata: Metadata = {
     },
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: '/brand/logo.png',
+    apple: '/brand/logo.png',
   },
 }
 
@@ -70,8 +81,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
-      <body className="font-sans antialiased">{children}</body>
+    <html lang="en" className={plusJakarta.variable}>
+      <body className="font-sans antialiased text-charcoal bg-offwhite">{children}</body>
     </html>
   )
 }

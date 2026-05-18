@@ -2,23 +2,57 @@
 @tailwind components;
 @tailwind utilities;
 
+/**
+ * Baha Buddy — global styles
+ * Tokens mirror /Baha-Buddy-V2/lib/core/theme/baha_theme.dart so the
+ * brand looks identical across mobile and web.
+ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --brand: #2E78D2;
-  --brand-dark: #2565B0;
-  --gold: #F5B731;
-  --gold-dark: #D49A1B;
+  --background: #F8FAFB;   /* BahaColors.offWhite */
+  --foreground: #1A2332;   /* BahaColors.night */
+
+  /* Brand */
+  --brand:        #2E78D2;
+  --brand-dark:   #1B5FAF;
+  --brand-bright: #38BDF8;
+
+  /* Accents */
+  --gold:         #F5B731;
+  --gold-dark:    #D49A1B;
+  --coral:        #E8734A;
+  --palm:         #2D8B56;
+
+  /* Text scale */
+  --night:    #1A2332;
+  --charcoal: #374151;
+  --grey:     #6B7280;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Font now driven by tailwind's font-sans (Plus Jakarta Sans via next/font). */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom focus ring matching the brand */
+*:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 2px;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+
+  /* Ambient time-of-day gradient utility (used by Home Dashboard).
+     Tinted very subtly — the gradient is a mood, not a statement. */
+  .bg-ambient-morning   { background: linear-gradient(180deg, #FFF8F0 0%, #FFF4E6 50%, #F8FAFB 100%); }
+  .bg-ambient-afternoon { background: linear-gradient(180deg, #F0F7FA 0%, #F8FAFB 50%, #F8FAFB 100%); }
+  .bg-ambient-evening   { background: linear-gradient(180deg, #FFF0E8 0%, #F8F4F0 50%, #F8FAFB 100%); }
+  .bg-ambient-night     { background: linear-gradient(180deg, #E8F0F8 0%, #F0F4F8 50%, #F8FAFB 100%); }
 }

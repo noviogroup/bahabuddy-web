@@ -6,6 +6,7 @@ import DealsSection from '@/components/DealsSection'
 import AppFeaturesSection from '@/components/AppFeaturesSection'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import { getIslandHeroSlides } from '@/lib/islands'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,11 +42,19 @@ async function getDeals() {
 }
 
 export default async function HomePage() {
-  const [attractions, deals] = await Promise.all([getAttractions(), getDeals()])
+  // Hero slides pulled from `islands` table (DB-driven). HeroSection
+  // is a Client Component — it can't await, so the server parent
+  // fetches and passes down. getIslandHeroSlides falls back to the
+  // static map in islands.ts if the DB is unreachable.
+  const [attractions, deals, heroSlides] = await Promise.all([
+    getAttractions(),
+    getDeals(),
+    getIslandHeroSlides(),
+  ])
 
   return (
     <main className="min-h-screen bg-white">
-      <HeroSection />
+      <HeroSection slides={heroSlides} />
       <DestinationShowcase attractions={attractions} />
       <ExploreSection />
       <AppFeaturesSection />

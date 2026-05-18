@@ -1,0 +1,63 @@
+# ─────────────────────────────────────────────────────────────
+# CI — Baha Buddy Web (bahabuddy.com)
+# Lints, tests, and builds on every push & PR to main/develop
+# ─────────────────────────────────────────────────────────────
+name: Web CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: web-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    name: Lint, Test, Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Run tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-web
+          path: coverage/
+          retention-days: 7
+
+      - name: Build (Next.js)
+        # Required env vars are dummies — we only need the build to
+        # type-check and bundle, not connect to real backends.
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+          SUPABASE_SERVICE_ROLE_KEY: placeholder-service-key
+          NEXT_PUBLIC_SANITY_PROJECT_ID: placeholder
+          NEXT_PUBLIC_SANITY_DATASET: production
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: pk_test_placeholder
+          STRIPE_SECRET_KEY: sk_test_placeholder
+          ANTHROPIC_API_KEY: sk-ant-placeholder
+        run: npm run build

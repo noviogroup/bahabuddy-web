@@ -7,22 +7,22 @@ import { createClient } from '@/lib/supabase/client'
 // ─── Step data ───────────────────────────────────────────────────────────────
 
 const INTERESTS = [
-  { id: 'adventure', label: 'Adventure', emoji: '🧗' },
-  { id: 'relaxation', label: 'Relaxation', emoji: '🌴' },
-  { id: 'romance', label: 'Romance', emoji: '💕' },
-  { id: 'family', label: 'Family', emoji: '👨‍👩‍👧' },
-  { id: 'food', label: 'Food & Drink', emoji: '🍽️' },
-  { id: 'nightlife', label: 'Nightlife', emoji: '🎉' },
-  { id: 'culture', label: 'Culture', emoji: '🏛️' },
-  { id: 'water sports', label: 'Water Sports', emoji: '🤿' },
+  { id: 'adventure', label: 'Adventure' },
+  { id: 'relaxation', label: 'Relaxation' },
+  { id: 'romance', label: 'Romance' },
+  { id: 'family', label: 'Family' },
+  { id: 'food', label: 'Food & Drink' },
+  { id: 'nightlife', label: 'Nightlife' },
+  { id: 'culture', label: 'Culture' },
+  { id: 'water sports', label: 'Water Sports' },
 ]
 
 const PARTY_TYPES = [
-  { id: 'solo', label: 'Solo', emoji: '🧍' },
-  { id: 'couple', label: 'Couple', emoji: '👫' },
-  { id: 'friends', label: 'Friends', emoji: '👯' },
-  { id: 'family', label: 'Family', emoji: '👨‍👩‍👧' },
-  { id: 'group', label: 'Group', emoji: '👥' },
+  { id: 'solo', label: 'Solo' },
+  { id: 'couple', label: 'Couple' },
+  { id: 'friends', label: 'Friends' },
+  { id: 'family', label: 'Family' },
+  { id: 'group', label: 'Group' },
 ]
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -140,7 +140,6 @@ function Step1Name({ name, onChange, onNext }: {
   return (
     <div>
       <div className="text-center mb-10">
-        <div className="text-5xl mb-5">👋</div>
         <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Welcome to Baha Buddy!</h1>
         <p className="text-gray-500">Let&apos;s personalize your Bahamas experience. First — what should we call you?</p>
       </div>
@@ -179,7 +178,6 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
   return (
     <div>
       <div className="text-center mb-8">
-        <div className="text-5xl mb-5">🌊</div>
         <h2 className="text-2xl font-extrabold text-gray-900 mb-2">What&apos;s your travel vibe?</h2>
         <p className="text-gray-500 text-sm">Pick everything that resonates — we&apos;ll tailor your recommendations.</p>
       </div>
@@ -197,7 +195,6 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
                   : 'bg-white border-gray-200 hover:border-brand-200'
               }`}
             >
-              <span className="text-xl">{item.emoji}</span>
               <span className={`text-sm font-semibold ${selected ? 'text-brand-700' : 'text-gray-700'}`}>
                 {item.label}
               </span>
@@ -240,7 +237,6 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
   return (
     <div>
       <div className="text-center mb-8">
-        <div className="text-5xl mb-5">🧳</div>
         <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Who are you traveling with?</h2>
         <p className="text-gray-500 text-sm">This helps Buddy find the right deals and activities for you.</p>
       </div>
@@ -259,7 +255,6 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
                   : 'bg-white border-gray-200 hover:border-brand-200'
               }`}
             >
-              <span className="text-xl">{pt.emoji}</span>
               <span className={`text-xs font-semibold ${partyType === pt.id ? 'text-brand-700' : 'text-gray-600'}`}>
                 {pt.label}
               </span>
@@ -302,7 +297,7 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
           disabled={saving}
           className="flex-1 bg-brand-500 disabled:bg-brand-300 hover:bg-brand-600 text-white font-bold py-4 rounded-2xl text-base transition-colors"
         >
-          {saving ? 'Saving…' : "Let's go! 🌴"}
+          {saving ? 'Saving…' : "Let's go!"}
         </button>
       </div>
     </div>

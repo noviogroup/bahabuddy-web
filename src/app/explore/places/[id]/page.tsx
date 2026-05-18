@@ -173,14 +173,51 @@ const CATEGORY_COLORS: Record<string, string> = {
   'Water Activity': 'bg-sky-500 text-white',
 }
 
+// Amenity → icon glyph. Keys are lowercased on lookup so DB rows
+// can be written in any case. The '✦' fallback below catches any
+// amenity name we haven't mapped yet (a generic four-pointed star).
 const AMENITY_ICONS: Record<string, string> = {
-  pool: '🏊', spa: '💆', beach: '🏖️', parking: '🅿️', wifi: '📶',
-  restaurant: '🍽️', bar: '🍸', gym: '🏋️', 'room service': '🛎️',
-  'pet friendly': '🐾', 'water sports': '🚤', diving: '🤿',
-  snorkeling: '🤿', fishing: '🎣', golf: '⛳', tennis: '🎾',
-  'kids club': '👶', casino: '🎰', marina: '⚓', kayaking: '🛶',
-  'live music': '🎵', 'outdoor seating': '☀️', 'air conditioning': '❄️',
-  'wheelchair accessible': '♿', 'free parking': '🅿️',
+  wifi: '📶',
+  'free wifi': '📶',
+  pool: '🏊',
+  'swimming pool': '🏊',
+  beach: '🏖️',
+  'beach access': '🏖️',
+  parking: '🅿️',
+  'free parking': '🅿️',
+  breakfast: '🍳',
+  restaurant: '🍽️',
+  bar: '🍹',
+  'bar/lounge': '🍹',
+  spa: '💆',
+  gym: '🏋️',
+  'fitness center': '🏋️',
+  'kid-friendly': '👶',
+  'family-friendly': '👶',
+  'kids club': '👶',
+  snorkeling: '🤿',
+  'snorkel gear': '🤿',
+  diving: '🌊',
+  fishing: '🎣',
+  boating: '⛵',
+  'water sports': '🌊',
+  'air conditioning': '❄️',
+  ac: '❄️',
+  oceanview: '🏝️',
+  'ocean view': '🏝️',
+  'pet-friendly': '🐕',
+  'pets allowed': '🐕',
+  'room service': '🛋️',
+  'concierge': '🐝',
+  'airport shuttle': '🚐',
+  laundry: '🧺',
+  'all-inclusive': '✨',
+  marina: '⚓',
+  casino: '🎲',
+  nightlife: '🌟',
+  shopping: '🛍️',
+  live_music: '🎶',
+  'live music': '🎶',
 }
 
 const DAY_LABELS: Record<string, string> = {
@@ -344,7 +381,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                         key={amenity}
                         className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"
                       >
-                        <span className="text-xl">{icon}</span>
+                        <span className="text-xl" aria-hidden="true">{icon}</span>
                         <span className="text-sm font-medium text-gray-700 capitalize">{amenity}</span>
                       </div>
                     )
@@ -361,7 +398,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                   {place.pros && place.pros.length > 0 && (
                     <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100">
                       <h3 className="text-sm font-bold text-emerald-700 mb-3 flex items-center gap-2">
-                        <span>👍</span> Pros
+                        Pros
                       </h3>
                       <ul className="space-y-2">
                         {place.pros.map((pro, i) => (
@@ -376,7 +413,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                   {place.cons && place.cons.length > 0 && (
                     <div className="bg-rose-50 rounded-2xl p-5 border border-rose-100">
                       <h3 className="text-sm font-bold text-rose-700 mb-3 flex items-center gap-2">
-                        <span>👎</span> Cons
+                        Cons
                       </h3>
                       <ul className="space-y-2">
                         {place.cons.map((con, i) => (
@@ -457,7 +494,6 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
               {place.island && (
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">📍</span>
                   <div>
                     <p className="text-xs text-gray-400 font-medium">Location</p>
                     <Link
@@ -472,7 +508,6 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
               {place.phone && (
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">📞</span>
                   <div>
                     <p className="text-xs text-gray-400 font-medium">Phone</p>
                     <a href={`tel:${place.phone}`} className="text-sm text-gray-700 hover:text-brand-600">
@@ -484,7 +519,6 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
               {place.website && (
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">🌐</span>
                   <div>
                     <p className="text-xs text-gray-400 font-medium">Website</p>
                     <a
@@ -501,7 +535,6 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
               {place.price_range && (
                 <div className="flex items-start gap-3">
-                  <span className="text-lg">💰</span>
                   <div>
                     <p className="text-xs text-gray-400 font-medium">Price range</p>
                     <p className="text-sm text-gray-700 font-medium">{place.price_range}</p>

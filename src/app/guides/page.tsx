@@ -3,7 +3,29 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
-import { fetchDiscoverArticles } from '@/lib/sanity/queries'
+import { fetchArticles } from '@/lib/sanity/queries'
+import { ARTICLE_CATEGORY_LABEL } from '@/lib/sanity/types'
+
+/**
+ * /guides — Marketing-side list of editorial guides.
+ *
+ * Public-discoverable (outside `(dashboard)/`), SEO-valuable. Pulls
+ * `article` documents from the canonical Sanity Studio at
+ * `/Baha Buddy/studio/`. When Studio has no published content the
+ * page renders the "Guides coming soon" empty state.
+ *
+ * History:
+ *   - Pre-Session 13: queried the placeholder `discoverArticle`
+ *     document type.
+ *   - Session 13: aligned to the canonical Studio `article` schema.
+ *     Studio's machine-value category (`travel_guide`,
+ *     `food_dining`, …) resolves through `ARTICLE_CATEGORY_LABEL` to
+ *     a display label. `readTimeMinutes` (number) is formatted to a
+ *     "7 min" string at render time.
+ *
+ * Caching: 1-hour revalidation (`revalidate = 3600`). Marketing
+ * content doesn't change as fast as the dashboard's Discover surface.
+ */
 
 export const revalidate = 3600
 
@@ -17,20 +39,27 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Category-color map. Keyed by the display label (post-translation
+ * through ARTICLE_CATEGORY_LABEL). Falls back to a neutral gray when
+ * an editor adds a category that hasn't been styled yet.
+ */
 const CATEGORY_COLORS: Record<string, string> = {
-  Beaches: 'bg-sky-100 text-sky-700',
-  Experiences: 'bg-purple-100 text-purple-700',
-  Adventure: 'bg-emerald-100 text-emerald-700',
-  Food: 'bg-rose-100 text-rose-700',
-  Sailing: 'bg-blue-100 text-blue-700',
-  Budget: 'bg-amber-100 text-amber-700',
-  Luxury: 'bg-gold-100 text-gold-700',
-  Culture: 'bg-indigo-100 text-indigo-700',
-  Family: 'bg-orange-100 text-orange-700',
+  'Travel Guide':      'bg-sky-100      text-sky-700',
+  'Island Deep-Dive':  'bg-blue-100     text-blue-700',
+  'Food & Dining':     'bg-rose-100     text-rose-700',
+  'Adventure':         'bg-emerald-100  text-emerald-700',
+  'Culture':           'bg-indigo-100   text-indigo-700',
+  'Insider Tips':      'bg-amber-100    text-amber-700',
+}
+
+function formatReadTime(minutes: number | null): string {
+  if (!minutes || minutes < 1) return '5 min'
+  return `${Math.round(minutes)} min`
 }
 
 export default async function GuidesPage() {
-  const articles = await fetchDiscoverArticles()
+  const articles = await fetchArticles()
 
   return (
     <div className="min-h-screen bg-white">
@@ -74,7 +103,6 @@ export default async function GuidesPage() {
       <main className="max-w-6xl mx-auto px-4 py-10">
         {!articles || articles.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
-            <div className="text-4xl mb-3">📝</div>
             <p className="text-lg font-medium text-gray-600">Guides coming soon</p>
             <p className="text-sm mt-1">
               We&apos;re working on in-depth Bahamas guides. Check back soon!
@@ -83,7 +111,9 @@ export default async function GuidesPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {articles.map((article) => {
-              const catColor = CATEGORY_COLORS[article.category] ?? 'bg-gray-100 text-gray-700'
+              const categoryLabel = ARTICLE_CATEGORY_LABEL[article.category] ?? article.category
+              const catColor = CATEGORY_COLORS[categoryLabel] ?? 'bg-gray-100 text-gray-700'
+              const readTime = formatReadTime(article.readTimeMinutes)
               return (
                 <Link
                   key={article._id}
@@ -101,15 +131,15 @@ export default async function GuidesPage() {
                       />
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                        <span className="text-5xl opacity-50">📖</span>
+                        <span className="text-6xl opacity-50" aria-hidden="true">📖</span>
                       </div>
                     )}
                     <div className="absolute top-3 left-3 flex items-center gap-2">
                       <span className={`text-xs font-semibold rounded-full px-3 py-1 ${catColor}`}>
-                        {article.category}
+                        {categoryLabel}
                       </span>
                       <span className="bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-full">
-                        {article.readTime}
+                        {readTime}
                       </span>
                     </div>
                   </div>

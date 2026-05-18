@@ -3,6 +3,7 @@
 import { Suspense, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useSearchParams } from 'next/navigation'
+import { BahaLogo } from '@/components/ui'
 
 function LoginForm() {
   const [email, setEmail] = useState('')
@@ -147,9 +148,9 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-brand-50 to-brand-50 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-brand-900">Baha Buddy</h1>
-          <p className="text-brand-600 mt-1">Sign in to access your trips</p>
+        <div className="text-center mb-8 flex flex-col items-center gap-4">
+          <BahaLogo href="/" size="lg" />
+          <p className="text-brand-600">Sign in to access your trips</p>
         </div>
         <Suspense fallback={<div className="bg-white rounded-2xl shadow-lg p-8 animate-pulse h-64" />}>
           <LoginForm />

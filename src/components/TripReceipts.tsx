@@ -104,7 +104,7 @@ export default function TripReceipts({ tripId }: Props) {
   return (
     <section>
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-lg font-semibold text-gray-900">🧾 Receipts</h2>
+        <h2 className="text-lg font-semibold text-gray-900">Receipts</h2>
         <button
           onClick={() => fileInputRef.current?.click()}
           disabled={uploading}
@@ -146,7 +146,6 @@ export default function TripReceipts({ tripId }: Props) {
           className="bg-white rounded-xl border-2 border-dashed border-gray-200 p-8 text-center cursor-pointer hover:border-brand-300 transition-colors"
           onClick={() => fileInputRef.current?.click()}
         >
-          <div className="text-3xl mb-2">📎</div>
           <p className="text-sm font-medium text-gray-600 mb-1">No receipts yet</p>
           <p className="text-xs text-gray-400">Upload boarding passes, hotel confirmations, or restaurant receipts.</p>
           <p className="text-xs text-gray-400 mt-1">Supports JPG, PNG, PDF (max 10 MB)</p>
@@ -169,9 +168,22 @@ export default function TripReceipts({ tripId }: Props) {
                     unoptimized
                   />
                 ) : isPdf(receipt.mimeType) ? (
-                  <span className="text-2xl">📄</span>
+                  <span className="text-[10px] font-bold text-red-500 tracking-wider">PDF</span>
                 ) : (
-                  <span className="text-2xl">📎</span>
+                  <svg
+                    className="w-5 h-5 text-gray-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={1.5}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+                    />
+                  </svg>
                 )}
               </div>
 

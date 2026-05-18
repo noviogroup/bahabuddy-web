@@ -71,7 +71,7 @@ const TYPE_COLORS = {
 }
 
 const TYPE_ICONS = {
-  activity: '🎯',
+  activity: '🏝️',
   hotel: '🏨',
   airport: '✈️',
 }
@@ -222,7 +222,6 @@ export default function TripMap({ markers }: Props) {
         {status === 'loading' && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
             <div className="text-center">
-              <div className="text-3xl mb-3 animate-pulse">🗺️</div>
               <p className="text-sm text-gray-500">Loading map…</p>
             </div>
           </div>
@@ -231,7 +230,6 @@ export default function TripMap({ markers }: Props) {
         {status === 'no-key' && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
             <div className="text-center p-6">
-              <div className="text-4xl mb-3">🗺️</div>
               <p className="text-sm font-medium text-gray-700 mb-1">Map not configured</p>
               <p className="text-xs text-gray-400">Add GOOGLE_MAPS_API_KEY to enable the interactive map.</p>
             </div>

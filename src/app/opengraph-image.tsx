@@ -29,7 +29,6 @@ export default async function Image() {
             marginBottom: '32px',
           }}
         >
-          <span style={{ fontSize: '56px' }}>🏝️</span>
           <span
             style={{
               fontSize: '48px',
@@ -77,9 +76,9 @@ export default async function Image() {
             gap: '12px',
           }}
         >
-          <span>🍎 App Store</span>
+          <span>App Store</span>
           <span style={{ color: '#7dd3fc' }}>·</span>
-          <span>🤖 Google Play</span>
+          <span>Google Play</span>
         </div>
       </div>
     ),

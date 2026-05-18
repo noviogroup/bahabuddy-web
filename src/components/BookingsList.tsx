@@ -1,8 +1,34 @@
 'use client'
 
+/**
+ * BookingsList — renders the user's flight + hotel bookings list with
+ * a type filter (All / Flights / Hotels).
+ *
+ * Used by /(dashboard)/profile/bookings/page.tsx.
+ *
+ * The `Booking` shape is the UI-facing model — flattened, sorted,
+ * already enriched with trip names. The page is responsible for
+ * deriving it from the DB rows.
+ *
+ * D.7 note: BookingsList uses text badges (FLT / HTL) for type — no
+ * `<img>` tags. If we ever add provider logos (Duffel, Stripe, etc.)
+ * those should go through next/image.
+ */
+
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import type { Booking } from '@/app/profile/bookings/page'
+
+export interface Booking {
+  id: string
+  tripId: string
+  tripName: string
+  type: 'flight' | 'hotel'
+  title: string
+  subtitle: string | null
+  dates: string | null
+  price: number | null
+  bookingReference: string | null
+}
 
 type TypeFilter = 'all' | 'flight' | 'hotel'
 
@@ -26,7 +52,6 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
   if (bookings.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-gray-200 p-12 text-center">
-        <div className="text-4xl mb-3">🎫</div>
         <h2 className="text-lg font-semibold text-gray-700 mb-2">No bookings yet</h2>
         <p className="text-gray-400 text-sm mb-6">
           Add flights and hotels in the Baha Buddy app — they&apos;ll appear here.
@@ -60,7 +85,7 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
                 typeFilter === t ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
               }`}
             >
-              {t === 'all' ? 'All' : t === 'flight' ? '✈️ Flights' : '🏨 Hotels'}
+              {t === 'all' ? 'All' : t === 'flight' ? 'Flights' : 'Hotels'}
             </button>
           ))}
         </div>
@@ -72,10 +97,10 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
           <div key={`${b.type}-${b.id}`} className="bg-white rounded-2xl border border-gray-200 p-4">
             <div className="flex items-start gap-3">
               {/* Icon */}
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${
-                b.type === 'flight' ? 'bg-brand-50' : 'bg-purple-50'
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold uppercase shrink-0 ${
+                b.type === 'flight' ? 'bg-brand-50 text-brand-700' : 'bg-purple-50 text-purple-700'
               }`}>
-                {b.type === 'flight' ? '✈️' : '🏨'}
+                {b.type === 'flight' ? 'FLT' : 'HTL'}
               </div>
 
               {/* Info */}
@@ -110,7 +135,7 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
                     href={`/trip/${b.tripId}`}
                     className="text-xs text-brand-500 hover:text-brand-700 font-medium"
                   >
-                    📌 {b.tripName} →
+                    Trip: {b.tripName} →
                   </Link>
                 </div>
               </div>

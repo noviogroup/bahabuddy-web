@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import ChatPage from '@/components/ChatPage'
+import { BuddyAvatar } from '@/components/ui'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +22,10 @@ async function ChatPageWrapper() {
 export default function ChatRoute() {
   return (
     <Suspense fallback={
-      <div className="flex h-screen items-center justify-center bg-gray-950">
+      <div className="flex h-screen items-center justify-center bg-offwhite">
         <div className="text-center">
-          <div className="text-4xl mb-3 animate-pulse">🌊</div>
-          <p className="text-gray-400 text-sm">Loading Baha Buddy…</p>
+          <BuddyAvatar size="lg" state="idle" className="mx-auto mb-4" />
+          <p className="text-gray-500 text-sm">Loading Baha Buddy…</p>
         </div>
       </div>
     }>
