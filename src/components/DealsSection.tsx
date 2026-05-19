@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import StoreBadgeLinks from '@/components/StoreBadgeLinks'
 import { BahaImages } from '@/lib/baha-images'
 
 interface Deal {
@@ -202,24 +203,7 @@ export default function DealsSection({ deals }: Props) {
           <p className="text-gray-400 mb-5 text-sm tracking-wide">
             Get personalized deal recommendations in the app
           </p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a
-              href="https://apps.apple.com/app/baha-buddy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl px-6 py-3 font-medium transition-colors text-sm"
-            >
-              Get the iOS App
-            </a>
-            <a
-              href="https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl px-6 py-3 font-medium transition-colors text-sm"
-            >
-              Get the Android App
-            </a>
-          </div>
+          <StoreBadgeLinks height={44} />
         </div>
       </div>
     </section>

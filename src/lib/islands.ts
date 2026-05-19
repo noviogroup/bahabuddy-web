@@ -91,6 +91,29 @@ const HERO_FALLBACKS: Record<string, string> = {
     'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
 }
 
+const TAMBOURINE_MEDIA = 'https://tempo.cdn.tambourine.com/windsong/media'
+
+/**
+ * Full-size mainsite heroes from bahamas.com (1500×643 cache crops or
+ * ~955×990 mainsite hero art). The `*-islands-img-*` URLs in HERO_FALLBACKS
+ * are 364×453 card thumbnails — too small for the landing-page rotator.
+ */
+const LANDING_HERO_DISPLAY: Record<string, string> = {
+  'nassau-paradise-island': `${TAMBOURINE_MEDIA}/bmot-nassau-mainsite-hero-image-5f580752c8dea.jpg`,
+  'the-exumas': `${TAMBOURINE_MEDIA}/cache/bmot-exumas-mainsite-hotels-2-5fe101c22ed8d-1500x643.jpg`,
+  'eleuthera-harbour-island': `${TAMBOURINE_MEDIA}/bmot-eleuthera-mainsite-hero-image-header-5f5b63531385f.jpg`,
+  andros: `${TAMBOURINE_MEDIA}/bmot-andros-mainsite-hero-image-5f58b4ed5500b.jpg`,
+  'grand-bahama': `${TAMBOURINE_MEDIA}/cache/bmot-freeport-mainsite-hotels-5f5a852ccea69-1500x643.jpg`,
+  bimini: `${TAMBOURINE_MEDIA}/bmot-bimini-mainsite-hero-image-1-5f57ab583161b.jpg`,
+  'long-island': `${TAMBOURINE_MEDIA}/bmot-long-island-mainsite-hero-image-5f5f7fbea0c26.jpg`,
+  abacos: `${TAMBOURINE_MEDIA}/cache/bmot-abacos-mainsite-hotels-5f5a3da5c6e6a-1500x643.jpg`,
+}
+
+/** Prefer full-size landing hero; fall back to DB / card thumbnail URL. */
+export function resolveLandingHeroImageUrl(slug: string, fallback: string): string {
+  return LANDING_HERO_DISPLAY[slug] ?? fallback
+}
+
 /** Generic Bahamas hero — final fallback when even the slug is unknown. */
 export const BAHAMAS_HERO_FALLBACK =
   'https://tempo.cdn.tambourine.com/windsong/media/cache/bahamas-goombay-summer-1-62bdd276c186d-1500x643.png'
@@ -226,7 +249,7 @@ export async function getIslandHeroSlides(): Promise<IslandHeroSlide[]> {
   const slides: IslandHeroSlide[] = []
 
   for (const config of ISLAND_CONFIGS) {
-    const image = heroes[config.slug]
+    const image = resolveLandingHeroImageUrl(config.slug, heroes[config.slug])
     if (seen.has(image)) continue
     seen.add(image)
     slides.push({
