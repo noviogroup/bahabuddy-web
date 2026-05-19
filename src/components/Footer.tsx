@@ -44,11 +44,14 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: 'Company',
     links: [
+      { href: '/about', label: 'About' },
       { href: 'https://noviogroup.com', label: 'Novio Group', external: true },
       {
         href: 'mailto:hello@noviogroup.com?subject=Baha%20Buddy%20inquiry',
         label: 'Business inquiries',
       },
+      { href: '/privacy', label: 'Privacy Policy' },
+      { href: '/terms', label: 'Terms of Service' },
     ],
   },
 ]
