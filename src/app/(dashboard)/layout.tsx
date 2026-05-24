@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DashboardShell } from '@/components/dashboard'
+import AnalyticsIdentify from '@/components/AnalyticsIdentify'
 
 /**
  * (dashboard) — authenticated layout group.
@@ -56,11 +57,18 @@ export default async function DashboardGroupLayout({
   if (profile && !profile.onboarding_completed) redirect('/onboarding')
 
   return (
-    <DashboardShell
-      userEmail={user.email ?? undefined}
-      displayName={profile?.display_name ?? undefined}
-    >
-      {children}
-    </DashboardShell>
+    <>
+      <AnalyticsIdentify
+        userId={user.id}
+        email={user.email ?? undefined}
+        displayName={profile?.display_name ?? undefined}
+      />
+      <DashboardShell
+        userEmail={user.email ?? undefined}
+        displayName={profile?.display_name ?? undefined}
+      >
+        {children}
+      </DashboardShell>
+    </>
   )
 }

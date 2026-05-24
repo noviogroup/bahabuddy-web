@@ -17,7 +17,9 @@
  */
 
 import { useEffect, useState, type FormEvent } from 'react'
+import { useSearchParams } from 'next/navigation'
 import type { CardData } from '@/components/RichCards'
+import { track } from '@/lib/analytics'
 import {
   HotelResultsList,
   HotelResultsSkeleton,
@@ -57,8 +59,20 @@ const RATING_OPTIONS: Array<{ value: number | ''; label: string }> = [
 
 type Status = 'idle' | 'loading' | 'results' | 'error'
 
+/** Valid island slugs we know how to search. Used to validate URL params. */
+const ISLAND_SLUGS = new Set(ISLANDS.map(i => i.id))
+
 export default function HotelSearchClient() {
-  const [islandId, setIslandId] = useState('nassau')
+  const searchParams = useSearchParams()
+
+  // Initial island: ?island= URL param if valid, else 'nassau'.
+  const initialIsland = (() => {
+    const fromUrl = searchParams.get('island')
+    if (fromUrl && ISLAND_SLUGS.has(fromUrl)) return fromUrl
+    return 'nassau'
+  })()
+
+  const [islandId, setIslandId] = useState(initialIsland)
   const [priceRange, setPriceRange] = useState('')
   const [minRating, setMinRating] = useState<number | ''>('')
 
@@ -66,12 +80,14 @@ export default function HotelSearchClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [results, setResults] = useState<CardData[]>([])
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<HotelViewMode>('list')
+  const [viewMode, setViewMode] = useState<HotelViewMode>('grid')
 
-  // Auto-load Nassau hotels on first render. Sets `status` to `loading`
-  // before the fetch resolves so the skeleton appears immediately.
+  // Auto-load on first render. Uses the URL-param island when present
+  // (deep-link from HeroSearchPanel), else falls back to Nassau. Sets
+  // `status` to `loading` before the fetch resolves so the skeleton
+  // appears immediately.
   useEffect(() => {
-    void runSearch({ island_id: 'nassau' })
+    void runSearch({ island_id: initialIsland })
     // intentionally only run once on mount
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -81,6 +97,12 @@ export default function HotelSearchClient() {
     setErrorMessage(null)
     setEmptyMessage(null)
     setResults([])
+
+    track('hotel_search_started', {
+      island: body.island ?? undefined,
+      check_in: body.check_in ?? undefined,
+      check_out: body.check_out ?? undefined,
+    })
 
     try {
       const res = await fetch('/api/hotels/search', {
@@ -135,7 +157,7 @@ export default function HotelSearchClient() {
       {/* ─── Search form ──────────────────────────────────────────────── */}
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-baha-lg border border-gray-200 shadow-card p-5 space-y-4"
+        className="bg-white rounded-baha-lg border border-gray-200 shadow-card p-4 sm:p-5 space-y-4"
         aria-label="Hotel search"
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -197,11 +219,11 @@ export default function HotelSearchClient() {
           </div>
         </div>
 
-        <div className="flex justify-end pt-1">
+        <div className="flex justify-stretch sm:justify-end pt-1">
           <button
             type="submit"
             disabled={isLoading}
-            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-full transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+            className="inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-full transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
           >
             {isLoading ? (
               <>
@@ -239,14 +261,16 @@ export default function HotelSearchClient() {
       {/* ─── Results ──────────────────────────────────────────────────── */}
       {status === 'results' && results.length > 0 && (
         <section aria-label="Hotel results" className="space-y-3">
-          <div className="flex items-center justify-between gap-3 px-1">
-            <h2 className="text-sm font-semibold text-gray-600">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-1">
+            <h2 className="text-sm font-semibold text-gray-600 shrink-0">
               {results.length} {results.length === 1 ? 'hotel' : 'hotels'}
             </h2>
             <SegmentedToggle<HotelViewMode>
               value={viewMode}
               onChange={setViewMode}
               size="sm"
+              fullWidth
+              className="sm:!w-auto sm:shrink-0"
               aria-label="Results layout"
               options={[
                 {

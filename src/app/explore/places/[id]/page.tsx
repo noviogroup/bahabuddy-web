@@ -9,6 +9,7 @@ import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
+import TrackView from '@/components/TrackView'
 
 export const revalidate = 300
 
@@ -246,6 +247,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white">
+      <TrackView event="attraction_viewed" props={{ attraction_id: params.id, attraction_name: place.name, category: place.category }} />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">

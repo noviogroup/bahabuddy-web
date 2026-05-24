@@ -6,6 +6,7 @@ import type { Trip } from '@/types/database'
 import { createPaymentIntent, isPaymentIntentError } from '@/lib/stripe/edge-function'
 import { isStripeConfigured, getStripe } from '@/lib/stripe/client'
 import CheckoutForm from '@/components/checkout/CheckoutForm'
+import TrackView from '@/components/TrackView'
 
 export const dynamic = 'force-dynamic'
 
@@ -132,6 +133,7 @@ export default async function CheckoutPage({
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
+      <TrackView event="booking_initiated" props={{ trip_id: tripId, booking_type: bookingType, amount_cents: amountCents }} />
       {/* Back link */}
       <div className="mb-6">
         <Link

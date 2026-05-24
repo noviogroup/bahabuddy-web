@@ -52,6 +52,7 @@ import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import PortableTextBody from '@/components/PortableTextBody'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
+import TrackView from '@/components/TrackView'
 
 export const revalidate = 300
 
@@ -263,6 +264,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
 
   return (
     <div className="min-h-screen bg-white">
+      <TrackView event="island_viewed" props={{ island_id: params.id, island_name: name }} />
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">

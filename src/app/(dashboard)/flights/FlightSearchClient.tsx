@@ -24,8 +24,10 @@
  * chat-tools.ts). The datalist surfaces them as autocomplete hints.
  */
 
-import { useState, useMemo, type FormEvent } from 'react'
+import { useState, useMemo, useEffect, useRef, type FormEvent } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { RichCardRenderer, type CardData } from '@/components/RichCards'
+import { track } from '@/lib/analytics'
 import { BahaDatePicker } from '@/components/ui'
 
 // ─── Reference data ──────────────────────────────────────────────────────────
@@ -81,7 +83,18 @@ const CABIN_CLASSES: Array<{ value: string; label: string }> = [
 
 type Status = 'idle' | 'loading' | 'results' | 'error'
 
+/** Valid Bahamas airport codes for URL-param validation. */
+const BAHAMAS_DESTINATION_CODES = new Set(BAHAMAS_DESTINATIONS.map(d => d.code))
+
+/** Valid cabin classes for URL-param validation. */
+const CABIN_VALUES = new Set(CABIN_CLASSES.map(c => c.value))
+
+/** Strict ISO date regex (YYYY-MM-DD). Rejects malformed URL params. */
+const ISO_DATE_RX = /^\d{4}-\d{2}-\d{2}$/
+
 export default function FlightSearchClient() {
+  const searchParams = useSearchParams()
+
   // Default departure: 14 days from today. Computed once via useMemo so it
   // doesn't shift while the user is typing.
   const defaultDeparture = useMemo(() => {
@@ -91,13 +104,43 @@ export default function FlightSearchClient() {
   }, [])
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
 
-  const [originCity, setOriginCity] = useState('Miami')
-  const [destination, setDestination] = useState('NAS')
-  const [departureDate, setDepartureDate] = useState(defaultDeparture)
-  const [returnDate, setReturnDate] = useState('')
-  const [tripType, setTripType] = useState<'round_trip' | 'one_way'>('round_trip')
-  const [passengers, setPassengers] = useState(1)
-  const [cabinClass, setCabinClass] = useState('economy')
+  // ── URL-param hydration (deep-link from HeroSearchPanel) ─────────────────
+  // Pull initial values from the query string if present. Each is
+  // validated against the same constraints the form would enforce.
+  const initial = useMemo(() => {
+    const origin = searchParams.get('origin')?.trim()
+    const destination = searchParams.get('destination')?.trim()
+    const depart = searchParams.get('depart')?.trim()
+    const ret = searchParams.get('return')?.trim()
+    const passengersRaw = searchParams.get('passengers')
+    const cabin = searchParams.get('cabin')?.trim()
+    const tripType = searchParams.get('tripType')?.trim()
+
+    const passengersNum = passengersRaw ? Number(passengersRaw) : NaN
+
+    return {
+      origin: origin && origin.length > 0 ? origin : 'Miami',
+      destination: destination && BAHAMAS_DESTINATION_CODES.has(destination) ? destination : 'NAS',
+      depart: depart && ISO_DATE_RX.test(depart) && depart >= todayStr ? depart : defaultDeparture,
+      returnDate: ret && ISO_DATE_RX.test(ret) ? ret : '',
+      passengers: Number.isFinite(passengersNum) && passengersNum >= 1 && passengersNum <= 9
+        ? Math.floor(passengersNum)
+        : 1,
+      cabin: cabin && CABIN_VALUES.has(cabin) ? cabin : 'economy',
+      tripType: (tripType === 'one_way' ? 'one_way' : 'round_trip') as 'round_trip' | 'one_way',
+      /** True when the URL had at least one search param — used to auto-search on mount. */
+      hasDeepLink:
+        !!origin || !!destination || !!depart || !!ret || !!passengersRaw || !!cabin || !!tripType,
+    }
+  }, [searchParams, defaultDeparture, todayStr])
+
+  const [originCity, setOriginCity] = useState(initial.origin)
+  const [destination, setDestination] = useState(initial.destination)
+  const [departureDate, setDepartureDate] = useState(initial.depart)
+  const [returnDate, setReturnDate] = useState(initial.returnDate)
+  const [tripType, setTripType] = useState<'round_trip' | 'one_way'>(initial.tripType)
+  const [passengers, setPassengers] = useState(initial.passengers)
+  const [cabinClass, setCabinClass] = useState(initial.cabin)
 
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -113,14 +156,33 @@ export default function FlightSearchClient() {
     setReturnDate(d.toISOString().split('T')[0])
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault()
+  /** Core search executor — stateless, takes everything as args so the
+   *  auto-search-on-mount path (which fires before React commits any
+   *  user typing) can call it with the URL-derived values directly. */
+  async function runSearch(args: {
+    originCity: string
+    destination: string
+    departureDate: string
+    returnDate: string
+    tripType: 'round_trip' | 'one_way'
+    passengers: number
+    cabinClass: string
+  }) {
     setStatus('loading')
     setErrorMessage(null)
     setEmptyMessage(null)
     setResults([])
 
-    if (!originCity.trim()) {
+    track('flight_search_started', {
+      origin: args.originCity,
+      destination: args.destination,
+      departure_date: args.departureDate,
+      return_date: args.returnDate || undefined,
+      trip_type: args.tripType,
+      passengers: args.passengers,
+    })
+
+    if (!args.originCity.trim()) {
       setErrorMessage('Tell us where you\u2019re flying from.')
       setStatus('error')
       return
@@ -128,14 +190,14 @@ export default function FlightSearchClient() {
 
     try {
       const body: Record<string, unknown> = {
-        origin_city: originCity.trim(),
-        destination,
-        departure_date: departureDate,
-        passengers,
-        cabin_class: cabinClass,
+        origin_city: args.originCity.trim(),
+        destination: args.destination,
+        departure_date: args.departureDate,
+        passengers: args.passengers,
+        cabin_class: args.cabinClass,
       }
-      if (tripType === 'round_trip' && returnDate) {
-        body.return_date = returnDate
+      if (args.tripType === 'round_trip' && args.returnDate) {
+        body.return_date = args.returnDate
       }
 
       const res = await fetch('/api/flights/search', {
@@ -175,6 +237,40 @@ export default function FlightSearchClient() {
       setErrorMessage('Could not reach the flight search service. Check your connection and try again.')
       setStatus('error')
     }
+  }
+
+  // Auto-search on mount when the URL carries deep-link params from
+  // HeroSearchPanel. Guarded by a ref so it only fires once even under
+  // React StrictMode's double-invoke. Uses the validated `initial` values
+  // directly to sidestep the React commit cycle.
+  const didAutoSearchRef = useRef(false)
+  useEffect(() => {
+    if (didAutoSearchRef.current) return
+    if (!initial.hasDeepLink) return
+    didAutoSearchRef.current = true
+    void runSearch({
+      originCity: initial.origin,
+      destination: initial.destination,
+      departureDate: initial.depart,
+      returnDate: initial.returnDate,
+      tripType: initial.tripType,
+      passengers: initial.passengers,
+      cabinClass: initial.cabin,
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    await runSearch({
+      originCity,
+      destination,
+      departureDate,
+      returnDate,
+      tripType,
+      passengers,
+      cabinClass,
+    })
   }
 
   const isLoading = status === 'loading'

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
+import AnalyticsProvider from '@/components/AnalyticsProvider'
 import './globals.css'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bahabuddy.app'
@@ -69,10 +70,6 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  icons: {
-    icon: '/brand/logo.png',
-    apple: '/brand/logo.png',
-  },
 }
 
 export default function RootLayout({
@@ -82,7 +79,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={plusJakarta.variable}>
-      <body className="font-sans antialiased text-charcoal bg-offwhite">{children}</body>
+      <body className="font-sans antialiased text-charcoal bg-offwhite">
+        <AnalyticsProvider />
+        {children}
+      </body>
     </html>
   )
 }

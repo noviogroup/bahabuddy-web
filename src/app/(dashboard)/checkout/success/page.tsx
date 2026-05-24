@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
+import TrackView from '@/components/TrackView'
 
 export const dynamic = 'force-dynamic'
 
@@ -102,7 +103,10 @@ export default async function CheckoutSuccessPage({
   return (
     <main className="max-w-2xl mx-auto px-4 py-12">
       {outcome === 'succeeded' && (
-        <SuccessPanel booking={booking} trip={trip} />
+        <>
+          <TrackView event="booking_completed" props={{ trip_id: effectiveTripId, booking_type: booking?.booking_type, amount_cents: booking?.amount }} />
+          <SuccessPanel booking={booking} trip={trip} />
+        </>
       )}
       {outcome === 'processing' && (
         <ProcessingPanel trip={trip} />

@@ -60,6 +60,7 @@ import { createClient } from '@/lib/supabase/client'
 import { BuddyAvatar, SuggestionChip, SuggestionChipRow } from '@/components/ui'
 import { getAdaptiveChips, type Chip } from '@/lib/adaptive-chips'
 import type { ParsedCard } from '@/lib/chat-utils'
+import { track } from '@/lib/analytics'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -253,6 +254,12 @@ export default function ChatPanel({
     setLoading(true)
     setActiveTool(null)
 
+    const sendTimestamp = Date.now()
+    track('chat_message_sent', {
+      message_length: text.trim().length,
+      session_id: activeThreadId ?? undefined,
+    })
+
     const assistantMsg: Message = { role: 'assistant', content: '' }
     setMessages([...newHistory, assistantMsg])
 
@@ -345,6 +352,12 @@ export default function ChatPanel({
                 })
                 setActiveTool(null)
                 loadThreads()
+
+                track('ai_response_received', {
+                  card_count: combinedCards.length,
+                  card_types: combinedCards.map(c => c.card_type),
+                  response_time_ms: Date.now() - sendTimestamp,
+                })
 
                 if (savedTripId) {
                   triggerTransient('celebrating', 2000)
