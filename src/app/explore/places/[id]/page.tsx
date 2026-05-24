@@ -37,6 +37,9 @@ interface PlaceDetail {
   lat: number | null
   lng: number | null
   enriched_at: string | null
+  tripadvisor_url: string | null
+  tripadvisor_rating: number | null
+  tripadvisor_num_reviews: number | null
 }
 
 interface PlacePhoto {
@@ -327,6 +330,17 @@ export default async function PlaceDetailPage({ params }: PageProps) {
               )}
             </div>
           )}
+          {place.tripadvisor_rating != null && (
+            <div className={`${isEnriched && place.rating ? 'mt-1' : 'mt-3'} flex items-center gap-2`}>
+              <span className="text-emerald-400 font-bold text-sm">TripAdvisor</span>
+              <span className="text-white font-bold">{place.tripadvisor_rating.toFixed(1)}</span>
+              {place.tripadvisor_num_reviews != null && place.tripadvisor_num_reviews > 0 && (
+                <span className="text-white/60 text-sm">
+                  ({place.tripadvisor_num_reviews.toLocaleString()} reviews)
+                </span>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -540,6 +554,34 @@ export default async function PlaceDetailPage({ params }: PageProps) {
                   <div>
                     <p className="text-xs text-gray-400 font-medium">Price range</p>
                     <p className="text-sm text-gray-700 font-medium">{place.price_range}</p>
+                  </div>
+                </div>
+              )}
+
+              {place.tripadvisor_url && (
+                <div className="flex items-start gap-3">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">TripAdvisor</p>
+                    <div className="flex items-center gap-2">
+                      {place.tripadvisor_rating != null && (
+                        <span className="text-sm font-bold text-emerald-600">
+                          ★ {place.tripadvisor_rating.toFixed(1)}
+                        </span>
+                      )}
+                      {place.tripadvisor_num_reviews != null && place.tripadvisor_num_reviews > 0 && (
+                        <span className="text-xs text-gray-400">
+                          ({place.tripadvisor_num_reviews.toLocaleString()})
+                        </span>
+                      )}
+                    </div>
+                    <a
+                      href={place.tripadvisor_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-1 mt-1"
+                    >
+                      View on TripAdvisor →
+                    </a>
                   </div>
                 </div>
               )}
