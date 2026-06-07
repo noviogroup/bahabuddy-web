@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
+import PartnerApplicationForm from '@/components/revenue/PartnerApplicationForm'
 
 export const metadata: Metadata = {
   title: 'Partner with Baha Buddy',
@@ -63,7 +64,13 @@ const intakeFields = [
   'Preferred partner tier',
 ]
 
-export default function PartnersPage() {
+export default function PartnersPage({
+  searchParams,
+}: {
+  searchParams?: { submitted?: string }
+}) {
+  const submitted = searchParams?.submitted === 'partner'
+
   return (
     <main className="min-h-screen bg-offwhite">
       <section className="bg-white border-b border-sand-200">
@@ -80,9 +87,14 @@ export default function PartnersPage() {
               activities, local guides, island experiences, and trusted travel services before and
               during their trip.
             </p>
+            {submitted && (
+              <div className="mt-6 rounded-baha-lg bg-palm-50 border border-palm-100 p-4 text-palm-800 text-sm font-semibold">
+                Partner application received. The Baha Buddy team can now review and follow up.
+              </div>
+            )}
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <a
-                href="mailto:partners@bahabuddy.com?subject=Baha%20Buddy%20Partner%20Application"
+                href="#partner-application"
                 className="inline-flex items-center justify-center rounded-full bg-brand-600 px-7 py-3 text-white font-bold shadow-card hover:bg-brand-700 transition-colors"
               >
                 Apply to become a partner
@@ -163,31 +175,25 @@ export default function PartnersPage() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-[0.9fr_1.1fr] gap-10">
+      <section id="partner-application" className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-[0.85fr_1.15fr] gap-10">
         <div>
           <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Partner intake</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
             Minimum data needed for the first 90 days.
           </h2>
           <p className="mt-4 text-charcoal leading-relaxed">
-            The first partner form should collect only what is needed to create admin-managed
-            partner records, build Explore listings, track lead source, and prepare future featured
-            placement reporting.
+            The first partner form collects what is needed to create admin-managed partner records,
+            build Explore listings, track lead source, and prepare future featured placement reporting.
           </p>
-          <a
-            href="mailto:partners@bahabuddy.com?subject=Baha%20Buddy%20Partner%20Application&body=Business%20name:%0ACategory:%0AIsland/service%20area:%0AContact%20person:%0AEmail:%0APhone:%0AWebsite/social:%0ABooking%20method:%0AInterested%20tier:%0A"
-            className="mt-6 inline-flex items-center justify-center rounded-full bg-brand-600 px-7 py-3 text-white font-bold hover:bg-brand-700 transition-colors"
-          >
-            Submit partner details
-          </a>
+          <div className="mt-6 grid sm:grid-cols-2 gap-3">
+            {intakeFields.map((field) => (
+              <div key={field} className="rounded-baha-lg bg-white border border-sand-200 p-4 shadow-soft text-charcoal">
+                {field}
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
-          {intakeFields.map((field) => (
-            <div key={field} className="rounded-baha-lg bg-white border border-sand-200 p-4 shadow-soft text-charcoal">
-              {field}
-            </div>
-          ))}
-        </div>
+        <PartnerApplicationForm />
       </section>
 
       <Footer />
