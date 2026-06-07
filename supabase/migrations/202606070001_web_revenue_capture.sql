@@ -67,22 +67,52 @@ alter table public.concierge_orders enable row level security;
 alter table public.partner_applications enable row level security;
 alter table public.travel_document_leads enable row level security;
 
--- Public lead capture policies. These allow web forms/API routes using the anon key to insert.
+-- Public lead capture policies. These allow future web API routes using the anon key to insert.
 -- Admin reads and updates should be handled by admin portal service-role access or future role policies.
-create policy if not exists "Allow public concierge order insert"
-  on public.concierge_orders for insert
-  to anon, authenticated
-  with check (true);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'concierge_orders'
+      and policyname = 'Allow public concierge order insert'
+  ) then
+    create policy "Allow public concierge order insert"
+      on public.concierge_orders for insert
+      to anon, authenticated
+      with check (true);
+  end if;
+end $$;
 
-create policy if not exists "Allow public partner application insert"
-  on public.partner_applications for insert
-  to anon, authenticated
-  with check (true);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'partner_applications'
+      and policyname = 'Allow public partner application insert'
+  ) then
+    create policy "Allow public partner application insert"
+      on public.partner_applications for insert
+      to anon, authenticated
+      with check (true);
+  end if;
+end $$;
 
-create policy if not exists "Allow public travel document lead insert"
-  on public.travel_document_leads for insert
-  to anon, authenticated
-  with check (true);
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'travel_document_leads'
+      and policyname = 'Allow public travel document lead insert'
+  ) then
+    create policy "Allow public travel document lead insert"
+      on public.travel_document_leads for insert
+      to anon, authenticated
+      with check (true);
+  end if;
+end $$;
 
 create index if not exists concierge_orders_status_idx on public.concierge_orders(status);
 create index if not exists concierge_orders_created_at_idx on public.concierge_orders(created_at desc);
