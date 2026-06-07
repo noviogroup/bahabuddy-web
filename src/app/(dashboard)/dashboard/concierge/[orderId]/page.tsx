@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 export const dynamic = 'force-dynamic'
 
 type Params = { orderId: string }
-type SearchParams = { session_id?: string }
+type SearchParams = { session_id?: string; saved?: string }
 
 function money(value: unknown) {
   const n = typeof value === 'number' ? value : parseFloat(String(value ?? 0))
@@ -56,6 +56,12 @@ export default async function ConciergeOrderPage({
         </div>
       )}
 
+      {searchParams?.saved === 'details' && (
+        <div className="rounded-2xl bg-brand-50 border border-brand-100 px-4 py-3 text-sm text-brand-900 mb-6">
+          Trip details saved. Your order is now in review.
+        </div>
+      )}
+
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <div className="rounded-2xl bg-white border border-sand-200 p-5 shadow-card">
           <p className="text-xs font-bold uppercase tracking-wide text-brand-700">Order status</p>
@@ -89,12 +95,12 @@ export default async function ConciergeOrderPage({
       ) : (
         <div className="rounded-3xl bg-brand-50 border border-brand-100 p-6 text-brand-900 mb-6">
           <h2 className="text-lg font-extrabold mb-2">Next step</h2>
-          <p className="text-sm leading-relaxed">If you have not submitted your travel dates, group size, budget, and preferred islands yet, send them to the Baha Buddy team so we can begin preparing your plan.</p>
+          <p className="text-sm leading-relaxed">Submit your travel dates, group size, budget, and preferred islands so we can begin preparing your plan.</p>
         </div>
       )}
 
       <div className="flex flex-col sm:flex-row gap-3">
-        <Link href="/concierge-trip-plan/success" className="inline-flex items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-white font-bold hover:bg-brand-700">
+        <Link href={`/dashboard/concierge/${order.id}/details`} className="inline-flex items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-white font-bold hover:bg-brand-700">
           Submit trip details
         </Link>
         <Link href="/dashboard/chat?intent=concierge" className="inline-flex items-center justify-center rounded-full bg-white border border-sand-200 px-6 py-3 text-brand-700 font-bold hover:bg-sand-50">
