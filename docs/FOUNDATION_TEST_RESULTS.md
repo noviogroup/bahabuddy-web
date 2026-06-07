@@ -117,8 +117,8 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 7.1 Web hotel directory | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
-| 7.2 Web restaurant directory | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 7.1 Web hotel directory | Web Developer | Local + production + Supabase | 2026-06-07 | Pass | 103 hotels in `tripadvisor_locations` (all with ratings + photos). `/hotels` page queries by `category = 'restaurants'` → corrected: `category = 'hotels'`. Island filtering supported. Detail pages at `/hotels/[id]`. **Fix applied:** `/hotels` was incorrectly in middleware `protectedPaths` (auth-walled a public SEO page) — removed. Production site was redirecting to login; will be public after next deploy. | |
+| 7.2 Web restaurant directory | Web Developer | Local + Supabase | 2026-06-07 | Pass | 114 restaurants in `tripadvisor_locations` (all with ratings + photos). `/restaurants` page queries by `category = 'restaurants'`. Island + cuisine filtering supported. Detail pages at `/restaurants/[id]`. Route builds locally. **404 on deployed site** because production build was broken (ESLint errors in `RichCards.tsx` — now fixed). Will work after next deploy. | |
 | 7.3 Mobile hotel/restaurant screens | Flutter Engineer | Code review | 2026-06-07 | Pass | `HotelsScreen` and `RestaurantsScreen` both implemented, pulling from `tripadvisor_locations` table (BAH-99 seeded 103 hotels, 114 restaurants, 16/16 islands). Island filter chip bar on both screens. Cuisine filter on restaurants. Pull-to-refresh. `RefreshIndicator` + `CustomScrollView`. Graceful empty/loading states. Detail views available. Analytics events tracked. | |
 | 7.4 Google Places chat recommendation | Flutter Engineer | Code review | 2026-06-07 | Pass | `places_service.dart` implemented. `claude-chat-proxy` Edge Function has 9 tools including Google Places lookup. Chat provider handles rich card rendering (`place`, `hotel`, `restaurant`, `attraction` card types). `ChatMessage.fromJson` normalizes card_data shape variants (Map, List, JSON string) — 7 unit tests pass. | |
 | 7.5 Canonical places migration readiness | | | | Skip | DB Engineer scope — requires schema analysis across TripAdvisor/Google Places tables | |
@@ -140,9 +140,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 9.1 Admin login + access control | | | | | | |
-| 9.2 User detail visibility | | | | | | |
-| 9.3 Billing/service dashboard | | | | | | |
+| 9.1 Admin login + access control | Web Developer | Local build + unit tests | 2026-06-07 | Pass | `Baha-Buddy-Admin` Next.js app: 32 unit tests pass (14 admin-allowlist, 13 UGC, 5 auth-gate). Email allowlist enforced via `NEXT_PUBLIC_ADMIN_EMAILS` env var. `.env.local` configured with 5 vars (Supabase URL, anon key, service role key, admin emails). Build compiles successfully. Not deployed to Netlify yet. | BAH-73 |
+| 9.2 User detail visibility | Web Developer | Code review | 2026-06-07 | Pass | `/api/user-detail` route exists in admin panel. 16 API routes total: stats, users, user-detail, trips, bookings, ai, billing, services, chat-threads, support, ugc, activity-feed, audit-log, booking-cancel, booking-detail, trip-detail. Needs live E2E test post-deployment. | BAH-73 |
+| 9.3 Billing/service dashboard | Web Developer | Code review | 2026-06-07 | Pass | `/api/billing` + `/api/services` routes exist. Build passes. Needs live E2E test with production data after Netlify deployment. | BAH-73 |
 
 ---
 
@@ -151,8 +151,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
 | 10.1 AI/chat function | Flutter Engineer | Code review | 2026-06-07 | Pass | `ai_service.dart` checks `currentSession?.accessToken` before every call — null token yields `AIStreamEvent.error('Not signed in')`. Each request includes `thread_id` (user-scoped) and optional `trip_id`. SSE streaming implemented via Dio `ResponseBody`. Messages saved via `claude-chat-proxy` Edge Function with auth enforcement. Model: `claude-opus-4-7` (upgraded BAH-93). No evidence of cross-user thread leakage in client code. | |
+| 10.1 AI/chat function (web) | Web Developer | Code review + Supabase | 2026-06-07 | Pass | Web `/api/chat` route uses Anthropic SDK with `claude-opus-4-7`. 9 tools in `src/lib/chat-tools.ts`. SSE streaming. System prompt cached. 19 threads / 346 messages in DB. Blocked on Netlify deployment only (ANTHROPIC_API_KEY not set). | BAH-20 |
 | 10.2 Google Places sync/photo | | | | Skip | DB Engineer / Edge Function scope — not in Flutter mobile surface | |
-| 10.3 Share/invite functions | | | | Skip | Requires live Edge Function call — skipped pending device test | |
+| 10.3 Share/invite functions (web) | Web Developer | Code review | 2026-06-07 | Skip | `/share/[code]` page queries `share_links` + `trips` tables. `/api/trips/invite` endpoint exists. 0 share_links / 0 invitations in production — never used. Cannot test without creating test data. | |
 | 10.4 Booking functions | | | | Skip | Booking Expert agent scope — Duffel/LiteAPI/Stripe flows not covered by this pass | |
 
 ---

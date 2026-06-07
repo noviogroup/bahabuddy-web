@@ -168,13 +168,8 @@ export function DestinationCard({ data, className }: Props) {
 
   const chips: Chip[] = highlights.slice(0, 5).map(h => ({ label: h, tone: 'brand' as const }))
 
-  return (
-    <CardShell
-      mode={href ? 'link' : 'plain'}
-      href={href ?? undefined}
-      ariaLabel={href ? `Read about ${name}` : undefined}
-      className={className}
-    >
+  const body = (
+    <>
       {/* Hero \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
       <div className="relative h-32">
         {photo_url ? (
@@ -235,6 +230,20 @@ export function DestinationCard({ data, className }: Props) {
           </div>
         )}
       </div>
+    </>
+  )
+
+  if (href) {
+    return (
+      <CardShell mode="link" href={href} ariaLabel={`Read about ${name}`} className={className}>
+        {body}
+      </CardShell>
+    )
+  }
+
+  return (
+    <CardShell mode="plain" className={className}>
+      {body}
     </CardShell>
   )
 }
