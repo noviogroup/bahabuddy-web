@@ -52,18 +52,23 @@ The first monetizable web offer is the **Concierge Trip Plan**, with a recommend
 - Added reusable CTA band at `src/components/revenue/ConciergeRevenueBand.tsx`
 - Inserted CTA band into `src/app/page.tsx`
 - Added footer link to Concierge Trip Plan
+- Added `ConciergeInterestForm` for immediate request capture
+- Added `TravelDocumentLeadForm` for Baha Visa cross-sell capture
 
-**Temporary conversion method:**
+**Current conversion method:**
 
-Until Stripe checkout and order tables are finalized, CTAs use email handoff and `/dashboard/chat?intent=concierge`.
+- `/dashboard/chat?intent=concierge`
+- `baha-buddy-concierge-interest` Netlify form
+- `baha-buddy-travel-document-lead` Netlify form
 
 **Next implementation steps:**
 
-1. Add Stripe Checkout integration for the three fixed-price offers.
-2. Create a `concierge_orders` table in Supabase.
-3. Create a server route or action that creates orders after checkout.
-4. Connect order creation to admin portal queue.
-5. Add dashboard delivery state for completed concierge plans.
+1. Confirm Netlify form submissions are being detected in production.
+2. Apply the Supabase migration in `supabase/migrations/202606070001_web_revenue_capture.sql`.
+3. Add Stripe Checkout integration for the three fixed-price offers.
+4. Create a server route or action that creates orders after checkout.
+5. Connect order creation to admin portal queue.
+6. Add dashboard delivery state for completed concierge plans.
 
 ---
 
@@ -110,7 +115,8 @@ Until Stripe checkout and order tables are finalized, CTAs use email handoff and
 
 - Added public partner landing page at `src/app/partners/page.tsx`
 - Added footer link under Company: `Partner with us`
-- Page explains early partner categories, tiers, benefits, and minimum intake fields.
+- Page explains early partner categories, tiers, benefits, and minimum intake fields
+- Added `PartnerApplicationForm` for immediate Netlify form capture
 
 **Partner categories:**
 
@@ -136,17 +142,18 @@ Until Stripe checkout and order tables are finalized, CTAs use email handoff and
 | Featured Partner | $199-$499/month | Explore and deal placement |
 | Premium / Strategic | Custom | Hotels, airlines, tourism bodies, major operators |
 
-**Temporary conversion method:**
+**Current conversion method:**
 
-The first partner intake path uses `mailto:partners@bahabuddy.com` with prefilled fields.
+- `baha-buddy-partner-application` Netlify form
 
 **Next implementation steps:**
 
-1. Replace mailto with a proper partner application form.
-2. Create a `partner_applications` table in Supabase.
-3. Feed applications into the admin portal partner queue.
-4. Allow admin to approve application into a `partners` record.
-5. Add partner source tracking for Explore clicks and concierge referrals.
+1. Confirm Netlify form submissions are detected after deploy.
+2. Apply the Supabase migration.
+3. Add API-based Supabase capture when ready.
+4. Feed applications into the admin portal partner queue.
+5. Allow admin to approve application into a `partners` record.
+6. Add partner source tracking for Explore clicks and concierge referrals.
 
 ---
 
@@ -157,7 +164,7 @@ The first partner intake path uses `mailto:partners@bahabuddy.com` with prefille
 **Current implementation:**
 
 - Added travel-document cross-sell section to `/concierge-trip-plan`
-- Current handoff goes to `hello@bahavisa.com`
+- Added `TravelDocumentLeadForm` to capture document support requests
 
 **Recommended web placements:**
 
@@ -171,8 +178,8 @@ The first partner intake path uses `mailto:partners@bahabuddy.com` with prefille
 
 **Next implementation steps:**
 
-1. Add a lightweight travel-document lead form.
-2. Create `travel_document_leads` table.
+1. Confirm Netlify form notification routing.
+2. Apply `travel_document_leads` migration.
 3. Pass leads to Baha Visa CRM/workflow.
 4. Add source attribution: `baha_buddy_concierge`, `trip_dashboard`, `chat`, `group_travel`, etc.
 
@@ -180,34 +187,24 @@ The first partner intake path uses `mailto:partners@bahabuddy.com` with prefille
 
 ## Recommended Supabase Data Models
 
-These are proposed data models for the web side. The admin portal can expand them.
+These are prepared in:
+
+```text
+supabase/migrations/202606070001_web_revenue_capture.sql
+```
+
+The admin portal can expand these models as fulfillment workflows mature.
 
 ### concierge_orders
 
-```sql
-create table concierge_orders (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id),
-  trip_id uuid,
-  offer_type text not null,
-  price_usd numeric(10,2) not null,
-  status text not null default 'pending',
-  payment_status text not null default 'unpaid',
-  stripe_checkout_session_id text,
-  stripe_payment_intent_id text,
-  source text,
-  traveler_name text,
-  traveler_email text,
-  travel_dates text,
-  destination_interests text[],
-  party_size integer,
-  budget_range text,
-  notes text,
-  delivered_plan_url text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-```
+Prepared for:
+
+- Concierge requests
+- Stripe payment status
+- Trip linkage
+- Fulfillment status
+- Delivered plan URL
+- Admin queue sorting
 
 Recommended statuses:
 
@@ -221,26 +218,13 @@ Recommended statuses:
 
 ### partner_applications
 
-```sql
-create table partner_applications (
-  id uuid primary key default gen_random_uuid(),
-  business_name text not null,
-  category text not null,
-  island_service_area text,
-  contact_name text,
-  contact_email text not null,
-  contact_phone text,
-  website_url text,
-  social_links text[],
-  description text,
-  booking_method text,
-  interested_tier text,
-  status text not null default 'new',
-  source text default 'partners_page',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-```
+Prepared for:
+
+- Partner intake
+- Tier interest
+- Island/service area
+- Manual qualification
+- Admin queue conversion to partner records
 
 Recommended statuses:
 
@@ -253,27 +237,20 @@ Recommended statuses:
 
 ### travel_document_leads
 
-```sql
-create table travel_document_leads (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid references auth.users(id),
-  trip_id uuid,
-  concierge_order_id uuid references concierge_orders(id),
-  lead_type text,
-  traveler_name text,
-  traveler_email text not null,
-  phone text,
-  nationality text,
-  destination text default 'Bahamas',
-  travel_dates text,
-  party_size integer,
-  notes text,
-  source text,
-  status text not null default 'new',
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-```
+Prepared for:
+
+- Baha Visa cross-sell
+- Nationality and lead type context
+- Concierge order linkage
+- Admin or CRM handoff
+
+Recommended statuses:
+
+- `new`
+- `contacted`
+- `in_progress`
+- `converted`
+- `closed`
 
 ---
 
@@ -287,6 +264,7 @@ Track these events in Mixpanel or the selected analytics layer.
 concierge_page_viewed
 concierge_cta_clicked
 concierge_offer_selected
+concierge_request_submitted
 concierge_checkout_started
 concierge_checkout_completed
 concierge_order_created
@@ -365,33 +343,34 @@ The web app should capture demand. The admin portal should manage operations.
 
 ## 30-Day Sprint Scope
 
-### Week 1
+### Week 1: Completed
 
 - Concierge Trip Plan page
 - Home page CTA band
 - Footer navigation links
 - Web revenue documentation
 
-### Week 2
+### Week 2: In progress / partially completed
 
-- Stripe checkout for fixed-price concierge offers
-- `concierge_orders` table
-- Order confirmation page
-- Admin order handoff requirements
+- Concierge request form
+- Partner application form
+- Travel-document lead form
+- Supabase revenue capture migration
+- Netlify form submission capture
 
 ### Week 3
 
-- Partner application form
-- `partner_applications` table
-- Partner confirmation page
-- Admin partner queue requirements
+- Stripe checkout for fixed-price concierge offers
+- Order confirmation page
+- Admin order handoff requirements
+- API-based Supabase capture if connector/environment allows
 
 ### Week 4
 
-- Baha Visa travel-document lead form
-- `travel_document_leads` table
 - Saved trip upgrade card
+- Dashboard delivery status
 - Analytics events and source attribution
+- Admin portal queue alignment
 
 ---
 
