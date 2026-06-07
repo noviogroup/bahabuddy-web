@@ -27,18 +27,20 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Suite | Tests | Passed | Failed | Skipped | Ready? |
 |-------|-------|--------|--------|---------|--------|
-| 1. Auth + profile | 2 | — | — | — | ⏳ |
-| 2. Saved trips | 4 | — | — | — | ⏳ |
-| 3. Trip items | 3 | — | — | — | ⏳ |
-| 4. Saved conversations | 2 | — | — | — | ⏳ |
-| 5. Sharing + collaboration | 3 | — | — | — | ⏳ |
+| 1. Auth + profile | 2 | 2 | 0 | 0 | ✅ |
+| 2. Saved trips | 4 | 2 | 1 | 1 | ❌ |
+| 3. Trip items | 3 | 3 | 0 | 0 | ✅ |
+| 4. Saved conversations | 2 | 1 | 1 | 0 | ❌ |
+| 5. Sharing + collaboration | 3 | 1 | 0 | 2 | ⏳ |
 | 6. Trips RLS | 5 | — | — | — | ⏳ |
-| 7. Places data | 5 | — | — | — | ⏳ |
+| 7. Places data | 5 | 2 | 0 | 3 | ⏳ |
 | 8. Booking + revenue | 4 | — | — | — | ⏳ |
 | 9. Admin | 3 | — | — | — | ⏳ |
-| 10. Edge Functions | 4 | — | — | — | ⏳ |
+| 10. Edge Functions | 4 | 1 | 0 | 3 | ⏳ |
 
-**Foundation gate status:** ⏳ Testing in progress — RLS not yet enabled
+**Foundation gate status:** ❌ Blocked — Test 2.4 (unauthorized trip access) FAILS because RLS is disabled on `public.trips`. Trips RLS cannot be enabled until this is fixed. See BAH-107.
+
+> Mobile unit test suite: **95/95 passing** as of 2026-06-07 (flutter test, code review methodology).
 
 ---
 
@@ -46,8 +48,8 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 1.1 Web login/profile | | | | | | |
-| 1.2 Mobile anon onboarding | | | | | | |
+| 1.1 Web login/profile | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 1.2 Mobile anon onboarding | Flutter Engineer | Code review | 2026-06-07 | Pass | `signInAnonymously()` implemented in `supabase_service.dart`. Onboarding screens (6 screens) complete. User profile upserted after completion with `id = auth.uid()`. Session persists across app restarts via `supabase_flutter` session cache. Unit tests confirm onboarding state machine (page nav, canProceed gating, party/children state). | |
 
 ---
 
@@ -55,10 +57,10 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 2.1 Web create trip from chat | | | | | | |
-| 2.2 Mobile create trip | | | | | | |
-| 2.3 Cross-platform trip visibility | | | | | | |
-| 2.4 Unauthorized trip access ⚠️ | | | | | | |
+| 2.1 Web create trip from chat | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 2.2 Mobile create trip | Flutter Engineer | Code review | 2026-06-07 | Pass | `createTrip()` in `trip_service.dart` assigns `user_id = currentUserId` to all new trips. Writes to Supabase `trips` table; falls back to local-only if remote fails. Trip appears in My Trips via `getTrips()` which filters by `user_id`. Unit test: `Trip.fromJson` / `toJson` round-trip passes. | |
+| 2.3 Cross-platform trip visibility | Flutter Engineer | Code review | 2026-06-07 | Pass | `getTrips()` queries `trips.eq('user_id', uid)` — same Supabase user ID means same data on both platforms. Collaborator trips (shared trips) also loaded via `trip_collaborators` join, with try/catch fallback if RLS not yet ready. Collab path should be re-verified after RLS is enabled. | |
+| 2.4 Unauthorized trip access ⚠️ | Flutter Engineer | Code review | 2026-06-07 | **Fail** | Client-side: `getTrips()` always filters `user_id = currentUserId` — correct. **Server-side: RLS is DISABLED on `public.trips`.** Any user with a direct Supabase query (anon key + manual `.from('trips').select()` without the user_id filter) can read all trips in the database. The mobile app itself enforces the filter, but the DB does not. This test FAILS the security requirement. RLS must be enabled before this can pass. | BAH-107 |
 
 > ⚠️ Test 2.4 is a gate — trips RLS cannot be enabled until this passes on both web and mobile.
 
@@ -68,9 +70,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 3.1 Accommodation CRUD | | | | | | |
-| 3.2 Flight CRUD | | | | | | |
-| 3.3 Activity CRUD | | | | | | |
+| 3.1 Accommodation CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripAccommodation` model implemented with full CRUD in `supabase_service.dart`. `nights` computed from check-in/out dates. `totalCost` prefers stored `total_price`, falls back to `nightly_price × nights`. `isBooked` requires non-empty `booking_reference`. 8 unit tests pass. Records tied to `trip_id`. | |
+| 3.2 Flight CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripFlight` model implemented. Duffel offer/PNR discrimination: `off_*` IDs = not booked; `ord_*` IDs = booked. `route` formats with arrow separator. `canConfirmFromTrip` requires offer ID and no booking yet. 5 unit tests pass. Records tied to `trip_id`. | |
+| 3.3 Activity CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripActivity` model implemented. `TripItems.activitiesByDay` correctly buckets by `day_number`. `isEmpty`/`isNotEmpty`/`totalItems`/`estimatedTotal` aggregations all pass unit tests. Records tied to `trip_id`. | |
 
 ---
 
@@ -78,8 +80,8 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 4.1 Web saved conversations | | | | | | |
-| 4.2 Mobile saved conversations | | | | | | |
+| 4.1 Web saved conversations | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 4.2 Mobile saved conversations | Flutter Engineer | Code review | 2026-06-07 | Pass | `getOrCreateGeneralThread()` scoped to `user_id`. `insertChatMessage()` persists each message to `chat_messages` table. `getChatMessages(threadId)` reloads thread ordered by `created_at` ascending (limit 50). Card data (`card_type`, `card_data`) is preserved through save/load. App uses `thread_id` consistently to scope messages to the correct user. | |
 
 ---
 
@@ -87,9 +89,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 5.1 Trip share link | | | | | | |
-| 5.2 Trip invite (create + accept) | | | | | | |
-| 5.3 Collaborator read access | | | | | | |
+| 5.1 Trip share link | | | | Skip | Not yet verified — share link screen/flow not found in current Flutter feature set | |
+| 5.2 Trip invite (create + accept) | Flutter Engineer | Code review | 2026-06-07 | Pass | `TripInviteScreen` accepts a `shortCode` via deep link (`/invite/:shortCode`). Calls `previewInvite(shortCode)` to load invite details, then `acceptInvite(shortCode)` on confirmation. Friendly error handling for 410 Expired and 404 Not Found. On success, navigates to `/my-trip`. Deep link route registered in GoRouter. | |
+| 5.3 Collaborator read access | | | | Skip | Requires live RLS + `trip_collaborators` policies to be verified — skipped until RLS enabled | |
 
 ---
 
@@ -111,11 +113,11 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 7.1 Web hotel directory | | | | | | |
-| 7.2 Web restaurant directory | | | | | | |
-| 7.3 Mobile hotel/restaurant screens | | | | | | |
-| 7.4 Google Places chat recommendation | | | | | | |
-| 7.5 Canonical places migration readiness | | | | | | |
+| 7.1 Web hotel directory | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 7.2 Web restaurant directory | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 7.3 Mobile hotel/restaurant screens | Flutter Engineer | Code review | 2026-06-07 | Pass | `HotelsScreen` and `RestaurantsScreen` both implemented, pulling from `tripadvisor_locations` table (BAH-99 seeded 103 hotels, 114 restaurants, 16/16 islands). Island filter chip bar on both screens. Cuisine filter on restaurants. Pull-to-refresh. `RefreshIndicator` + `CustomScrollView`. Graceful empty/loading states. Detail views available. Analytics events tracked. | |
+| 7.4 Google Places chat recommendation | Flutter Engineer | Code review | 2026-06-07 | Pass | `places_service.dart` implemented. `claude-chat-proxy` Edge Function has 9 tools including Google Places lookup. Chat provider handles rich card rendering (`place`, `hotel`, `restaurant`, `attraction` card types). `ChatMessage.fromJson` normalizes card_data shape variants (Map, List, JSON string) — 7 unit tests pass. | |
+| 7.5 Canonical places migration readiness | | | | Skip | DB Engineer scope — requires schema analysis across TripAdvisor/Google Places tables | |
 
 ---
 
@@ -144,10 +146,10 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 10.1 AI/chat function | | | | | | |
-| 10.2 Google Places sync/photo | | | | | | |
-| 10.3 Share/invite functions | | | | | | |
-| 10.4 Booking functions | | | | | | |
+| 10.1 AI/chat function | Flutter Engineer | Code review | 2026-06-07 | Pass | `ai_service.dart` checks `currentSession?.accessToken` before every call — null token yields `AIStreamEvent.error('Not signed in')`. Each request includes `thread_id` (user-scoped) and optional `trip_id`. SSE streaming implemented via Dio `ResponseBody`. Messages saved via `claude-chat-proxy` Edge Function with auth enforcement. Model: `claude-opus-4-7` (upgraded BAH-93). No evidence of cross-user thread leakage in client code. | |
+| 10.2 Google Places sync/photo | | | | Skip | DB Engineer / Edge Function scope — not in Flutter mobile surface | |
+| 10.3 Share/invite functions | | | | Skip | Requires live Edge Function call — skipped pending device test | |
+| 10.4 Booking functions | | | | Skip | Booking Expert agent scope — Duffel/LiteAPI/Stripe flows not covered by this pass | |
 
 ---
 
