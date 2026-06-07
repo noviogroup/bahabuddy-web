@@ -100,7 +100,8 @@ concierge_orders
 Prepared in:
 
 ```text
-supabase/migrations/202606070001_web_revenue_capture.sql
+supabase/migrations/20260607160000_web_revenue_capture.sql
+supabase/migrations/20260607180000_concierge_orders_session_unique.sql
 ```
 
 ## Recommended Insert Payload
@@ -174,7 +175,19 @@ stripe_checkout_session_id
 
 ## Implementation Notes
 
-The GitHub connector blocked writing the full webhook route because the implementation required direct server-side credential handling. This document provides the exact contract so the route can be added locally or through a secure developer environment.
+Implemented at:
+
+```text
+src/app/api/stripe/concierge-webhook/route.ts
+src/lib/stripe/concierge-offers.ts
+src/lib/stripe/verify-webhook-signature.ts
+src/lib/supabase/admin.ts
+```
+
+- `offer_type` is set from Stripe `metadata.offer_id` (`quick_review`, `concierge_trip_plan`, or `full_planning_support`).
+- `price_usd` is derived from `amount_total` when present, otherwise from the server-defined offer map.
+- Concierge webhooks are separate from the mobile trip-booking `stripe-webhook` Edge Function.
+- The route reads the raw request body for Stripe signature verification.
 
 ## Local Implementation Checklist
 

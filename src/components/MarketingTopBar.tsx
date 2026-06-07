@@ -5,7 +5,7 @@ export default function MarketingTopBar() {
     <div
       role="region"
       aria-label="Special offer"
-      className="w-full bg-gold-500 text-night border-b border-gold-600/25"
+      className="w-full bg-gold-300 text-night border-b border-gold-600/25"
     >
       <div className="max-w-6xl mx-auto px-4 py-2.5 flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-3 text-center">
         <p className="text-sm font-semibold tracking-wide">

@@ -1,29 +1,8 @@
 import { NextResponse } from 'next/server'
 import { headers } from 'next/headers'
+import { CONCIERGE_PRODUCT, getConciergeOffer } from '@/lib/stripe/concierge-offers'
 
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY ?? ''
-
-const OFFERS: Record<string, {
-  name: string
-  amountCents: number
-  description: string
-}> = {
-  quick_review: {
-    name: 'Baha Buddy Quick Review',
-    amountCents: 4900,
-    description: 'Local review and refinement of an AI-generated Bahamas itinerary.',
-  },
-  concierge_trip_plan: {
-    name: 'Baha Buddy Concierge Trip Plan',
-    amountCents: 14900,
-    description: 'Human-reviewed 3-5 day Bahamas itinerary with island, hotel, dining, activity, budget, and document guidance.',
-  },
-  full_planning_support: {
-    name: 'Baha Buddy Full Planning Support',
-    amountCents: 29900,
-    description: 'Concierge itinerary planning plus booking assistance handoff and priority follow-up.',
-  },
-}
 
 export async function POST(request: Request) {
   if (!STRIPE_SECRET_KEY) {
@@ -36,7 +15,7 @@ export async function POST(request: Request) {
   const formData = await request.formData()
   const offerId = String(formData.get('offer_id') ?? '')
   const source = String(formData.get('source') ?? 'concierge_page')
-  const offer = OFFERS[offerId]
+  const offer = getConciergeOffer(offerId)
 
   if (!offer) {
     return NextResponse.json({ error: 'Invalid concierge offer.' }, { status: 400 })
@@ -58,9 +37,12 @@ export async function POST(request: Request) {
   params.set('line_items[0][price_data][unit_amount]', String(offer.amountCents))
   params.set('line_items[0][price_data][product_data][name]', offer.name)
   params.set('line_items[0][price_data][product_data][description]', offer.description)
-  params.set('metadata[product]', 'concierge_trip_plan')
+  params.set('metadata[product]', CONCIERGE_PRODUCT)
   params.set('metadata[offer_id]', offerId)
   params.set('metadata[source]', source)
+  params.set('payment_intent_data[metadata][product]', CONCIERGE_PRODUCT)
+  params.set('payment_intent_data[metadata][offer_id]', offerId)
+  params.set('payment_intent_data[metadata][source]', source)
 
   const response = await fetch('https://api.stripe.com/v1/checkout/sessions', {
     method: 'POST',

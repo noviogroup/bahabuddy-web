@@ -96,7 +96,7 @@ export default function ConciergeTripPlanPage({
               Pay today. Get your Bahamas trip reviewed by a local team.
             </h1>
             <p className="mt-6 text-lg md:text-xl text-brand-50 leading-relaxed max-w-2xl">
-              Start with Buddy's AI trip planning, then upgrade to a secure paid concierge review
+              Start with Buddy&apos;s AI trip planning, then upgrade to a secure paid concierge review
               with practical recommendations for islands, hotels, activities, dining,
               transportation, budget, and travel documents.
             </p>
