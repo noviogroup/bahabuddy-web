@@ -108,37 +108,44 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
         <MarketingTopBar />
         <header className="relative w-full">
           <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" layout="pillWordmark" priority />
-          <nav className="flex items-center gap-5">
-            <Link
-              href="/destinations"
-              className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
-              style={{ textShadow: navTextShadow }}
-            >
-              Destinations
-            </Link>
-            <Link
-              href="/guides"
-              className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
-              style={{ textShadow: navTextShadow }}
-            >
-              Guides
-            </Link>
-            <Link
-              href="/deals"
-              className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
-              style={{ textShadow: navTextShadow }}
-            >
-              Deals
-            </Link>
-            <Link
-              href="/login"
-              className="text-sm font-bold text-white hover:text-white/85 transition-colors"
-              style={{ textShadow: navTextShadow }}
-            >
-              Sign in
-            </Link>
-          </nav>
+            <BahaLogo href="/" size="md" layout="pillWordmark" priority />
+            <nav className="flex items-center gap-4 sm:gap-5">
+              <Link
+                href="/destinations"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                style={{ textShadow: navTextShadow }}
+              >
+                Destinations
+              </Link>
+              <Link
+                href="/guides"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                style={{ textShadow: navTextShadow }}
+              >
+                Guides
+              </Link>
+              <Link
+                href="/deals"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                style={{ textShadow: navTextShadow }}
+              >
+                Deals
+              </Link>
+              <Link
+                href="/concierge-trip-plan"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                style={{ textShadow: navTextShadow }}
+              >
+                Concierge
+              </Link>
+              <Link
+                href="/login"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors"
+                style={{ textShadow: navTextShadow }}
+              >
+                Sign in
+              </Link>
+            </nav>
           </div>
         </header>
       </div>
@@ -166,7 +173,7 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
           Tell Baha Buddy what you&apos;re dreaming of — we&apos;ll build your perfect island itinerary.
         </p>
 
-        {/*
+        {/**
           MarketingHeroSearch is the 4-tab structured search panel:
           Plan a Trip (chat input + rotating placeholder + suggestion
           chips), Stays, Flights, Things to Do. Replaces the pre-existing
@@ -175,7 +182,17 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
         */}
         <MarketingHeroSearch />
 
-        <StoreBadgeLinks className="mt-10" />
+        <div className="mt-5">
+          <Link
+            href="/concierge-trip-plan"
+            className="inline-flex items-center justify-center rounded-full bg-white/15 border border-white/35 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-md hover:bg-white/25 transition-colors"
+            style={{ textShadow: navTextShadow }}
+          >
+            Want local help? Pay for a Concierge Trip Plan →
+          </Link>
+        </div>
+
+        <StoreBadgeLinks className="mt-8" />
       </div>
     </section>
   )
