@@ -6,6 +6,7 @@ import DealsSection from '@/components/DealsSection'
 import AppFeaturesSection from '@/components/AppFeaturesSection'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import ConciergeRevenueBand from '@/components/revenue/ConciergeRevenueBand'
 import { getIslandHeroSlides } from '@/lib/islands'
 
 export const dynamic = 'force-dynamic'
@@ -58,6 +59,7 @@ export default async function HomePage() {
       <DestinationShowcase attractions={attractions} />
       <ExploreSection />
       <AppFeaturesSection />
+      <ConciergeRevenueBand />
       <DealsSection deals={deals} />
       <Footer />
       <ChatWidget />
