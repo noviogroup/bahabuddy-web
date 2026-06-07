@@ -25,6 +25,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: 'Plan your trip',
     links: [
       { href: '/dashboard/chat', label: 'Plan with Buddy' },
+      { href: '/concierge-trip-plan', label: 'Concierge Trip Plan' },
       { href: '/dashboard', label: 'My Trips' },
       { href: '/hotels', label: 'Hotels' },
       { href: '/flights', label: 'Flights' },
@@ -45,6 +46,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
     title: 'Company',
     links: [
       { href: '/about', label: 'About' },
+      { href: '/partners', label: 'Partner with us' },
       { href: 'https://noviogroup.com', label: 'Novio Group', external: true },
       {
         href: 'mailto:hello@noviogroup.com?subject=Baha%20Buddy%20inquiry',
