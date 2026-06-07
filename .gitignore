@@ -8,6 +8,9 @@ tsconfig.tsbuildinfo
 # Local Netlify folder
 .netlify
 
+# Supabase CLI local state (linked project ref lives here — do not commit)
+supabase/.temp/
+
 # OS generated files
 .DS_Store
 .DS_Store?

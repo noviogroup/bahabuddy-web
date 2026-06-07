@@ -1,0 +1,1 @@
+-- Migration 20260607151626 already applied on remote.
