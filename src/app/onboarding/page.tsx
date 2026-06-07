@@ -25,7 +25,16 @@ export default async function OnboardingPage() {
 
   if (profile?.onboarding_completed) redirect('/dashboard')
 
-  const defaultName = profile?.display_name ?? user.user_metadata?.full_name?.split(' ')[0] ?? ''
+  // Pre-fill Screen 2 from any of:
+  //   - the row in `users` (if the signup trigger has populated it)
+  //   - user_metadata.display_name (set when password/magic-link signup
+  //     captured a name on /login)
+  //   - user_metadata.full_name first token (set by Google/Apple SSO)
+  const defaultName =
+    profile?.display_name ??
+    user.user_metadata?.display_name ??
+    user.user_metadata?.full_name?.split(' ')[0] ??
+    ''
 
   return <OnboardingFlow userId={user.id} defaultName={defaultName} />
 }

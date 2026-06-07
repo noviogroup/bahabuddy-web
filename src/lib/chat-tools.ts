@@ -301,84 +301,140 @@ const ISLAND_COORDS: Record<string, { lat: number; lng: number }> = {
 const ISLAND_INFO: Record<string, Record<string, unknown>> = {
   'nassau': {
     name: 'Nassau (New Providence)',
+    tagline: 'Where culture, beaches, and city energy meet',
     overview: 'The capital and gateway to the Bahamas. Best for first-timers with the perfect mix of culture, beaches, dining, and nightlife.',
     highlights: ['Atlantis Paradise Island', 'Cable Beach', 'Fish Fry at Arawak Cay', 'Junkanoo Festival', 'Fort Charlotte', "Queen's Staircase"],
     best_time: 'December to April (dry season). June-November is hurricane season but prices drop 30-50%.',
-    getting_there: 'Lynden Pindling International Airport (NAS) — direct flights from most major US cities.',
+    best_months: ['dec', 'jan', 'feb', 'mar', 'apr'],
+    days_recommended: '3–4 days',
+    getting_there: 'Direct flights to Lynden Pindling Intl (NAS) from most US cities',
+    rating: 4.6,
     vibe: 'Urban island energy with world-class resorts and local culture side by side.',
   },
   'paradise-island': {
     name: 'Paradise Island',
+    tagline: 'Atlantis territory, resort-island core',
     overview: "Nassau's sister island, home to Atlantis and the Bahamas' biggest resort scene. Connected by bridge — easy to combine with Nassau.",
     highlights: ['Atlantis Aquaventure', 'Cabbage Beach', 'Versailles Gardens', 'Paradise Beach', 'Marina Village'],
     best_time: 'December to April.',
-    getting_there: 'Fly to NAS, taxi or hotel shuttle across the bridge (~15 min).',
+    best_months: ['dec', 'jan', 'feb', 'mar', 'apr'],
+    days_recommended: '2–3 days',
+    getting_there: 'Fly to NAS, taxi or shuttle across the bridge (~15 min)',
+    rating: 4.7,
     vibe: 'Big-resort luxury, family-friendly with the kids-water-park gravity well that is Atlantis.',
   },
   'exuma': {
     name: 'Exuma',
+    tagline: 'Crystal water, swimming pigs, exclusive cays',
     overview: 'Crystal-clear waters, swimming pigs, and pristine cays. The Instagram-famous Bahamas experience.',
     highlights: ['Swimming Pigs at Big Major Cay', 'Thunderball Grotto', 'Tropic of Cancer Beach', 'Staniel Cay Yacht Club', 'Compass Cay sharks'],
     best_time: 'November to April. Swimming pig tours run year-round.',
-    getting_there: 'Exuma International Airport (GGT) — flights from Nassau, Fort Lauderdale, Atlanta.',
+    best_months: ['nov', 'dec', 'jan', 'feb', 'mar', 'apr'],
+    days_recommended: '4–6 days',
+    getting_there: 'Flights to Exuma Intl (GGT) from Nassau, Fort Lauderdale, Atlanta',
+    rating: 4.8,
     vibe: 'Exclusive, adventurous, untouched paradise. Mix of luxury resorts and rustic island charm.',
   },
   'eleuthera': {
     name: 'Eleuthera',
+    tagline: 'Pink-sand beaches and laid-back artistry',
     overview: 'Long, narrow island known for pink sand beaches and laid-back vibes. The surfer and artist island.',
     highlights: ['Pink Sands Beach (Harbour Island)', 'Glass Window Bridge', "Surfer's Beach", 'Leon Levy Native Plant Preserve', "Governor's Harbour"],
     best_time: 'December to May. Surf season is October to March.',
-    getting_there: "North Eleuthera Airport (ELH) or Governor's Harbour (GHB). Water taxi to Harbour Island.",
+    best_months: ['dec', 'jan', 'feb', 'mar', 'apr', 'may'],
+    days_recommended: '5–7 days',
+    getting_there: "North Eleuthera (ELH) or Governor's Harbour (GHB), then water taxi to Harbour Island",
+    rating: 4.7,
     vibe: 'Bohemian luxury meets untouched natural beauty. Slow pace, spectacular scenery.',
   },
   'harbour-island': {
     name: 'Harbour Island',
+    tagline: 'Pink sand and colonial-luxury charm',
     overview: 'Three miles of pink sand beach and colonial charm. The most photographed beach in the Bahamas.',
     highlights: ['Pink Sands Beach', 'Dunmore Town', 'The Landing restaurant', 'Golf cart exploration', 'Bone fishing'],
     best_time: 'Year-round. Peak season December to April.',
-    getting_there: 'Fly to North Eleuthera (ELH), then 10-minute water taxi.',
+    best_months: ['dec', 'jan', 'feb', 'mar', 'apr'],
+    days_recommended: '3–5 days',
+    getting_there: 'Fly to North Eleuthera (ELH), then 10-minute water taxi',
+    rating: 4.8,
     vibe: 'Boutique luxury, romance, quiet sophistication. Celebrity-favorite hideaway.',
   },
   'andros': {
     name: 'Andros',
+    tagline: 'Reef diving and barrier-island wilderness',
     overview: "The largest Bahamas island and least developed. Home to the world's third-largest barrier reef and mysterious blue holes.",
     highlights: ['Andros Barrier Reef', 'Blue holes', 'Androsia batik fabric', 'Bone fishing flats', "Captain Bill's Blue Hole"],
     best_time: 'November to June. Diving is best March to September.',
-    getting_there: 'San Andros Airport (SAQ) — flights from Nassau.',
+    best_months: ['nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may', 'jun'],
+    days_recommended: '5–7 days',
+    getting_there: 'San Andros Airport (SAQ) — flights from Nassau',
+    rating: 4.6,
     vibe: 'Eco-adventure, diving paradise, off-the-beaten-path exploration.',
   },
   'grand-bahama': {
     name: 'Grand Bahama (Freeport)',
+    tagline: 'Family beaches, value, close to Florida',
     overview: 'Family-friendly island closest to Florida. Great beaches, nature parks, and duty-free shopping.',
     highlights: ['Lucayan National Park', 'Gold Rock Beach', 'Port Lucaya Marketplace', 'Peterson Cay', "Deadman's Reef snorkeling"],
     best_time: 'December to April. Most affordable May to November.',
-    getting_there: 'Grand Bahama International Airport (FPO) — 30 min flight from Fort Lauderdale.',
+    best_months: ['dec', 'jan', 'feb', 'mar', 'apr'],
+    days_recommended: '3–4 days',
+    getting_there: 'Grand Bahama Intl (FPO) — 30 min flight from Fort Lauderdale',
+    rating: 4.4,
     vibe: 'Relaxed, family-oriented, nature-focused. Best value in the Bahamas.',
   },
   'bimini': {
     name: 'Bimini',
+    tagline: 'Sport fishing capital, closest to the US',
     overview: 'The closest Bahamas island to the US mainland. Famous for big game fishing, Hemingway history, and crystal-clear waters.',
     highlights: ['Bimini Road (underwater ruins)', 'Healing Hole', 'Radio Beach', 'Deep sea fishing', 'Resorts World Bimini'],
     best_time: 'Year-round. Big game fishing peaks March to September.',
-    getting_there: 'South Bimini Airport (BIM) — 25 min from Fort Lauderdale. Also ferry service.',
+    best_months: ['mar', 'apr', 'may', 'jun', 'jul'],
+    days_recommended: '2–3 days',
+    getting_there: 'South Bimini (BIM) — 25 min from Fort Lauderdale; also ferry service',
+    rating: 4.5,
     vibe: 'Fishing village meets beach resort. Hemingway nostalgia and world-class diving.',
   },
   'long-island': {
     name: 'Long Island',
+    tagline: "Dean's Blue Hole and untouched Bahamas",
     overview: "The most scenic island in the Bahamas. Dramatic cliffs, pristine beaches, and Dean's Blue Hole — the world's deepest.",
     highlights: ["Dean's Blue Hole", 'Cape Santa Maria Beach', 'Columbus Monument', 'Conception Island day trip', "Hamilton's Cave"],
     best_time: 'November to May.',
-    getting_there: "Deadman's Cay Airport (LGI) — flights from Nassau.",
+    best_months: ['nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may'],
+    days_recommended: '5–7 days',
+    getting_there: "Deadman's Cay (LGI) — flights from Nassau",
+    rating: 4.7,
     vibe: 'Untouched, dramatic landscape, true off-grid Bahamas experience.',
   },
   'abacos': {
     name: 'The Abacos',
+    tagline: 'Sailing capital, pastel cay villages',
     overview: 'Sailing capital of the Bahamas. Charming colonial towns, world-class marinas, and sheltered island-hopping waters.',
     highlights: ['Hope Town Lighthouse', 'Elbow Cay', 'Green Turtle Cay', 'Treasure Cay Beach', 'Man-O-War Cay boatbuilding'],
     best_time: 'November to May. Sailing regattas in spring.',
-    getting_there: 'Marsh Harbour Airport (MHH) — flights from Nassau and Fort Lauderdale.',
+    best_months: ['nov', 'dec', 'jan', 'feb', 'mar', 'apr', 'may'],
+    days_recommended: '5–7 days',
+    getting_there: 'Marsh Harbour (MHH) — flights from Nassau and Fort Lauderdale',
+    rating: 4.6,
     vibe: 'Nautical charm, pastel colonial villages, sailing and boating paradise.',
   },
+}
+
+/** Slug → hero photo URL. Mirrors `BahaImages` (lib/baha-images.ts) so
+ *  destination cards emitted by `get_island_info` use the same brand
+ *  imagery as the rest of the app. Tambourine CDN URLs are stable. */
+const ISLAND_PHOTOS: Record<string, string> = {
+  'nassau':          'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
+  'paradise-island': 'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
+  'exuma':           'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
+  'eleuthera':       'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
+  'harbour-island':  'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
+  'andros':          'https://tempo.cdn.tambourine.com/windsong/media/bmot-andros-islands-img-5f7654cd43acd.jpg',
+  'grand-bahama':    'https://tempo.cdn.tambourine.com/windsong/media/freeport-5ebc543630edb.jpg',
+  'bimini':          'https://tempo.cdn.tambourine.com/windsong/media/bimini-5ebc1e784e5d8.jpg',
+  'long-island':     'https://tempo.cdn.tambourine.com/windsong/media/bmot-long-island-islands-img-5f765510d841f.jpg',
+  'abacos':          'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg',
 }
 
 const CITY_TO_IATA: Record<string, string> = {
@@ -422,13 +478,98 @@ export interface ToolResult {
   cards?: CardData[]
 }
 
+/**
+ * Shape of a single photo entry in `google_places.photos` JSONB.
+ * Mirrors what the Google Places Details API returns.
+ */
+interface PhotoMeta {
+  reference: string
+  width?: number
+  height?: number
+}
+
+/** Build a proxy URL for a Google Place photo reference. Matches the
+ *  pattern in `src/lib/place-photos.ts` so existing storage caching
+ *  (the /api/place-photo route walks Supabase storage first) applies. */
+function photoRefToProxyUrl(reference: string, width = 800): string {
+  const params = new URLSearchParams({ ref: reference, w: String(width) })
+  return `/api/place-photo?${params.toString()}`
+}
+
+/** Convert a place's photos JSONB array into renderable URL strings.
+ *  Returns an empty array when the field is missing/malformed. */
+function buildPhotoGallery(photos: unknown): string[] {
+  if (!Array.isArray(photos)) return []
+  return photos
+    .filter((p): p is PhotoMeta => !!p && typeof p === 'object' && typeof (p as PhotoMeta).reference === 'string')
+    .map(p => photoRefToProxyUrl(p.reference, 800))
+}
+
+/** Shape of a single top-review record returned by fetchTopReviews. */
+interface TopReview {
+  text: string
+  author_name: string
+  rating: number
+  time: string
+}
+
+/**
+ * Batch-pull one positive review per place from `google_place_reviews`.
+ *
+ * Used by all three place-search executors (hotels, restaurants,
+ * activities) to add social-proof snippets to their cards. We pull a
+ * wide window (rating >= 4, newest first) then dedupe to first-per-place
+ * client-side — PostgREST has no DISTINCT ON, and a LATERAL subquery
+ * would require a custom RPC. Query cost is small (~1,700 review rows,
+ * indexed on place_id).
+ *
+ * Reviews shorter than 30 chars are skipped — they don't carry
+ * decision-supporting signal ("Great!" doesn't help anyone decide).
+ */
+async function fetchTopReviews(
+  supabase: SupabaseClient,
+  placeIds: string[],
+): Promise<Map<string, TopReview>> {
+  const out = new Map<string, TopReview>()
+  if (placeIds.length === 0) return out
+
+  const { data: rows, error } = await supabase
+    .from('google_place_reviews')
+    .select('place_id, author_name, rating, text, time')
+    .in('place_id', placeIds)
+    .gte('rating', 4)
+    .not('text', 'is', null)
+    .order('time', { ascending: false })
+    .limit(placeIds.length * 4) // pull a few per place; we keep first
+
+  if (error) {
+    console.warn('[fetchTopReviews] lookup failed:', error.message)
+    return out
+  }
+  if (!rows) return out
+
+  for (const r of rows) {
+    const pid = r.place_id as string
+    const txt = (r.text as string | null) ?? ''
+    if (!out.has(pid) && txt.length > 30) {
+      out.set(pid, {
+        text: txt,
+        author_name: (r.author_name as string) ?? 'Guest',
+        rating: (r.rating as number) ?? 5,
+        time: (r.time as string) ?? '',
+      })
+    }
+  }
+  return out
+}
+
 export async function getHotels(
   supabase: SupabaseClient,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
   let query = supabase
     .from('google_places')
-    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, price_level, photo_url:image_url, description, amenities')
+    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, description, amenities')
     .eq('is_active', true)
     .in('type', ['lodging', 'hotel', 'resort'])
     .eq('island_id', args.island_id)
@@ -459,6 +600,10 @@ export async function getHotels(
     }
   }
 
+  // ── Top-review fetch ──────────────────────────────────────────────
+  const placeIds = data.map(p => p.place_id as string).filter(Boolean)
+  const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
+
   // Compact data for Claude
   const compact = data.map(p => ({
     place_id: p.place_id,
@@ -475,20 +620,29 @@ export async function getHotels(
   // detail page (/hotels/[id]). The renderer falls back to non-linking
   // when place_id is absent (defensive — should never happen for tool-
   // emitted cards since the column is non-null in google_places).
-  const cards: CardData[] = data.map(p => ({
-    card_type: 'hotel' as const,
-    place_id: p.place_id,
-    name: p.name ?? 'Hotel',
-    island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
-    island_id: p.island_id ?? undefined,
-    rating: p.rating ?? 0,
-    stars: priceLevelToStars(p.price_level),
-    review_count: p.user_ratings_total ?? 0,
-    photo_url: p.photo_url ?? undefined,
-    amenities: (p.amenities as string[] | null) ?? [],
-    price_per_night: priceLevelToNightlyEstimate(p.price_level),
-    price_is_estimate: true,
-  }))
+  const cards: CardData[] = data.map(p => {
+    const pid = p.place_id as string
+    const gallery = buildPhotoGallery(p.photos)
+    return {
+      card_type: 'hotel' as const,
+      place_id: pid,
+      name: p.name ?? 'Hotel',
+      island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
+      island_id: p.island_id ?? undefined,
+      rating: p.rating ?? 0,
+      stars: priceLevelToStars(p.price_level),
+      review_count: p.user_ratings_total ?? 0,
+      photo_url: p.photo_url ?? gallery[0] ?? undefined,
+      photos: gallery,
+      amenities: (p.amenities as string[] | null) ?? [],
+      price_per_night: priceLevelToNightlyEstimate(p.price_level),
+      price_is_estimate: true,
+      phone: (p.phone as string | null) ?? undefined,
+      website: (p.website as string | null) ?? undefined,
+      full_address: (p.address as string | null) ?? undefined,
+      top_review: reviewsByPlace.get(pid),
+    }
+  })
 
   return { data: { results: compact, count: data.length }, cards }
 }
@@ -521,7 +675,7 @@ async function getRestaurants(
 ): Promise<ToolResult> {
   let query = supabase
     .from('google_places')
-    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, price_level, photo_url:image_url, description, cuisine_type')
+    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, cuisine_type')
     .eq('is_active', true)
     .eq('type', 'restaurant')
     .eq('island_id', args.island_id)
@@ -554,6 +708,9 @@ async function getRestaurants(
     }
   }
 
+  const placeIds = data.map(p => p.place_id as string).filter(Boolean)
+  const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
+
   const compact = data.map(p => ({
     place_id: p.place_id,
     name: p.name,
@@ -564,17 +721,29 @@ async function getRestaurants(
     description: p.description,
   }))
 
-  const cards: CardData[] = data.map(p => ({
-    card_type: 'restaurant' as const,
-    place_id: p.place_id,
-    name: p.name ?? 'Restaurant',
-    island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
-    island_id: p.island_id ?? undefined,
-    cuisine: (p.cuisine_type as string | null) ?? 'International',
-    rating: p.rating ?? 0,
-    price_level: p.price_level ?? 2,
-    photo_url: p.photo_url ?? undefined,
-  }))
+  const cards: CardData[] = data.map(p => {
+    const pid = p.place_id as string
+    const gallery = buildPhotoGallery(p.photos)
+    const hours = Array.isArray(p.opening_hours) ? (p.opening_hours as string[]) : undefined
+    return {
+      card_type: 'restaurant' as const,
+      place_id: pid,
+      name: p.name ?? 'Restaurant',
+      island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
+      island_id: p.island_id ?? undefined,
+      cuisine: (p.cuisine_type as string | null) ?? 'International',
+      rating: p.rating ?? 0,
+      review_count: p.user_ratings_total ?? 0,
+      price_level: p.price_level ?? 2,
+      photo_url: p.photo_url ?? gallery[0] ?? undefined,
+      photos: gallery,
+      phone: (p.phone as string | null) ?? undefined,
+      website: (p.website as string | null) ?? undefined,
+      full_address: (p.address as string | null) ?? undefined,
+      opening_hours: hours,
+      top_review: reviewsByPlace.get(pid),
+    }
+  })
 
   return { data: { results: compact, count: data.length }, cards }
 }
@@ -585,7 +754,7 @@ async function getActivities(
 ): Promise<ToolResult> {
   let query = supabase
     .from('google_places')
-    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, price_level, photo_url:image_url, description, vibe_tags, kid_friendly')
+    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, vibe_tags, kid_friendly')
     .eq('is_active', true)
     .eq('type', 'attraction')
     .eq('island_id', args.island_id)
@@ -619,6 +788,9 @@ async function getActivities(
     }
   }
 
+  const placeIds = data.map(p => p.place_id as string).filter(Boolean)
+  const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
+
   const compact = data.map(p => ({
     place_id: p.place_id,
     name: p.name,
@@ -630,18 +802,31 @@ async function getActivities(
     kid_friendly: p.kid_friendly,
   }))
 
-  const cards: CardData[] = data.map(p => ({
-    card_type: 'activity' as const,
-    place_id: p.place_id,
-    name: p.name ?? 'Activity',
-    island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
-    island_id: p.island_id ?? undefined,
-    description: (p.description as string | null) ?? '',
-    rating: p.rating ?? 0,
-    review_count: p.user_ratings_total ?? 0,
-    photo_url: p.photo_url ?? undefined,
-    icon: pickActivityIcon((p.vibe_tags as string[] | null) ?? []),
-  }))
+  const cards: CardData[] = data.map(p => {
+    const pid = p.place_id as string
+    const gallery = buildPhotoGallery(p.photos)
+    const hours = Array.isArray(p.opening_hours) ? (p.opening_hours as string[]) : undefined
+    return {
+      card_type: 'activity' as const,
+      place_id: pid,
+      name: p.name ?? 'Activity',
+      island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
+      island_id: p.island_id ?? undefined,
+      description: (p.description as string | null) ?? '',
+      rating: p.rating ?? 0,
+      review_count: p.user_ratings_total ?? 0,
+      vibe_tags: (p.vibe_tags as string[] | null) ?? [],
+      kid_friendly: (p.kid_friendly as boolean | null) ?? false,
+      photo_url: p.photo_url ?? gallery[0] ?? undefined,
+      photos: gallery,
+      phone: (p.phone as string | null) ?? undefined,
+      website: (p.website as string | null) ?? undefined,
+      full_address: (p.address as string | null) ?? undefined,
+      opening_hours: hours,
+      top_review: reviewsByPlace.get(pid),
+      icon: pickActivityIcon((p.vibe_tags as string[] | null) ?? []),
+    }
+  })
 
   return { data: { results: compact, count: data.length }, cards }
 }
@@ -769,6 +954,56 @@ export async function searchFlights(args: Record<string, unknown>): Promise<Tool
       const stopsLabel = stops === 0 ? 'Direct' : `${stops} stop${stops > 1 ? 's' : ''}`
       const route = `${originName} → ${destName}`
 
+      // ── Phase 5 enrichments: cabin class, layovers, baggage ────────────
+      //
+      // Duffel nests passenger-specific data (cabin, baggage) inside each
+      // segment, not on the offer. We read from the first segment's first
+      // passenger — same across passengers for the cards we render.
+      const firstSegPassengers = (firstSeg.passengers as Array<Record<string, unknown>> | undefined) ?? []
+      const firstPax = firstSegPassengers[0] ?? {}
+      const cabinClassRaw =
+        (firstPax.cabin_class_marketing_name as string | undefined) ||
+        (firstPax.cabin_class as string | undefined) ||
+        cabinClass
+      const cabinClassDisplay = cabinClassRaw
+        ? cabinClassRaw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+        : undefined
+
+      // Layovers: the gap between segment[i].arriving_at and
+      // segment[i+1].departing_at, located at segment[i].destination.
+      // Skip when either timestamp is missing — a malformed offer
+      // shouldn't take the whole card down.
+      const layovers: { airport: string; duration: string }[] = []
+      for (let i = 0; i < segments.length - 1; i++) {
+        const cur = segments[i]
+        const next = segments[i + 1]
+        const arrAt = cur.arriving_at as string | undefined
+        const depAt = next.departing_at as string | undefined
+        const layoverAirport = ((cur.destination as Record<string, unknown> | undefined)?.iata_code as string | undefined)
+        if (!arrAt || !depAt || !layoverAirport) continue
+        const layoverMs = new Date(depAt).getTime() - new Date(arrAt).getTime()
+        if (!isFinite(layoverMs) || layoverMs <= 0) continue
+        const layoverMins = Math.round(layoverMs / 60_000)
+        const h = Math.floor(layoverMins / 60)
+        const m = layoverMins % 60
+        layovers.push({
+          airport: layoverAirport,
+          duration: h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`,
+        })
+      }
+
+      // Baggage allowance from the first segment, first passenger.
+      // Carry-on is a boolean ("allowed?"). Checked is summed quantity
+      // across all checked-bag entries.
+      const baggagesRaw = (firstPax.baggages as Array<Record<string, unknown>> | undefined) ?? []
+      const carryOn = baggagesRaw.some(b => b.type === 'carry_on' && Number(b.quantity ?? 0) > 0)
+      const checkedCount = baggagesRaw
+        .filter(b => b.type === 'checked')
+        .reduce((sum, b) => sum + (Number(b.quantity ?? 0)), 0)
+      const baggage = (baggagesRaw.length > 0)
+        ? { carry_on: carryOn, checked: checkedCount }
+        : undefined
+
       cards.push({
         card_type: 'flight',
         route,
@@ -778,6 +1013,10 @@ export async function searchFlights(args: Record<string, unknown>): Promise<Tool
         duration,
         stops: stopsLabel,
         price,
+        cabin_class: cabinClassDisplay,
+        layovers: layovers.length > 0 ? layovers : undefined,
+        baggage,
+        duffel_offer_id: offer.id as string,
       })
 
       compact.push({
@@ -893,7 +1132,25 @@ function getIslandInfo(islandId: string): ToolResult {
       data: { error: `Unknown island: ${islandId}. Available: ${Object.keys(ISLAND_INFO).join(', ')}` },
     }
   }
-  return { data: info }
+
+  // Emit a destination card alongside the tool_result data. This is the
+  // only tool that pairs a knowledge payload (read by Claude for prose)
+  // with a UI card — the data is structured enough to render directly
+  // without Claude needing to compose a card-data fence.
+  const card: CardData = {
+    card_type: 'destination',
+    name: (info.name as string) ?? islandId,
+    island_id: islandId,
+    tagline: (info.tagline as string) ?? undefined,
+    photo_url: ISLAND_PHOTOS[islandId],
+    highlights: (info.highlights as string[] | undefined) ?? [],
+    rating: (info.rating as number | undefined) ?? 4.5,
+    best_months: (info.best_months as string[] | undefined) ?? undefined,
+    getting_there: (info.getting_there as string | undefined) ?? undefined,
+    days_recommended: (info.days_recommended as string | undefined) ?? undefined,
+  }
+
+  return { data: info, cards: [card] }
 }
 
 // ──────────────────────────────────────────────────────────────────────────

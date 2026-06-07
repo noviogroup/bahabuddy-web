@@ -56,3 +56,11 @@ body {
   .bg-ambient-evening   { background: linear-gradient(180deg, #FFF0E8 0%, #F8F4F0 50%, #F8FAFB 100%); }
   .bg-ambient-night     { background: linear-gradient(180deg, #E8F0F8 0%, #F0F4F8 50%, #F8FAFB 100%); }
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-baha-orbit,
+  .animate-baha-orbit-counter,
+  .animate-baha-loader-ring {
+    animation: none !important;
+  }
+}

@@ -33,5 +33,11 @@ export type { EmptySlotProps }        from './EmptySlot'
 
 export { default as Skeleton }        from './Skeleton'
 
+export { default as BahaPageLoader }  from './BahaPageLoader'
+export type { BahaPageLoaderProps }   from './BahaPageLoader'
+
+export { default as PageLoading }     from './PageLoading'
+export type { PageLoadingProps }      from './PageLoading'
+
 export { BahaDateRangePicker, BahaDatePicker } from './date'
 export type { BahaDateRangePickerProps, BahaDatePickerProps } from './date'

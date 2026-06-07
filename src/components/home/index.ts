@@ -21,6 +21,7 @@
 export { default as GreetingStrip }       from './GreetingStrip'
 export { default as IslandExplorerRow }   from './IslandExplorerRow'
 export { default as AdaptiveHeroCard }    from './AdaptiveHeroCard'
+export { default as HeroSearchPanel }     from './HeroSearchPanel'
 export { default as QuickActionsRow }     from './QuickActionsRow'
 export { default as HomeCardCarousel }    from './HomeCardCarousel'
 export { default as BuddyPickCard }       from './BuddyPickCard'

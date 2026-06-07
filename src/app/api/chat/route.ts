@@ -100,29 +100,36 @@ The web app renders cards differently depending on the source:
 **SERVER-RENDERED (do NOT emit JSON for these):**
 - hotel, restaurant, activity, flight, destination cards are created automatically by the system from your tool call results.
 - Just call the appropriate tool and write conversational prose. The cards render alongside your text.
+- Mapping: get_hotels → hotel cards, get_restaurants → restaurant cards, get_activities → activity cards, search_flights → flight cards (carries cabin class, layovers, baggage), get_island_info → destination card (carries best-months bar, getting-there, days-recommended).
 
 **YOU emit (use a \`\`\`card-data fence):**
-When you're SYNTHESIZING from multiple tools or producing a higher-level summary, emit a card block:
-
-\`\`\`card-data
-{"card_type":"<type>","cards":[...]}
-\`\`\`
+When you're SYNTHESIZING from multiple tools or producing a higher-level summary, emit a card block at the very end of your response.
 
 Card types YOU emit:
-- **day_plan**: day_number (int), morning, afternoon, evening (each a short string)
-- **summary**: trip_name, days (int), islands (string[]), total_cost (int), travelers (int)
-- **map**: title, subtitle, islands (string[])
 
-For multiple day_plans across a trip, use mixed:
+- **day_plan** — one day of a trip you composed.
+  Required: day_number (int), morning, afternoon, evening (each a short string).
+  Optional: day_date (free-form, e.g. "Saturday Jun 14"), day_pace ("relaxed" | "moderate" | "packed" — vibe check, not math), day_total_cost (int, sum of activity costs).
+
+- **summary** — trip-level wrap-up before the Stripe handoff.
+  Required: trip_name, days (int), islands (string[]), travelers (int), total_cost (int).
+  Optional: date_range (free-form, e.g. "Jun 12 – Jun 19"), cost_breakdown ({hotel?: int, flights?: int, activities?: int, food?: int, other?: int}). When you've estimated the costs, always include cost_breakdown — the card renders a visual stacked bar. Breakdown amounts should sum roughly to total_cost.
+
+- **map** — itinerary map for multi-stop trips.
+  Required: title, subtitle, islands (string[] — names auto-resolve to coords).
+  Optional: locations (Array<{name, lat?, lng?, type: "hotel"|"activity"|"restaurant"|"airport"|"island"}>) when you want explicit pins instead of island-level.
+
+For multiple day_plans across a trip, wrap them in mixed:
 \`\`\`card-data
-{"card_type":"mixed","cards":[{"card_type":"day_plan","day_number":1,"morning":"...","afternoon":"...","evening":"..."},{...}]}
+{"card_type":"mixed","cards":[{"card_type":"day_plan","day_number":1,"morning":"...","afternoon":"...","evening":"..."},{"card_type":"day_plan","day_number":2,...}]}
 \`\`\`
 
 Rules:
-- Only emit card blocks for synthesized content (day plans you composed, trip summaries you built)
-- Never emit hotel/restaurant/activity/flight cards — the server already did that from your tools
-- Emit ONE card block per response, at the very end
-- Pull islands from the user's plan, not made-up data
+- Only emit card blocks for synthesized content (day plans you composed, trip summaries you built, maps you assembled).
+- Never emit hotel/restaurant/activity/flight/destination cards — the server emits those from your tools.
+- Emit ONE card block per response, at the very end.
+- Pull islands from the user's plan, not made-up data.
+- For day_plan, set day_pace from activity density: 1 main thing = relaxed, 2 anchors = moderate, 3+ = packed.
 
 ## SCOPE & GUARDRAILS
 - **Bahamas only.** If asked about other destinations: "I'm your Bahamas expert! For other spots, I'd recommend a general travel planner. But hey — have you considered the Bahamas instead?"
@@ -226,7 +233,14 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+    if (authError) {
+      console.warn('[chat] auth.getUser() returned error', authError)
+    }
+    if (!user) {
+      console.warn('[chat] no authenticated user on /api/chat — chat will respond but NOTHING will be persisted to chat_threads/chat_messages. Most likely cause: Supabase session cookie missing/invalid on this request.')
+    }
 
     let activeThreadId: string | null = threadId ?? null
     let userProfile: {
@@ -253,7 +267,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (!activeThreadId) {
-        const { data: thread } = await supabase
+        const { data: thread, error: threadInsertError } = await supabase
           .from('chat_threads')
           .insert({
             user_id: user.id,
@@ -262,16 +276,36 @@ export async function POST(req: NextRequest) {
           })
           .select('id')
           .single()
+        if (threadInsertError) {
+          console.error('[chat] chat_threads insert FAILED', {
+            user_id: user.id,
+            code: threadInsertError.code,
+            message: threadInsertError.message,
+            details: threadInsertError.details,
+            hint: threadInsertError.hint,
+          })
+        }
         activeThreadId = thread?.id ?? null
       }
 
       if (activeThreadId) {
-        await supabase.from('chat_messages').insert({
+        const { error: userMsgError } = await supabase.from('chat_messages').insert({
           thread_id: activeThreadId,
           role: 'user',
           content: message,
           card_type: 'none',
         })
+        if (userMsgError) {
+          console.error('[chat] chat_messages (user) insert FAILED', {
+            thread_id: activeThreadId,
+            code: userMsgError.code,
+            message: userMsgError.message,
+            details: userMsgError.details,
+            hint: userMsgError.hint,
+          })
+        }
+      } else {
+        console.warn('[chat] no activeThreadId after thread creation — user message NOT saved')
       }
     }
 
@@ -407,20 +441,36 @@ export async function POST(req: NextRequest) {
           let savedTripId: string | null = null
           if (user && activeThreadId) {
             try {
-              await supabase.from('chat_messages').insert({
+              const { error: asstMsgError } = await supabase.from('chat_messages').insert({
                 thread_id: activeThreadId,
                 role: 'assistant',
                 content: cleanText,
                 card_type: combinedCards.length > 0 ? (combinedCards[0].card_type ?? 'none') : 'none',
                 card_data: combinedCards.length > 0 ? combinedCards : null,
               })
-              await supabase
+              if (asstMsgError) {
+                console.error('[chat] chat_messages (assistant) insert FAILED', {
+                  thread_id: activeThreadId,
+                  code: asstMsgError.code,
+                  message: asstMsgError.message,
+                  details: asstMsgError.details,
+                  hint: asstMsgError.hint,
+                })
+              }
+              const { error: threadUpdateError } = await supabase
                 .from('chat_threads')
                 .update({
                   last_message_preview: cleanText.slice(0, 100),
                   updated_at: new Date().toISOString(),
                 })
                 .eq('id', activeThreadId)
+              if (threadUpdateError) {
+                console.error('[chat] chat_threads update FAILED', {
+                  thread_id: activeThreadId,
+                  code: threadUpdateError.code,
+                  message: threadUpdateError.message,
+                })
+              }
 
               // Auto-save trip if Claude emitted a summary card
               const summaryCard = extractSummaryCard(fenceCards as ParsedCard[])

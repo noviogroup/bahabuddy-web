@@ -167,6 +167,9 @@ const config: Config = {
         "buddy-pulse": "buddy-pulse 2s ease-in-out infinite",
         "fade-in":     "fadeIn 0.3s ease-out",
         "slide-up":    "slideUp 0.4s cubic-bezier(0.22, 1, 0.36, 1)",
+        "baha-orbit":          "baha-orbit 2.2s linear infinite",
+        "baha-orbit-counter":  "baha-orbit-counter 2.2s linear infinite",
+        "baha-loader-ring":    "baha-loader-ring 2.8s linear infinite",
       },
       keyframes: {
         breathe: {
@@ -188,6 +191,18 @@ const config: Config = {
         slideUp: {
           "0%":   { opacity: "0", transform: "translateY(8px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        "baha-orbit": {
+          from: { transform: "rotate(0deg)" },
+          to:   { transform: "rotate(360deg)" },
+        },
+        "baha-orbit-counter": {
+          from: { transform: "rotate(0deg)" },
+          to:   { transform: "rotate(-360deg)" },
+        },
+        "baha-loader-ring": {
+          from: { transform: "rotate(0deg)" },
+          to:   { transform: "rotate(360deg)" },
         },
       },
     },

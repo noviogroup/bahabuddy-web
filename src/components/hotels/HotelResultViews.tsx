@@ -26,7 +26,7 @@ function getHotelDisplay(data: CardData): HotelDisplay {
       : null
 
   return {
-    name: data.name ?? 'Hotel',
+    name: (typeof data.name === 'string' && data.name.trim()) ? data.name.trim() : 'Hotel',
     location: data.island ?? data.city ?? '',
     rating: data.rating ?? 0,
     stars: data.stars ?? 0,
@@ -80,7 +80,7 @@ function HotelInfoBlock({
 }) {
   const isGrid = variant === 'grid'
   const titleClass = isGrid
-    ? 'font-bold text-white text-sm leading-snug line-clamp-2'
+    ? 'font-bold text-white text-base leading-snug line-clamp-2 drop-shadow-sm'
     : 'font-semibold text-night text-sm leading-tight line-clamp-2'
   const metaClass = isGrid ? 'text-white/80 text-xs mt-0.5' : 'text-gray-500 text-xs mt-0.5'
   const ratingClass = isGrid ? 'text-white/90 text-xs font-medium' : 'text-gray-700 text-xs font-medium'
@@ -145,7 +145,7 @@ function PriceTag({
   }
 
   return (
-    <div className="text-right shrink-0 pl-2">
+    <div className="text-left sm:text-right shrink-0 sm:pl-2 w-full sm:w-auto">
       {hotel.priceIsEstimate && (
         <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 block">
           From
@@ -160,18 +160,18 @@ function PriceTag({
 function HotelListCard({ data }: { data: CardData }) {
   const hotel = getHotelDisplay(data)
   const shellClass =
-    'group flex h-32 sm:h-36 rounded-2xl bg-white border border-gray-100 shadow-md overflow-hidden transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2'
+    'group flex flex-col sm:flex-row sm:h-36 rounded-2xl bg-white border border-gray-100 shadow-md overflow-hidden transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2'
 
   const inner = (
     <>
-      <div className="relative w-36 sm:w-44 shrink-0 h-full">
+      <div className="relative w-full h-36 sm:w-44 sm:h-auto sm:shrink-0">
         <HotelPhoto photoUrl={hotel.photoUrl} className="w-full h-full object-cover" />
         <div
-          className="absolute inset-0 bg-gradient-to-r from-black/10 via-white/40 to-white pointer-events-none"
+          className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-transparent sm:from-black/10 sm:via-white/40 sm:to-white pointer-events-none"
           aria-hidden="true"
         />
       </div>
-      <div className="relative flex flex-1 min-w-0 items-center gap-3 px-4 py-3 bg-white">
+      <div className="relative flex flex-1 min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 px-4 py-3 bg-white">
         <div className="flex-1 min-w-0">
           <HotelInfoBlock hotel={hotel} variant="list" />
         </div>
@@ -202,10 +202,10 @@ function HotelGridCard({ data }: { data: CardData }) {
         className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
       />
       <div
-        className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-brand-900 via-brand-800/85 to-transparent pointer-events-none"
+        className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none"
         aria-hidden="true"
       />
-      <div className="absolute inset-x-0 bottom-0 h-[40%] flex flex-col justify-end p-4 z-10">
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col justify-end p-4 pt-12 min-h-[45%]">
         <HotelInfoBlock hotel={hotel} variant="grid" />
         <PriceTag hotel={hotel} variant="grid" />
       </div>
@@ -226,7 +226,7 @@ export function HotelResultsSkeleton({ mode }: { mode: HotelViewMode }) {
   if (mode === 'grid') {
     return (
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
+        className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4"
         aria-live="polite"
         aria-busy="true"
       >
@@ -261,7 +261,7 @@ export function HotelResultsList({
 }) {
   if (mode === 'grid') {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 2xl:grid-cols-3 gap-3 sm:gap-4">
         {results.map((card, idx) => (
           <HotelGridCard key={card.place_id ?? idx} data={card} />
         ))}
