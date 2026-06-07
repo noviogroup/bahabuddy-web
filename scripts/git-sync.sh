@@ -42,9 +42,10 @@ if [ -n "$UPSTREAM" ] && [ "$LOCAL" != "$UPSTREAM" ]; then
     AHEAD="$(git rev-list --count "${REMOTE_REF}"..HEAD)"
     echo "→ ${AHEAD} local commit(s) to push..."
   else
-    echo "✗ Branch diverged from ${REMOTE_REF}. Rebase or merge manually."
-    git status -sb
-    exit 1
+    BEHIND="$(git rev-list --count HEAD.."${REMOTE_REF}" 2>/dev/null || echo 0)"
+    AHEAD="$(git rev-list --count "${REMOTE_REF}"..HEAD 2>/dev/null || echo 0)"
+    echo "→ Branch diverged (${BEHIND} behind, ${AHEAD} ahead) — rebasing..."
+    git pull "$REMOTE" "$BRANCH" --rebase
   fi
 else
   echo "→ Already up to date with ${REMOTE}/${BRANCH}."
