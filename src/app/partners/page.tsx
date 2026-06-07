@@ -24,6 +24,24 @@ const partnerCategories = [
   'Destination and island stakeholders',
 ]
 
+const partnerBenefits = [
+  'Visibility in Explore and island guide pages',
+  'Recommendation eligibility inside Buddy planning flows',
+  'Deal and featured placement opportunities',
+  'Concierge referral opportunities for high-intent travelers',
+  'Campaign inclusion for seasonal or island-specific promotions',
+  'Performance reporting as partner analytics mature',
+]
+
+const placementExamples = [
+  'Featured Nassau restaurant guide',
+  'Weekend in Exuma campaign',
+  'Airport transfer recommendation',
+  'Hotel spotlight placement',
+  'Family-friendly activity collection',
+  'Honeymoon itinerary partner feature',
+]
+
 const tiers = [
   {
     name: 'Free Listing',
@@ -77,7 +95,7 @@ export default function PartnersPage({
         <div className="max-w-6xl mx-auto px-4 py-20 lg:py-24 grid lg:grid-cols-[1fr_0.9fr] gap-12 items-center">
           <div>
             <p className="inline-flex rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">
-              Baha Buddy Partner Ecosystem
+              Founding Partner Opportunity
             </p>
             <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight text-night leading-tight">
               Be discovered by travelers planning The Bahamas with Buddy.
@@ -126,7 +144,34 @@ export default function PartnersPage({
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-14 lg:py-20">
+      <section className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-2 gap-10">
+        <div>
+          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">What partners get</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
+            Visibility, recommendations, leads, and campaign opportunities.
+          </h2>
+          <div className="mt-7 grid sm:grid-cols-2 gap-3">
+            {partnerBenefits.map((benefit) => (
+              <div key={benefit} className="rounded-baha-lg bg-white border border-sand-200 p-4 shadow-soft text-sm text-charcoal leading-relaxed">
+                {benefit}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-baha-xl bg-night text-white p-6 lg:p-8 shadow-card">
+          <p className="text-gold-300 text-sm font-bold uppercase tracking-wide">Placement examples</p>
+          <h3 className="mt-3 text-3xl font-extrabold">Where your business can appear</h3>
+          <div className="mt-6 space-y-3">
+            {placementExamples.map((example) => (
+              <div key={example} className="rounded-baha-lg bg-white/10 border border-white/15 p-4 text-sm text-white/85">
+                {example}
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 pb-14 lg:pb-20">
         <div className="max-w-3xl mb-8">
           <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Partner categories</p>
           <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
@@ -147,7 +192,7 @@ export default function PartnersPage({
           <div className="max-w-3xl mb-8">
             <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Early partner tiers</p>
             <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-              Start simple: manual onboarding before a full partner portal.
+              Start simple: managed onboarding before a full partner portal.
             </h2>
             <p className="mt-4 text-charcoal leading-relaxed">
               This page supports partner recruitment and lead capture only. Partner records should
