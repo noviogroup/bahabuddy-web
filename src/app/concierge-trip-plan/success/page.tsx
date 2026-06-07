@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import PublicHeader from '@/components/PublicHeader'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
@@ -22,6 +23,7 @@ export default function ConciergeSuccessPage({
 
   return (
     <main className="min-h-screen bg-offwhite">
+      <PublicHeader />
       <section className="bg-gradient-brand text-white">
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
           <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-bold backdrop-blur">
@@ -57,17 +59,11 @@ export default function ConciergeSuccessPage({
               method="POST"
               action="/concierge-trip-plan/success?submitted=details"
               data-netlify="true"
-              netlify-honeypot="bot-field"
               className="space-y-4"
             >
               <input type="hidden" name="form-name" value="baha-buddy-paid-concierge-details" />
               <input type="hidden" name="stripe_session_id" value={searchParams?.session_id ?? ''} />
               <input type="hidden" name="offer" value={offer} />
-              <p className="hidden">
-                <label>
-                  Do not fill this out: <input name="bot-field" />
-                </label>
-              </p>
 
               <div className="grid sm:grid-cols-2 gap-4">
                 <label className="block">
