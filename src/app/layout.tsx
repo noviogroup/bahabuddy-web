@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Plus_Jakarta_Sans } from 'next/font/google'
 import AnalyticsProvider from '@/components/AnalyticsProvider'
+import GlobalPublicHeader from '@/components/GlobalPublicHeader'
 import './globals.css'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bahabuddy.app'
@@ -81,6 +82,7 @@ export default function RootLayout({
     <html lang="en" className={plusJakarta.variable}>
       <body className="font-sans antialiased text-charcoal bg-offwhite">
         <AnalyticsProvider />
+        <GlobalPublicHeader />
         {children}
       </body>
     </html>
