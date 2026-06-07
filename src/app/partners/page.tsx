@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import PublicHeader from '@/components/PublicHeader'
 import Footer from '@/components/Footer'
 import PartnerApplicationForm from '@/components/revenue/PartnerApplicationForm'
 
@@ -92,7 +91,6 @@ export default function PartnersPage({
 
   return (
     <main className="min-h-screen bg-offwhite">
-      <PublicHeader />
       <section className="bg-white border-b border-sand-200">
         <div className="max-w-6xl mx-auto px-4 py-20 lg:py-24 grid lg:grid-cols-[1fr_0.9fr] gap-12 items-center">
           <div>
