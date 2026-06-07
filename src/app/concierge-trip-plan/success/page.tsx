@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import PublicHeader from '@/components/PublicHeader'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
@@ -23,7 +22,6 @@ export default function ConciergeSuccessPage({
 
   return (
     <main className="min-h-screen bg-offwhite">
-      <PublicHeader />
       <section className="bg-gradient-brand text-white">
         <div className="max-w-4xl mx-auto px-4 py-20 text-center">
           <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-bold backdrop-blur">
