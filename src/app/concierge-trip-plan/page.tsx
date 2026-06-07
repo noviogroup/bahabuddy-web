@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import ConciergeInterestForm from '@/components/revenue/ConciergeInterestForm'
+import TravelDocumentLeadForm from '@/components/revenue/TravelDocumentLeadForm'
 
 export const metadata: Metadata = {
   title: 'Concierge Trip Plan',
@@ -56,7 +58,13 @@ const included = [
   'Optional handoff to booking or Baha Visa support',
 ]
 
-export default function ConciergeTripPlanPage() {
+export default function ConciergeTripPlanPage({
+  searchParams,
+}: {
+  searchParams?: { submitted?: string }
+}) {
+  const submitted = searchParams?.submitted
+
   return (
     <main className="min-h-screen bg-offwhite">
       <section className="relative overflow-hidden bg-gradient-brand text-white">
@@ -74,6 +82,16 @@ export default function ConciergeTripPlanPage() {
               with practical recommendations for islands, hotels, activities, dining,
               transportation, budget, and travel documents.
             </p>
+            {submitted === 'concierge' && (
+              <div className="mt-6 rounded-baha-lg bg-white/15 border border-white/20 p-4 text-white text-sm font-semibold">
+                Concierge request received. The team can now review and follow up.
+              </div>
+            )}
+            {submitted === 'documents' && (
+              <div className="mt-6 rounded-baha-lg bg-white/15 border border-white/20 p-4 text-white text-sm font-semibold">
+                Travel-document request received. The Baha Visa team can now follow up.
+              </div>
+            )}
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Link
                 href="/dashboard/chat?intent=concierge"
@@ -82,7 +100,7 @@ export default function ConciergeTripPlanPage() {
                 Build my trip with Buddy
               </Link>
               <a
-                href="mailto:hello@bahabuddy.com?subject=Concierge%20Trip%20Plan%20Request"
+                href="#concierge-request"
                 className="inline-flex items-center justify-center rounded-full border border-white/60 px-7 py-3 text-white font-bold hover:bg-white/10 transition-colors"
               >
                 Request concierge help
@@ -120,7 +138,7 @@ export default function ConciergeTripPlanPage() {
                 ))}
               </ul>
               <a
-                href={`mailto:hello@bahabuddy.com?subject=${encodeURIComponent(tier.name)}%20Request`}
+                href="#concierge-request"
                 className={`mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 font-bold transition-colors ${
                   tier.featured
                     ? 'bg-brand-600 text-white hover:bg-brand-700'
@@ -166,23 +184,34 @@ export default function ConciergeTripPlanPage() {
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-14 lg:py-20">
-        <div className="rounded-baha-xl bg-night text-white p-8 lg:p-10 grid lg:grid-cols-[1fr_auto] gap-8 items-center">
-          <div>
-            <p className="text-gold-300 font-bold mb-2">Travel document cross-sell</p>
-            <h2 className="text-3xl font-extrabold mb-3">Need visa or travel-document help?</h2>
-            <p className="text-white/80 leading-relaxed max-w-2xl">
-              Concierge Trip Plan customers can be routed into Baha Visa and Baha Global Group for
-              Bahamas visa support, travel-document checklists, work-permit inquiries, residence
-              support, group travel documentation, and corporate travel support.
-            </p>
+      <section id="concierge-request" className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-[0.9fr_1.1fr] gap-10 items-start">
+        <div>
+          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Start the handoff</p>
+          <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
+            Capture the request before checkout automation.
+          </h2>
+          <p className="mt-4 text-charcoal leading-relaxed">
+            This form captures concierge demand immediately. Stripe checkout can replace or follow
+            this step once the order queue and admin fulfillment workflow are connected.
+          </p>
+        </div>
+        <ConciergeInterestForm />
+      </section>
+
+      <section className="max-w-6xl mx-auto px-4 pb-14 lg:pb-20">
+        <div className="rounded-baha-xl bg-night text-white p-8 lg:p-10">
+          <div className="grid lg:grid-cols-[1fr_0.9fr] gap-8 items-start">
+            <div>
+              <p className="text-gold-300 font-bold mb-2">Travel document cross-sell</p>
+              <h2 className="text-3xl font-extrabold mb-3">Need visa or travel-document help?</h2>
+              <p className="text-white/80 leading-relaxed max-w-2xl">
+                Concierge Trip Plan customers can be routed into Baha Visa and Baha Global Group for
+                Bahamas visa support, travel-document checklists, work-permit inquiries, residence
+                support, group travel documentation, and corporate travel support.
+              </p>
+            </div>
+            <TravelDocumentLeadForm />
           </div>
-          <a
-            href="mailto:hello@bahavisa.com?subject=Baha%20Buddy%20Travel%20Document%20Support"
-            className="inline-flex items-center justify-center rounded-full bg-gold-400 px-7 py-3 text-night font-extrabold hover:bg-gold-300 transition-colors"
-          >
-            Ask about documents
-          </a>
         </div>
       </section>
 
