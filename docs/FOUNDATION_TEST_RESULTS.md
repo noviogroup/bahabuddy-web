@@ -33,14 +33,18 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 4. Saved conversations | 2 | 1 | 1 | 0 | ❌ |
 | 5. Sharing + collaboration | 3 | 1 | 0 | 2 | ⏳ |
 | 6. Trips RLS | 5 | — | — | — | ⏳ |
-| 7. Places data | 5 | 2 | 0 | 3 | ⏳ |
+| 7. Places data | 5 | 4 | 0 | 1 | ⏳ |
 | 8. Booking + revenue | 4 | — | — | — | ⏳ |
-| 9. Admin | 3 | — | — | — | ⏳ |
+| 9. Admin | 3 | 3 | 0 | 0 | ✅ |
 | 10. Edge Functions | 4 | 1 | 0 | 3 | ⏳ |
 
 **Foundation gate status:** ❌ Blocked — Test 2.4 (unauthorized trip access) FAILS because RLS is disabled on `public.trips`. Trips RLS cannot be enabled until this is fixed. See BAH-107.
 
 > Mobile unit test suite: **95/95 passing** as of 2026-06-07 (flutter test, code review methodology).
+>
+> Web unit test suite: **63/63 passing** as of 2026-06-07 (vitest run — chat-utils, island-config, adaptive-chips, derive-user-state).
+>
+> Admin unit test suite: **32/32 passing** as of 2026-06-07 (vitest run — admin-allowlist, ugc, auth-gate).
 
 ---
 
@@ -48,7 +52,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 1.1 Web login/profile | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 1.1 Web login/profile | Web Developer | Local + production | 2026-06-07 | Pass | Login page at `/login`: combined sign-in/sign-up with password + magic link. Middleware (`src/middleware.ts`) protects `/dashboard`, `/trip`, `/profile`, `/flights` — redirects unauthenticated users to `/login?redirect=`. Auth callback at `/auth/callback` exchanges Supabase code for session cookie. `@supabase/ssr` v0.10.2 with cookie hydration. Deployed login page loads at production URL. E2E browser test needed for full password/magic-link flow. | |
 | 1.2 Mobile anon onboarding | Flutter Engineer | Code review | 2026-06-07 | Pass | `signInAnonymously()` implemented in `supabase_service.dart`. Onboarding screens (6 screens) complete. User profile upserted after completion with `id = auth.uid()`. Session persists across app restarts via `supabase_flutter` session cache. Unit tests confirm onboarding state machine (page nav, canProceed gating, party/children state). | |
 
 ---
@@ -57,7 +61,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 2.1 Web create trip from chat | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 2.1 Web create trip from chat | Web Developer | Local + production | 2026-06-07 | **Blocked** | Chat system implemented: `/api/chat` route handler with Anthropic SDK, 9 tools (search_hotels, search_restaurants, search_flights, search_activities, search_destinations, view_trip_details, create_trip, invite_people, finalize_booking), SSE streaming. 19 threads / 346 messages in Supabase (from mobile). `ANTHROPIC_API_KEY` not set on Netlify — chat returns errors on live site. | BAH-20 |
 | 2.2 Mobile create trip | Flutter Engineer | Code review | 2026-06-07 | Pass | `createTrip()` in `trip_service.dart` assigns `user_id = currentUserId` to all new trips. Writes to Supabase `trips` table; falls back to local-only if remote fails. Trip appears in My Trips via `getTrips()` which filters by `user_id`. Unit test: `Trip.fromJson` / `toJson` round-trip passes. | |
 | 2.3 Cross-platform trip visibility | Flutter Engineer | Code review | 2026-06-07 | Pass | `getTrips()` queries `trips.eq('user_id', uid)` — same Supabase user ID means same data on both platforms. Collaborator trips (shared trips) also loaded via `trip_collaborators` join, with try/catch fallback if RLS not yet ready. Collab path should be re-verified after RLS is enabled. | |
 | 2.4 Unauthorized trip access ⚠️ | Flutter Engineer | Code review | 2026-06-07 | **Fail** | Client-side: `getTrips()` always filters `user_id = currentUserId` — correct. **Server-side: RLS is DISABLED on `public.trips`.** Any user with a direct Supabase query (anon key + manual `.from('trips').select()` without the user_id filter) can read all trips in the database. The mobile app itself enforces the filter, but the DB does not. This test FAILS the security requirement. RLS must be enabled before this can pass. | BAH-107 |
@@ -80,7 +84,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 4.1 Web saved conversations | | | | Skip | Web platform scope — not covered by Flutter Engineer | |
+| 4.1 Web saved conversations | Web Developer | Local + production | 2026-06-07 | **Blocked** | `ChatPanel` component + `ConversationSidebar` exist. `/api/chat` route persists messages to `chat_messages` via Supabase. `parseCardsFromContent()` extracts card data (15 unit tests pass). Blocked on `ANTHROPIC_API_KEY` on Netlify — cannot test chat persistence end-to-end. | BAH-20 |
 | 4.2 Mobile saved conversations | Flutter Engineer | Code review | 2026-06-07 | Pass | `getOrCreateGeneralThread()` scoped to `user_id`. `insertChatMessage()` persists each message to `chat_messages` table. `getChatMessages(threadId)` reloads thread ordered by `created_at` ascending (limit 50). Card data (`card_type`, `card_data`) is preserved through save/load. App uses `thread_id` consistently to scope messages to the correct user. | |
 
 ---
@@ -89,7 +93,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 5.1 Trip share link | | | | Skip | Not yet verified — share link screen/flow not found in current Flutter feature set | |
+| 5.1 Trip share link (web) | Web Developer | Local + Supabase | 2026-06-07 | Skip | `ShareButton` component + `/share/[code]` page exist. Page queries `share_links` by `short_code`, loads trip data, renders read-only view with flights/accommodations/activities. OG metadata generated dynamically. **0 share_links in production** — feature never used by any user. Cannot test without first creating a share link. | |
 | 5.2 Trip invite (create + accept) | Flutter Engineer | Code review | 2026-06-07 | Pass | `TripInviteScreen` accepts a `shortCode` via deep link (`/invite/:shortCode`). Calls `previewInvite(shortCode)` to load invite details, then `acceptInvite(shortCode)` on confirmation. Friendly error handling for 410 Expired and 404 Not Found. On success, navigates to `/my-trip`. Deep link route registered in GoRouter. | |
 | 5.3 Collaborator read access | | | | Skip | Requires live RLS + `trip_collaborators` policies to be verified — skipped until RLS enabled | |
 
