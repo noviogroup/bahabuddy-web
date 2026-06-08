@@ -7,6 +7,8 @@ import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import IslandFilterSelect from '@/components/destinations/IslandFilterSelect'
 import { BahaImages } from '@/lib/baha-images'
+import DefaultHeaderHero from '@/components/DefaultHeaderHero'
+import { resolveDefaultHeaderImage, resolveStaticDefaultHeaderImage } from '@/lib/default-headers'
 
 export const metadata: Metadata = {
   title: 'Destinations — Explore the Bahamas | Baha Buddy',
@@ -52,10 +54,6 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const ALL_CATEGORIES = ['All', 'Island', 'Beach', 'Water Activity', 'Culture', 'Nature', 'Dining']
 
-// Map island display names to their mobile-canonical slugs used by
-// the canonical island-detail route at /explore/island/[id]. Keys cover
-// the variants the data layer might emit (e.g. "Nassau", "Nassau / New
-// Providence", "New Providence" all point at the same combined page).
 const ISLAND_DETAIL_SLUGS: Record<string, string> = {
   'Nassau': 'nassau-paradise-island',
   'Nassau / New Providence': 'nassau-paradise-island',
@@ -101,6 +99,11 @@ export default async function DestinationsPage({
 
   const activeCategory = searchParams.category ?? 'All'
   const activeIsland = searchParams.island ?? ''
+  const heroHeader = await resolveDefaultHeaderImage({
+    category: activeCategory !== 'All' ? activeCategory : null,
+    island: activeIsland || null,
+    preferredVariant: 'desktop',
+  })
 
   const islandSet = new Set(allAttractions.map(a => a.island).filter(Boolean) as string[])
   const allIslands = Array.from(islandSet).sort()
@@ -113,7 +116,6 @@ export default async function DestinationsPage({
 
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <BahaLogo href="/" size="md" />
@@ -125,21 +127,15 @@ export default async function DestinationsPage({
         </div>
       </header>
 
-      {/* Hero banner */}
-      <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-brand-100 text-sm font-semibold tracking-widest uppercase mb-3">Explore the Bahamas</p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">700+ Islands to Discover</h1>
-          <p className="text-white/80 text-lg max-w-xl mx-auto">
-            From Nassau&apos;s buzz to hidden sandbars — find your perfect Bahamas escape.
-          </p>
-        </div>
-      </div>
+      <DefaultHeaderHero
+        eyebrow="Explore the Bahamas"
+        title={activeIsland ? `Discover ${activeIsland}` : '700+ Islands to Discover'}
+        subtitle="From Nassau’s buzz to hidden sandbars — find your perfect Bahamas escape."
+        header={heroHeader}
+      />
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        {/* Filters */}
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
-          {/* Category filter */}
           <div className="flex flex-wrap gap-2">
             {ALL_CATEGORIES.map(cat => (
               <Link
@@ -156,9 +152,6 @@ export default async function DestinationsPage({
             ))}
           </div>
 
-          {/* Island filter — extracted to a Client Component because
-              <select onChange={fn}> can't live inside a Server Component
-              (functions can't cross the RSC boundary). */}
           {allIslands.length > 0 && (
             <div className="sm:ml-auto">
               <IslandFilterSelect
@@ -170,7 +163,6 @@ export default async function DestinationsPage({
           )}
         </div>
 
-        {/* Island filter chips (for mobile friendliness) */}
         {allIslands.length > 0 && (
           <div className="flex gap-2 flex-wrap mb-8 -mt-2">
             <Link
@@ -206,14 +198,12 @@ export default async function DestinationsPage({
           </div>
         )}
 
-        {/* Results count */}
         <p className="text-sm text-gray-400 mb-6">
           {filtered.length} destination{filtered.length !== 1 ? 's' : ''}
           {activeCategory !== 'All' ? ` in ${activeCategory}` : ''}
           {activeIsland ? ` on ${activeIsland}` : ''}
         </p>
 
-        {/* Grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <p className="text-lg font-medium text-gray-600">No destinations found</p>
@@ -227,6 +217,12 @@ export default async function DestinationsPage({
             {filtered.map(attraction => {
               const categoryColor = CATEGORY_COLORS[attraction.category] ?? 'bg-gray-600/80 text-white'
               const planUrl = `/dashboard?q=${encodeURIComponent(`Plan a trip to ${attraction.name} in the Bahamas`)}`
+              const cardHeader = resolveStaticDefaultHeaderImage({
+                customImageUrl: attraction.image_url,
+                category: attraction.category,
+                island: attraction.island,
+                preferredVariant: 'card',
+              })
 
               return (
                 <div
@@ -234,19 +230,13 @@ export default async function DestinationsPage({
                   className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col border border-gray-100"
                 >
                   <div className="relative aspect-video overflow-hidden bg-stone-200">
-                    {attraction.image_url ? (
-                      <Image
-                        src={attraction.image_url}
-                        alt={attraction.name}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                        <span className="text-6xl opacity-50" aria-hidden="true">🏝️</span>
-                      </div>
-                    )}
+                    <Image
+                      src={cardHeader.url}
+                      alt={attraction.image_url ? attraction.name : cardHeader.alt}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
                     <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${categoryColor}`}>
                       {attraction.category}
                     </div>
@@ -286,7 +276,6 @@ export default async function DestinationsPage({
           </div>
         )}
 
-        {/* CTA */}
         <div className="mt-16 bg-gradient-to-r from-brand-600 to-brand-500 rounded-2xl p-8 text-center text-white">
           <h2 className="text-2xl font-bold mb-2">Ready to plan your Bahamas trip?</h2>
           <p className="text-brand-100 mb-6">Download Baha Buddy and get AI-powered itineraries in seconds.</p>
