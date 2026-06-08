@@ -2,38 +2,23 @@
 
 /**
  * AdaptiveHeroCard — Home Dashboard hero, adapts to user state.
- *
- * UI/UX Spec §5.1 "Adaptive states" table:
- *
- *   New user        → Seasonal feature (e.g. "This month: Junkanoo in Nassau")
- *   Active planner  → "Your trip is taking shape" + progress chip
- *   Booked traveler → Destination photo + countdown to departure
- *
- * Mobile reference: lib/features/home/widgets/hero_card.dart
- *
- * Built on <HeroCard> primitive (already supports image bg, gradient,
- * badge, title, subtitle, CTA). This component is the state machine
- * that chooses which content to feed it.
  */
 
 import { HeroCard } from '@/components/ui'
 import { deriveUserState } from '@/lib/derive-user-state'
-import { BahaImages } from '@/lib/baha-images'
+import { resolveStaticDefaultHeaderImage } from '@/lib/default-headers'
 import type { Trip } from '@/types/database'
 
 export type { UserState } from '@/lib/derive-user-state'
 
 export interface AdaptiveHeroCardProps {
-  /** All of the user's trips. Determines which state to render. */
   trips: Trip[]
 }
 
-/** Current month name (server-safe — works at build/render time). */
 function currentMonth(): string {
   return new Date().toLocaleString('en-US', { month: 'long' })
 }
 
-/** Whole days between now and a future ISO date. */
 function daysUntil(iso: string): number {
   const ms = new Date(iso).getTime() - Date.now()
   return Math.max(0, Math.ceil(ms / 86_400_000))
@@ -44,10 +29,17 @@ export default function AdaptiveHeroCard({ trips }: AdaptiveHeroCardProps) {
 
   if (state === 'booked' && primaryTrip) {
     const days = primaryTrip.date_start ? daysUntil(primaryTrip.date_start) : null
+    const header = resolveStaticDefaultHeaderImage({
+      customImageUrl: primaryTrip.hero_image_url,
+      island: primaryTrip.islands?.[0],
+      category: 'Luxury',
+      preferredVariant: 'desktop',
+    })
+
     return (
       <HeroCard
-        imageUrl={primaryTrip.hero_image_url || BahaImages.exumas}
-        alt={primaryTrip.name}
+        imageUrl={header.url}
+        alt={primaryTrip.hero_image_url ? primaryTrip.name : header.alt}
         height="h-64 md:h-72"
         badge={days === 0 ? 'TODAY' : days === 1 ? 'TOMORROW' : days != null ? `${days} DAYS AWAY` : 'BOOKED'}
         badgeColor="palm"
@@ -65,10 +57,17 @@ export default function AdaptiveHeroCard({ trips }: AdaptiveHeroCardProps) {
   }
 
   if (state === 'planner' && primaryTrip) {
+    const header = resolveStaticDefaultHeaderImage({
+      customImageUrl: primaryTrip.hero_image_url,
+      island: primaryTrip.islands?.[0],
+      category: 'Local Gems',
+      preferredVariant: 'desktop',
+    })
+
     return (
       <HeroCard
-        imageUrl={primaryTrip.hero_image_url || BahaImages.bahamasLifestyle}
-        alt={primaryTrip.name}
+        imageUrl={header.url}
+        alt={primaryTrip.hero_image_url ? primaryTrip.name : header.alt}
         height="h-64 md:h-72"
         badge="IN PROGRESS"
         badgeColor="brand"
@@ -81,11 +80,12 @@ export default function AdaptiveHeroCard({ trips }: AdaptiveHeroCardProps) {
     )
   }
 
-  // New user — seasonal feature
+  const header = resolveStaticDefaultHeaderImage({ category: 'Local Gems', preferredVariant: 'desktop' })
+
   return (
     <HeroCard
-      imageUrl={BahaImages.bahamasLifestyle}
-      alt="The Bahamas"
+      imageUrl={header.url}
+      alt={header.alt}
       height="h-64 md:h-72"
       badge={`THIS ${currentMonth().toUpperCase()}`}
       badgeColor="gold"
