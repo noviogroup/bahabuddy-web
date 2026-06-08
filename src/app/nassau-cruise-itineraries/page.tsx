@@ -4,6 +4,8 @@ import ChatWidget from '@/components/ChatWidget'
 import GuidedDayCard from '@/components/guided-day/GuidedDayCard'
 import { createClient } from '@/lib/supabase/server'
 import type { GuidedDayPlan } from '@/lib/guided-day/types'
+import DefaultHeaderHero from '@/components/DefaultHeaderHero'
+import { resolveDefaultHeaderImage } from '@/lib/default-headers'
 
 export const metadata: Metadata = {
   title: 'Nassau Cruise Itineraries',
@@ -12,28 +14,25 @@ export const metadata: Metadata = {
 
 export default async function NassauCruiseItinerariesPage() {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('published_cruise_itineraries')
-    .select('*')
-    .order('base_price', { ascending: true })
+  const [{ data, error }, heroHeader] = await Promise.all([
+    supabase
+      .from('published_cruise_itineraries')
+      .select('*')
+      .order('base_price', { ascending: true }),
+    resolveDefaultHeaderImage({ category: 'Cruise Day', island: 'Nassau', preferredVariant: 'desktop' }),
+  ])
 
   const plans = (data ?? []) as GuidedDayPlan[]
 
   return (
     <main className="min-h-screen bg-offwhite">
-      <section className="bg-gradient-brand text-white">
-        <div className="mx-auto max-w-6xl px-4 py-20">
-          <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold backdrop-blur">
-            Nassau cruise day plans
-          </p>
-          <h1 className="mt-6 max-w-3xl text-4xl font-extrabold tracking-tight md:text-6xl">
-            Choose a smarter way to spend one day in Nassau.
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-relaxed text-brand-50">
-            Pick a ready-made plan built for cruise passengers with practical stops, clear timing, and a return-to-ship buffer.
-          </p>
-        </div>
-      </section>
+      <DefaultHeaderHero
+        eyebrow="Nassau cruise day plans"
+        title="Choose a smarter way to spend one day in Nassau."
+        subtitle="Pick a ready-made plan built for cruise passengers with practical stops, clear timing, and a return-to-ship buffer."
+        header={heroHeader}
+        align="left"
+      />
 
       <section className="mx-auto max-w-6xl px-4 py-14">
         {error && (
