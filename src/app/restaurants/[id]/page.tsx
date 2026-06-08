@@ -8,14 +8,10 @@ import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import TrackView from '@/components/TrackView'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
-import { FALLBACK_IMAGE } from '@/lib/baha-images'
 import type { TripAdvisorLocation } from '@/lib/tripadvisor/types'
-import {
-  isIslandSlug,
-  getIslandDisplayName,
-  formatAddress,
-  ISLAND_SLUG_MAP,
-} from '@/lib/tripadvisor/types'
+import { isIslandSlug, getIslandDisplayName, formatAddress, ISLAND_SLUG_MAP } from '@/lib/tripadvisor/types'
+import DefaultHeaderHero from '@/components/DefaultHeaderHero'
+import { resolveDefaultHeaderImage, resolveStaticDefaultHeaderImage } from '@/lib/default-headers'
 
 export const revalidate = 86400
 
@@ -23,9 +19,7 @@ interface PageProps {
   params: { id: string }
 }
 
-async function getRestaurantByLocationId(
-  locationId: string,
-): Promise<TripAdvisorLocation | null> {
+async function getRestaurantByLocationId(locationId: string): Promise<TripAdvisorLocation | null> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -41,9 +35,7 @@ async function getRestaurantByLocationId(
   }
 }
 
-async function getRestaurantsByIsland(
-  islandName: string,
-): Promise<TripAdvisorLocation[]> {
+async function getRestaurantsByIsland(islandName: string): Promise<TripAdvisorLocation[]> {
   try {
     const supabase = await createClient()
     const { data, error } = await supabase
@@ -60,9 +52,7 @@ async function getRestaurantsByIsland(
   }
 }
 
-async function getSimilarRestaurants(
-  restaurant: TripAdvisorLocation,
-): Promise<TripAdvisorLocation[]> {
+async function getSimilarRestaurants(restaurant: TripAdvisorLocation): Promise<TripAdvisorLocation[]> {
   try {
     const supabase = await createClient()
     const { data } = await supabase
@@ -79,9 +69,7 @@ async function getSimilarRestaurants(
   }
 }
 
-export async function generateMetadata({
-  params,
-}: PageProps): Promise<Metadata> {
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const slug = params.id
 
   if (isIslandSlug(slug)) {
@@ -107,16 +95,13 @@ export async function generateMetadata({
     openGraph: {
       title: `${restaurant.name} | Baha Buddy`,
       description: `${restaurant.name} restaurant in ${restaurant.island_name ?? 'the Bahamas'}`,
-      images: restaurant.photos?.[0]?.url
-        ? [{ url: restaurant.photos[0].url }]
-        : undefined,
+      images: restaurant.photos?.[0]?.url ? [{ url: restaurant.photos[0].url }] : undefined,
     },
   }
 }
 
 function PriceLevelDisplay({ level }: { level: string }) {
-  const count =
-    level === '$' ? 1 : level === '$$' ? 2 : level === '$$$' ? 3 : level === '$$$$' ? 4 : level.length
+  const count = level === '$' ? 1 : level === '$$' ? 2 : level === '$$$' ? 3 : level === '$$$$' ? 4 : level.length
   return (
     <span className="font-bold text-brand-600 text-lg" aria-label={`Price level ${level}`}>
       {'$'.repeat(Math.min(count, 4))}
@@ -125,21 +110,15 @@ function PriceLevelDisplay({ level }: { level: string }) {
   )
 }
 
-function IslandListingPage({
-  slug,
-  islandName,
-  restaurants,
-}: {
-  slug: string
-  islandName: string
-  restaurants: TripAdvisorLocation[]
-}) {
+async function IslandListingPage({ slug, islandName, restaurants }: { slug: string; islandName: string; restaurants: TripAdvisorLocation[] }) {
   const islandOptions = Object.entries(ISLAND_SLUG_MAP)
     .reduce<{ slug: string; name: string }[]>((acc, [s, n]) => {
       if (!acc.find((x) => x.name === n)) acc.push({ slug: s, name: n })
       return acc
     }, [])
     .sort((a, b) => a.name.localeCompare(b.name))
+
+  const heroHeader = await resolveDefaultHeaderImage({ island: islandName, businessType: 'Restaurant', preferredVariant: 'desktop' })
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -180,21 +159,12 @@ function IslandListingPage({
         </div>
       </header>
 
-      <div className="bg-gradient-to-br from-coral-600 to-coral-500 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <nav className="text-white/60 text-sm mb-3" aria-label="Breadcrumb">
-            <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <span className="mx-2">›</span>
-            <Link href="/restaurants" className="hover:text-white transition-colors">Restaurants</Link>
-            <span className="mx-2">›</span>
-            <span className="text-white/80">{islandName}</span>
-          </nav>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Best Restaurants in {islandName}</h1>
-          <p className="text-white/80 text-lg max-w-xl mx-auto">
-            Top-rated dining in {islandName}, Bahamas — with reviews and photos from TripAdvisor.
-          </p>
-        </div>
-      </div>
+      <DefaultHeaderHero
+        eyebrow="Restaurants"
+        title={`Best Restaurants in ${islandName}`}
+        subtitle={`Top-rated dining in ${islandName}, Bahamas — with reviews and photos from TripAdvisor.`}
+        header={heroHeader}
+      />
 
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="flex flex-wrap gap-2 mb-8">
@@ -203,9 +173,7 @@ function IslandListingPage({
             <Link
               key={opt.slug}
               href={`/restaurants/${opt.slug}`}
-              className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
-                opt.slug === slug ? 'bg-coral-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${opt.slug === slug ? 'bg-coral-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               {opt.name}
             </Link>
@@ -223,15 +191,16 @@ function IslandListingPage({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {restaurants.map((rest) => {
-              const heroPhoto = rest.photos?.[0]?.url ?? FALLBACK_IMAGE
+              const cardHeader = resolveStaticDefaultHeaderImage({
+                customImageUrl: rest.photos?.[0]?.url,
+                island: rest.island_name,
+                businessType: 'Restaurant',
+                preferredVariant: 'card',
+              })
               return (
-                <Link
-                  key={rest.id}
-                  href={`/restaurants/${rest.location_id}`}
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group flex flex-col"
-                >
+                <Link key={rest.id} href={`/restaurants/${rest.location_id}`} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group flex flex-col">
                   <div className="relative h-48 overflow-hidden bg-stone-200">
-                    <Image src={heroPhoto} alt={rest.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" unoptimized />
+                    <Image src={cardHeader.url} alt={rest.photos?.[0]?.url ? rest.name : cardHeader.alt} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" unoptimized />
                     {rest.rating && (
                       <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-white/95 backdrop-blur-sm rounded-md px-2 py-1 shadow-sm">
                         <span className="text-amber-400 text-sm">★</span>
@@ -242,17 +211,11 @@ function IslandListingPage({
                   <div className="p-5 flex flex-col flex-1">
                     <h2 className="text-base font-bold text-gray-900 leading-snug line-clamp-1">{rest.name}</h2>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {rest.cuisine_types?.[0] && (
-                        <span className="text-[11px] font-semibold text-coral-700 bg-coral-50 px-2 py-0.5 rounded-full">{rest.cuisine_types[0]}</span>
-                      )}
+                      {rest.cuisine_types?.[0] && <span className="text-[11px] font-semibold text-coral-700 bg-coral-50 px-2 py-0.5 rounded-full">{rest.cuisine_types[0]}</span>}
                       {rest.price_level && <span className="text-xs text-gray-400">{rest.price_level}</span>}
                     </div>
-                    {rest.num_reviews != null && rest.num_reviews > 0 && (
-                      <p className="text-xs text-gray-400 mt-1">{rest.num_reviews.toLocaleString()} reviews</p>
-                    )}
-                    <div className="mt-auto pt-4">
-                      <span className="text-sm font-semibold text-brand-600 group-hover:text-brand-700 transition-colors">View details &rarr;</span>
-                    </div>
+                    {rest.num_reviews != null && rest.num_reviews > 0 && <p className="text-xs text-gray-400 mt-1">{rest.num_reviews.toLocaleString()} reviews</p>}
+                    <div className="mt-auto pt-4"><span className="text-sm font-semibold text-brand-600 group-hover:text-brand-700 transition-colors">View details &rarr;</span></div>
                   </div>
                 </Link>
               )
@@ -266,15 +229,14 @@ function IslandListingPage({
   )
 }
 
-function RestaurantDetailPage({
-  restaurant,
-  similar,
-}: {
-  restaurant: TripAdvisorLocation
-  similar: TripAdvisorLocation[]
-}) {
+async function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisorLocation; similar: TripAdvisorLocation[] }) {
   const photos = restaurant.photos ?? []
-  const heroUrl = photos[0]?.url ?? FALLBACK_IMAGE
+  const heroHeader = await resolveDefaultHeaderImage({
+    customImageUrl: photos[0]?.url,
+    island: restaurant.island_name,
+    businessType: 'Restaurant',
+    preferredVariant: 'desktop',
+  })
   const addr = formatAddress(restaurant.address)
   const reviews = restaurant.reviews ?? []
   const cuisines = restaurant.cuisine_types ?? []
@@ -287,23 +249,8 @@ function RestaurantDetailPage({
     '@type': 'Restaurant',
     name: restaurant.name,
     ...(cuisines.length > 0 && { servesCuisine: cuisines.join(', ') }),
-    ...(addr && {
-      address: {
-        '@type': 'PostalAddress',
-        streetAddress: restaurant.address?.street1,
-        addressLocality: restaurant.address?.city,
-        addressRegion: restaurant.address?.state,
-        addressCountry: restaurant.address?.country ?? 'BS',
-      },
-    }),
-    ...(restaurant.rating && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: restaurant.rating,
-        bestRating: 5,
-        reviewCount: restaurant.num_reviews ?? 0,
-      },
-    }),
+    ...(addr && { address: { '@type': 'PostalAddress', streetAddress: restaurant.address?.street1, addressLocality: restaurant.address?.city, addressRegion: restaurant.address?.state, addressCountry: restaurant.address?.country ?? 'BS' } }),
+    ...(restaurant.rating && { aggregateRating: { '@type': 'AggregateRating', ratingValue: restaurant.rating, bestRating: 5, reviewCount: restaurant.num_reviews ?? 0 } }),
     ...(restaurant.website && { url: restaurant.website }),
     ...(photos.length > 0 && { image: photos.map((p) => p.url) }),
   }
@@ -323,216 +270,58 @@ function RestaurantDetailPage({
         </div>
       </header>
 
-      {/* Hero */}
       <div className="relative h-72 md:h-[28rem] overflow-hidden">
-        <Image src={heroUrl} alt={restaurant.name} fill className="object-cover" priority sizes="100vw" unoptimized />
+        <Image src={heroHeader.url} alt={photos[0]?.url ? restaurant.name : heroHeader.alt} fill className="object-cover" priority sizes="100vw" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
         <div className="absolute bottom-0 left-0 right-0 p-6 md:p-12 max-w-6xl mx-auto">
           <nav className="text-white/70 text-sm mb-2" aria-label="Breadcrumb">
             <Link href="/" className="hover:text-white transition-colors">Home</Link>
             <span className="mx-2">›</span>
             <Link href="/restaurants" className="hover:text-white transition-colors">Restaurants</Link>
-            {restaurant.island_name && (
-              <>
-                <span className="mx-2">›</span>
-                <span className="text-white/80">{restaurant.island_name}</span>
-              </>
-            )}
+            {restaurant.island_name && <><span className="mx-2">›</span><span className="text-white/80">{restaurant.island_name}</span></>}
           </nav>
           <div className="flex items-center gap-3 mb-3 flex-wrap">
-            {cuisines.length > 0 && (
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-coral-500/80 text-white backdrop-blur-sm">
-                {cuisines[0]}
-              </span>
-            )}
-            {restaurant.price_level && (
-              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-sm">
-                {restaurant.price_level}
-              </span>
-            )}
+            {cuisines.length > 0 && <span className="px-3 py-1 rounded-full text-xs font-semibold bg-coral-500/80 text-white backdrop-blur-sm">{cuisines[0]}</span>}
+            {restaurant.price_level && <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-sm">{restaurant.price_level}</span>}
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{restaurant.name}</h1>
           {restaurant.island_name && <p className="text-white/80 text-lg">{restaurant.island_name}, Bahamas</p>}
-          {restaurant.rating && (
-            <div className="mt-3 flex items-center gap-2">
-              <span className="text-amber-400 text-lg leading-none">
-                {Array.from({ length: 5 }, (_, i) => (
-                  <span key={i} className={i < Math.floor(restaurant.rating!) ? 'text-amber-400' : 'text-white/30'}>★</span>
-                ))}
-              </span>
-              <span className="text-white font-bold text-lg">{restaurant.rating.toFixed(1)}</span>
-              {restaurant.num_reviews != null && restaurant.num_reviews > 0 && (
-                <span className="text-white/60 text-sm">({restaurant.num_reviews.toLocaleString()} reviews)</span>
-              )}
-            </div>
-          )}
+          {restaurant.rating && <div className="mt-3 flex items-center gap-2"><span className="text-amber-400 text-lg leading-none">★</span><span className="text-white font-bold text-lg">{restaurant.rating.toFixed(1)}</span>{restaurant.num_reviews != null && restaurant.num_reviews > 0 && <span className="text-white/60 text-sm">({restaurant.num_reviews.toLocaleString()} reviews)</span>}</div>}
         </div>
       </div>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-10">
-            {/* Cuisine types */}
-            {cuisines.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Cuisine</h2>
-                <div className="flex flex-wrap gap-2">
-                  {cuisines.map((c) => (
-                    <span key={c} className="text-sm bg-coral-50 text-coral-700 rounded-full px-4 py-1.5 font-medium border border-coral-100">
-                      {c}
-                    </span>
-                  ))}
-                </div>
-              </section>
-            )}
+            {cuisines.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Cuisine</h2><div className="flex flex-wrap gap-2">{cuisines.map((c) => <span key={c} className="text-sm bg-coral-50 text-coral-700 rounded-full px-4 py-1.5 font-medium border border-coral-100">{c}</span>)}</div></section>}
 
-            {/* Photo gallery */}
-            {photos.length > 1 && (
-              <section>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {photos.slice(0, 9).map((photo, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100">
-                      <Image
-                        src={photo.url}
-                        alt={photo.caption || `${restaurant.name} — photo ${idx + 1}`}
-                        fill
-                        className="object-cover hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, 33vw"
-                        unoptimized
-                      />
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
+            {photos.length > 1 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{photos.slice(0, 9).map((photo, idx) => <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100"><Image src={photo.url} alt={photo.caption || `${restaurant.name} — photo ${idx + 1}`} fill className="object-cover hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 33vw" unoptimized /></div>)}</div></section>}
 
-            {/* Reviews */}
-            {reviews.length > 0 && (
-              <section>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Guest Reviews</h2>
-                <div className="space-y-4">
-                  {reviews.slice(0, 5).map((review, idx) => (
-                    <div key={idx} className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                      <div className="flex items-center gap-2 mb-2">
-                        {review.rating && (
-                          <span className="text-amber-400 text-sm leading-none">
-                            {'★'.repeat(Math.floor(review.rating))}
-                            <span className="text-gray-300">{'★'.repeat(5 - Math.floor(review.rating))}</span>
-                          </span>
-                        )}
-                        <span className="text-xs text-gray-400 font-medium">{review.author}</span>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed">{review.text}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            )}
-
-            {/* Map */}
-            {restaurant.latitude && restaurant.longitude && (
-              <section>
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Location</h2>
-                <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-video">
-                  <iframe
-                    title={`Map of ${restaurant.name}`}
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${restaurant.latitude},${restaurant.longitude}&zoom=14`}
-                  />
-                </div>
-              </section>
-            )}
+            {reviews.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Guest Reviews</h2><div className="space-y-4">{reviews.slice(0, 5).map((review, idx) => <div key={idx} className="bg-gray-50 rounded-2xl p-5 border border-gray-100"><div className="flex items-center gap-2 mb-2">{review.rating && <span className="text-amber-400 text-sm leading-none">{'★'.repeat(Math.floor(review.rating))}<span className="text-gray-300">{'★'.repeat(5 - Math.floor(review.rating))}</span></span>}<span className="text-xs text-gray-400 font-medium">{review.author}</span></div><p className="text-sm text-gray-600 leading-relaxed">{review.text}</p></div>)}</div></section>}
           </div>
 
-          {/* Sidebar */}
           <aside className="space-y-6">
             <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
               <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Details</h3>
-
-              {restaurant.island_name && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Location</p>
-                  <p className="text-sm text-gray-700 font-medium">{restaurant.island_name}, Bahamas</p>
-                </div>
-              )}
-
-              {addr && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Address</p>
-                  <p className="text-sm text-gray-700">{addr}</p>
-                </div>
-              )}
-
-              {restaurant.price_level && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Price level</p>
-                  <PriceLevelDisplay level={restaurant.price_level} />
-                </div>
-              )}
-
-              {restaurant.website && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">Website</p>
-                  <a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:text-brand-700 font-medium break-all">
-                    Visit website →
-                  </a>
-                </div>
-              )}
-
-              {restaurant.tripadvisor_url && (
-                <div>
-                  <p className="text-xs text-gray-400 font-medium">TripAdvisor</p>
-                  <div className="flex items-center gap-2">
-                    {restaurant.rating && (
-                      <span className="text-sm font-bold text-emerald-600">★ {restaurant.rating.toFixed(1)}</span>
-                    )}
-                    {restaurant.num_reviews != null && restaurant.num_reviews > 0 && (
-                      <span className="text-xs text-gray-400">({restaurant.num_reviews.toLocaleString()})</span>
-                    )}
-                  </div>
-                  <a href={restaurant.tripadvisor_url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-1 mt-1">
-                    View on TripAdvisor →
-                  </a>
-                </div>
-              )}
+              {restaurant.island_name && <div><p className="text-xs text-gray-400 font-medium">Location</p><p className="text-sm text-gray-700 font-medium">{restaurant.island_name}, Bahamas</p></div>}
+              {addr && <div><p className="text-xs text-gray-400 font-medium">Address</p><p className="text-sm text-gray-700">{addr}</p></div>}
+              {restaurant.price_level && <div><p className="text-xs text-gray-400 font-medium">Price level</p><PriceLevelDisplay level={restaurant.price_level} /></div>}
+              {restaurant.website && <div><p className="text-xs text-gray-400 font-medium">Website</p><a href={restaurant.website} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:text-brand-700 font-medium break-all">Visit website →</a></div>}
+              {restaurant.tripadvisor_url && <div><p className="text-xs text-gray-400 font-medium">TripAdvisor</p><a href={restaurant.tripadvisor_url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-1 mt-1">View on TripAdvisor →</a></div>}
             </div>
           </aside>
         </div>
 
-        <div className="mt-14">
-          <PlanWithBuddyCTA kind="meal" planPrompt={planPrompt} addPrompt={addPrompt} />
-        </div>
+        <div className="mt-14"><PlanWithBuddyCTA kind="meal" planPrompt={planPrompt} addPrompt={addPrompt} /></div>
 
-        {/* Similar restaurants */}
         {similar.length > 0 && (
           <section className="mt-14">
-            <h2 className="text-xl font-bold text-gray-900 mb-5">
-              More restaurants in {restaurant.island_name ?? 'the Bahamas'}
-            </h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-5">More restaurants in {restaurant.island_name ?? 'the Bahamas'}</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {similar.map((s) => (
-                <Link key={s.id} href={`/restaurants/${s.location_id}`} className="group">
-                  <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="relative aspect-video overflow-hidden bg-stone-100">
-                      <Image src={s.photos?.[0]?.url ?? FALLBACK_IMAGE} alt={s.name} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" unoptimized />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="text-sm font-bold text-gray-900 line-clamp-1">{s.name}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {s.cuisine_types?.[0] && (
-                          <span className="text-[11px] text-coral-700 font-semibold">{s.cuisine_types[0]}</span>
-                        )}
-                        {s.rating && <span className="text-xs text-amber-500 font-semibold">★ {s.rating.toFixed(1)}</span>}
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+              {similar.map((s) => {
+                const cardHeader = resolveStaticDefaultHeaderImage({ customImageUrl: s.photos?.[0]?.url, island: s.island_name, businessType: 'Restaurant', preferredVariant: 'card' })
+                return <Link key={s.id} href={`/restaurants/${s.location_id}`} className="group"><div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"><div className="relative aspect-video overflow-hidden bg-stone-100"><Image src={cardHeader.url} alt={s.photos?.[0]?.url ? s.name : cardHeader.alt} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" unoptimized /></div><div className="p-3"><h3 className="text-sm font-bold text-gray-900 line-clamp-1">{s.name}</h3><div className="flex items-center gap-2 mt-1">{s.cuisine_types?.[0] && <span className="text-[11px] text-coral-700 font-semibold">{s.cuisine_types[0]}</span>}{s.rating && <span className="text-xs text-amber-500 font-semibold">★ {s.rating.toFixed(1)}</span>}</div></div></div></Link>
+              })}
             </div>
           </section>
         )}
