@@ -7,6 +7,8 @@ import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import { BahaImages } from '@/lib/baha-images'
 import TrackView from '@/components/TrackView'
+import DefaultHeaderHero from '@/components/DefaultHeaderHero'
+import { resolveDefaultHeaderImage, resolveStaticDefaultHeaderImage } from '@/lib/default-headers'
 
 export const metadata: Metadata = {
   title: 'Bahamas Deals & Packages | Baha Buddy',
@@ -45,11 +47,11 @@ const FALLBACK_DEALS: Deal[] = [
 
 const DEAL_TYPES = ['All', 'accommodation', 'tour', 'package', 'activity']
 
-const DEAL_TYPE_CONFIG: Record<string, { label: string; color: string; badge: string }> = {
-  accommodation: { label: 'Hotel', color: 'bg-brand-50 text-brand-700 border border-brand-100', badge: 'bg-brand-600/80 text-white' },
-  tour: { label: 'Tour', color: 'bg-brand-50 text-brand-700 border border-brand-100', badge: 'bg-brand-600/80 text-white' },
-  package: { label: 'Package', color: 'bg-purple-50 text-purple-700 border border-purple-100', badge: 'bg-purple-600/80 text-white' },
-  activity: { label: 'Activity', color: 'bg-gold-50 text-gold-700 border border-gold-100', badge: 'bg-gold-500/80 text-white' },
+const DEAL_TYPE_CONFIG: Record<string, { label: string; color: string; badge: string; defaultCategory: string; businessType?: string }> = {
+  accommodation: { label: 'Hotel', color: 'bg-brand-50 text-brand-700 border border-brand-100', badge: 'bg-brand-600/80 text-white', defaultCategory: 'Luxury', businessType: 'Hotel' },
+  tour: { label: 'Tour', color: 'bg-brand-50 text-brand-700 border border-brand-100', badge: 'bg-brand-600/80 text-white', defaultCategory: 'Adventure', businessType: 'Tour Operator' },
+  package: { label: 'Package', color: 'bg-purple-50 text-purple-700 border border-purple-100', badge: 'bg-purple-600/80 text-white', defaultCategory: 'Local Gems' },
+  activity: { label: 'Activity', color: 'bg-gold-50 text-gold-700 border border-gold-100', badge: 'bg-gold-500/80 text-white', defaultCategory: 'Adventure' },
 }
 
 function formatPrice(price: number | null, unit: string | null): string {
@@ -89,6 +91,12 @@ export default async function DealsPage({
   const allDeals = (dbDeals && dbDeals.length > 0) ? dbDeals : FALLBACK_DEALS
 
   const activeType = searchParams.type ?? 'All'
+  const activeTypeConfig = activeType !== 'All' ? DEAL_TYPE_CONFIG[activeType] : null
+  const heroHeader = await resolveDefaultHeaderImage({
+    category: activeTypeConfig?.defaultCategory || 'Luxury',
+    businessType: activeTypeConfig?.businessType,
+    preferredVariant: 'desktop',
+  })
 
   const filtered = activeType === 'All'
     ? allDeals
@@ -97,7 +105,6 @@ export default async function DealsPage({
   return (
     <div className="min-h-screen bg-white">
       <TrackView event="deal_viewed" props={{ deal_count: allDeals.length }} />
-      {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <BahaLogo href="/" size="md" />
@@ -108,19 +115,14 @@ export default async function DealsPage({
         </div>
       </header>
 
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-brand-100 text-sm font-semibold tracking-widest uppercase mb-3">Current Deals</p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Bahamas Deals &amp; Packages</h1>
-          <p className="text-white/80 text-lg max-w-xl mx-auto">
-            Curated stays, tours, and island packages — matched to your travel style.
-          </p>
-        </div>
-      </div>
+      <DefaultHeaderHero
+        eyebrow="Current Deals"
+        title="Bahamas Deals & Packages"
+        subtitle="Curated stays, tours, and island packages — matched to your travel style."
+        header={heroHeader}
+      />
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        {/* Type filter */}
         <div className="flex flex-wrap gap-2 mb-8">
           {DEAL_TYPES.map(type => {
             const config = type !== 'All' ? DEAL_TYPE_CONFIG[type] : null
@@ -140,13 +142,11 @@ export default async function DealsPage({
           })}
         </div>
 
-        {/* Results count */}
         <p className="text-sm text-gray-400 mb-6">
           {filtered.length} deal{filtered.length !== 1 ? 's' : ''}
           {activeType !== 'All' ? ` · ${DEAL_TYPE_CONFIG[activeType]?.label ?? activeType}` : ''}
         </p>
 
-        {/* Grid */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
             <p className="text-lg font-medium text-gray-600">No deals found</p>
@@ -157,7 +157,14 @@ export default async function DealsPage({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map(deal => {
-              const typeConfig = DEAL_TYPE_CONFIG[deal.deal_type] ?? { label: deal.deal_type, color: 'bg-gray-100 text-gray-600 border border-gray-200', badge: 'bg-gray-600/80 text-white' }
+              const typeConfig = DEAL_TYPE_CONFIG[deal.deal_type] ?? { label: deal.deal_type, color: 'bg-gray-100 text-gray-600 border border-gray-200', badge: 'bg-gray-600/80 text-white', defaultCategory: 'Local Gems' }
+              const cardHeader = resolveStaticDefaultHeaderImage({
+                customImageUrl: deal.image_url,
+                category: typeConfig.defaultCategory,
+                island: deal.island,
+                businessType: typeConfig.businessType,
+                preferredVariant: 'card',
+              })
 
               return (
                 <div
@@ -165,19 +172,13 @@ export default async function DealsPage({
                   className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group flex flex-col"
                 >
                   <div className="relative h-48 overflow-hidden bg-stone-200">
-                    {deal.image_url ? (
-                      <Image
-                        src={deal.image_url}
-                        alt={deal.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                        <span className="text-6xl opacity-50" aria-hidden="true">🌴</span>
-                      </div>
-                    )}
+                    <Image
+                      src={cardHeader.url}
+                      alt={deal.image_url ? deal.title : cardHeader.alt}
+                      fill
+                      className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                    />
                     <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${typeConfig.badge}`}>
                       {typeConfig.label}
                     </div>
@@ -229,7 +230,6 @@ export default async function DealsPage({
           </div>
         )}
 
-        {/* App CTA */}
         <div className="mt-16 bg-gradient-to-r from-brand-600 to-brand-600 rounded-2xl p-8 text-center text-white">
           <h2 className="text-2xl font-bold mb-2">Get personalized deal recommendations</h2>
           <p className="text-brand-100 mb-6">Tell Baha Buddy your dates and budget — we&apos;ll find the best deals for you.</p>
