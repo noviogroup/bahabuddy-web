@@ -7,6 +7,7 @@ type PublicHeaderProps = {
 
 const navLinks = [
   { href: '/destinations', label: 'Destinations' },
+  { href: '/stays', label: 'Stays' },
   { href: '/guides', label: 'Guides' },
   { href: '/deals', label: 'Deals' },
   { href: '/concierge-trip-plan', label: 'Concierge' },

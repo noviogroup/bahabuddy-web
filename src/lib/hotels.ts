@@ -1,0 +1,131 @@
+import 'server-only'
+import { createClient } from '@/lib/supabase/server'
+
+export interface Hotel {
+  id: string
+  name: string
+  address: string | null
+  city: string | null
+  island: string | null
+  country_code: string
+  latitude: number | null
+  longitude: number | null
+  star_rating: number | null
+  review_score: number | null
+  review_count: number | null
+  description: string | null
+  main_photo_url: string | null
+  photos: { url: string; caption?: string }[]
+  amenities: string[]
+  property_type_id: number | null
+  property_type_name: string | null
+  is_active: boolean
+  last_synced_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+const BROWSE_FIELDS =
+  'id, name, city, island, star_rating, review_score, review_count, main_photo_url, photos, amenities, property_type_name' as const
+
+export async function getHotels(filters?: {
+  island?: string
+  propertyType?: string
+  minStars?: number
+  sort?: 'rating' | 'stars'
+}): Promise<Hotel[]> {
+  try {
+    const supabase = await createClient()
+    let query = supabase
+      .from('hotels')
+      .select(BROWSE_FIELDS)
+      .eq('is_active', true)
+      .limit(200)
+
+    if (filters?.island) {
+      query = query.ilike('island', filters.island)
+    }
+    if (filters?.propertyType) {
+      query = query.ilike('property_type_name', filters.propertyType)
+    }
+    if (filters?.minStars) {
+      query = query.gte('star_rating', filters.minStars)
+    }
+
+    if (filters?.sort === 'stars') {
+      query = query.order('star_rating', { ascending: false, nullsFirst: false })
+    } else {
+      query = query.order('review_score', { ascending: false, nullsFirst: false })
+    }
+
+    const { data, error } = await query
+    if (error || !data) return []
+    return data as Hotel[]
+  } catch {
+    return []
+  }
+}
+
+export async function getHotelById(hotelId: string): Promise<Hotel | null> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('hotels')
+      .select('*')
+      .eq('id', hotelId)
+      .single()
+    if (error || !data) return null
+    return data as Hotel
+  } catch {
+    return null
+  }
+}
+
+export async function getSimilarHotels(hotel: Hotel, limit = 4): Promise<Hotel[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('hotels')
+      .select(BROWSE_FIELDS)
+      .eq('is_active', true)
+      .ilike('island', hotel.island ?? '')
+      .neq('id', hotel.id)
+      .order('review_score', { ascending: false, nullsFirst: false })
+      .limit(limit)
+    return (data as Hotel[]) ?? []
+  } catch {
+    return []
+  }
+}
+
+export async function getIslandOptions(): Promise<string[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('hotels')
+      .select('island')
+      .eq('is_active', true)
+      .not('island', 'is', null)
+    if (!data) return []
+    const unique = Array.from(new Set(data.map((r) => r.island as string))).sort()
+    return unique
+  } catch {
+    return []
+  }
+}
+
+export async function getPropertyTypes(): Promise<string[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('hotels')
+      .select('property_type_name')
+      .eq('is_active', true)
+      .not('property_type_name', 'is', null)
+    if (!data) return []
+    const unique = Array.from(new Set(data.map((r) => r.property_type_name as string))).sort()
+    return unique
+  } catch {
+    return []
+  }
+}
