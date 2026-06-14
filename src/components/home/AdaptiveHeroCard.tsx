@@ -1,5 +1,3 @@
-'use client'
-
 /**
  * AdaptiveHeroCard — Home Dashboard hero, adapts to user state.
  */

@@ -6,9 +6,8 @@ import { ConciergeDetailsClientForm } from '@/components/concierge/ConciergeDeta
 export const dynamic = 'force-dynamic'
 
 type Params = { orderId: string }
-type SearchParams = { saved?: string }
 
-export default async function ConciergeOrderDetailsPage({ params, searchParams }: { params: Params; searchParams?: SearchParams }) {
+export default async function ConciergeOrderDetailsPage({ params }: { params: Params }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
