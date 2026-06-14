@@ -29,23 +29,6 @@ create table if not exists public.travel_booking_events (
 alter table public.travel_booking_records enable row level security;
 alter table public.travel_booking_events enable row level security;
 
-create policy if not exists "Users can read own travel booking records"
-  on public.travel_booking_records
-  for select
-  using (auth.uid() = user_id);
-
-create policy if not exists "Users can read own travel booking events"
-  on public.travel_booking_events
-  for select
-  using (
-    exists (
-      select 1
-      from public.travel_booking_records r
-      where r.id = travel_booking_events.booking_id
-        and r.user_id = auth.uid()
-    )
-  );
-
 create index if not exists idx_travel_booking_records_user_id
   on public.travel_booking_records(user_id);
 
