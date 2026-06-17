@@ -1,4 +1,4 @@
-import FlightBookingClient from './FlightBookingClient'
+import FlightSearchClient from '@/app/(dashboard)/flights/FlightSearchClient'
 
 /**
  * /flights — public front-end flight booking page.
@@ -15,5 +15,18 @@ export const metadata = {
 }
 
 export default function PublicFlightsPage() {
-  return <FlightBookingClient />
+  return (
+    <main className="min-h-screen bg-offwhite px-4 py-10">
+      <section className="mx-auto max-w-3xl">
+        <div className="mb-6 rounded-baha-lg bg-white p-6 shadow-soft border border-gray-100">
+          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-brand-600">Flights</p>
+          <h1 className="text-3xl font-extrabold text-night">Search and book Bahamas flights</h1>
+          <p className="mt-2 text-sm text-gray-500">
+            Compare live fares, verify the provider offer, then book through Baha Buddy.
+          </p>
+        </div>
+        <FlightSearchClient />
+      </section>
+    </main>
+  )
 }

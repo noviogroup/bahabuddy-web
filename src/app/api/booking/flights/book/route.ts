@@ -1,23 +1,69 @@
 import { NextResponse } from 'next/server'
 import { callTravelProvider, getProviderErrorResponse } from '@/lib/travel-booking/provider'
-import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 type JsonRecord = Record<string, unknown>
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const prebookId = String(body.prebookId ?? '')
-
-    if (!prebookId) {
-      return NextResponse.json({ error: 'prebookId is required.' }, { status: 400 })
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Authentication is required to book a flight.' }, { status: 401 })
     }
 
-    const result = await callTravelProvider('/flights/bookings', body)
-    await saveBookingRecord(result.data)
+    const body = await request.json()
+    const prebookId = stringValue(body.prebookId ?? body.prebook_id)
+    const transactionId = stringValue(body.transactionId ?? body.transaction_id)
+    const tripId = stringValue(body.tripId ?? body.trip_id)
+    const offerId = stringValue(body.offerId ?? body.offer_id)
 
-    return NextResponse.json(result.data, { status: result.status })
+    if (!prebookId || !transactionId || !tripId) {
+      return NextResponse.json({ error: 'prebookId, transactionId, and tripId are required.' }, { status: 400 })
+    }
+
+    const { data: trip } = await supabase
+      .from('trips')
+      .select('id')
+      .eq('id', tripId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (!trip) return NextResponse.json({ error: 'Trip not found.' }, { status: 404 })
+
+    const result = await callTravelProvider('/flights/bookings', {
+      prebookId,
+      transactionId,
+      payment: {
+        method: 'TRANSACTION_ID',
+        transactionId,
+      },
+    })
+    const providerBooking = firstRecord(result.data)
+    const persisted = await persistFlightBooking({
+      userId: user.id,
+      tripId,
+      offerId,
+      prebookId,
+      transactionId,
+      providerPayload: result.data,
+      providerBooking,
+      requestBody: asRecord(body),
+    })
+
+    const bookingReference = bookingRef(providerBooking)
+
+    return NextResponse.json({
+      bookingId: bookingReference || persisted.bookingId,
+      bookingReference,
+      status: normalizedStatus(providerBooking),
+      bookingRecordId: persisted.bookingId,
+      tripItemId: persisted.tripItemId,
+      price: persisted.amount,
+      currency: persisted.currency.toUpperCase(),
+      raw: result.data,
+    }, { status: result.status })
   } catch (error) {
     const response = getProviderErrorResponse(error)
     return NextResponse.json(
@@ -27,50 +73,192 @@ export async function POST(request: Request) {
   }
 }
 
-async function saveBookingRecord(payload: unknown) {
+async function persistFlightBooking(input: {
+  userId: string
+  tripId: string
+  offerId: string
+  prebookId: string
+  transactionId: string
+  providerPayload: unknown
+  providerBooking: JsonRecord
+  requestBody: JsonRecord
+}): Promise<{ bookingId: string | null; tripItemId: string | null; amount: number; currency: string }> {
+  const admin = createAdminClient()
+  const amount = moneyAmount(input.providerBooking, input.requestBody)
+  const currency = moneyCurrency(input.providerBooking, input.requestBody).toLowerCase()
+  if (!admin) return { bookingId: null, tripItemId: null, amount, currency }
+
+  const reference = bookingRef(input.providerBooking)
+  const status = normalizedStatus(input.providerBooking)
+  const flight = flightSummary(input.providerBooking)
+  const bookingRecord = {
+    user_id: input.userId,
+    trip_id: input.tripId,
+    booking_type: 'flight',
+    type: 'flight',
+    provider: 'liteapi',
+    booking_ref: reference || null,
+    booking_reference: reference || null,
+    external_reference: reference || null,
+    status,
+    amount,
+    amount_cents: Math.round(amount * 100),
+    gross_booking_value: amount,
+    currency,
+    supplier_ref: reference || null,
+    financial_metadata: {
+      source_surface: 'web',
+      provider_status: stringValue(input.providerBooking.status),
+      prebook_id: input.prebookId,
+      transaction_id: input.transactionId,
+      offer_id: input.offerId || null,
+    },
+    raw_response: asJsonObject(input.providerPayload),
+  }
+
+  const { data: bookingData } = await admin
+    .from('bookings')
+    .insert(bookingRecord)
+    .select('id')
+    .single()
+  const bookingId = (bookingData as { id?: string } | null)?.id ?? null
+
+  const flightRow = {
+    trip_id: input.tripId,
+    origin: flight.origin || stringValue(input.requestBody.origin, 'TBD'),
+    destination: flight.destination || stringValue(input.requestBody.destination, 'BS'),
+    departure_at: isoOrNull(flight.departureAt ?? input.requestBody.departureAt),
+    arrival_at: isoOrNull(flight.arrivalAt ?? input.requestBody.arrivalAt),
+    airline: flight.airline || stringValue(input.requestBody.airline, 'Flight'),
+    booking_reference: reference || null,
+    price: amount || null,
+    duffel_offer_id: input.offerId || null,
+  }
+
+  let tripItemId: string | null = null
+  if (input.offerId) {
+    const { data: updated } = await admin
+      .from('trip_flights')
+      .update(flightRow)
+      .eq('trip_id', input.tripId)
+      .eq('duffel_offer_id', input.offerId)
+      .select('id')
+      .maybeSingle()
+    tripItemId = (updated as { id?: string } | null)?.id ?? null
+  }
+
+  if (!tripItemId) {
+    const { data: inserted } = await admin
+      .from('trip_flights')
+      .insert(flightRow)
+      .select('id')
+      .single()
+    tripItemId = (inserted as { id?: string } | null)?.id ?? null
+  }
+
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    const admin = createAdminClient()
-
-    if (!admin) return
-
-    await admin
-      .from('travel_booking_records')
-      .insert({
-        user_id: user?.id ?? null,
-        product_type: 'flight',
-        status: 'confirmed',
-        provider_booking_id: findFirstString(payload, ['bookingId', 'id']),
-        provider_booking_ref: findFirstString(payload, ['bookingRef', 'reference', 'pnr']),
-        source: 'web',
-        provider_payload: asJsonObject(payload),
-      })
+    await admin.from('travel_booking_records').insert({
+      user_id: input.userId,
+      product_type: 'flight',
+      status,
+      provider_booking_id: reference || null,
+      provider_booking_ref: reference || null,
+      source: 'web',
+      origin: flightRow.origin,
+      destination: flightRow.destination,
+      currency: currency.toUpperCase(),
+      amount,
+      provider_payload: asJsonObject(input.providerPayload),
+    })
   } catch {
-    // Booking confirmation should not fail only because local persistence failed.
+    // Audit visibility is useful for support, but canonical booking success is controlled above.
+  }
+
+  return { bookingId, tripItemId, amount, currency }
+}
+
+function firstRecord(value: unknown): JsonRecord {
+  const data = asRecord(value).data ?? value
+  if (Array.isArray(data)) return asRecord(data[0])
+  return asRecord(data)
+}
+
+function bookingRef(data: JsonRecord): string {
+  return findFirstString(data, [
+    'bookingId',
+    'booking_id',
+    'bookingRef',
+    'booking_reference',
+    'reference',
+    'pnr',
+    'orderId',
+    'id',
+  ])
+}
+
+function normalizedStatus(data: JsonRecord): 'pending' | 'confirmed' | 'failed' {
+  const raw = findFirstString(data, ['status', 'bookingStatus', 'providerStatus']).toLowerCase()
+  if (['confirmed', 'booked', 'ticketed', 'success', 'succeeded'].includes(raw)) return 'confirmed'
+  if (['failed', 'cancelled', 'canceled', 'error'].includes(raw)) return 'failed'
+  return 'pending'
+}
+
+function flightSummary(data: JsonRecord) {
+  const journey = asRecord(data.journey ?? data.itinerary ?? data.flight)
+  const segments = firstArray(data.segments, data.legs, data.flights, journey.segments, journey.legs, journey.flights).map(asRecord)
+  const first = segments[0] ?? journey
+  const last = segments[segments.length - 1] ?? journey
+  return {
+    origin: airportCode(first.departure ?? first.origin ?? first.departureAirport ?? first.departure_airport),
+    destination: airportCode(last.arrival ?? last.destination ?? last.arrivalAirport ?? last.arrival_airport),
+    departureAt: first.departureTime ?? first.departureAt ?? first.departure_at ?? first.departsAt,
+    arrivalAt: last.arrivalTime ?? last.arrivalAt ?? last.arrival_at ?? last.arrivesAt,
+    airline: stringValue(first.airlineName ?? first.airline ?? first.marketingCarrier ?? first.carrier),
   }
 }
 
-function asJsonObject(value: unknown): JsonRecord {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    ? value as JsonRecord
-    : { data: value }
+function moneyAmount(providerBooking: JsonRecord, requestBody: JsonRecord): number {
+  const price = asRecord(providerBooking.price ?? providerBooking.totalPrice ?? providerBooking.total_price)
+  return numberValue(
+    price.amount
+      ?? providerBooking.amount
+      ?? providerBooking.total
+      ?? requestBody.amount
+  )
 }
 
-function findFirstString(data: unknown, keys: string[]): string | null {
-  if (!data || typeof data !== 'object') return null
+function moneyCurrency(providerBooking: JsonRecord, requestBody: JsonRecord): string {
+  const price = asRecord(providerBooking.price ?? providerBooking.totalPrice ?? providerBooking.total_price)
+  return stringValue(price.currency ?? providerBooking.currency ?? requestBody.currency, 'USD')
+}
+
+function airportCode(value: unknown): string {
+  if (typeof value === 'string') return value.trim().toUpperCase()
+  const record = asRecord(value)
+  return stringValue(record.iataCode ?? record.iata_code ?? record.code ?? record.airportCode).toUpperCase()
+}
+
+function firstArray(...values: unknown[]): unknown[] {
+  for (const value of values) {
+    if (Array.isArray(value)) return value
+  }
+  return []
+}
+
+function findFirstString(data: unknown, keys: string[]): string {
+  if (!data || typeof data !== 'object') return ''
   if (Array.isArray(data)) {
     for (const item of data) {
       const result = findFirstString(item, keys)
       if (result) return result
     }
-    return null
+    return ''
   }
 
   const record = data as JsonRecord
   for (const key of keys) {
     const value = record[key]
-    if (typeof value === 'string' && value.trim()) return value
+    if (typeof value === 'string' && value.trim()) return value.trim()
   }
 
   for (const value of Object.values(record)) {
@@ -78,5 +266,28 @@ function findFirstString(data: unknown, keys: string[]): string | null {
     if (result) return result
   }
 
-  return null
+  return ''
+}
+
+function asJsonObject(value: unknown): JsonRecord {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : { data: value }
+}
+
+function asRecord(value: unknown): JsonRecord {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
+}
+
+function stringValue(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function numberValue(value: unknown): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : 0
+}
+
+function isoOrNull(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date.toISOString()
 }

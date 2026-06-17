@@ -6,15 +6,18 @@ export type ProviderResult<T = ProviderJson> = {
 }
 
 const DEFAULT_BASE_URL = 'https://api.liteapi.travel/v3.0'
+const DEFAULT_BOOK_BASE_URL = 'https://book.liteapi.travel/v3.0'
 
 export function getTravelBookingConfig() {
   const apiKey = process.env.TRAVEL_BOOKING_API_KEY ?? process.env.LITEAPI_API_KEY ?? ''
   const baseUrl = (process.env.TRAVEL_BOOKING_API_BASE_URL ?? DEFAULT_BASE_URL).replace(/\/$/, '')
+  const bookBaseUrl = (process.env.TRAVEL_BOOKING_BOOK_BASE_URL ?? DEFAULT_BOOK_BASE_URL).replace(/\/$/, '')
   const authHeader = process.env.TRAVEL_BOOKING_API_AUTH_HEADER ?? 'X-API-Key'
 
   return {
     apiKey,
     baseUrl,
+    bookBaseUrl,
     authHeader,
     configured: Boolean(apiKey),
   }
@@ -23,7 +26,7 @@ export function getTravelBookingConfig() {
 export async function callTravelProvider<T = ProviderJson>(
   path: string,
   body: unknown,
-  init?: { method?: 'GET' | 'POST'; accept?: string }
+  init?: { method?: 'GET' | 'POST'; accept?: string; baseUrl?: string; useBookBase?: boolean }
 ): Promise<ProviderResult<T>> {
   const config = getTravelBookingConfig()
 
@@ -41,7 +44,9 @@ export async function callTravelProvider<T = ProviderJson>(
     ? `Bearer ${config.apiKey}`
     : config.apiKey
 
-  const response = await fetch(`${config.baseUrl}${path}`, {
+  const baseUrl = init?.baseUrl?.replace(/\/$/, '') ?? (init?.useBookBase ? config.bookBaseUrl : config.baseUrl)
+
+  const response = await fetch(`${baseUrl}${path}`, {
     method,
     headers,
     body: method === 'GET' ? undefined : JSON.stringify(body ?? {}),

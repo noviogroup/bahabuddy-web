@@ -74,7 +74,7 @@ export const TOOL_DEFINITIONS = [
 
   {
     name: 'get_restaurants',
-    description: 'Search for restaurants and dining options on a specific Bahamas island. Use when the user asks about food, dining, restaurants, cafes, bars, where to eat, or cuisine. ALWAYS call this instead of making up restaurant names.',
+    description: 'Search for quality restaurants and dining options on a specific Bahamas island. Use when the user asks about food, dining, restaurants, cafes, bars, where to eat, or cuisine. Results are filtered to avoid generic delis, convenience food spots, and chain-style low-signal records. ALWAYS call this instead of making up restaurant names.',
     input_schema: {
       type: 'object',
       properties: {
@@ -283,6 +283,78 @@ const PRICE_LEVEL_MAP: Record<string, number[]> = {
   'moderate':    [2],
   'upscale':     [3],
   'fine-dining': [3, 4],
+}
+
+const RESTAURANT_MIN_REVIEW_COUNT = 15
+const RESTAURANT_MIN_RATING = 4.0
+const RESTAURANT_EXCLUDED_NAME_TERMS = [
+  'brandon',
+  'deli',
+  'mini mart',
+  'minimart',
+  'convenience',
+  'grocery',
+  'supermarket',
+  'liquor',
+  'gas station',
+  'service station',
+  'food store',
+  'wholesale',
+  'pharmacy',
+  'marco',
+  'domino',
+  'kfc',
+  'mcdonald',
+  'burger king',
+  'wendy',
+  'subway',
+  'popeyes',
+  'dunkin',
+  'starbucks',
+]
+
+const RESTAURANT_EXCLUDED_CUISINE_TERMS = [
+  'deli',
+  'fast food',
+  'convenience',
+]
+
+function textValue(value: unknown): string {
+  return typeof value === 'string' ? value.toLowerCase() : ''
+}
+
+function hasRestaurantPhoto(place: Record<string, unknown>): boolean {
+  const photoUrl = typeof place.photo_url === 'string' ? place.photo_url : ''
+  if (photoUrl.startsWith('http')) return true
+  const photos = place.photos
+  return Array.isArray(photos) && photos.length > 0
+}
+
+export function isQualityRestaurantCandidate(place: Record<string, unknown>): boolean {
+  const name = textValue(place.name)
+  if (!name) return false
+  if (RESTAURANT_EXCLUDED_NAME_TERMS.some(term => name.includes(term))) {
+    return false
+  }
+
+  const cuisine = textValue(place.cuisine_type)
+  if (RESTAURANT_EXCLUDED_CUISINE_TERMS.some(term => cuisine.includes(term))) {
+    return false
+  }
+
+  const rating = typeof place.rating === 'number' ? place.rating : Number(place.rating ?? 0)
+  if (!Number.isFinite(rating) || rating < RESTAURANT_MIN_RATING) {
+    return false
+  }
+
+  const reviewCount = typeof place.user_ratings_total === 'number'
+    ? place.user_ratings_total
+    : Number(place.user_ratings_total ?? 0)
+  if (!Number.isFinite(reviewCount) || reviewCount < RESTAURANT_MIN_REVIEW_COUNT) {
+    return false
+  }
+
+  return hasRestaurantPhoto(place)
 }
 
 const ISLAND_COORDS: Record<string, { lat: number; lng: number }> = {
@@ -679,7 +751,8 @@ async function getRestaurants(
     .eq('is_active', true)
     .eq('type', 'restaurant')
     .eq('island_id', args.island_id)
-    .gte('user_ratings_total', 5)
+    .gte('rating', RESTAURANT_MIN_RATING)
+    .gte('user_ratings_total', RESTAURANT_MIN_REVIEW_COUNT)
     .order('rating', { ascending: false })
 
   if (args.cuisine_type) {
@@ -691,7 +764,7 @@ async function getRestaurants(
   }
 
   const limit = Math.min(Number(args.limit) || 5, 10)
-  query = query.limit(limit)
+  query = query.limit(Math.min(limit * 4, 40))
 
   const { data, error } = await query
 
@@ -699,7 +772,11 @@ async function getRestaurants(
     return { data: { error: `Restaurant search failed: ${error.message}`, results: [] } }
   }
 
-  if (!data || data.length === 0) {
+  const filteredData = data
+    ?.filter((p: Record<string, unknown>) => isQualityRestaurantCandidate(p))
+    .slice(0, limit)
+
+  if (!filteredData || filteredData.length === 0) {
     return {
       data: {
         results: [],
@@ -708,10 +785,10 @@ async function getRestaurants(
     }
   }
 
-  const placeIds = data.map(p => p.place_id as string).filter(Boolean)
+  const placeIds = filteredData.map(p => p.place_id as string).filter(Boolean)
   const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
 
-  const compact = data.map(p => ({
+  const compact = filteredData.map(p => ({
     place_id: p.place_id,
     name: p.name,
     island: p.island_id,
@@ -721,7 +798,7 @@ async function getRestaurants(
     description: p.description,
   }))
 
-  const cards: CardData[] = data.map(p => {
+  const cards: CardData[] = filteredData.map(p => {
     const pid = p.place_id as string
     const gallery = buildPhotoGallery(p.photos)
     const hours = Array.isArray(p.opening_hours) ? (p.opening_hours as string[]) : undefined
@@ -745,7 +822,7 @@ async function getRestaurants(
     }
   })
 
-  return { data: { results: compact, count: data.length }, cards }
+  return { data: { results: compact, count: filteredData.length }, cards }
 }
 
 async function getActivities(

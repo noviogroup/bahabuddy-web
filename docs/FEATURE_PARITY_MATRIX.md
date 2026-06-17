@@ -1,5 +1,7 @@
 # Baha Buddy Feature Parity Matrix
 
+Last reviewed: June 16, 2026
+
 ## Purpose
 
 This document maps current product capability across Baha Buddy Web, Mobile, Admin, Supabase, and Edge Functions.
@@ -62,9 +64,9 @@ It should be used before any new product enhancement work. The goal is to identi
 | Legacy activities table | Not primary | Not primary | Could confuse admin/devs | `activities` has 0 rows | N/A | 🔴 Gap | Deprecate or convert to view later |
 | Generic place photos | Web has place photo helper/API | Mobile unknown | No admin control | `place_photos` has 15 rows | `google-places-photo` | 🟡 Partial | Align with canonical `places` |
 | Generic place reviews | Web has review display concepts | Mobile unknown | No admin control | `place_reviews` has 3 rows | Source sync functions | 🟡 Partial | Align with canonical `places` |
-| Canonical places | Not present | Not present | Not present | No `places` table seen | N/A | 🔴 Gap | Create `places` + `place_sources` foundation |
-| Place admin management | No | N/A | Not present | Source tables exist | N/A | 🔴 Gap | Add Admin Places after canonical model |
-| Duplicate merge/hide | No clear UX | No | No | `google_places.is_disabled` exists | N/A | 🟡 Partial | Centralize hide/merge at canonical place level |
+| Canonical places | Partial public usage | Shared schema exists; mobile still has legacy/source read paths | Places module/API exists | `places` + `place_sources` migrations exist | Source sync/import functions still separate | 🟡 Partial | Move web/mobile reads to canonical places and treat source tables as enrichment/import paths |
+| Place admin management | N/A | N/A | Places manager, media/gallery, partner linking APIs exist | `places`, `place_sources`, `partner_places`, `partner_photo_submissions` | N/A | ✅ Current admin surface | Validate production data and wire mobile/web to this control plane |
+| Duplicate merge/hide | No clear UX | No | Hide/archive/status controls exist at canonical place level | `places.status`, `places.is_active`, source links | N/A | 🟡 Partial | Add duplicate merge workflow and source conflict review |
 
 ---
 
@@ -99,15 +101,15 @@ It should be used before any new product enhancement work. The goal is to identi
 
 | Feature | Web | Mobile | Admin | Supabase | Edge Functions | Status | Required Action |
 |---|---|---|---|---|---|---|---|
-| Admin auth | N/A | N/A | Server-side admin auth exists | `admin_users` expected from code, not seen in public table list | N/A | 🟡 Partial | Verify `admin_users` table/schema; maybe table omitted/truncated? |
+| Admin auth | N/A | N/A | Server-side admin auth exists | `admin_users` migration exists | N/A | ⚠️ Risk | Fail closed when admin allowlist is empty; keep service role server-only |
 | CI/tests | N/A | N/A | CI/test suite added | N/A | N/A | ✅ Current | Keep all admin changes behind tests |
 | User visibility | N/A | N/A | Users API/detail | `users`, trips, bookings, threads | N/A | ✅ Current | Add PII/audit guardrails |
 | Billing/cost dashboard | N/A | N/A | Billing API exists | `api_credit_status`, `ai_usage_log`, `api_usage_log` | N/A | 🟡 Partial | Consolidate AI/API cost sources |
 | Booking ops | N/A | N/A | Booking APIs exist | `bookings` has 0 | order functions | 🧪 Needs Test | Test actual booking lifecycle |
-| Place management | N/A | N/A | Missing | source tables exist | source functions | 🔴 Gap | Build after canonical `places` exists |
-| Partner management | N/A | N/A | Missing | no partner table seen | N/A | 🔴 Gap | Build after places foundation |
+| Place management | N/A | N/A | Places module/API exists | `places`, `place_sources` | source functions | 🟡 Partial | Complete web/mobile migration to canonical places and add merge review |
+| Partner management | N/A | N/A | Partners module/API exists | `partners`, `partner_places`, `partner_leads`, `partner_campaigns`, `partner_payouts` | N/A | 🟡 Partial | Validate data, add partner lifecycle QA, and connect mobile/web placements |
 | Trip sharing/invite ops | N/A | N/A | Missing | share/invite tables empty | invite/share functions | 🔴 Gap | Add admin visibility after flow works |
-| High-intent traveler queue | N/A | N/A | Missing | data exists across users/trips/chats | N/A | 🔴 Gap | Later after analytics foundation |
+| High-intent traveler queue | N/A | N/A | High-Intent module/API exists | data exists across users/trips/chats/bookings | N/A | 🟡 Partial | Add mobile/web traveler event instrumentation for stronger scoring |
 
 ---
 
@@ -117,9 +119,9 @@ It should be used before any new product enhancement work. The goal is to identi
 |---|---|---|---|---|---|
 | AI/API cost tracking | Web/admin support | Mobile via functions | Billing API | `ai_usage_log`, `api_credit_status` | 🟡 Partial | Normalize event/cost source names |
 | Booking revenue | Checkout exists | Stripe dependency/helpers | Billing revenue summary | `bookings` 0, revenue views expected | 🧪 Needs Test | Run E2E payment and webhook test |
-| Concierge product | Planned | Planned | No order queue | No concierge table seen | 🔴 Gap | Build after foundation cleanup |
-| Partner subscriptions | Planned | N/A | Missing | No partner table seen | 🔴 Gap | Build after places foundation |
-| Sponsored placements | Content system supports future | Mobile content support | Missing controls | Sanity + places future | ⏭ Later | Do not build before partner model |
+| Concierge product | Current web sales/order flow | Planned/undecided mobile placement | Concierge Orders + Payments modules exist | `concierge_orders` | 🟡 Partial | Decide mobile entry points and support handoff |
+| Partner subscriptions | Planned | N/A | Partners module foundation exists | `partners`, campaigns, payouts | 🟡 Partial | Add subscription/product rules after partner data QA |
+| Sponsored placements | Content system supports future | Mobile content support | Deals & Placements controls exist | `deals`, `partners`, `places` | 🟡 Partial | Connect placements to canonical mobile/web feeds with clear sponsored labels |
 | Tourism intelligence | Not yet | Not yet | Not yet | data scattered | ⏭ Later | Build after analytics/data model cleanup |
 
 ---
@@ -130,9 +132,9 @@ It should be used before any new product enhancement work. The goal is to identi
 |---|---|---|---|---|---|
 | Cruise traveler trip type | Not present | Not present | Not present | No cruise fields/table seen | 🔴 Gap | Add only after trips RLS + place foundation |
 | Cruise day planner | Planned | Planned | Not present | No model | 🔴 Gap | Build after foundation sync |
-| Self-guided tours | Planned | Planned | Not present | No `tours`/`tour_stops` seen | 🔴 Gap | Build after canonical places |
-| Tour purchase flow | Planned | Planned | Not present | `bookings` could support later | 🔴 Gap | Define product/order type later |
-| Port-safe recommendations | Planned | Planned | Not present | Needs canonical places + ports | 🔴 Gap | Requires places + cruise fields |
+| Self-guided tours | Guided-day public pages exist | Live Google Navigation/self-guided flow exists | Guided Day Plans module/API exists | `cruise_itineraries`, stops, route segments, sessions | 🟡 Partial | Real-device QA and ensure mobile consumes published admin records only |
+| Tour purchase flow | Guided-day/concierge paths exist | Tour checkout exists | Payments/Concierge/Guided Day modules exist | `cruise_day_orders`, `concierge_orders`, `bookings` | 🟡 Partial | Decide canonical order model and reconciliation path |
+| Port-safe recommendations | Cruise itinerary content exists | Guided-day live route logic exists | Guided Day Plans module controls buffers/stops | cruise itinerary tables | 🟡 Partial | Validate port return buffers, cruise schedules, and safety copy in admin |
 
 ---
 
@@ -150,34 +152,34 @@ Required:
 - Test chat auto-save
 - Test sharing/invite flows
 
-### Gap 2: No canonical place source of truth
+### Gap 2: Canonical place source exists, but app read paths are not fully migrated
 
 Current place data is split across:
 
+- Canonical `places` and `place_sources`
 - Google Places
 - TripAdvisor locations
-- empty legacy hotels/restaurants/activities
+- legacy hotels/restaurants/activities
 - generic photos/reviews
 - Sanity content
 
 Required:
 
-- Create `places`
-- Create `place_sources`
-- Align `place_photos` and `place_reviews`
+- Treat `places` and `place_sources` as the managed source of truth
+- Align `place_photos`, `place_reviews`, partner photos, and default media
 - Build compatibility views
 - Migrate app read paths gradually
 
-### Gap 3: Admin lacks control over places and partner readiness
+### Gap 3: Admin control exists, but mobile/web do not fully consume it
 
-Admin currently has analytics/users/bookings concepts but no canonical place management.
+Admin currently has Places, Partners, Deals, Guided Day, Bookings, Revenue, Concierge, Payments, Support, Admin Users, and Audit modules. The remaining gap is ensuring traveler-facing surfaces consume the same canonical records and statuses.
 
 Required:
 
-- Admin Places section
-- Merge/hide/verify fields
-- Source mapping visibility
-- Partner flagging
+- Mobile Explore, stays, restaurants, activities, deals, and tours read canonical admin-managed records first
+- Web public pages and authenticated dashboards use the same canonical IDs
+- Add duplicate/merge and source conflict review
+- Keep hide/archive, featured, sponsored, partner, and media states consistent across surfaces
 
 ### Gap 4: Booking lifecycle needs live validation
 
@@ -214,12 +216,12 @@ Required:
 
 ### Phase 2 — Places foundation
 
-1. Create canonical `places` table.
-2. Create `place_sources` table.
-3. Backfill TripAdvisor rows.
-4. Backfill Google Places rows.
-5. Deduplicate and map sources.
-6. Create `v_places_hotels`, `v_places_restaurants`, `v_places_activities`.
+1. Confirm canonical `places` and `place_sources` migrations are applied in production.
+2. Backfill TripAdvisor rows.
+3. Backfill Google Places rows.
+4. Deduplicate and map sources.
+5. Confirm `v_places_hotels`, `v_places_restaurants`, `v_places_activities`.
+6. Connect admin media, partner links, featured/sponsored flags, and source priority.
 
 ### Phase 3 — App read-path parity
 
@@ -230,11 +232,11 @@ Required:
 
 ### Phase 4 — Admin control
 
-1. Add Places admin module.
-2. Add duplicate/merge review.
-3. Add partner/verified flags.
-4. Add source visibility.
-5. Add basic partner table later.
+1. Harden admin auth fail-closed behavior.
+2. Complete duplicate/merge review.
+3. Validate partner/verified flags against live app rendering.
+4. Add source conflict visibility.
+5. Confirm audit logs for mutations and PII access.
 
 ### Phase 5 — Revenue readiness
 
@@ -266,9 +268,9 @@ Foundation cleanup is complete when:
 Recommended next docs/migrations:
 
 1. `supabase/migrations/<date>_trips_rls_policies.sql`
-2. `supabase/migrations/<date>_canonical_places.sql`
+2. `docs/APP_ADMIN_MANAGEMENT_CONTRACT.md` or equivalent owner matrix if the main UI plan becomes too large
 3. `docs/ACTIVE_EDGE_FUNCTIONS_AUDIT.md`
 4. `docs/PLACE_DATA_MIGRATION_PLAN.md`
 5. `docs/FOUNDATION_TEST_PLAN.md`
 
-Do not start Cruise Day Planner or Self-Guided Tours until at least the trips RLS and canonical places plan are in place.
+Do not expand commerce surfaces until trips RLS, canonical place reads, booking reconciliation, and admin auth fail-closed behavior are verified.

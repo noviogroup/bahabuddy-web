@@ -90,6 +90,7 @@ export interface CardData {
   departure?: string
   arrival?: string
   stops?: string
+  passengers?: number
   // day_plan
   day_number?: number
   morning?: string
@@ -151,6 +152,9 @@ export interface CardData {
   baggage?: { carry_on?: boolean; checked?: number }
   /** Flight: Duffel offer ID, threaded through for future booking wiring. */
   duffel_offer_id?: string
+  /** LiteAPI flight offer ID / normalized provider offer ID. */
+  offer_id?: string
+  provider_offer_id?: string
 
   // ── Phase 4 destination/map enrichments ────────────────────────────────
 
@@ -173,28 +177,38 @@ interface RichCardRendererProps {
    *  pages own the chat affordance. Kept here so older call sites
    *  don't break; ignored by the rendered cards. */
   onSendMessage?: (msg: string) => void
+  /** Active trip context enables direct Add to trip actions without sending a chat prompt. */
+  activeTripId?: string
+  onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
   /** C.9.7: When set, the SummaryCard renders a "Book this trip" CTA
    *  that links to /dashboard/checkout. Plumbed by ChatPanel from
    *  msg.savedTripId on the parent message. Other cards ignore it. */
   tripId?: string
 }
 
-export function RichCardRenderer({ cardData, onSendMessage, tripId }: RichCardRendererProps) {
+export function RichCardRenderer({ cardData, onSendMessage, activeTripId, onAddToTrip, tripId }: RichCardRendererProps) {
   if (cardData.card_type === 'mixed' && cardData.cards?.length) {
     return (
       <div className="space-y-2">
         {cardData.cards.map((c, i) => (
-          <RichCardRenderer key={i} cardData={c} onSendMessage={onSendMessage} tripId={tripId} />
+          <RichCardRenderer
+            key={i}
+            cardData={c}
+            onSendMessage={onSendMessage}
+            activeTripId={activeTripId}
+            onAddToTrip={onAddToTrip}
+            tripId={tripId}
+          />
         ))}
       </div>
     )
   }
 
   switch (cardData.card_type) {
-    case 'hotel':      return <HotelCardAdapter data={cardData} onSendMessage={onSendMessage} />
-    case 'restaurant': return <RestaurantCardAdapter data={cardData} onSendMessage={onSendMessage} />
-    case 'activity':   return <ActivityCardAdapter data={cardData} onSendMessage={onSendMessage} />
-    case 'flight':     return <FlightCardAdapter data={cardData} onSendMessage={onSendMessage} />
+    case 'hotel':      return <HotelCardAdapter data={cardData} onSendMessage={onSendMessage} activeTripId={activeTripId} onAddToTrip={onAddToTrip} />
+    case 'restaurant': return <RestaurantCardAdapter data={cardData} onSendMessage={onSendMessage} activeTripId={activeTripId} onAddToTrip={onAddToTrip} />
+    case 'activity':   return <ActivityCardAdapter data={cardData} onSendMessage={onSendMessage} activeTripId={activeTripId} onAddToTrip={onAddToTrip} />
+    case 'flight':     return <FlightCardAdapter data={cardData} onSendMessage={onSendMessage} activeTripId={activeTripId} onAddToTrip={onAddToTrip} />
     case 'day_plan':   return <DayPlanCardAdapter data={cardData} onSendMessage={onSendMessage} />
     case 'summary':    return <SummaryCardAdapter data={cardData} tripId={tripId} />
     case 'map':        return <MapCardAdapter data={cardData} />
@@ -222,9 +236,13 @@ export function RichCardRenderer({ cardData, onSendMessage, tripId }: RichCardRe
 function HotelCardAdapter({
   data,
   onSendMessage,
+  activeTripId,
+  onAddToTrip,
 }: {
   data: CardData
   onSendMessage?: (msg: string) => void
+  activeTripId?: string
+  onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
   const hotelData: HotelCardData = {
     place_id: data.place_id,
@@ -246,8 +264,10 @@ function HotelCardAdapter({
     top_review: data.top_review,
   }
 
-  const handleSave = onSendMessage
-    ? (d: HotelCardData) => onSendMessage(`Save ${d.name} to my trip`)
+  const handleSave = activeTripId && onAddToTrip
+    ? () => onAddToTrip(data, activeTripId)
+    : onSendMessage
+    ? (d: HotelCardData) => onSendMessage(`Help me add ${d.name} to my trip`)
     : undefined
 
   return <NewHotelCard data={hotelData} size="compact" onSave={handleSave} />
@@ -261,9 +281,13 @@ function HotelCardAdapter({
 function RestaurantCardAdapter({
   data,
   onSendMessage,
+  activeTripId,
+  onAddToTrip,
 }: {
   data: CardData
   onSendMessage?: (msg: string) => void
+  activeTripId?: string
+  onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
   const restaurantData: RestaurantCardData = {
     place_id: data.place_id,
@@ -283,8 +307,10 @@ function RestaurantCardAdapter({
     top_review: data.top_review,
   }
 
-  const handleSave = onSendMessage
-    ? (d: RestaurantCardData) => onSendMessage(`Save ${d.name} to my trip`)
+  const handleSave = activeTripId && onAddToTrip
+    ? () => onAddToTrip(data, activeTripId)
+    : onSendMessage
+    ? (d: RestaurantCardData) => onSendMessage(`Help me add ${d.name} to my trip`)
     : undefined
 
   return <NewRestaurantCard data={restaurantData} size="compact" onSave={handleSave} />
@@ -296,9 +322,13 @@ function RestaurantCardAdapter({
 function ActivityCardAdapter({
   data,
   onSendMessage,
+  activeTripId,
+  onAddToTrip,
 }: {
   data: CardData
   onSendMessage?: (msg: string) => void
+  activeTripId?: string
+  onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
   const activityData: ActivityCardData = {
     place_id: data.place_id,
@@ -323,8 +353,10 @@ function ActivityCardAdapter({
     top_review: data.top_review,
   }
 
-  const handleSave = onSendMessage
-    ? (d: ActivityCardData) => onSendMessage(`Save ${d.name} to my trip`)
+  const handleSave = activeTripId && onAddToTrip
+    ? () => onAddToTrip(data, activeTripId)
+    : onSendMessage
+    ? (d: ActivityCardData) => onSendMessage(`Help me add ${d.name} to my trip`)
     : undefined
 
   return <NewActivityCard data={activityData} size="compact" onSave={handleSave} />
@@ -387,9 +419,13 @@ function DayPlanCardAdapter({
 function FlightCardAdapter({
   data,
   onSendMessage,
+  activeTripId,
+  onAddToTrip,
 }: {
   data: CardData
   onSendMessage?: (msg: string) => void
+  activeTripId?: string
+  onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
   const flightData: FlightCardData = {
     route: data.route,
@@ -405,7 +441,39 @@ function FlightCardAdapter({
     duffel_offer_id: data.duffel_offer_id,
   }
 
-  return <NewFlightCard data={flightData} onSendMessage={onSendMessage} />
+  return (
+    <div className="space-y-2">
+      <NewFlightCard data={flightData} />
+      <div className="flex flex-wrap justify-end gap-2">
+        {activeTripId && onAddToTrip && (
+          <button
+            type="button"
+            onClick={() => onAddToTrip(data, activeTripId)}
+            className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 px-3 py-1 rounded-full border border-brand-200 hover:bg-brand-50 transition-colors"
+          >
+            Add to trip
+          </button>
+        )}
+        {(data.duffel_offer_id || data.offer_id || data.provider_offer_id) && (
+          <a
+            href={`/flights/${encodeURIComponent(String(data.duffel_offer_id ?? data.offer_id ?? data.provider_offer_id))}/book`}
+            className="text-[11px] font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 py-1 rounded-full transition-colors"
+          >
+            Book this fare
+          </a>
+        )}
+        {!activeTripId && onSendMessage && (
+          <button
+            type="button"
+            onClick={() => onSendMessage(`Help me save the ${data.airline ?? 'flight'} option to my trip`)}
+            className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 px-3 py-1 rounded-full border border-brand-200 hover:bg-brand-50 transition-colors"
+          >
+            Plan this flight
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Destination Card adapter (new cards/ system) ─────────────────────────

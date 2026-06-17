@@ -10,9 +10,8 @@
  *   error   → validation / API error; show banner, keep form usable
  *
  * Results are rendered through <RichCardRenderer> with the same flight
- * cards Buddy emits in chat. Flight cards are intentionally non-linking
- * — Duffel offer IDs expire (~30 min) and have no stable URL — but the
- * inline price/duration/stops give users enough to compare and decide.
+ * cards Buddy emits in chat. Cards now expose a direct "Book this fare"
+ * action when the provider offer ID is present.
  *
  * Defaults that reduce typing:
  *   - Departure date: today + 14 days (typical Bahamas trip lead time)
@@ -490,8 +489,7 @@ export default function FlightSearchClient() {
             ))}
           </div>
           <p className="text-xs text-gray-400 px-1 pt-2">
-            Prices are live Duffel offers and may expire within ~30 minutes.{' '}
-            To book a specific flight, share it with Buddy in the chat.
+            Prices are live LiteAPI offers and may expire quickly. Verify the fare before payment.
           </p>
         </section>
       )}

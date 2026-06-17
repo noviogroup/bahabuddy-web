@@ -1,35 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
-import { searchFlights } from '@/lib/chat-tools'
+import { callTravelProvider, getProviderErrorResponse } from '@/lib/travel-booking/provider'
+import type { CardData } from '@/components/RichCards'
 
-/**
- * POST /api/flights/search — direct (non-chat) Duffel flight search.
- *
- * Same code path as the chat tool `search_flights` — we just call the
- * exported `searchFlights` executor with the same arg shape. This
- * guarantees behaviour parity: bug fixes to Duffel handling benefit
- * both surfaces.
- *
- * Auth: required. The (dashboard) layout already gates the UI, this
- * is belt + suspenders so a stolen token can't be used anonymously.
- *
- * Body shape:
- *   {
- *     origin_city:    string,   // city name or 3-letter IATA
- *     destination:    string,   // one of NAS/EXU/ELH/FPO/GHB/BIM/ASD/MHH
- *     departure_date: string,   // YYYY-MM-DD
- *     return_date?:   string,   // YYYY-MM-DD (omit for one-way)
- *     passengers?:    number,   // default 1
- *     cabin_class?:   string,   // economy | premium_economy | business | first
- *   }
- *
- * Response shape (success):
- *   { results: [...flights], count, cards: [...FlightCard data] }
- *
- * Response shape (graceful failure — Duffel down, no offers, etc.):
- *   { results: [], message: string }   // user-friendly
- *   { results: [], error:   string }   // technical
- */
 export async function POST(request: Request) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -37,75 +10,125 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  let body: Record<string, unknown>
   try {
-    body = await request.json()
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
-  }
+    const body = await request.json()
+    const origin = String(body.origin_city ?? body.origin ?? '').trim().toUpperCase()
+    const destination = String(body.destination ?? '').trim().toUpperCase()
+    const departureDate = String(body.departure_date ?? '').trim()
+    const returnDate = typeof body.return_date === 'string' ? body.return_date.trim() : ''
 
-  // Minimal request shape validation. The executor itself handles deeper
-  // validation (airport code resolution, Duffel error mapping, etc).
-  if (!body.origin_city || typeof body.origin_city !== 'string') {
-    return NextResponse.json(
-      { error: 'origin_city is required' },
-      { status: 400 },
-    )
-  }
-  if (!body.destination || typeof body.destination !== 'string') {
-    return NextResponse.json(
-      { error: 'destination is required' },
-      { status: 400 },
-    )
-  }
-  if (!body.departure_date || typeof body.departure_date !== 'string') {
-    return NextResponse.json(
-      { error: 'departure_date is required' },
-      { status: 400 },
-    )
-  }
-
-  // Light departure-date sanity: must parse and be today-or-later. Lets
-  // through bad timezone edge cases (Duffel will reject anyway).
-  const dep = new Date(body.departure_date)
-  if (Number.isNaN(dep.getTime())) {
-    return NextResponse.json(
-      { error: 'departure_date is not a valid date' },
-      { status: 400 },
-    )
-  }
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
-  if (dep < today) {
-    return NextResponse.json(
-      { error: 'departure_date must be today or in the future' },
-      { status: 400 },
-    )
-  }
-
-  // Return date, if given, must be after departure.
-  if (body.return_date) {
-    const ret = new Date(body.return_date as string)
-    if (Number.isNaN(ret.getTime())) {
-      return NextResponse.json(
-        { error: 'return_date is not a valid date' },
-        { status: 400 },
-      )
+    if (!origin || !destination || !departureDate) {
+      return NextResponse.json({ error: 'origin_city, destination, and departure_date are required.' }, { status: 400 })
     }
-    if (ret < dep) {
-      return NextResponse.json(
-        { error: 'return_date must be on or after departure_date' },
-        { status: 400 },
-      )
+
+    const legs = [
+      { origin, destination, date: departureDate, direction: 'OUTBOUND' },
+      ...(returnDate ? [{ origin: destination, destination: origin, date: returnDate, direction: 'INBOUND' }] : []),
+    ]
+
+    const result = await callTravelProvider('/flights/rates', {
+      legs,
+      adults: Math.max(1, Number(body.passengers ?? 1)),
+      cabinClass: String(body.cabin_class ?? 'economy').toUpperCase(),
+      currency: 'USD',
+      country: 'US',
+    })
+
+    const cards = shapeFlightCards(result.data)
+    return NextResponse.json({
+      results: cards,
+      count: cards.length,
+      cards,
+      message: cards.length === 0 ? `No flights found from ${origin} to ${destination} on ${departureDate}.` : undefined,
+    })
+  } catch (error) {
+    const response = getProviderErrorResponse(error)
+    return NextResponse.json({ error: response.error, details: response.details }, { status: response.status })
+  }
+}
+
+function shapeFlightCards(response: unknown): CardData[] {
+  const batches = Array.isArray(asRecord(response).data) ? asRecord(response).data as unknown[] : []
+  const cards: CardData[] = []
+
+  for (const batchValue of batches) {
+    const batch = asRecord(batchValue)
+    const journeys = Array.isArray(batch.journeys) ? batch.journeys : []
+    for (const journeyValue of journeys) {
+      const journey = asRecord(journeyValue)
+      const segments = recordList(journey.segments)
+      const outbound = segments.filter((segment) => segment.direction !== 'INBOUND')
+      const shownSegments = outbound.length > 0 ? outbound : segments
+      const first = shownSegments[0] ?? {}
+      const last = shownSegments[shownSegments.length - 1] ?? first
+      const carrier = asRecord(first.carrier)
+      const duration = asRecord(journey.totalDuration)
+      const offers = recordList(journey.offers)
+      const passengerCounts = asRecord(journey.parameters)
+      const passengerTotal = numberValue(passengerCounts.adults, 1) +
+        numberValue(passengerCounts.children) +
+        numberValue(passengerCounts.infants)
+
+      for (const offer of offers) {
+        const display = asRecord(asRecord(offer.pricing).display)
+        const fare = asRecord(offer.fare)
+        const terms = asRecord(offer.terms)
+        cards.push({
+          card_type: 'flight',
+          offer_id: stringValue(offer.offerId),
+          provider_offer_id: stringValue(offer.offerId),
+          route: `${stringValue(first.originCode)} → ${stringValue(last.destinationCode)}`,
+          airline: stringValue(carrier.marketingName, stringValue(carrier.operatingName, 'Airline')),
+          departure: formatFlightTime(first.departureTime),
+          arrival: formatFlightTime(last.arrivalTime),
+          duration: formatDuration(numberValue(duration.minutes)),
+          stops: shownSegments.length <= 1 ? 'Direct' : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? 's' : ''}`,
+          price: numberValue(display.total),
+          cabin_class: stringValue(fare.family, 'Economy'),
+          passengers: Math.max(1, passengerTotal),
+          baggage: { checked: baggageCount(offer.baggage) },
+          description: terms.refundable === true ? 'Refundable fare' : undefined,
+        })
+      }
     }
   }
 
-  const result = await searchFlights(body)
+  return cards
+    .filter((card) => card.offer_id && typeof card.price === 'number' && card.price > 0)
+    .sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0))
+    .slice(0, 20)
+}
 
-  // The executor returns { data, cards? } — flatten for the client.
-  const data = (result.data ?? {}) as Record<string, unknown>
-  return NextResponse.json({
-    ...data,
-    cards: result.cards ?? [],
-  })
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function recordList(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map(asRecord) : []
+}
+
+function stringValue(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback
+}
+
+function numberValue(value: unknown, fallback = 0): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : Number(value) || fallback
+}
+
+function formatFlightTime(value: unknown): string {
+  if (typeof value !== 'string' || !value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
+}
+
+function baggageCount(value: unknown): number {
+  const included = recordList(asRecord(value).included)
+  return included.filter((bag) => /checked/i.test(stringValue(bag.description))).length
 }

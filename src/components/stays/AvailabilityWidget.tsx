@@ -3,13 +3,13 @@
 import { useState } from 'react'
 
 interface RoomRate {
+  rateId: string
   roomName: string
   boardName: string
   currency: string
   totalRate: number
   nightlyRate: number
   cancellationPolicy?: string
-  bookingUrl?: string
 }
 
 interface AvailabilityWidgetProps {
@@ -38,10 +38,10 @@ export default function AvailabilityWidget({ hotelId, hotelName }: AvailabilityW
     setRooms(null)
 
     try {
-      const res = await fetch('/api/hotel-rates', {
+      const res = await fetch('/api/booking/hotels/rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hotelId, checkin, checkout, adults }),
+        body: JSON.stringify({ hotelIds: [hotelId], checkin, checkout, adults }),
       })
 
       if (!res.ok) {
@@ -51,7 +51,19 @@ export default function AvailabilityWidget({ hotelId, hotelName }: AvailabilityW
       }
 
       const data = await res.json()
-      setRooms(data.rooms ?? [])
+      const firstRate = Array.isArray(data.rates) ? data.rates[0] : null
+      const mappedRooms = Array.isArray(firstRate?.rooms)
+        ? firstRate.rooms.map((room: Record<string, unknown>) => ({
+            rateId: String(room.rate_id ?? room.offer_id ?? ''),
+            roomName: String(room.name ?? 'Room'),
+            boardName: String(room.board_type ?? ''),
+            currency: String(room.currency ?? 'USD'),
+            totalRate: Number(room.total_price ?? 0),
+            nightlyRate: Number(room.total_price ?? 0) / Math.max(1, Number(data.nights ?? 1)),
+            cancellationPolicy: typeof room.cancellation_summary === 'string' ? room.cancellation_summary : undefined,
+          })).filter((room: RoomRate) => room.rateId && room.totalRate > 0)
+        : []
+      setRooms(mappedRooms)
     } catch {
       setError('Network error — please try again.')
     } finally {
@@ -166,23 +178,19 @@ export default function AvailabilityWidget({ hotelId, hotelName }: AvailabilityW
                     {room.currency} {room.nightlyRate.toFixed(0)}/night
                   </p>
                 </div>
-                {room.bookingUrl ? (
-                  <a
-                    href={room.bookingUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-brand-600 text-white text-sm font-semibold rounded-xl px-4 py-2 hover:bg-brand-700 transition-colors whitespace-nowrap"
-                  >
-                    Book
-                  </a>
-                ) : (
-                  <a
-                    href={`/dashboard?q=Book+${encodeURIComponent(hotelName)}+${checkin}+to+${checkout}`}
-                    className="bg-brand-600 text-white text-sm font-semibold rounded-xl px-4 py-2 hover:bg-brand-700 transition-colors whitespace-nowrap"
-                  >
-                    Book
-                  </a>
-                )}
+                <a
+                  href={buildGuestDetailsHref({
+                    hotelId,
+                    hotelName,
+                    checkin,
+                    checkout,
+                    adults,
+                    room,
+                  })}
+                  className="bg-brand-600 text-white text-sm font-semibold rounded-xl px-4 py-2 hover:bg-brand-700 transition-colors whitespace-nowrap"
+                >
+                  Book
+                </a>
               </div>
             </div>
           ))}
@@ -190,4 +198,25 @@ export default function AvailabilityWidget({ hotelId, hotelName }: AvailabilityW
       )}
     </div>
   )
+}
+
+function buildGuestDetailsHref(input: {
+  hotelId: string
+  hotelName: string
+  checkin: string
+  checkout: string
+  adults: number
+  room: RoomRate
+}) {
+  const params = new URLSearchParams({
+    rate_id: input.room.rateId,
+    checkin: input.checkin,
+    checkout: input.checkout,
+    adults: String(input.adults),
+    room: input.room.roomName,
+    amount: String(Math.round(input.room.totalRate * 100)),
+    currency: input.room.currency,
+    hotel_name: input.hotelName,
+  })
+  return `/stays/${encodeURIComponent(input.hotelId)}/guests?${params.toString()}`
 }

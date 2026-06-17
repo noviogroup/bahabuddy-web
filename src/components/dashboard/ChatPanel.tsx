@@ -96,6 +96,80 @@ function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
 }
 
+function buildTripItemPayload(card: CardData): Record<string, unknown> | null {
+  const name = card.name ?? card.title ?? card.airline ?? card.route
+  if (!name) return null
+
+  if (card.card_type === 'hotel') {
+    const price = card.cheapest_total ?? (card.price_per_night && card.nights ? card.price_per_night * card.nights : card.price_per_night)
+    return {
+      itemType: 'hotel',
+      sourceId: card.place_id,
+      sourceType: 'chat_card',
+      name,
+      island: card.island ?? card.city,
+      provider: 'liteapi',
+      providerHotelId: card.place_id,
+      price,
+      pricePerNight: card.price_per_night,
+      currency: 'USD',
+      imageUrl: card.photo ?? card.thumbnail ?? card.photo_url,
+      metadata: {
+        rating: card.rating,
+        stars: card.stars,
+        why: card.description,
+      },
+    }
+  }
+
+  if (card.card_type === 'flight') {
+    const routeParts = (card.route ?? '').split(/[→>-]/).map(part => part.trim()).filter(Boolean)
+    return {
+      itemType: 'flight',
+      sourceId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
+      sourceType: 'chat_card',
+      name: card.route ?? `${card.airline ?? 'Flight'} option`,
+      provider: card.duffel_offer_id ? 'duffel' : 'liteapi',
+      providerOfferId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
+      origin: routeParts[0],
+      destination: routeParts[1],
+      airline: card.airline,
+      price: card.price,
+      currency: 'USD',
+      metadata: {
+        departure: card.departure,
+        arrival: card.arrival,
+        duration: card.duration,
+        stops: card.stops,
+        cabin_class: card.cabin_class,
+      },
+    }
+  }
+
+  if (card.card_type === 'restaurant' || card.card_type === 'activity') {
+    return {
+      itemType: card.card_type,
+      sourceId: card.place_id ?? card.product_code,
+      sourceType: 'chat_card',
+      name,
+      island: card.island ?? card.city,
+      dayNumber: card.day_number ?? 1,
+      timeSlot: card.card_type === 'restaurant' ? 'evening' : 'afternoon',
+      price: card.from_price ?? card.price,
+      imageUrl: card.photo ?? card.thumbnail ?? card.photo_url,
+      notes: card.description,
+      metadata: {
+        cuisine: card.cuisine ?? card.cuisine_type,
+        duration: card.duration,
+        rating: card.rating,
+        supplier: card.supplier,
+      },
+    }
+  }
+
+  return null
+}
+
 export default function ChatPanel({
   mode = 'standalone',
   userEmail,
@@ -417,6 +491,45 @@ export default function ChatPanel({
 
   const sendMessage = useCallback(() => sendQuery(input), [input, sendQuery])
 
+  const addCardToTrip = useCallback(async (card: CardData, tripId: string) => {
+    const payload = buildTripItemPayload(card)
+    if (!payload) return
+
+    try {
+      const res = await fetch(`/api/trips/${encodeURIComponent(tripId)}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(body.error ?? 'Could not add this to your trip.')
+      }
+
+      track('trip_item_added_from_chat_card', {
+        trip_id: tripId,
+        card_type: card.card_type,
+        source_id: card.place_id ?? card.product_code ?? card.duffel_offer_id ?? card.offer_id,
+      })
+
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: `Saved ${payload.name} to your trip.`,
+        },
+      ])
+    } catch (error) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: error instanceof Error ? error.message : 'Could not add this to your trip.',
+        },
+      ])
+    }
+  }, [])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -537,6 +650,8 @@ export default function ChatPanel({
                     isLast={i === messages.length - 1}
                     activeTool={activeTool}
                     onSendMessage={sendQuery}
+                    activeTripId={tripContext?.id ?? tripIdParam ?? undefined}
+                    onAddCardToTrip={addCardToTrip}
                   />
                 ))}
                 <div ref={messagesEndRef} />
@@ -742,6 +857,8 @@ export default function ChatPanel({
                 activeTool={activeTool}
                 onSendMessage={sendQuery}
                 compact
+                activeTripId={tripContext?.id ?? tripIdParam ?? undefined}
+                onAddCardToTrip={addCardToTrip}
               />
             ))}
             <div ref={messagesEndRef} />
@@ -809,10 +926,12 @@ interface MessageRowProps {
   /** Active tool progress label — e.g. "Searching hotels…". Only shown on the last assistant message while loading. */
   activeTool?: string | null
   onSendMessage: (msg: string) => void
+  activeTripId?: string
+  onAddCardToTrip?: (card: CardData, tripId: string) => void | Promise<void>
   compact?: boolean
 }
 
-function MessageRow({ msg, loading, isLast, activeTool, onSendMessage, compact }: MessageRowProps) {
+function MessageRow({ msg, loading, isLast, activeTool, onSendMessage, activeTripId, onAddCardToTrip, compact }: MessageRowProps) {
   const isUser = msg.role === 'user'
   const showThinkingDots = !isUser && loading && isLast && msg.content === '' && !activeTool
   const showToolLabel = !isUser && loading && isLast && !!activeTool
@@ -871,6 +990,8 @@ function MessageRow({ msg, loading, isLast, activeTool, onSendMessage, compact }
               key={ci}
               cardData={card}
               onSendMessage={onSendMessage}
+              activeTripId={msg.savedTripId ?? activeTripId}
+              onAddToTrip={onAddCardToTrip}
               tripId={msg.savedTripId}
             />
           ))}
