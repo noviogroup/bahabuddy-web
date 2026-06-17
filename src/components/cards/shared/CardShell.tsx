@@ -18,7 +18,7 @@
  */
 
 import Link from 'next/link'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode } from 'react'
 import { track } from '@/lib/analytics'
 
 export type CardShellMode = 'link' | 'expandable' | 'plain'
@@ -89,16 +89,24 @@ export function CardShell(props: Props) {
   }
 
   if (props.mode === 'expandable') {
+    const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return
+      event.preventDefault()
+      props.onClick()
+    }
+
     return (
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={props.onClick}
+        onKeyDown={handleKeyDown}
         aria-expanded={props.expanded}
         aria-label={props.ariaLabel}
         className={`${cn} ${interactiveClasses}`}
       >
         {props.children}
-      </button>
+      </div>
     )
   }
 

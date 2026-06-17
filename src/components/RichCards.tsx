@@ -18,9 +18,9 @@ import { HotelCard as NewHotelCard, type HotelCardData,
  *   place, but the primary action when a user taps a card is to land on
  *   a real detail page — NOT to send another chat message.
  *
- *   - HotelCard / RestaurantCard / ActivityCard wrap themselves in a
- *     <Link> when `place_id` is present. Hotels link to /stays/[id],
- *     /restaurants/[id], or /activities/[id] respectively.
+ *   - HotelCard / RestaurantCard / ActivityCard expose real detail links
+ *     when `place_id` is present. Hotels link to /stays/[id],
+ *     restaurants to /restaurants/[id], and activities to /activities/[id].
  *   - DestinationCard links to /explore/places/[island-slug] (the
  *     marketing surface) when the island slug is recognizable.
  *   - Flight, DayPlan, Summary, Map cards have no detail page concept;
@@ -228,10 +228,9 @@ export function RichCardRenderer({ cardData, onSendMessage, activeTripId, onAddT
  * old inline `HotelCard` function below is kept commented out for
  * reference but no longer dispatched from the switch.
  *
- * Save-to-trip: in the chat surface, tapping the heart icon sends a
- * chat message to Buddy asking to add the hotel to the user's trip.
- * Other surfaces wire `onSave` differently (direct API call on list
- * pages, etc.) — see HotelCard's `onSave` prop.
+ * Save-to-trip: when the chat surface has active trip context, tapping
+ * the heart calls the direct add-to-trip handler. The chat prompt
+ * fallback is only used when there is no active trip to mutate.
  */
 function HotelCardAdapter({
   data,
@@ -275,9 +274,7 @@ function HotelCardAdapter({
 
 // ─── Restaurant Card adapter (new cards/ system) ────────────────────────
 
-/** Adapts loose `CardData` to `RestaurantCardData`. Save-to-trip goes
- *  through onSendMessage in chat surfaces — see HotelCardAdapter for
- *  the rationale. */
+/** Adapts loose `CardData` to `RestaurantCardData`. */
 function RestaurantCardAdapter({
   data,
   onSendMessage,
@@ -414,8 +411,8 @@ function DayPlanCardAdapter({
 
 // ─── Flight Card adapter (new cards/ system) ──────────────────────────────
 
-/** Adapts loose `CardData` to `FlightCardData`. `onSendMessage` enables
- *  the Save-flight pill in chat surfaces. */
+/** Adapts loose `CardData` to `FlightCardData`. Active trip context enables
+ *  direct add-to-trip; otherwise the card falls back to a planning prompt. */
 function FlightCardAdapter({
   data,
   onSendMessage,

@@ -139,7 +139,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
     phone, website, full_address, top_review,
   } = data
 
-  const detailHref = place_id ? `/hotels/${encodeURIComponent(place_id)}` : null
+  const detailHref = place_id ? `/stays/${encodeURIComponent(place_id)}` : null
 
   // Build the amenity chip list. Featured amenity comes first if provided,
   // otherwise fall back to the first amenity from the array.
