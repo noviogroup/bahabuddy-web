@@ -19,7 +19,7 @@ import { HotelCard as NewHotelCard, type HotelCardData,
  *   a real detail page — NOT to send another chat message.
  *
  *   - HotelCard / RestaurantCard / ActivityCard wrap themselves in a
- *     <Link> when `place_id` is present. They link to /hotels/[id],
+ *     <Link> when `place_id` is present. Hotels link to /stays/[id],
  *     /restaurants/[id], or /activities/[id] respectively.
  *   - DestinationCard links to /explore/places/[island-slug] (the
  *     marketing surface) when the island slug is recognizable.
@@ -150,7 +150,7 @@ export interface CardData {
   layovers?: FlightLayover[]
   /** Flight: baggage allowance badges. */
   baggage?: { carry_on?: boolean; checked?: number }
-  /** Flight: Duffel offer ID, threaded through for future booking wiring. */
+  /** Legacy flight offer ID from older Duffel cards. Prefer offer_id/provider_offer_id. */
   duffel_offer_id?: string
   /** LiteAPI flight offer ID / normalized provider offer ID. */
   offer_id?: string

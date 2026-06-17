@@ -16,8 +16,8 @@
  *      to google_places filtered by tourist_attraction. Swap when an
  *      activities-proxy is wired.
  *
- *   3. Flights: identical to mobile — direct Duffel API call with the
- *      DUFFEL_API_TOKEN env var. Returns graceful "unavailable" if missing.
+ *   3. Flights: LiteAPI-backed beta flight search, matching the web booking
+ *      routes and mobile booking provider contract.
  *
  *   4. Weather: identical to mobile — direct Open-Meteo call, no auth needed.
  *
@@ -30,13 +30,14 @@
  *
  *   6. Detail-page identifiers: every hotel / restaurant / activity card
  *      carries the source row's `place_id`. Clicking the card in chat opens
- *      the corresponding detail page at /hotels/[id], /restaurants/[id], or
- *      /activities/[id]. Flights are intentionally non-linking — Duffel
- *      offers are time-sensitive and have no stable URL.
+ *      the corresponding detail page at /stays/[id], /restaurants/[id], or
+ *      /activities/[id]. Flight cards carry LiteAPI offer IDs for direct
+ *      booking at /flights/[offerId]/book.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CardData } from '@/components/RichCards'
+import { callTravelProvider } from '@/lib/travel-booking/provider'
 
 // ──────────────────────────────────────────────────────────────────────────
 // TOOL DEFINITIONS (sent to Claude)
@@ -132,7 +133,7 @@ export const TOOL_DEFINITIONS = [
 
   {
     name: 'search_flights',
-    description: 'Search for flights to the Bahamas. Use when the user asks about flights, airfare, getting to the Bahamas, or travel from their home city. Queries the Duffel API for real-time pricing.',
+    description: 'Search for flights to the Bahamas. Use when the user asks about flights, airfare, getting to the Bahamas, or travel from their home city. Queries LiteAPI for beta real-time pricing and offer IDs.',
     input_schema: {
       type: 'object',
       properties: {
@@ -689,7 +690,7 @@ export async function getHotels(
   }))
 
   // Cards for the UI — `place_id` is what makes each card link to its
-  // detail page (/hotels/[id]). The renderer falls back to non-linking
+  // detail page (/stays/[id]). The renderer falls back to non-linking
   // when place_id is absent (defensive — should never happen for tool-
   // emitted cards since the column is non-null in google_places).
   const cards: CardData[] = data.map(p => {
@@ -920,20 +921,12 @@ function pickActivityIcon(vibeTags: string[]): string {
 }
 
 export async function searchFlights(args: Record<string, unknown>): Promise<ToolResult> {
-  const DUFFEL_TOKEN = process.env.DUFFEL_API_TOKEN || process.env.DUFFEL_API_KEY
-  if (!DUFFEL_TOKEN) {
-    return {
-      data: {
-        error: 'Flight search is not configured on this environment yet. Tell the user you can describe typical routes and prices from your knowledge, but live booking isn\'t available right now.',
-        results: [],
-      },
-    }
-  }
-
   const originCode = resolveAirportCode((args.origin_city as string) || '')
   const destCode = ((args.destination as string) || 'NAS').toUpperCase()
   const passengers = Number(args.passengers) || 1
-  const cabinClass = (args.cabin_class as string) || 'economy'
+  const cabinClass = String(args.cabin_class ?? 'economy').toUpperCase()
+  const departureDate = String(args.departure_date ?? '').trim()
+  const returnDate = typeof args.return_date === 'string' ? args.return_date.trim() : ''
 
   if (!originCode) {
     return {
@@ -944,175 +937,146 @@ export async function searchFlights(args: Record<string, unknown>): Promise<Tool
     }
   }
 
-  const slices: Array<{ origin: string; destination: string; departure_date: string }> = [
-    { origin: originCode, destination: destCode, departure_date: args.departure_date as string },
-  ]
-  if (args.return_date) {
-    slices.push({ origin: destCode, destination: originCode, departure_date: args.return_date as string })
+  if (!departureDate) {
+    return {
+      data: {
+        error: 'A future departure_date in YYYY-MM-DD format is required for live flight search.',
+        results: [],
+      },
+    }
   }
 
+  const legs = [
+    { origin: originCode, destination: destCode, date: departureDate, direction: 'OUTBOUND' },
+    ...(returnDate ? [{ origin: destCode, destination: originCode, date: returnDate, direction: 'INBOUND' }] : []),
+  ]
+
   try {
-    const response = await fetch('https://api.duffel.com/air/offer_requests?return_offers=true&supplier_timeout=15000', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${DUFFEL_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Duffel-Version': 'v2',
-      },
-      body: JSON.stringify({
-        data: {
-          slices,
-          passengers: Array.from({ length: passengers }, () => ({ type: 'adult' })),
-          cabin_class: cabinClass,
-          max_connections: 2,
-        },
-      }),
+    const result = await callTravelProvider('/flights/rates', {
+      legs,
+      adults: Math.max(1, passengers),
+      cabinClass,
+      currency: 'USD',
+      country: 'US',
     })
 
-    if (!response.ok) {
-      const errText = await response.text()
-      console.error(`[search_flights] Duffel ${response.status}:`, errText)
-      return { data: { error: `Duffel API returned ${response.status}`, results: [] } }
+    const cards = shapeLiteApiFlightCards(result.data)
+    const compact = cards.map((card) => ({
+      offer_id: card.offer_id,
+      provider_offer_id: card.provider_offer_id,
+      route: card.route,
+      airline: card.airline,
+      departure: card.departure,
+      arrival: card.arrival,
+      duration: card.duration,
+      stops: card.stops,
+      price: card.price,
+      cabin_class: card.cabin_class,
+      passengers: card.passengers,
+    }))
+
+    return {
+      data: {
+        results: compact,
+        count: compact.length,
+        message: compact.length === 0
+          ? `No flights found from ${originCode} to ${destCode} on ${departureDate}. Try different dates or another airport.`
+          : undefined,
+      },
+      cards,
     }
-
-    const json = await response.json()
-    const offers: Array<Record<string, unknown>> = json?.data?.offers ?? []
-
-    if (offers.length === 0) {
-      return {
-        data: {
-          results: [],
-          message: `No flights found from ${originCode} to ${destCode} on ${args.departure_date}. Try different dates or another airport.`,
-        },
-      }
-    }
-
-    const sorted = offers
-      .filter(o => o.total_amount)
-      .sort((a, b) => parseFloat(a.total_amount as string) - parseFloat(b.total_amount as string))
-      .slice(0, 5)
-
-    const cards: CardData[] = []
-    const compact: Array<Record<string, unknown>> = []
-
-    for (const offer of sorted) {
-      const sliceData = (offer.slices as Array<Record<string, unknown>>) ?? []
-      const outbound = sliceData[0]
-      const segments = (outbound?.segments as Array<Record<string, unknown>>) ?? []
-      const firstSeg = segments[0] ?? {}
-      const lastSeg = segments[segments.length - 1] ?? {}
-      const airline =
-        ((firstSeg.operating_carrier as Record<string, unknown> | undefined)?.name as string) ||
-        ((firstSeg.marketing_carrier as Record<string, unknown> | undefined)?.name as string) ||
-        'Airline'
-      const stops = segments.length - 1
-      const dep = (firstSeg.departing_at as string) ?? ''
-      const arr = (lastSeg.arriving_at as string) ?? ''
-
-      let duration = (outbound?.duration as string) ?? ''
-      if (duration.startsWith('PT')) {
-        const hMatch = duration.match(/(\d+)H/)
-        const mMatch = duration.match(/(\d+)M/)
-        const h = hMatch ? parseInt(hMatch[1]) : 0
-        const m = mMatch ? parseInt(mMatch[1]) : 0
-        duration = h > 0 ? `${h}h ${m}m` : `${m}m`
-      }
-
-      const depTime = dep
-        ? new Date(dep).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : ''
-      const arrTime = arr
-        ? new Date(arr).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-        : ''
-      const originName = ((firstSeg.origin as Record<string, unknown> | undefined)?.iata_code as string) ?? originCode
-      const destName = ((lastSeg.destination as Record<string, unknown> | undefined)?.iata_code as string) ?? destCode
-
-      const price = Math.round(parseFloat(offer.total_amount as string))
-      const stopsLabel = stops === 0 ? 'Direct' : `${stops} stop${stops > 1 ? 's' : ''}`
-      const route = `${originName} → ${destName}`
-
-      // ── Phase 5 enrichments: cabin class, layovers, baggage ────────────
-      //
-      // Duffel nests passenger-specific data (cabin, baggage) inside each
-      // segment, not on the offer. We read from the first segment's first
-      // passenger — same across passengers for the cards we render.
-      const firstSegPassengers = (firstSeg.passengers as Array<Record<string, unknown>> | undefined) ?? []
-      const firstPax = firstSegPassengers[0] ?? {}
-      const cabinClassRaw =
-        (firstPax.cabin_class_marketing_name as string | undefined) ||
-        (firstPax.cabin_class as string | undefined) ||
-        cabinClass
-      const cabinClassDisplay = cabinClassRaw
-        ? cabinClassRaw.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
-        : undefined
-
-      // Layovers: the gap between segment[i].arriving_at and
-      // segment[i+1].departing_at, located at segment[i].destination.
-      // Skip when either timestamp is missing — a malformed offer
-      // shouldn't take the whole card down.
-      const layovers: { airport: string; duration: string }[] = []
-      for (let i = 0; i < segments.length - 1; i++) {
-        const cur = segments[i]
-        const next = segments[i + 1]
-        const arrAt = cur.arriving_at as string | undefined
-        const depAt = next.departing_at as string | undefined
-        const layoverAirport = ((cur.destination as Record<string, unknown> | undefined)?.iata_code as string | undefined)
-        if (!arrAt || !depAt || !layoverAirport) continue
-        const layoverMs = new Date(depAt).getTime() - new Date(arrAt).getTime()
-        if (!isFinite(layoverMs) || layoverMs <= 0) continue
-        const layoverMins = Math.round(layoverMs / 60_000)
-        const h = Math.floor(layoverMins / 60)
-        const m = layoverMins % 60
-        layovers.push({
-          airport: layoverAirport,
-          duration: h > 0 ? (m > 0 ? `${h}h ${m}m` : `${h}h`) : `${m}m`,
-        })
-      }
-
-      // Baggage allowance from the first segment, first passenger.
-      // Carry-on is a boolean ("allowed?"). Checked is summed quantity
-      // across all checked-bag entries.
-      const baggagesRaw = (firstPax.baggages as Array<Record<string, unknown>> | undefined) ?? []
-      const carryOn = baggagesRaw.some(b => b.type === 'carry_on' && Number(b.quantity ?? 0) > 0)
-      const checkedCount = baggagesRaw
-        .filter(b => b.type === 'checked')
-        .reduce((sum, b) => sum + (Number(b.quantity ?? 0)), 0)
-      const baggage = (baggagesRaw.length > 0)
-        ? { carry_on: carryOn, checked: checkedCount }
-        : undefined
-
-      cards.push({
-        card_type: 'flight',
-        route,
-        airline,
-        departure: depTime,
-        arrival: arrTime,
-        duration,
-        stops: stopsLabel,
-        price,
-        cabin_class: cabinClassDisplay,
-        layovers: layovers.length > 0 ? layovers : undefined,
-        baggage,
-        duffel_offer_id: offer.id as string,
-      })
-
-      compact.push({
-        duffel_offer_id: offer.id,
-        route,
-        airline,
-        departure: depTime,
-        arrival: arrTime,
-        duration,
-        stops: stopsLabel,
-        price,
-      })
-    }
-
-    return { data: { results: compact, count: compact.length }, cards }
   } catch (err) {
     console.error('Flight search error:', err)
     return { data: { error: `Flight search error: ${String(err)}`, results: [] } }
   }
+}
+
+function shapeLiteApiFlightCards(response: unknown): CardData[] {
+  const batches = Array.isArray(recordValue(response).data) ? recordValue(response).data as unknown[] : []
+  const cards: CardData[] = []
+
+  for (const batchValue of batches) {
+    const batch = recordValue(batchValue)
+    const journeys = Array.isArray(batch.journeys) ? batch.journeys : []
+    for (const journeyValue of journeys) {
+      const journey = recordValue(journeyValue)
+      const segments = recordListValue(journey.segments)
+      const outbound = segments.filter((segment) => segment.direction !== 'INBOUND')
+      const shownSegments = outbound.length > 0 ? outbound : segments
+      const first = shownSegments[0] ?? {}
+      const last = shownSegments[shownSegments.length - 1] ?? first
+      const carrier = recordValue(first.carrier)
+      const duration = recordValue(journey.totalDuration)
+      const offers = recordListValue(journey.offers)
+      const passengerCounts = recordValue(journey.parameters)
+      const passengerTotal = numericValue(passengerCounts.adults, 1) +
+        numericValue(passengerCounts.children) +
+        numericValue(passengerCounts.infants)
+
+      for (const offer of offers) {
+        const display = recordValue(recordValue(offer.pricing).display)
+        const fare = recordValue(offer.fare)
+        const terms = recordValue(offer.terms)
+        const offerId = liteTextValue(offer.offerId)
+        cards.push({
+          card_type: 'flight',
+          offer_id: offerId,
+          provider_offer_id: offerId,
+          route: `${liteTextValue(first.originCode)} → ${liteTextValue(last.destinationCode)}`,
+          airline: liteTextValue(carrier.marketingName, liteTextValue(carrier.operatingName, 'Airline')),
+          departure: formatLiteApiFlightTime(first.departureTime),
+          arrival: formatLiteApiFlightTime(last.arrivalTime),
+          duration: formatLiteApiDuration(numericValue(duration.minutes)),
+          stops: shownSegments.length <= 1 ? 'Direct' : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? 's' : ''}`,
+          price: numericValue(display.total),
+          cabin_class: liteTextValue(fare.family, 'Economy'),
+          passengers: Math.max(1, passengerTotal),
+          baggage: { checked: liteApiBaggageCount(offer.baggage) },
+          description: terms.refundable === true ? 'Refundable fare' : undefined,
+        })
+      }
+    }
+  }
+
+  return cards
+    .filter((card) => card.offer_id && typeof card.price === 'number' && card.price > 0)
+    .sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0))
+    .slice(0, 5)
+}
+
+function recordValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function recordListValue(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.map(recordValue) : []
+}
+
+function liteTextValue(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+}
+
+function numericValue(value: unknown, fallback = 0): number {
+  const n = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function formatLiteApiFlightTime(value: unknown): string {
+  if (typeof value !== 'string' || !value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+}
+
+function formatLiteApiDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60)
+  const remainder = minutes % 60
+  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
+}
+
+function liteApiBaggageCount(value: unknown): number {
+  const included = recordListValue(recordValue(value).included)
+  return included.filter((bag) => /checked/i.test(liteTextValue(bag.description))).length
 }
 
 async function getTripDetails(supabase: SupabaseClient, tripId: string): Promise<ToolResult> {

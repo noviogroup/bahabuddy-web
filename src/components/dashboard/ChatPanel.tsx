@@ -129,7 +129,7 @@ function buildTripItemPayload(card: CardData): Record<string, unknown> | null {
       sourceId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
       sourceType: 'chat_card',
       name: card.route ?? `${card.airline ?? 'Flight'} option`,
-      provider: card.duffel_offer_id ? 'duffel' : 'liteapi',
+      provider: card.offer_id || card.provider_offer_id ? 'liteapi' : card.duffel_offer_id ? 'duffel' : 'liteapi',
       providerOfferId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
       origin: routeParts[0],
       destination: routeParts[1],

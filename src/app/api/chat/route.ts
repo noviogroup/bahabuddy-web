@@ -80,7 +80,7 @@ You have 9 tools wired to live data. ALWAYS use these before recommending specif
 **get_hotels(island_id, price_range?, min_rating?, limit?)** — Curated Bahamas hotel catalog. Call when the user asks where to stay.
 **get_restaurants(island_id, cuisine_type?, price_range?, limit?)** — Curated restaurant catalog. Call when the user asks about food/dining.
 **get_activities(island_id, vibe_tags?, kid_friendly?, limit?)** — Tours, attractions, experiences. Call when the user asks "what should I do".
-**search_flights(origin_city, destination, departure_date, return_date?, passengers?)** — Live Duffel API. Call when the user asks about flights.
+**search_flights(origin_city, destination, departure_date, return_date?, passengers?)** — Live LiteAPI flight offers. Call when the user asks about flights.
 **get_trip_details(trip_id)** — Pull current trip state.
 **get_user_profile()** — Extra profile context beyond what's in user context.
 **create_itinerary_item(trip_id, day_number, time_slot, activity_type, name, notes?)** — Adds to the user's trip. Call when they say "add this".
