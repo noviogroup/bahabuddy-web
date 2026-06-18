@@ -2,7 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import { BahaImages } from '@/lib/baha-images'
@@ -105,16 +104,6 @@ export default async function DealsPage({
   return (
     <div className="min-h-screen bg-white">
       <TrackView event="deal_viewed" props={{ deal_count: allDeals.length }} />
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/destinations" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Destinations</Link>
-            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
-          </div>
-        </div>
-      </header>
-
       <DefaultHeaderHero
         eyebrow="Current Deals"
         title="Bahamas Deals & Packages"

@@ -65,6 +65,11 @@ export interface CardData {
   price_per_night?: number
   /** True when price_per_night is derived from price_level, not live inventory. */
   price_is_estimate?: boolean
+  primary_image_url?: string
+  image_url?: string
+  hero_image_url?: string
+  gallery_images?: string[]
+  image_urls?: string[]
   cheapest_total?: number
   amenities?: string[]
   photo?: string
@@ -87,6 +92,8 @@ export interface CardData {
   // flight
   route?: string
   airline?: string
+  airline_code?: string
+  airline_logo_url?: string
   departure?: string
   arrival?: string
   stops?: string
@@ -146,6 +153,10 @@ export interface CardData {
 
   /** Flight: cabin class chip alongside the airline. */
   cabin_class?: string
+  fare_brand?: string
+  currency?: string
+  refundable?: boolean
+  expiration?: string
   /** Flight: ordered layovers when not direct. */
   layovers?: FlightLayover[]
   /** Flight: baggage allowance badges. */
@@ -217,6 +228,66 @@ export function RichCardRenderer({ cardData, onSendMessage, activeTripId, onAddT
   }
 }
 
+function cardImageSet(data: CardData): { hero?: string; photos: string[] } {
+  const seen = new Set<string>()
+  const photos: string[] = []
+
+  const add = (value: unknown) => {
+    const url = imageUrlFromValue(value)
+    if (!url || seen.has(url)) return
+    seen.add(url)
+    photos.push(url)
+  }
+
+  for (const key of [
+    'primary_image_url',
+    'photo_url',
+    'image_url',
+    'hero_image_url',
+  ] as const) {
+    add(data[key])
+  }
+
+  for (const key of [
+    'image_urls',
+    'gallery_images',
+    'photos',
+  ] as const) {
+    const value = data[key]
+    if (Array.isArray(value)) {
+      value.forEach(add)
+    } else {
+      add(value)
+    }
+  }
+
+  for (const key of [
+    'thumbnail',
+    'photo',
+  ] as const) {
+    add(data[key])
+  }
+
+  return { hero: photos[0], photos }
+}
+
+function imageUrlFromValue(value: unknown): string | undefined {
+  if (!value) return undefined
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>
+    for (const key of ['url', 'photo_url', 'photoUrl', 'image_url', 'imageUrl', 'storage_url', 'storageUrl', 'src']) {
+      const url = imageUrlFromValue(record[key])
+      if (url) return url
+    }
+    return undefined
+  }
+  if (typeof value !== 'string') return undefined
+  const url = value.trim()
+  if (!url || url.toLowerCase() === 'null') return undefined
+  if (!/^https?:\/\//i.test(url)) return undefined
+  return url
+}
+
 // ─── Hotel Card adapter (new cards/ system) ─────────────────────────────
 
 /**
@@ -243,6 +314,7 @@ function HotelCardAdapter({
   activeTripId?: string
   onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
+  const hotelImages = cardImageSet(data)
   const hotelData: HotelCardData = {
     place_id: data.place_id,
     name: data.name ?? 'Hotel',
@@ -251,8 +323,8 @@ function HotelCardAdapter({
     rating: data.rating,
     review_count: data.review_count,
     stars: data.stars,
-    photo_url: data.photo ?? data.thumbnail ?? data.photo_url,
-    photos: data.photos ?? [],
+    photo_url: hotelImages.hero,
+    photos: hotelImages.photos,
     amenities: data.amenities ?? [],
     price_per_night: data.price_per_night,
     price_is_estimate: data.price_is_estimate,
@@ -286,6 +358,7 @@ function RestaurantCardAdapter({
   activeTripId?: string
   onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
+  const restaurantImages = cardImageSet(data)
   const restaurantData: RestaurantCardData = {
     place_id: data.place_id,
     name: data.name ?? 'Restaurant',
@@ -295,8 +368,8 @@ function RestaurantCardAdapter({
     rating: data.rating,
     review_count: data.review_count,
     price_level: data.price_level,
-    photo_url: data.photo ?? data.thumbnail ?? data.photo_url,
-    photos: data.photos ?? [],
+    photo_url: restaurantImages.hero,
+    photos: restaurantImages.photos,
     phone: data.phone,
     website: data.website,
     full_address: data.full_address,
@@ -327,6 +400,7 @@ function ActivityCardAdapter({
   activeTripId?: string
   onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
+  const activityImages = cardImageSet(data)
   const activityData: ActivityCardData = {
     place_id: data.place_id,
     product_code: data.product_code,
@@ -341,8 +415,8 @@ function ActivityCardAdapter({
     duration: data.duration,
     from_price: data.from_price ?? data.price,
     supplier: data.supplier,
-    photo_url: data.photo ?? data.thumbnail ?? data.photo_url,
-    photos: data.photos ?? [],
+    photo_url: activityImages.hero,
+    photos: activityImages.photos,
     phone: data.phone,
     website: data.website,
     full_address: data.full_address,
@@ -427,12 +501,19 @@ function FlightCardAdapter({
   const flightData: FlightCardData = {
     route: data.route,
     airline: data.airline,
+    airline_code: data.airline_code,
+    airline_logo_url: data.airline_logo_url,
     departure: data.departure,
     arrival: data.arrival,
     duration: data.duration,
     stops: data.stops,
     price: data.price,
+    currency: data.currency,
+    passengers: data.passengers,
     cabin_class: data.cabin_class,
+    fare_brand: data.fare_brand,
+    refundable: data.refundable,
+    expiration: data.expiration,
     layovers: data.layovers,
     baggage: data.baggage,
     duffel_offer_id: data.duffel_offer_id,

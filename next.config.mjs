@@ -62,6 +62,13 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'upload.wikimedia.org',
       },
+      // Airline logos — used when LiteAPI returns a carrier code but no
+      // provider-hosted logo URL.
+      {
+        protocol: 'https',
+        hostname: 'content.r9cdn.net',
+        pathname: '/rimg/provider-logos/airlines/**',
+      },
     ],
   },
 }

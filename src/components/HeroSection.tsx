@@ -112,31 +112,51 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
             <nav className="flex items-center gap-4 sm:gap-5">
               <Link
                 href="/destinations"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
                 style={{ textShadow: navTextShadow }}
               >
                 Destinations
               </Link>
               <Link
+                href="/stays"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
+                style={{ textShadow: navTextShadow }}
+              >
+                Stays
+              </Link>
+              <Link
+                href="/flights"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
+                style={{ textShadow: navTextShadow }}
+              >
+                Flights
+              </Link>
+              <Link
                 href="/guides"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
                 style={{ textShadow: navTextShadow }}
               >
                 Guides
               </Link>
               <Link
                 href="/deals"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
                 style={{ textShadow: navTextShadow }}
               >
                 Deals
               </Link>
               <Link
                 href="/concierge-trip-plan"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden sm:block"
+                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden xl:block"
                 style={{ textShadow: navTextShadow }}
               >
                 Concierge
+              </Link>
+              <Link
+                href="/dashboard"
+                className="hidden sm:inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-extrabold text-brand-700 shadow-soft transition-colors hover:bg-white/90"
+              >
+                Start planning
               </Link>
               <Link
                 href="/login"
@@ -156,7 +176,7 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
           className="inline-flex items-center gap-2.5 bg-black/[0.02] backdrop-blur-md border border-white/30 rounded-full pl-1.5 pr-4 py-1.5 text-sm font-medium mb-8 tracking-wide"
           style={{ textShadow: heroTextShadow }}
         >
-          <BuddyAvatar size="sm" state="greeting" className="shrink-0 ring-2 ring-white/35" />
+          <BuddyAvatar size="sm" state="greeting" className="shrink-0 ring-2 ring-white/40" />
           <span>Your AI Bahamas Travel Companion</span>
         </div>
 
@@ -185,7 +205,7 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
         <div className="mt-5">
           <Link
             href="/concierge-trip-plan"
-            className="inline-flex items-center justify-center rounded-full bg-white/15 border border-white/35 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-md hover:bg-white/25 transition-colors"
+            className="inline-flex items-center justify-center rounded-full bg-white/20 border border-white/40 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-md hover:bg-white/25 transition-colors"
             style={{ textShadow: navTextShadow }}
           >
             Want local help? Pay for a Concierge Trip Plan →

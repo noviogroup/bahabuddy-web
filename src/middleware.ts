@@ -25,8 +25,12 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const protectedPaths = ['/dashboard', '/trip', '/profile', '/flights']
-  const isProtected = protectedPaths.some(p => request.nextUrl.pathname.startsWith(p))
+  const protectedPaths = ['/dashboard', '/trip', '/profile']
+  const isFlightBookingRoute =
+    /^\/flights\/[^/]+\/book(?:\/|$)/.test(request.nextUrl.pathname)
+  const isProtected =
+    protectedPaths.some(p => request.nextUrl.pathname.startsWith(p)) ||
+    isFlightBookingRoute
 
   if (isProtected && !user) {
     const loginUrl = new URL('/login', request.url)

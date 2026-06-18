@@ -62,12 +62,20 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       bookingId: booking.bookingId ?? persisted.bookingId,
+      tripId,
+      tripItemId: persisted.tripItemId,
+      provider: 'hotel_liteapi',
+      providerReference: booking.hotelConfirmationCode ?? booking.bookingId ?? null,
+      paymentStatus: 'paid',
+      providerStatus: persisted.providerStatus,
+      amount: persisted.amount,
+      currency: persisted.currency,
+      sourceSurface: 'web',
       hotelConfirmationCode: booking.hotelConfirmationCode ?? null,
       status: booking.status ?? 'PENDING',
       checkin: booking.checkin ?? body.checkin ?? null,
       checkout: booking.checkout ?? body.checkout ?? null,
       bookingRecordId: persisted.bookingId,
-      tripItemId: persisted.tripItemId,
       raw: result.data,
     }, { status: result.status })
   } catch (error) {
@@ -85,16 +93,22 @@ async function persistHotelBooking(input: {
   requestBody: Record<string, unknown>
   guestCount: number
   prebookId: string
-}): Promise<{ bookingId: string | null; tripItemId: string | null }> {
+}): Promise<{
+  bookingId: string | null
+  tripItemId: string | null
+  providerStatus: 'confirmed' | 'pending' | 'failed' | 'cancelled'
+  amount: number
+  currency: string
+}> {
   const admin = createAdminClient()
-  if (!admin) return { bookingId: null, tripItemId: null }
 
   const bookingRef = stringValue(input.providerBooking.bookingId)
   const externalRef = stringValue(input.providerBooking.hotelConfirmationCode)
   const amount = totalAmount(input.providerBooking) ?? numberOrNull(input.requestBody.amount) ?? 0
   const currency = stringValue(input.providerBooking.currency ?? input.requestBody.currency, 'USD').toLowerCase()
   const providerStatus = String(input.providerBooking.status ?? '').toUpperCase()
-  const status = providerStatus === 'CONFIRMED' ? 'confirmed' : 'pending'
+  const status = normalizedProviderStatus(providerStatus)
+  if (!admin) return { bookingId: null, tripItemId: null, providerStatus: status, amount, currency }
 
   const bookingRecord = {
     user_id: input.userId,
@@ -105,7 +119,7 @@ async function persistHotelBooking(input: {
     booking_ref: bookingRef || null,
     booking_reference: externalRef || bookingRef || null,
     external_reference: externalRef || null,
-    status,
+    status: status === 'confirmed' ? 'confirmed' : status === 'failed' ? 'failed' : status === 'cancelled' ? 'cancelled' : 'pending',
     amount,
     amount_cents: Math.round(amount * 100),
     gross_booking_value: amount,
@@ -152,24 +166,42 @@ async function persistHotelBooking(input: {
     liteapi_hotel_id: stringValue(input.providerBooking.hotelId ?? input.requestBody.hotelId) || null,
     liteapi_rate_id: stringValue(input.requestBody.rateId) || null,
     liteapi_prebook_id: input.prebookId,
-    status: status === 'confirmed' ? 'booked' : 'prebooked',
+    stripe_payment_intent_id: input.paymentIntentId,
+    status: status === 'confirmed' ? 'booked' : status === 'failed' ? 'failed' : status === 'cancelled' ? 'cancelled' : 'prebooked',
     total_price: amount,
     currency: currency.toUpperCase(),
     nights: nightsBetween(input.requestBody.checkin, input.requestBody.checkout),
     photo_url: stringValue(input.requestBody.imageUrl) || null,
   }
 
-  const { data: tripItem } = await admin
-    .from('trip_accommodations')
-    .insert(accommodation)
-    .select('id')
-    .single()
+  const requestedTripItemId = stringValue(input.requestBody.tripItemId)
+  let tripItemId: string | null = null
+
+  if (requestedTripItemId) {
+    const { data: updated } = await admin
+      .from('trip_accommodations')
+      .update(accommodation)
+      .eq('id', requestedTripItemId)
+      .eq('trip_id', input.tripId)
+      .select('id')
+      .maybeSingle()
+    tripItemId = (updated as { id?: string } | null)?.id ?? null
+  }
+
+  if (!tripItemId) {
+    const { data: tripItem } = await admin
+      .from('trip_accommodations')
+      .insert(accommodation)
+      .select('id')
+      .single()
+    tripItemId = (tripItem as { id?: string } | null)?.id ?? null
+  }
 
   try {
     await admin.from('travel_booking_records').insert({
       user_id: input.userId,
       product_type: 'hotel',
-      status,
+      status: status === 'confirmed' ? 'confirmed' : status,
       provider_booking_id: bookingRef || null,
       provider_booking_ref: externalRef || bookingRef || null,
       source: 'web',
@@ -185,7 +217,10 @@ async function persistHotelBooking(input: {
 
   return {
     bookingId,
-    tripItemId: (tripItem as { id?: string } | null)?.id ?? null,
+    tripItemId,
+    providerStatus: status,
+    amount,
+    currency: currency.toUpperCase(),
   }
 }
 
@@ -209,6 +244,14 @@ function totalAmount(booking: Record<string, unknown>): number | null {
   const invoice = asRecord(booking.invoice)
   const price = asRecord(booking.totalPrice)
   return numberOrNull(invoice.totalAmount) ?? numberOrNull(price.amount)
+}
+
+function normalizedProviderStatus(raw: string): 'confirmed' | 'pending' | 'failed' | 'cancelled' {
+  const status = raw.toLowerCase()
+  if (['confirmed', 'booked', 'ticketed', 'success', 'succeeded'].includes(status)) return 'confirmed'
+  if (['failed', 'error'].includes(status)) return 'failed'
+  if (['cancelled', 'canceled', 'refunded'].includes(status)) return 'cancelled'
+  return 'pending'
 }
 
 function nightsBetween(start: unknown, end: unknown): number | null {

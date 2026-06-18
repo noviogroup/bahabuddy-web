@@ -5,10 +5,16 @@ import Image from 'next/image'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import TrackView from '@/components/TrackView'
-import { BahaLogo } from '@/components/ui'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
 import { FALLBACK_IMAGE } from '@/lib/baha-images'
-import { getHotelById, getSimilarHotels } from '@/lib/hotels'
+import {
+  getHotelById,
+  getSimilarHotels,
+  hotelHeroPhotoUrl,
+  hotelPhotoCaption,
+  hotelPhotoUrl,
+  hotelPhotoUrls,
+} from '@/lib/hotels'
 import AvailabilityWidget from '@/components/stays/AvailabilityWidget'
 
 export const revalidate = 3600
@@ -50,7 +56,8 @@ export default async function StayDetailPage({ params }: PageProps) {
 
   const similar = await getSimilarHotels(hotel)
   const photos = hotel.photos ?? []
-  const heroUrl = hotel.main_photo_url ?? photos[0]?.url ?? FALLBACK_IMAGE
+  const photoUrls = hotelPhotoUrls(hotel)
+  const heroUrl = hotelHeroPhotoUrl(hotel) ?? FALLBACK_IMAGE
 
   const planPrompt = `Tell me about ${hotel.name}${hotel.island ? ` in ${hotel.island}` : ''}, Bahamas`
   const addPrompt = `Book ${hotel.name} for my Bahamas trip`
@@ -91,20 +98,6 @@ export default async function StayDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/stays" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">
-              ← All Stays
-            </Link>
-            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* Hero */}
       <div className="relative h-72 md:h-[28rem] overflow-hidden">
@@ -162,22 +155,26 @@ export default async function StayDetailPage({ params }: PageProps) {
             )}
 
             {/* Photo gallery */}
-            {photos.length > 1 && (
+            {photoUrls.length > 1 && (
               <section>
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {photos.slice(0, 9).map((photo, idx) => (
-                    <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100">
-                      <Image
-                        src={photo.url}
-                        alt={photo.caption || `${hotel.name} — photo ${idx + 1}`}
-                        fill
-                        className="object-cover hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 50vw, 33vw"
-                        unoptimized
-                      />
-                    </div>
-                  ))}
+                  {photos.slice(0, 9).map((photo, idx) => {
+                    const url = hotelPhotoUrl(photo)
+                    if (!url) return null
+                    return (
+                      <div key={url} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100">
+                        <Image
+                          src={url}
+                          alt={hotelPhotoCaption(photo) || `${hotel.name} — photo ${idx + 1}`}
+                          fill
+                          className="object-cover hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 768px) 50vw, 33vw"
+                          unoptimized
+                        />
+                      </div>
+                    )
+                  })}
                 </div>
               </section>
             )}
@@ -280,9 +277,7 @@ export default async function StayDetailPage({ params }: PageProps) {
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {similar.map((s) => {
-                const sPhoto = s.main_photo_url
-                  ?? (s.photos && s.photos.length > 0 ? s.photos[0].url : null)
-                  ?? FALLBACK_IMAGE
+                const sPhoto = hotelHeroPhotoUrl(s) ?? FALLBACK_IMAGE
 
                 return (
                   <Link key={s.id} href={`/stays/${s.id}`} className="group">

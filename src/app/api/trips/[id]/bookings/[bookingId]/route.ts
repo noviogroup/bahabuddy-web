@@ -153,7 +153,7 @@ async function loadProviderRow(
   if (kind === 'hotel_liteapi') {
     const { data } = await supabase
       .from('trip_accommodations')
-      .select('id, status, booking_reference')
+      .select('id, status, booking_reference, stripe_payment_intent_id')
       .eq('trip_id', tripId)
       .order('created_at', { ascending: false })
       .limit(20)
@@ -164,7 +164,7 @@ async function loadProviderRow(
   if (kind === 'flight_liteapi' || kind === 'flight_duffel') {
     const { data } = await supabase
       .from('trip_flights')
-      .select('id, booking_reference')
+      .select('id, booking_reference, stripe_payment_intent_id')
       .eq('trip_id', tripId)
       .order('created_at', { ascending: false })
       .limit(20)
@@ -200,10 +200,10 @@ function providerForBooking(booking: BookingRecord): string {
 
 function paymentStatusForBooking(booking: BookingRecord): PaymentStatus {
   const status = (booking.status ?? '').toLowerCase()
-  if (booking.paid_at || status === 'confirmed' || status === 'paid') return 'paid'
   if (status === 'failed') return 'failed'
   if (status === 'cancelled' || status === 'canceled') return 'cancelled'
   if (status === 'refunded') return 'refunded'
+  if (booking.paid_at || status === 'confirmed' || status === 'paid') return 'paid'
   return 'pending'
 }
 
@@ -213,9 +213,10 @@ function providerStatusFor(
   bookingStatus: string | null | undefined,
 ): ProviderStatus {
   const status = (providerRowStatus ?? bookingStatus ?? '').toLowerCase()
-  if (providerReference && !['failed', 'cancelled', 'canceled'].includes(status)) return 'confirmed'
-  if (status === 'failed') return 'failed'
-  if (status === 'cancelled' || status === 'canceled') return 'cancelled'
+  if (['failed', 'error'].includes(status)) return 'failed'
+  if (['cancelled', 'canceled', 'refunded'].includes(status)) return 'cancelled'
+  if (providerReference && ['booked', 'confirmed', 'paid', 'success', 'succeeded', 'ticketed'].includes(status)) return 'confirmed'
+  if (providerReference && !status) return 'confirmed'
   return 'pending'
 }
 

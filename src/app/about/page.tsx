@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 
 export const metadata: Metadata = {
@@ -17,32 +16,6 @@ export const metadata: Metadata = {
 export default function AboutPage() {
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/destinations"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
-            >
-              Destinations
-            </Link>
-            <Link
-              href="/deals"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
-            >
-              Deals
-            </Link>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-            >
-              Sign in
-            </Link>
-          </nav>
-        </div>
-      </header>
-
       <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white">
         <div className="max-w-6xl mx-auto px-4 py-16 text-center">
           <p className="text-brand-100 text-sm font-semibold tracking-widest uppercase mb-3">

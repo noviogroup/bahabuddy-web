@@ -35,6 +35,7 @@
  */
 
 import { CardShell } from './shared'
+import Image from 'next/image'
 import type { MouseEvent } from 'react'
 
 // \u2500\u2500\u2500 Types \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
@@ -50,6 +51,8 @@ export interface FlightCardData {
   /** Pretty route like "MIA \u2192 NAS". */
   route?: string
   airline?: string
+  airline_code?: string
+  airline_logo_url?: string
   /** Pretty departure time ("8:15 AM"). */
   departure?: string
   /** Pretty arrival time ("11:45 AM"). */
@@ -60,8 +63,13 @@ export interface FlightCardData {
   stops?: string
   /** Total fare in USD. */
   price?: number
+  currency?: string
+  passengers?: number
   /** Optional cabin class label ("Economy", "Business"). */
   cabin_class?: string
+  fare_brand?: string
+  refundable?: boolean
+  expiration?: string
   /** Optional ordered list of layovers. */
   layovers?: FlightLayover[]
   /** Optional baggage allowance. */
@@ -106,16 +114,66 @@ const I = {
   ),
 }
 
+function DecisionFact({
+  label,
+  value,
+  tone = 'default',
+}: {
+  label: string
+  value: string
+  tone?: 'default' | 'good' | 'warn'
+}) {
+  const toneClass = tone === 'good'
+    ? 'text-palm-700'
+    : tone === 'warn'
+      ? 'text-gold-700'
+      : 'text-gray-900'
+
+  return (
+    <div className="min-w-0 rounded-xl bg-white px-2.5 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
+      <p className={`mt-0.5 truncate text-[12px] font-extrabold ${toneClass}`}>{value}</p>
+    </div>
+  )
+}
+
+function formatMoney(value: number, currency: string) {
+  if (currency.toUpperCase() === 'USD') {
+    return `$${Math.round(value).toLocaleString()}`
+  }
+  return `${currency.toUpperCase()} ${Math.round(value).toLocaleString()}`
+}
+
+function formatExpiration(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+}
+
 // \u2500\u2500\u2500 Component \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
 export function FlightCard({ data, onSendMessage, className }: Props) {
   const {
     route, airline, departure, arrival, duration, stops,
-    price = 0, cabin_class, layovers = [], baggage,
+    price = 0, currency = 'USD', passengers = 1, cabin_class, fare_brand,
+    refundable, expiration, layovers = [], baggage, airline_code, airline_logo_url,
   } = data
 
   const stopsTone = stopsToTone(stops)
   const stop = (e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()
+  const isDirect = /direct|nonstop|non-stop|^0$/i.test(stops ?? '')
+  const priceEach = passengers > 1 && price > 0 ? price / passengers : null
+  const formattedPrice = formatMoney(price, currency)
+  const baggageLabel = baggage?.carry_on
+    ? 'Carry-on included'
+    : baggage?.checked && baggage.checked > 0
+      ? `${baggage.checked} checked`
+      : 'Check fare rules'
 
   return (
     <CardShell mode="plain" className={className}>
@@ -123,22 +181,35 @@ export function FlightCard({ data, onSendMessage, className }: Props) {
         {/* Airline + cabin chip + price \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0">
-            <span className="w-8 h-8 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center shrink-0">
-              {I.plane}
-            </span>
+            {airline_logo_url ? (
+              <Image
+                src={airline_logo_url}
+                alt={`${airline ?? 'Airline'} logo`}
+                width={36}
+                height={36}
+                unoptimized
+                className="w-9 h-9 object-contain shrink-0"
+              />
+            ) : (
+              <span className="w-8 h-8 text-brand-700 flex items-center justify-center shrink-0">
+                {I.plane}
+              </span>
+            )}
             <div className="min-w-0">
               <p className="text-sm font-semibold text-gray-900 truncate">{airline ?? 'Flight'}</p>
-              {cabin_class && (
+              {(airline_code || cabin_class) && (
                 <span className="text-[10px] font-semibold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded mt-0.5 inline-block uppercase tracking-wide">
-                  {cabin_class}
+                  {[airline_code, cabin_class].filter(Boolean).join(' · ')}
                 </span>
               )}
             </div>
           </div>
           {price > 0 && (
             <div className="text-right shrink-0">
-              <p className="text-xl font-extrabold text-brand-600 leading-none">${Math.round(price).toLocaleString()}</p>
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mt-0.5">Total</p>
+              <p className="text-xl font-extrabold text-brand-600 leading-none">{formattedPrice}</p>
+              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mt-0.5">
+                {priceEach ? `${formatMoney(priceEach, currency)} each` : 'Total'}
+              </p>
             </div>
           )}
         </div>
@@ -178,6 +249,17 @@ export function FlightCard({ data, onSendMessage, className }: Props) {
           </div>
         )}
 
+        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-gray-100 bg-sky-50/50 p-2.5">
+          <DecisionFact label="Cabin" value={fare_brand ?? cabin_class ?? 'Confirm'} />
+          <DecisionFact label="Travelers" value={`${passengers} traveler${passengers === 1 ? '' : 's'}`} />
+          <DecisionFact
+            label="Route"
+            value={isDirect ? 'Non-stop' : stops ?? 'Confirm'}
+            tone={isDirect ? 'good' : 'warn'}
+          />
+          <DecisionFact label="Baggage" value={baggageLabel} />
+        </div>
+
         {/* Stops + baggage row \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
         <div className="flex items-center gap-2 flex-wrap">
           {stops && (
@@ -195,6 +277,16 @@ export function FlightCard({ data, onSendMessage, className }: Props) {
             <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-palm-700 bg-palm-50 px-2 py-0.5 rounded-full">
               {I.bag}
               {baggage.checked} checked
+            </span>
+          )}
+          {typeof refundable === 'boolean' && (
+            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${refundable ? 'text-palm-700 bg-palm-50' : 'text-rose-700 bg-rose-50'}`}>
+              {refundable ? 'Refundable' : 'Non-refundable'}
+            </span>
+          )}
+          {expiration && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold-700 bg-gold-50 px-2 py-0.5 rounded-full">
+              Expires {formatExpiration(expiration)}
             </span>
           )}
         </div>
@@ -217,11 +309,11 @@ export function FlightCard({ data, onSendMessage, className }: Props) {
               type="button"
               onClick={(e) => {
                 stop(e)
-                onSendMessage(`Save the ${airline ?? 'flight'} flight at ${departure ?? ''} for $${price} to my trip`)
+                onSendMessage(`Help me decide on the ${airline ?? 'flight'} flight at ${departure ?? ''} for ${formattedPrice}`)
               }}
               className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 px-3 py-1 rounded-full border border-brand-200 hover:bg-brand-50 transition-colors"
             >
-              Save flight
+              Ask Buddy
             </button>
           </div>
         )}

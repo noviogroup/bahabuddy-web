@@ -381,4 +381,130 @@ describe('booking return API', () => {
       reconciled: true,
     })
   })
+
+  test('uses payment intent to attach the exact canonical stay and blocks stale confirmed rows', async () => {
+    const booking = {
+      id: 'booking-1',
+      trip_id: 'trip-1',
+      user_id: 'user-1',
+      booking_type: 'accommodation',
+      type: 'hotel',
+      provider: 'liteapi',
+      status: 'confirmed',
+      amount: 1200,
+      currency: 'usd',
+      paid_at: '2026-06-17T10:00:00Z',
+      stripe_payment_intent_id: 'pi_failed_stay',
+      booking_ref: 'lite-booking-1',
+      booking_reference: 'stale-confirmation-1',
+      external_reference: 'stale-confirmation-1',
+      financial_metadata: { source_surface: 'web', provider_status: 'CONFIRMED' },
+      raw_response: {},
+    }
+    const stayRows = [
+      {
+        id: 'older-stay-item',
+        status: 'booked',
+        booking_reference: 'older-confirmation',
+        stripe_payment_intent_id: 'pi_other',
+      },
+      {
+        id: 'failed-stay-item',
+        status: 'failed',
+        booking_reference: null,
+        stripe_payment_intent_id: 'pi_failed_stay',
+      },
+    ]
+    let accommodationQuery: ReturnType<typeof vi.fn> | null = null
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      if (table === 'bookings') return selectMaybeSingle(booking)
+      if (table === 'trip_accommodations') {
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn(() => query),
+          order: vi.fn(() => query),
+          limit: vi.fn().mockResolvedValue({ data: stayRows, error: null }),
+        }
+        accommodationQuery = query.select
+        return query
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+
+    const response = await getBookingReturn(
+      new Request('http://localhost.test/api'),
+      { params: { id: 'trip-1', bookingId: 'booking-1' } },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(accommodationQuery).toHaveBeenCalledWith('id, status, booking_reference, stripe_payment_intent_id')
+    expect(body).toMatchObject({
+      tripItemId: 'failed-stay-item',
+      paymentStatus: 'paid',
+      providerStatus: 'failed',
+      providerReference: 'stale-confirmation-1',
+      reconciled: false,
+    })
+  })
+
+  test('explicit refunded booking status wins over paid timestamp', async () => {
+    const booking = {
+      id: 'booking-1',
+      trip_id: 'trip-1',
+      user_id: 'user-1',
+      booking_type: 'accommodation',
+      type: 'hotel',
+      provider: 'liteapi',
+      status: 'refunded',
+      amount: 1200,
+      currency: 'usd',
+      paid_at: '2026-06-17T10:00:00Z',
+      stripe_payment_intent_id: 'pi_refunded_stay',
+      booking_ref: 'lite-booking-1',
+      booking_reference: 'hotel-confirmation-1',
+      external_reference: 'hotel-confirmation-1',
+      financial_metadata: { source_surface: 'web', provider_status: 'REFUNDED' },
+      raw_response: {},
+    }
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      if (table === 'bookings') return selectMaybeSingle(booking)
+      if (table === 'trip_accommodations') {
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn(() => query),
+          order: vi.fn(() => query),
+          limit: vi.fn().mockResolvedValue({
+            data: [{
+              id: 'refunded-stay-item',
+              status: 'refunded',
+              booking_reference: 'hotel-confirmation-1',
+              stripe_payment_intent_id: 'pi_refunded_stay',
+            }],
+            error: null,
+          }),
+        }
+        return query
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+
+    const response = await getBookingReturn(
+      new Request('http://localhost.test/api'),
+      { params: { id: 'trip-1', bookingId: 'booking-1' } },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      tripItemId: 'refunded-stay-item',
+      paymentStatus: 'refunded',
+      providerStatus: 'cancelled',
+      reconciled: false,
+    })
+  })
 })

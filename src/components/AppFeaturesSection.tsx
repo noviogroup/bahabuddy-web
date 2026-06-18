@@ -2,17 +2,17 @@ const FEATURES = [
   {
     title: 'AI Trip Planner',
     description:
-      'Chat with Baha Buddy AI to build custom itineraries tailored to your travel style, budget, and party size.',
+      'Tell Buddy what you want and get an island-by-island plan shaped around your dates, budget, pace, and travel style.',
   },
   {
-    title: 'Flight Search',
+    title: 'Live Flight Search',
     description:
-      'Compare real-time flight prices and book directly from the app. Duffel-powered for the best rates.',
+      'Compare live LiteAPI fares to Bahamas airports, verify the offer, then book into your trip when you are ready.',
   },
   {
-    title: 'Hotel Booking',
+    title: 'Stays with Context',
     description:
-      'Browse thousands of hotels and resorts across the Bahamas with live availability and pricing.',
+      'Browse hotels, resorts, villas, homes, and apartments with filters that match how people actually plan Bahamas trips.',
   },
   {
     title: 'Island Explorer',
@@ -20,14 +20,14 @@ const FEATURES = [
       'Swipe through 700+ islands and cays. Find hidden beaches, local restaurants, and authentic experiences.',
   },
   {
-    title: 'Saved Itineraries',
+    title: 'Trip Memory',
     description:
-      'Your trips are always backed up. Switch to web when you need a bigger screen or share with travel partners.',
+      'Save the plan, bookings, activities, restaurants, and notes so Buddy remembers the trip across web and mobile.',
   },
   {
-    title: 'Deals & Packages',
+    title: 'Guided on Island',
     description:
-      'Get notified about exclusive Bahamas deals — all-inclusive packages, island-hopping tours, and more.',
+      'Use the mobile app for your trip timeline, map context, guided days, and Buddy support while traveling.',
   },
 ]
 

@@ -71,6 +71,14 @@ const BAHAMAS_DESTINATIONS: Array<{ code: string; label: string }> = [
   { code: 'MHH', label: 'Marsh Harbour / Abacos (MHH)' },
 ]
 
+const POPULAR_ROUTES: Array<{ label: string; origin: string; destination: string }> = [
+  { label: 'Miami to Nassau', origin: 'Miami', destination: 'NAS' },
+  { label: 'Fort Lauderdale to Nassau', origin: 'Fort Lauderdale', destination: 'NAS' },
+  { label: 'New York to Nassau', origin: 'New York', destination: 'NAS' },
+  { label: 'Atlanta to Exuma', origin: 'Atlanta', destination: 'EXU' },
+  { label: 'Charlotte to Eleuthera', origin: 'Charlotte', destination: 'ELH' },
+]
+
 const CABIN_CLASSES: Array<{ value: string; label: string }> = [
   { value: 'economy',          label: 'Economy' },
   { value: 'premium_economy',  label: 'Premium Economy' },
@@ -101,6 +109,11 @@ export default function FlightSearchClient() {
     d.setDate(d.getDate() + 14)
     return d.toISOString().split('T')[0]
   }, [])
+  const defaultReturn = useMemo(() => {
+    const d = new Date()
+    d.setDate(d.getDate() + 19)
+    return d.toISOString().split('T')[0]
+  }, [])
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
 
   // ── URL-param hydration (deep-link from HeroSearchPanel) ─────────────────
@@ -121,7 +134,7 @@ export default function FlightSearchClient() {
       origin: origin && origin.length > 0 ? origin : 'Miami',
       destination: destination && BAHAMAS_DESTINATION_CODES.has(destination) ? destination : 'NAS',
       depart: depart && ISO_DATE_RX.test(depart) && depart >= todayStr ? depart : defaultDeparture,
-      returnDate: ret && ISO_DATE_RX.test(ret) ? ret : '',
+      returnDate: ret && ISO_DATE_RX.test(ret) ? ret : defaultReturn,
       passengers: Number.isFinite(passengersNum) && passengersNum >= 1 && passengersNum <= 9
         ? Math.floor(passengersNum)
         : 1,
@@ -131,7 +144,7 @@ export default function FlightSearchClient() {
       hasDeepLink:
         !!origin || !!destination || !!depart || !!ret || !!passengersRaw || !!cabin || !!tripType,
     }
-  }, [searchParams, defaultDeparture, todayStr])
+  }, [searchParams, defaultDeparture, defaultReturn, todayStr])
 
   const [originCity, setOriginCity] = useState(initial.origin)
   const [destination, setDestination] = useState(initial.destination)
@@ -145,6 +158,7 @@ export default function FlightSearchClient() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [results, setResults] = useState<CardData[]>([])
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
+  const [lastSearchLabel, setLastSearchLabel] = useState('Miami to Nassau')
 
   /** Default return date when user toggles to round-trip: departure + 5 days. */
   function ensureReturnDate(dep: string) {
@@ -171,6 +185,7 @@ export default function FlightSearchClient() {
     setErrorMessage(null)
     setEmptyMessage(null)
     setResults([])
+    setLastSearchLabel(searchLabel(args.originCity, args.destination))
 
     track('flight_search_started', {
       origin: args.originCity,
@@ -238,14 +253,12 @@ export default function FlightSearchClient() {
     }
   }
 
-  // Auto-search on mount when the URL carries deep-link params from
-  // HeroSearchPanel. Guarded by a ref so it only fires once even under
-  // React StrictMode's double-invoke. Uses the validated `initial` values
-  // directly to sidestep the React commit cycle.
+  // Auto-search on mount. Public visitors should immediately see that
+  // this is a live flight surface, not an empty workbench. Deep links
+  // still hydrate the route first.
   const didAutoSearchRef = useRef(false)
   useEffect(() => {
     if (didAutoSearchRef.current) return
-    if (!initial.hasDeepLink) return
     didAutoSearchRef.current = true
     void runSearch({
       originCity: initial.origin,
@@ -272,10 +285,55 @@ export default function FlightSearchClient() {
     })
   }
 
+  async function handlePopularRoute(route: { label: string; origin: string; destination: string }) {
+    setOriginCity(route.origin)
+    setDestination(route.destination)
+    setTripType('round_trip')
+    if (!returnDate) setReturnDate(defaultReturn)
+    await runSearch({
+      originCity: route.origin,
+      destination: route.destination,
+      departureDate,
+      returnDate: returnDate || defaultReturn,
+      tripType: 'round_trip',
+      passengers,
+      cabinClass,
+    })
+  }
+
   const isLoading = status === 'loading'
 
   return (
     <div className="space-y-6">
+      <section className="rounded-baha-lg border border-brand-100 bg-white p-5 shadow-card">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-600">
+              Live Fare Board
+            </p>
+            <h2 className="mt-1 text-xl font-extrabold text-night">
+              Popular routes to The Bahamas
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Tap a route to fetch current LiteAPI offers, then verify and book when you are ready.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {POPULAR_ROUTES.map((route) => (
+              <button
+                key={route.label}
+                type="button"
+                onClick={() => void handlePopularRoute(route)}
+                disabled={isLoading}
+                className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-extrabold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
+              >
+                {route.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ─── Search form ──────────────────────────────────────────────── */}
       <form
         onSubmit={handleSubmit}
@@ -480,9 +538,19 @@ export default function FlightSearchClient() {
       {/* ─── Results ──────────────────────────────────────────────────── */}
       {status === 'results' && results.length > 0 && (
         <section aria-label="Flight results" className="space-y-2">
-          <h2 className="text-sm font-semibold text-gray-600 px-1">
-            {results.length} {results.length === 1 ? 'option' : 'options'} found
-          </h2>
+          <div className="flex flex-col gap-1 px-1 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
+                Live results
+              </p>
+              <h2 className="text-lg font-extrabold text-night">
+                {lastSearchLabel}: {results.length} {results.length === 1 ? 'option' : 'options'}
+              </h2>
+            </div>
+            <p className="text-xs font-semibold text-gray-400">
+              Prices can expire. Verify before payment.
+            </p>
+          </div>
           <div className="space-y-1">
             {results.map((card, idx) => (
               <RichCardRenderer key={idx} cardData={card} />
@@ -517,4 +585,9 @@ export default function FlightSearchClient() {
       )}
     </div>
   )
+}
+
+function searchLabel(origin: string, destinationCode: string): string {
+  const destination = BAHAMAS_DESTINATIONS.find((item) => item.code === destinationCode)?.label ?? destinationCode
+  return `${origin.trim() || 'Origin'} to ${destination.replace(/\s*\([A-Z]{3}\)\s*$/, '')}`
 }

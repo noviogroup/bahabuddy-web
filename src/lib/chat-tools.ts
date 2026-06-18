@@ -37,6 +37,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CardData } from '@/components/RichCards'
+import { resolveAirlineLogoUrl } from '@/lib/airline-logos'
 import { callTravelProvider } from '@/lib/travel-booking/provider'
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1018,20 +1019,33 @@ function shapeLiteApiFlightCards(response: unknown): CardData[] {
         const fare = recordValue(offer.fare)
         const terms = recordValue(offer.terms)
         const offerId = liteTextValue(offer.offerId)
+        const airlineName = liteTextValue(carrier.marketingName, liteTextValue(carrier.operatingName, 'Airline'))
+        const airlineCode = liteTextValue(carrier.marketingCode, liteTextValue(carrier.operatingCode, liteTextValue(carrier.iataCode)))
+        const providerLogoUrl = liteTextValue(carrier.logoUrl, liteTextValue(carrier.logo_url))
         cards.push({
           card_type: 'flight',
           offer_id: offerId,
           provider_offer_id: offerId,
           route: `${liteTextValue(first.originCode)} → ${liteTextValue(last.destinationCode)}`,
-          airline: liteTextValue(carrier.marketingName, liteTextValue(carrier.operatingName, 'Airline')),
+          airline: airlineName,
+          airline_code: airlineCode,
+          airline_logo_url: resolveAirlineLogoUrl({
+            providerLogoUrl,
+            airlineCode,
+            airlineName,
+          }),
           departure: formatLiteApiFlightTime(first.departureTime),
           arrival: formatLiteApiFlightTime(last.arrivalTime),
           duration: formatLiteApiDuration(numericValue(duration.minutes)),
           stops: shownSegments.length <= 1 ? 'Direct' : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? 's' : ''}`,
           price: numericValue(display.total),
+          currency: liteTextValue(display.currency, 'USD'),
           cabin_class: liteTextValue(fare.family, 'Economy'),
+          fare_brand: liteTextValue(fare.brandName, liteTextValue(fare.name, liteTextValue(fare.family))),
           passengers: Math.max(1, passengerTotal),
           baggage: { checked: liteApiBaggageCount(offer.baggage) },
+          refundable: terms.refundable === true,
+          expiration: liteTextValue(offer.expiresAt, liteTextValue(offer.expires_at, liteTextValue(offer.expiration))),
           description: terms.refundable === true ? 'Refundable fare' : undefined,
         })
       }

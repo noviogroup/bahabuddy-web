@@ -2,11 +2,10 @@ import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import TrackView from '@/components/TrackView'
-import { FALLBACK_IMAGE } from '@/lib/baha-images'
+import { BahaImages, FALLBACK_IMAGE } from '@/lib/baha-images'
 import type { TripAdvisorLocation } from '@/lib/tripadvisor/types'
 import { ISLAND_SLUG_MAP } from '@/lib/tripadvisor/types'
 
@@ -157,48 +156,42 @@ export default async function RestaurantsPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
+      <div className="relative overflow-hidden text-white">
+        <Image
+          src={BahaImages.bahamasLifestyle}
+          alt="Bahamas dining and culture"
+          fill
+          priority
+          className="object-cover"
+          sizes="100vw"
+          unoptimized
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/90 via-brand-700/75 to-brand-500/55" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_10%,rgba(245,183,49,0.32),transparent_34%)]" />
+        <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-20 text-center">
+          <p className="text-gold-200 text-sm font-extrabold tracking-[0.22em] uppercase mb-3">
+            Bahamas Dining
+          </p>
+          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
+            {activeIsland ? `Where to Eat in ${activeIsland}` : 'Bahamas Dining Guide'}
+          </h1>
+          <p className="text-white/85 text-lg max-w-2xl mx-auto leading-8">
+            Find island restaurants, local seafood, waterfront spots, and refined dining with real photos, ratings, and Buddy context.
+          </p>
+          <div className="mt-7 flex flex-wrap justify-center gap-3">
             <Link
-              href="/hotels"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
+              href="/dashboard?q=Recommend+restaurants+for+my+Bahamas+trip"
+              className="rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-brand-700 shadow-soft transition-colors hover:bg-brand-50"
             >
-              Hotels
+              Ask Buddy for food picks
             </Link>
             <Link
               href="/destinations"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
+              className="rounded-full border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-extrabold text-white backdrop-blur transition-colors hover:bg-white/20"
             >
-              Destinations
-            </Link>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-            >
-              Sign in
+              Explore by island
             </Link>
           </div>
-        </div>
-      </header>
-
-      {/* Hero */}
-      <div className="bg-gradient-to-br from-coral-600 to-coral-500 text-white">
-        <div className="max-w-6xl mx-auto px-4 py-16 text-center">
-          <p className="text-coral-100 text-sm font-semibold tracking-widest uppercase mb-3">
-            Bahamas Dining
-          </p>
-          <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-            {activeIsland
-              ? `Best Restaurants in ${activeIsland}`
-              : 'Bahamas Restaurant Guide'}
-          </h1>
-          <p className="text-white/80 text-lg max-w-xl mx-auto">
-            From conch salad shacks to fine dining — find the best places to eat
-            across the Bahamas.
-          </p>
         </div>
       </div>
 
@@ -251,7 +244,7 @@ export default async function RestaurantsPage({
                 href={activeIsland ? `/restaurants?island=${encodeURIComponent(activeIsland)}` : '/restaurants'}
                 className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
                   !activeCuisine
-                    ? 'bg-coral-600 text-white'
+                    ? 'bg-gold-400 text-night'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
               >
@@ -267,7 +260,7 @@ export default async function RestaurantsPage({
                     href={`/restaurants?${params.toString()}`}
                     className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
                       activeCuisine === cuisine
-                        ? 'bg-coral-600 text-white'
+                        ? 'bg-gold-400 text-night'
                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
@@ -339,7 +332,7 @@ export default async function RestaurantsPage({
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {rest.cuisine_types && rest.cuisine_types.length > 0 && (
-                        <span className="text-[11px] font-semibold text-coral-700 bg-coral-50 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">
                           {rest.cuisine_types[0]}
                         </span>
                       )}
@@ -402,9 +395,9 @@ export default async function RestaurantsPage({
               <Link
                 key={slug}
                 href={`/restaurants/${slug}`}
-                className="bg-gray-50 hover:bg-coral-50 border border-gray-100 hover:border-coral-100 rounded-xl p-4 transition-colors group"
+                className="bg-gray-50 hover:bg-brand-50 border border-gray-100 hover:border-brand-100 rounded-xl p-4 transition-colors group"
               >
-                <p className="text-sm font-semibold text-gray-900 group-hover:text-coral-700">
+                <p className="text-sm font-semibold text-gray-900 group-hover:text-brand-700">
                   Dining in {name}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">Browse &rarr;</p>
@@ -414,17 +407,17 @@ export default async function RestaurantsPage({
         </section>
 
         {/* App CTA */}
-        <div className="mt-16 bg-gradient-to-r from-coral-600 to-coral-500 rounded-2xl p-8 text-center text-white">
+        <div className="mt-16 bg-gradient-to-r from-brand-700 via-brand-600 to-brand-500 rounded-2xl p-8 text-center text-white shadow-card">
           <h2 className="text-2xl font-bold mb-2">
             Get personalized dining picks
           </h2>
-          <p className="text-coral-100 mb-6">
+          <p className="text-brand-50 mb-6">
             Tell Baha Buddy your cuisine preferences — we&apos;ll recommend the
             best spots.
           </p>
           <Link
             href="/dashboard?q=Recommend+restaurants+in+the+Bahamas"
-            className="inline-flex items-center justify-center gap-2 bg-white text-coral-700 font-semibold rounded-xl px-6 py-3 hover:bg-coral-50 transition-colors text-sm"
+            className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold rounded-xl px-6 py-3 hover:bg-brand-50 transition-colors text-sm"
           >
             Chat with Baha Buddy
           </Link>

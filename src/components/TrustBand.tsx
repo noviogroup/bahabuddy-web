@@ -1,9 +1,9 @@
 const TRUST_POINTS = [
-  'Built in The Bahamas',
-  'AI-powered planning',
-  'Local concierge review',
-  'Visa/document support',
-  'Partner-backed recommendations',
+  'Browse before signup',
+  'Live stays and flights',
+  'Save to My Trip',
+  'Secure checkout path',
+  'Travel with Buddy',
 ]
 
 export default function TrustBand() {

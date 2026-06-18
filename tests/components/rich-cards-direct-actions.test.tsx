@@ -14,6 +14,9 @@ describe('RichCardRenderer direct actions', () => {
       rating: 4.7,
       price_per_night: 420,
       photo_url: 'https://images.example/goldwynn.jpg',
+      primary_image_url: 'https://images.example/goldwynn-primary.jpg',
+      gallery_images: ['https://images.example/goldwynn-gallery.jpg'],
+      photo: 'https://images.example/generic-fallback.jpg',
     }
 
     render(
@@ -28,6 +31,10 @@ describe('RichCardRenderer direct actions', () => {
     fireEvent.click(screen.getByRole('button', { name: /expand goldwynn resort for more info/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
+    expect(screen.getByAltText('Photo of Goldwynn Resort')).toHaveAttribute(
+      'src',
+      'https://images.example/goldwynn-primary.jpg',
+    )
     expect(onAddToTrip).toHaveBeenCalledWith(card, 'trip-123')
     expect(onSendMessage).not.toHaveBeenCalled()
     expect(screen.getByRole('link', { name: /view full details/i })).toHaveAttribute('href', '/stays/goldwynn-resort')
@@ -64,6 +71,13 @@ describe('RichCardRenderer direct actions', () => {
       duration: '1h',
       stops: 'Direct',
       price: 345,
+      currency: 'USD',
+      passengers: 2,
+      cabin_class: 'Economy',
+      fare_brand: 'Main Cabin',
+      baggage: { carry_on: true, checked: 1 },
+      refundable: true,
+      expiration: '2026-06-18T16:30:00Z',
       offer_id: 'lite-offer-123',
       provider_offer_id: 'lite-offer-123',
     }
@@ -81,6 +95,11 @@ describe('RichCardRenderer direct actions', () => {
 
     expect(onAddToTrip).toHaveBeenCalledWith(card, 'trip-123')
     expect(onSendMessage).not.toHaveBeenCalled()
+    expect(screen.getByText('Main Cabin')).toBeInTheDocument()
+    expect(screen.getByText('2 travelers')).toBeInTheDocument()
+    expect(screen.getByText('Non-stop')).toBeInTheDocument()
+    expect(screen.getAllByText('Carry-on included').length).toBeGreaterThan(0)
+    expect(screen.getByText('Refundable')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Book this fare' })).toHaveAttribute('href', '/flights/lite-offer-123/book')
     expect(screen.queryByRole('button', { name: 'Plan this flight' })).not.toBeInTheDocument()
   })

@@ -32,6 +32,7 @@ export default function StayGuestBookingClient(props: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
   const [prebookId, setPrebookId] = useState<string | null>(null)
+  const [tripItemId, setTripItemId] = useState<string | null>(null)
 
   const formattedAmount = new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -49,7 +50,8 @@ export default function StayGuestBookingClient(props: Props) {
 
     try {
       setStage('processing')
-      await addStayToTrip(tripId, props)
+      const tripItem = await addStayToTrip(tripId, props)
+      setTripItemId(String(tripItem.tripItemId ?? ''))
 
       const prebook = await postJson('/api/booking/hotels/prebook', {
         rateId: props.rateId,
@@ -143,6 +145,7 @@ export default function StayGuestBookingClient(props: Props) {
               guest={guest}
               prebookId={prebookId}
               paymentIntentId={paymentIntentId}
+              tripItemId={tripItemId}
               setError={setError}
               setStage={setStage}
             />
@@ -166,6 +169,7 @@ function HotelPaymentForm({
   guest,
   prebookId,
   paymentIntentId,
+  tripItemId,
   setError,
   setStage,
 }: Props & {
@@ -173,6 +177,7 @@ function HotelPaymentForm({
   guest: { firstName: string; lastName: string; email: string; phone: string }
   prebookId: string
   paymentIntentId: string
+  tripItemId: string | null
   setError: (value: string | null) => void
   setStage: (value: Stage) => void
 }) {
@@ -200,6 +205,7 @@ function HotelPaymentForm({
     try {
       const result = await postJson('/api/booking/hotels/book', {
         tripId,
+        tripItemId,
         prebookId,
         paymentIntentId,
         holder: guest,
@@ -246,7 +252,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 async function addStayToTrip(tripId: string, props: Props) {
-  await postJson(`/api/trips/${encodeURIComponent(tripId)}/items`, {
+  return postJson(`/api/trips/${encodeURIComponent(tripId)}/items`, {
     itemType: 'hotel',
     sourceId: props.hotelId,
     sourceType: 'web_stay_booking',

@@ -47,7 +47,6 @@ import {
 import { getIslandHero } from '@/lib/islands'
 import { fetchDestinationByIsland } from '@/lib/sanity/queries'
 
-import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import PortableTextBody from '@/components/PortableTextBody'
@@ -265,27 +264,6 @@ export default async function IslandDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-white">
       <TrackView event="island_viewed" props={{ island_id: params.id, island_name: name }} />
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link
-              href="/explore/places"
-              className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
-            >
-              ← All Places
-            </Link>
-            <Link
-              href="/login"
-              className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors"
-            >
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </header>
-
       {/* Hero */}
       <div className="relative h-72 md:h-96 overflow-hidden">
         {heroUrl ? (

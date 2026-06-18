@@ -4,7 +4,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 
 import { createClient } from '@/lib/supabase/server'
-import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
@@ -220,16 +219,6 @@ export default async function PlaceDetailPage({ params }: PageProps) {
   return (
     <div className="min-h-screen bg-white">
       <TrackView event="attraction_viewed" props={{ attraction_id: params.id, attraction_name: place.name, category: place.category }} />
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/explore/places" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">← All Places</Link>
-            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
-          </div>
-        </div>
-      </header>
-
       <div className="relative h-72 md:h-[28rem] overflow-hidden">
         <Image src={heroHeader.url} alt={place.image_url ? place.name : heroHeader.alt} fill className="object-cover" priority sizes="100vw" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />

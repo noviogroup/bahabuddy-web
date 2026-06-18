@@ -88,6 +88,42 @@ const TRUST_LABELS = [
   'Easy to Plan',
 ]
 
+const ROTATING_FALLBACK_IMAGES = [
+  BahaImages.nassau,
+  BahaImages.exumas,
+  BahaImages.eleuthera,
+  BahaImages.abacos,
+  BahaImages.bimini,
+  BahaImages.snorkeling,
+]
+
+function normalizeToken(value: string | null | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function attractionImageUrl(attraction: Attraction, index: number): string {
+  if (attraction.image_url) return attraction.image_url
+
+  const island = normalizeToken(attraction.island)
+  const category = normalizeToken(attraction.category)
+  const text = `${island} ${category} ${normalizeToken(attraction.name)} ${normalizeToken(attraction.description)}`
+
+  if (text.includes('exuma')) return BahaImages.exumas
+  if (text.includes('eleuthera') || text.includes('harbour island') || text.includes('pink sand')) return BahaImages.eleuthera
+  if (text.includes('abaco')) return BahaImages.abacos
+  if (text.includes('andros')) return BahaImages.andros
+  if (text.includes('bimini')) return BahaImages.bimini
+  if (text.includes('grand bahama') || text.includes('freeport')) return BahaImages.grandBahama
+  if (text.includes('long island')) return BahaImages.longIsland
+  if (text.includes('paradise island') || text.includes('nassau')) return BahaImages.nassau
+  if (category.includes('water') || text.includes('snorkel') || text.includes('boat')) return BahaImages.snorkeling
+  if (category.includes('beach')) return BahaImages.beach
+  if (category.includes('culture') || text.includes('junkanoo')) return BahaImages.junkanoo
+  if (category.includes('dining')) return BahaImages.bahamasLifestyle
+
+  return ROTATING_FALLBACK_IMAGES[index % ROTATING_FALLBACK_IMAGES.length]
+}
+
 interface Props {
   attractions: Attraction[]
 }
@@ -119,6 +155,7 @@ export default function DestinationShowcase({ attractions }: Props) {
           {items.map((attraction, index) => {
             const categoryColor = CATEGORY_COLORS[attraction.category] ?? 'bg-gray-600/80 text-white'
             const trustLabel = TRUST_LABELS[index % TRUST_LABELS.length]
+            const imageUrl = attractionImageUrl(attraction, index)
 
             return (
               <div
@@ -127,19 +164,15 @@ export default function DestinationShowcase({ attractions }: Props) {
               >
                 {/* Image — 16:9 */}
                 <div className="relative aspect-video overflow-hidden bg-stone-200">
-                  {attraction.image_url ? (
-                    <Image
-                      src={attraction.image_url}
-                      alt={attraction.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                      <span className="text-6xl opacity-50" aria-hidden="true">🏝️</span>
-                    </div>
-                  )}
+                  <Image
+                    src={imageUrl}
+                    alt={attraction.image_url ? attraction.name : `${attraction.name} Bahamas travel image`}
+                    fill
+                    loading="eager"
+                    unoptimized
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  />
 
                   {/* Category badge */}
                   <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${categoryColor}`}>

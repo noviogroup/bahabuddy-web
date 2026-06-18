@@ -80,6 +80,38 @@ const DEAL_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   activity: { label: 'Activity', color: 'bg-gold-50 text-gold-700' },
 }
 
+function normalizeToken(value: string | null | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+}
+
+function dealImageUrl(deal: Deal): string {
+  if (deal.image_url) return deal.image_url
+
+  const text = [
+    deal.title,
+    deal.deal_type,
+    deal.island,
+    deal.resort_name,
+    deal.description,
+    ...(deal.highlights ?? []),
+    ...(deal.tags ?? []),
+  ].map(normalizeToken).join(' ')
+
+  if (text.includes('exuma') || text.includes('pig')) return BahaImages.exumas
+  if (text.includes('eleuthera') || text.includes('harbour island') || text.includes('pink sand')) return BahaImages.eleuthera
+  if (text.includes('abaco')) return BahaImages.abacos
+  if (text.includes('andros')) return BahaImages.andros
+  if (text.includes('bimini')) return BahaImages.bimini
+  if (text.includes('grand bahama') || text.includes('freeport')) return BahaImages.grandBahama
+  if (text.includes('long island')) return BahaImages.longIsland
+  if (text.includes('snorkel') || text.includes('boat') || text.includes('water')) return BahaImages.snorkeling
+  if (text.includes('sailing')) return BahaImages.sunsetSailing
+  if (text.includes('beach')) return BahaImages.beach
+  if (text.includes('junkanoo') || text.includes('culture')) return BahaImages.junkanoo
+
+  return BahaImages.nassau
+}
+
 function formatPrice(price: number | null, unit: string | null): string {
   if (!price) return 'Contact for price'
   const units: Record<string, string> = {
@@ -122,6 +154,7 @@ export default function DealsSection({ deals }: Props) {
               label: deal.deal_type,
               color: 'bg-gray-100 text-gray-600',
             }
+            const imageUrl = dealImageUrl(deal)
 
             return (
               <div
@@ -130,19 +163,15 @@ export default function DealsSection({ deals }: Props) {
               >
                 {/* Image */}
                 <div className="relative h-48 overflow-hidden bg-stone-200">
-                  {deal.image_url ? (
-                    <Image
-                      src={deal.image_url}
-                      alt={deal.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 640px) 100vw, 50vw"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-                      
-                    </div>
-                  )}
+                  <Image
+                    src={imageUrl}
+                    alt={deal.image_url ? deal.title : `${deal.title} Bahamas travel deal`}
+                    fill
+                    loading="eager"
+                    unoptimized
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
+                    sizes="(max-width: 640px) 100vw, 50vw"
+                  />
 
                   <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${typeConfig.color}`}>
                     {typeConfig.label}

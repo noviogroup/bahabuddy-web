@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const prebookId = stringValue(body.prebookId ?? body.prebook_id)
     const transactionId = stringValue(body.transactionId ?? body.transaction_id)
+    const paymentIntentId = stringValue(body.paymentIntentId ?? body.stripe_payment_intent_id)
     const tripId = stringValue(body.tripId ?? body.trip_id)
     const offerId = stringValue(body.offerId ?? body.offer_id)
 
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
       offerId,
       prebookId,
       transactionId,
+      paymentIntentId,
       providerPayload: result.data,
       providerBooking,
       requestBody: asRecord(body),
@@ -56,10 +58,17 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       bookingId: bookingReference || persisted.bookingId,
+      tripId,
+      tripItemId: persisted.tripItemId,
+      provider: 'flight_liteapi',
+      providerReference: bookingReference || null,
+      paymentStatus: 'paid',
+      providerStatus: normalizedStatus(providerBooking),
+      amount: persisted.amount,
+      sourceSurface: 'web',
       bookingReference,
       status: normalizedStatus(providerBooking),
       bookingRecordId: persisted.bookingId,
-      tripItemId: persisted.tripItemId,
       price: persisted.amount,
       currency: persisted.currency.toUpperCase(),
       raw: result.data,
@@ -79,6 +88,7 @@ async function persistFlightBooking(input: {
   offerId: string
   prebookId: string
   transactionId: string
+  paymentIntentId: string
   providerPayload: unknown
   providerBooking: JsonRecord
   requestBody: JsonRecord
@@ -106,22 +116,39 @@ async function persistFlightBooking(input: {
     gross_booking_value: amount,
     currency,
     supplier_ref: reference || null,
+    stripe_payment_intent_id: input.paymentIntentId || null,
     financial_metadata: {
       source_surface: 'web',
       provider_status: stringValue(input.providerBooking.status),
       prebook_id: input.prebookId,
       transaction_id: input.transactionId,
+      payment_intent_id: input.paymentIntentId || null,
       offer_id: input.offerId || null,
     },
     raw_response: asJsonObject(input.providerPayload),
   }
 
-  const { data: bookingData } = await admin
-    .from('bookings')
-    .insert(bookingRecord)
-    .select('id')
-    .single()
-  const bookingId = (bookingData as { id?: string } | null)?.id ?? null
+  let bookingId: string | null = null
+  if (input.paymentIntentId) {
+    const { data: existing } = await admin
+      .from('bookings')
+      .select('id')
+      .eq('user_id', input.userId)
+      .eq('stripe_payment_intent_id', input.paymentIntentId)
+      .maybeSingle()
+    bookingId = (existing as { id?: string } | null)?.id ?? null
+  }
+
+  if (bookingId) {
+    await admin.from('bookings').update(bookingRecord).eq('id', bookingId)
+  } else {
+    const { data: bookingData } = await admin
+      .from('bookings')
+      .insert(bookingRecord)
+      .select('id')
+      .single()
+    bookingId = (bookingData as { id?: string } | null)?.id ?? null
+  }
 
   const flightRow = {
     trip_id: input.tripId,
@@ -133,6 +160,7 @@ async function persistFlightBooking(input: {
     booking_reference: reference || null,
     price: amount || null,
     duffel_offer_id: input.offerId || null,
+    stripe_payment_intent_id: input.paymentIntentId || null,
   }
 
   let tripItemId: string | null = null
@@ -196,10 +224,11 @@ function bookingRef(data: JsonRecord): string {
   ])
 }
 
-function normalizedStatus(data: JsonRecord): 'pending' | 'confirmed' | 'failed' {
+function normalizedStatus(data: JsonRecord): 'pending' | 'confirmed' | 'failed' | 'cancelled' {
   const raw = findFirstString(data, ['status', 'bookingStatus', 'providerStatus']).toLowerCase()
   if (['confirmed', 'booked', 'ticketed', 'success', 'succeeded'].includes(raw)) return 'confirmed'
-  if (['failed', 'cancelled', 'canceled', 'error'].includes(raw)) return 'failed'
+  if (['failed', 'error'].includes(raw)) return 'failed'
+  if (['cancelled', 'canceled', 'refunded'].includes(raw)) return 'cancelled'
   return 'pending'
 }
 

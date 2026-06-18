@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { resolveAirportCode } from '@/lib/airports'
+import { resolveAirlineLogoUrl } from '@/lib/airline-logos'
 import { callTravelProvider, getProviderErrorResponse } from '@/lib/travel-booking/provider'
 import type { CardData } from '@/components/RichCards'
 
 export async function POST(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
   try {
     const body = await request.json()
-    const origin = String(body.origin_city ?? body.origin ?? '').trim().toUpperCase()
+    const rawOrigin = String(body.origin_city ?? body.origin ?? '').trim()
+    const origin = resolveAirportCode(rawOrigin)
     const destination = String(body.destination ?? '').trim().toUpperCase()
     const departureDate = String(body.departure_date ?? '').trim()
     const returnDate = typeof body.return_date === 'string' ? body.return_date.trim() : ''
 
-    if (!origin || !destination || !departureDate) {
+    if (!rawOrigin || !destination || !departureDate) {
       return NextResponse.json({ error: 'origin_city, destination, and departure_date are required.' }, { status: 400 })
+    }
+
+    if (!origin) {
+      return NextResponse.json({ error: `Could not resolve airport code for "${rawOrigin}". Try a 3-letter IATA code like MIA, JFK, or ATL.` }, { status: 400 })
     }
 
     const legs = [
@@ -42,6 +42,13 @@ export async function POST(request: Request) {
       message: cards.length === 0 ? `No flights found from ${origin} to ${destination} on ${departureDate}.` : undefined,
     })
   } catch (error) {
+    if (error instanceof Error && /provider is not configured/i.test(error.message)) {
+      return NextResponse.json(
+        { error: 'Live flight search is not configured for this environment yet.' },
+        { status: 503 },
+      )
+    }
+
     const response = getProviderErrorResponse(error)
     return NextResponse.json({ error: response.error, details: response.details }, { status: response.status })
   }
@@ -73,20 +80,33 @@ function shapeFlightCards(response: unknown): CardData[] {
         const display = asRecord(asRecord(offer.pricing).display)
         const fare = asRecord(offer.fare)
         const terms = asRecord(offer.terms)
+        const airlineName = stringValue(carrier.marketingName, stringValue(carrier.operatingName, 'Airline'))
+        const airlineCode = stringValue(carrier.marketingCode, stringValue(carrier.operatingCode, stringValue(carrier.iataCode)))
+        const providerLogoUrl = stringValue(carrier.logoUrl, stringValue(carrier.logo_url))
         cards.push({
           card_type: 'flight',
           offer_id: stringValue(offer.offerId),
           provider_offer_id: stringValue(offer.offerId),
           route: `${stringValue(first.originCode)} → ${stringValue(last.destinationCode)}`,
-          airline: stringValue(carrier.marketingName, stringValue(carrier.operatingName, 'Airline')),
+          airline: airlineName,
+          airline_code: airlineCode,
+          airline_logo_url: resolveAirlineLogoUrl({
+            providerLogoUrl,
+            airlineCode,
+            airlineName,
+          }),
           departure: formatFlightTime(first.departureTime),
           arrival: formatFlightTime(last.arrivalTime),
           duration: formatDuration(numberValue(duration.minutes)),
           stops: shownSegments.length <= 1 ? 'Direct' : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? 's' : ''}`,
           price: numberValue(display.total),
+          currency: stringValue(display.currency, 'USD'),
           cabin_class: stringValue(fare.family, 'Economy'),
+          fare_brand: stringValue(fare.brandName, stringValue(fare.name, stringValue(fare.family))),
           passengers: Math.max(1, passengerTotal),
           baggage: { checked: baggageCount(offer.baggage) },
+          refundable: terms.refundable === true,
+          expiration: stringValue(offer.expiresAt, stringValue(offer.expires_at, stringValue(offer.expiration))),
           description: terms.refundable === true ? 'Refundable fare' : undefined,
         })
       }

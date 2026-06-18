@@ -224,6 +224,7 @@ function FlightPaymentForm({
         prebookId,
         transactionId,
         tripId,
+        paymentIntentId: paymentIntent.id,
       })
       const bookingId = result.bookingRecordId ?? result.bookingId ?? result.booking_reference ?? prebookId
       window.location.href = `/trip/${encodeURIComponent(tripId)}?booking=${encodeURIComponent(String(bookingId))}`

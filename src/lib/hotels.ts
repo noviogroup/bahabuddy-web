@@ -1,5 +1,6 @@
 import 'server-only'
 import { createClient } from '@/lib/supabase/server'
+import { getStayTypeFilterOptions, stayPropertyTypeAliases } from '@/lib/stay-property-types'
 
 export interface Hotel {
   id: string
@@ -15,7 +16,7 @@ export interface Hotel {
   review_count: number | null
   description: string | null
   main_photo_url: string | null
-  photos: { url: string; caption?: string }[]
+  photos: Array<string | { url: string; caption?: string }> | null
   amenities: string[]
   property_type_id: number | null
   property_type_name: string | null
@@ -23,6 +24,41 @@ export interface Hotel {
   last_synced_at: string | null
   created_at: string
   updated_at: string
+}
+
+export type HotelPhoto = NonNullable<Hotel['photos']>[number]
+
+export function hotelPhotoUrl(photo: HotelPhoto): string | null {
+  if (!photo) return null
+  if (typeof photo === 'string') return validImageUrl(photo)
+  return validImageUrl(photo.url)
+}
+
+export function hotelPhotoCaption(photo: HotelPhoto): string | undefined {
+  if (!photo || typeof photo === 'string') return undefined
+  return photo.caption
+}
+
+export function hotelPhotoUrls(hotel: Pick<Hotel, 'main_photo_url' | 'photos'>): string[] {
+  const urls = new Set<string>()
+  const main = validImageUrl(hotel.main_photo_url)
+  if (main) urls.add(main)
+  for (const photo of hotel.photos ?? []) {
+    const url = hotelPhotoUrl(photo)
+    if (url) urls.add(url)
+  }
+  return Array.from(urls)
+}
+
+export function hotelHeroPhotoUrl(hotel: Pick<Hotel, 'main_photo_url' | 'photos'>): string | null {
+  return hotelPhotoUrls(hotel)[0] ?? null
+}
+
+function validImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const url = value.trim()
+  if (!/^https?:\/\//i.test(url)) return null
+  return url
 }
 
 const BROWSE_FIELDS =
@@ -46,7 +82,14 @@ export async function getHotels(filters?: {
       query = query.ilike('island', filters.island)
     }
     if (filters?.propertyType) {
-      query = query.ilike('property_type_name', filters.propertyType)
+      const aliases = stayPropertyTypeAliases(filters.propertyType)
+      if (aliases.length > 0) {
+        query = query.or(
+          aliases
+            .map((value) => `property_type_name.ilike.${value.replaceAll(',', '')}`)
+            .join(','),
+        )
+      }
     }
     if (filters?.minStars) {
       query = query.gte('star_rating', filters.minStars)
@@ -124,8 +167,8 @@ export async function getPropertyTypes(): Promise<string[]> {
       .not('property_type_name', 'is', null)
     if (!data) return []
     const unique = Array.from(new Set(data.map((r) => r.property_type_name as string))).sort()
-    return unique
+    return getStayTypeFilterOptions(unique)
   } catch {
-    return []
+    return getStayTypeFilterOptions([])
   }
 }

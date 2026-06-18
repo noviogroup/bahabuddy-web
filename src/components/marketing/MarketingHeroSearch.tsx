@@ -24,8 +24,7 @@
  *
  * Routing for unauthenticated visitors:
  *   - Plan a Trip   → /dashboard?q=…   (middleware preserves ?q= through /login)
- *   - Stays         → /hotels?island=… (dashboard layout redirects to /login,
- *                                       which preserves the redirect URL)
+ *   - Stays         → /stays?island=…
  *   - Flights       → /flights?origin=…&destination=…
  *   - Things to Do  → /dashboard/chat?q=…
  */
@@ -225,7 +224,7 @@ export default function MarketingHeroSearch() {
     params.set('adults', String(staysTravelers))
     params.set('children', '0')
     params.set('rooms', '1')
-    window.location.href = `/hotels?${params.toString()}`
+    window.location.href = `/stays?${params.toString()}`
   }
 
   function submitFlights(e: FormEvent) {
@@ -269,7 +268,7 @@ export default function MarketingHeroSearch() {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-black/30 backdrop-blur-md border border-white/35 rounded-2xl shadow-2xl overflow-hidden">
+      <div className="bg-black/30 backdrop-blur-md border border-white/40 rounded-2xl shadow-2xl overflow-hidden">
         {/* Tab strip */}
         <div role="tablist" aria-label="Search category" className="flex items-stretch gap-0 overflow-x-auto border-b border-white">
           {TABS.map(tab => {
@@ -426,7 +425,7 @@ export default function MarketingHeroSearch() {
                         className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
                           active
                             ? 'bg-gold-400 border-gold-400 text-night'
-                            : 'bg-black/25 border-white/30 text-white hover:bg-black/35 hover:border-white/50'
+                            : 'bg-black/25 border-white/30 text-white hover:bg-black/40 hover:border-white/50'
                         }`}
                       >
                         {v.label}
@@ -452,7 +451,7 @@ export default function MarketingHeroSearch() {
                 key={chip.label}
                 type="button"
                 onClick={() => handleChip(chip.prompt)}
-                className="bg-black/25 hover:bg-black/35 active:bg-black/40 backdrop-blur-md border border-white/25 text-white text-sm rounded-full px-4 py-2 transition-all shadow-sm whitespace-nowrap"
+                className="bg-black/25 hover:bg-black/40 active:bg-black/40 backdrop-blur-md border border-white/25 text-white text-sm rounded-full px-4 py-2 transition-all shadow-sm whitespace-nowrap"
               >
                 {chip.label}
               </button>

@@ -5,6 +5,7 @@ import DestinationShowcase from '@/components/DestinationShowcase'
 import ExploreSection from '@/components/ExploreSection'
 import DealsSection from '@/components/DealsSection'
 import AppFeaturesSection from '@/components/AppFeaturesSection'
+import TravelCompanionSection from '@/components/TravelCompanionSection'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import ConciergeRevenueBand from '@/components/revenue/ConciergeRevenueBand'
@@ -58,6 +59,7 @@ export default async function HomePage() {
     <main className="min-h-screen bg-white">
       <HeroSection slides={heroSlides} />
       <TrustBand />
+      <TravelCompanionSection />
       <DestinationShowcase attractions={attractions} />
       <ExploreSection />
       <AppFeaturesSection />

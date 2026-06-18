@@ -3,7 +3,6 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { BahaLogo } from '@/components/ui'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import TrackView from '@/components/TrackView'
@@ -148,17 +147,6 @@ async function IslandListingPage({ slug, islandName, restaurants }: { slug: stri
       <TrackView event="restaurants_island_viewed" props={{ island: islandName, restaurant_count: restaurants.length }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/restaurants" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">All Restaurants</Link>
-            <Link href="/hotels" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">Hotels</Link>
-            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
-          </div>
-        </div>
-      </header>
-
       <DefaultHeaderHero
         eyebrow="Restaurants"
         title={`Best Restaurants in ${islandName}`}
@@ -173,7 +161,7 @@ async function IslandListingPage({ slug, islandName, restaurants }: { slug: stri
             <Link
               key={opt.slug}
               href={`/restaurants/${opt.slug}`}
-              className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${opt.slug === slug ? 'bg-coral-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${opt.slug === slug ? 'bg-gold-400 text-night' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
             >
               {opt.name}
             </Link>
@@ -211,7 +199,7 @@ async function IslandListingPage({ slug, islandName, restaurants }: { slug: stri
                   <div className="p-5 flex flex-col flex-1">
                     <h2 className="text-base font-bold text-gray-900 leading-snug line-clamp-1">{rest.name}</h2>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {rest.cuisine_types?.[0] && <span className="text-[11px] font-semibold text-coral-700 bg-coral-50 px-2 py-0.5 rounded-full">{rest.cuisine_types[0]}</span>}
+                      {rest.cuisine_types?.[0] && <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">{rest.cuisine_types[0]}</span>}
                       {rest.price_level && <span className="text-xs text-gray-400">{rest.price_level}</span>}
                     </div>
                     {rest.num_reviews != null && rest.num_reviews > 0 && <p className="text-xs text-gray-400 mt-1">{rest.num_reviews.toLocaleString()} reviews</p>}
@@ -260,16 +248,6 @@ async function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripA
       <TrackView event="restaurant_detail_viewed" props={{ location_id: restaurant.location_id, restaurant_name: restaurant.name, island: restaurant.island_name }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/restaurants" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">← All Restaurants</Link>
-            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">Sign in</Link>
-          </div>
-        </div>
-      </header>
-
       <div className="relative h-72 md:h-[28rem] overflow-hidden">
         <Image src={heroHeader.url} alt={photos[0]?.url ? restaurant.name : heroHeader.alt} fill className="object-cover" priority sizes="100vw" unoptimized />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
@@ -281,7 +259,7 @@ async function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripA
             {restaurant.island_name && <><span className="mx-2">›</span><span className="text-white/80">{restaurant.island_name}</span></>}
           </nav>
           <div className="flex items-center gap-3 mb-3 flex-wrap">
-            {cuisines.length > 0 && <span className="px-3 py-1 rounded-full text-xs font-semibold bg-coral-500/80 text-white backdrop-blur-sm">{cuisines[0]}</span>}
+            {cuisines.length > 0 && <span className="px-3 py-1 rounded-full text-xs font-semibold bg-brand-600/85 text-white backdrop-blur-sm">{cuisines[0]}</span>}
             {restaurant.price_level && <span className="px-3 py-1 rounded-full text-xs font-semibold bg-white/20 text-white backdrop-blur-sm">{restaurant.price_level}</span>}
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-2">{restaurant.name}</h1>
@@ -293,7 +271,7 @@ async function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripA
       <main className="max-w-6xl mx-auto px-4 py-10">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-10">
-            {cuisines.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Cuisine</h2><div className="flex flex-wrap gap-2">{cuisines.map((c) => <span key={c} className="text-sm bg-coral-50 text-coral-700 rounded-full px-4 py-1.5 font-medium border border-coral-100">{c}</span>)}</div></section>}
+            {cuisines.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Cuisine</h2><div className="flex flex-wrap gap-2">{cuisines.map((c) => <span key={c} className="text-sm bg-brand-50 text-brand-700 rounded-full px-4 py-1.5 font-medium border border-brand-100">{c}</span>)}</div></section>}
 
             {photos.length > 1 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{photos.slice(0, 9).map((photo, idx) => <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100"><Image src={photo.url} alt={photo.caption || `${restaurant.name} — photo ${idx + 1}`} fill className="object-cover hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 33vw" unoptimized /></div>)}</div></section>}
 
@@ -320,7 +298,7 @@ async function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripA
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {similar.map((s) => {
                 const cardHeader = resolveStaticDefaultHeaderImage({ customImageUrl: s.photos?.[0]?.url, island: s.island_name, businessType: 'Restaurant', preferredVariant: 'card' })
-                return <Link key={s.id} href={`/restaurants/${s.location_id}`} className="group"><div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"><div className="relative aspect-video overflow-hidden bg-stone-100"><Image src={cardHeader.url} alt={s.photos?.[0]?.url ? s.name : cardHeader.alt} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" unoptimized /></div><div className="p-3"><h3 className="text-sm font-bold text-gray-900 line-clamp-1">{s.name}</h3><div className="flex items-center gap-2 mt-1">{s.cuisine_types?.[0] && <span className="text-[11px] text-coral-700 font-semibold">{s.cuisine_types[0]}</span>}{s.rating && <span className="text-xs text-amber-500 font-semibold">★ {s.rating.toFixed(1)}</span>}</div></div></div></Link>
+                return <Link key={s.id} href={`/restaurants/${s.location_id}`} className="group"><div className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md transition-shadow"><div className="relative aspect-video overflow-hidden bg-stone-100"><Image src={cardHeader.url} alt={s.photos?.[0]?.url ? s.name : cardHeader.alt} fill className="object-cover group-hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 25vw" unoptimized /></div><div className="p-3"><h3 className="text-sm font-bold text-gray-900 line-clamp-1">{s.name}</h3><div className="flex items-center gap-2 mt-1">{s.cuisine_types?.[0] && <span className="text-[11px] text-brand-700 font-semibold">{s.cuisine_types[0]}</span>}{s.rating && <span className="text-xs text-amber-500 font-semibold">★ {s.rating.toFixed(1)}</span>}</div></div></div></Link>
               })}
             </div>
           </section>

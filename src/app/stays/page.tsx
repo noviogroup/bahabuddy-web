@@ -4,9 +4,8 @@ import Image from 'next/image'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import TrackView from '@/components/TrackView'
-import { BahaLogo } from '@/components/ui'
 import { FALLBACK_IMAGE } from '@/lib/baha-images'
-import { getHotels, getIslandOptions, getPropertyTypes } from '@/lib/hotels'
+import { getHotels, getIslandOptions, getPropertyTypes, hotelHeroPhotoUrl } from '@/lib/hotels'
 
 export const metadata: Metadata = {
   title: 'Book Bahamas Hotels & Stays | Baha Buddy',
@@ -107,27 +106,6 @@ export default async function StaysPage({
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <BahaLogo href="/" size="md" />
-          <div className="flex items-center gap-4">
-            <Link href="/hotels" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">
-              Hotel Reviews
-            </Link>
-            <Link href="/restaurants" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">
-              Restaurants
-            </Link>
-            <Link href="/destinations" className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block">
-              Destinations
-            </Link>
-            <Link href="/login" className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors">
-              Sign in
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* Hero */}
       <div className="bg-gradient-to-br from-brand-600 to-brand-500 text-white">
@@ -283,10 +261,8 @@ export default async function StaysPage({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {hotels.map((hotel) => {
-              const heroPhoto = hotel.main_photo_url
-                ?? (hotel.photos && hotel.photos.length > 0 ? hotel.photos[0].url : null)
-                ?? FALLBACK_IMAGE
+            {hotels.map((hotel, idx) => {
+              const heroPhoto = hotelHeroPhotoUrl(hotel) ?? FALLBACK_IMAGE
 
               return (
                 <Link
@@ -299,6 +275,7 @@ export default async function StaysPage({
                       src={heroPhoto}
                       alt={hotel.name}
                       fill
+                      loading={idx < 6 ? 'eager' : 'lazy'}
                       className="object-cover group-hover:scale-105 transition-transform duration-500"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       unoptimized
