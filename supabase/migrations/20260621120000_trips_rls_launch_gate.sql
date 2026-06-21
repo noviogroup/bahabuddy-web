@@ -43,25 +43,28 @@ BEGIN
     RAISE EXCEPTION 'public.trips FORCE RLS must remain disabled until the controlled force-RLS validation window';
   END IF;
 
-  SELECT array_agg(policy_name ORDER BY policy_name)
+  SELECT array_agg(format('%s.%s', table_name, policy_name) ORDER BY table_name, policy_name)
   INTO missing_policies
   FROM (
     VALUES
-      ('Users can read own or collaborated trips'),
-      ('Users can insert own trips'),
-      ('Users can update own trips'),
-      ('Users can delete own trips'),
-      ('Users can read collaborators for own trips or where they are collaborator'),
-      ('Trip owners can insert collaborators'),
-      ('Trip owners can update collaborators'),
-      ('Trip owners can delete collaborators')
-  ) AS required(policy_name)
+      ('trips', 'Users can read own or collaborated trips'),
+      ('trips', 'Users can insert own trips'),
+      ('trips', 'Users can update own trips'),
+      ('trips', 'Users can delete own trips'),
+      ('trip_collaborators', 'Users can read collaborators for own trips or where they are collaborator'),
+      ('trip_collaborators', 'Trip owners can insert collaborators'),
+      ('trip_collaborators', 'Trip owners can update collaborators'),
+      ('trip_collaborators', 'Trip owners can delete collaborators')
+  ) AS required(table_name, policy_name)
   WHERE NOT EXISTS (
     SELECT 1
     FROM pg_policies p
     WHERE p.schemaname = 'public'
-      AND p.policyname = required.policy_name
-      AND p.tablename IN ('trips', 'trip_collaborators')
+      AND p.tablename = required.table_name
+      -- PostgreSQL stores policy names as identifiers, so long names can be
+      -- truncated to 63 bytes even when the source migration used the full
+      -- string. Accept both the source name and the stored identifier form.
+      AND p.policyname IN (required.policy_name, left(required.policy_name, 63))
   );
 
   IF missing_policies IS NOT NULL THEN

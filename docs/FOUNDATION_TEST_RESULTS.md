@@ -32,13 +32,13 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 3. Trip items | 3 | 3 | 0 | 0 | ✅ |
 | 4. Saved conversations | 2 | 1 | 1 | 0 | ❌ |
 | 5. Sharing + collaboration | 3 | 1 | 0 | 2 | ⏳ |
-| 6. Trips RLS | 5 | — | — | — | ⏳ |
+| 6. Trips RLS | 6 | 1 | 0 | 5 | ⏳ |
 | 7. Places data | 5 | 4 | 0 | 1 | ⏳ |
 | 8. Booking + revenue | 4 | — | — | — | ⏳ |
 | 9. Admin | 3 | 3 | 0 | 0 | ✅ |
 | 10. Edge Functions | 4 | 1 | 0 | 3 | ⏳ |
 
-**Foundation gate status:** ❌ Blocked — Test 2.4 (unauthorized trip access) previously failed because RLS was disabled on `public.trips`. A web migration launch gate now exists at `supabase/migrations/20260621120000_trips_rls_launch_gate.sql`, but this gate remains blocked until the migration is applied to the shared Supabase project and Suite 6 is validated with live/staging evidence. See BAH-107.
+**Foundation gate status:** ⏳ Partially unblocked — Test 2.4 previously failed because RLS was disabled on `public.trips`. The trips RLS launch gate has now been applied to the shared Supabase project and live catalog checks pass. The remaining gate is behavioral validation for owner, non-owner, collaborator, service-role, share/invite, and web/mobile trip-list flows. See BAH-107.
 
 > Mobile unit test suite: **95/95 passing** as of 2026-06-07 (flutter test, code review methodology).
 >
@@ -65,9 +65,10 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 2.2 Mobile create trip | Flutter Engineer | Code review | 2026-06-07 | Pass | `createTrip()` in `trip_service.dart` assigns `user_id = currentUserId` to all new trips. Writes to Supabase `trips` table; falls back to local-only if remote fails. Trip appears in My Trips via `getTrips()` which filters by `user_id`. Unit test: `Trip.fromJson` / `toJson` round-trip passes. | |
 | 2.3 Cross-platform trip visibility | Flutter Engineer | Code review | 2026-06-07 | Pass | `getTrips()` queries `trips.eq('user_id', uid)` — same Supabase user ID means same data on both platforms. Collaborator trips (shared trips) also loaded via `trip_collaborators` join, with try/catch fallback if RLS not yet ready. Collab path should be re-verified after RLS is enabled. | |
 | 2.4 Unauthorized trip access ⚠️ | Flutter Engineer | Code review | 2026-06-07 | **Fail** | Client-side: `getTrips()` always filters `user_id = currentUserId` — correct. **Server-side: RLS is DISABLED on `public.trips`.** Any user with a direct Supabase query (anon key + manual `.from('trips').select()` without the user_id filter) can read all trips in the database. The mobile app itself enforces the filter, but the DB does not. This test FAILS the security requirement. RLS must be enabled before this can pass. | BAH-107 |
-| 2.4a Trips RLS migration source gate | Codex | Local source | 2026-06-21 | Pass | Added web migration `20260621120000_trips_rls_launch_gate.sql` and unit coverage. The migration enables `public.trips` RLS, keeps force-RLS disabled for the controlled validation window, grants helper execution to app roles, and raises if required policies or helper functions are missing. This is source readiness only; live Supabase validation is still required. | BAH-107 |
+| 2.4a Trips RLS migration source gate | Codex | Local source | 2026-06-21 | Pass | Added web migration `20260621120000_trips_rls_launch_gate.sql` and unit coverage. The migration enables `public.trips` RLS, keeps force-RLS disabled for the controlled validation window, grants helper execution to app roles, and raises if required policies or helper functions are missing. The source gate also handles PostgreSQL's 63-byte policy-name truncation. | BAH-107 |
+| 2.4b Trips RLS live catalog gate | Codex | Production Supabase | 2026-06-21 | Pass | Applied `trips_rls_launch_gate` to project `cxcfymhoncysyloutvkh`; Supabase recorded migration `20260621114605`. Live SQL verified `public.trips.relrowsecurity = true`, `public.trips.relforcerowsecurity = false`, `public.trip_collaborators.relrowsecurity = true`, required owner/collaborator policies present, and `is_trip_owner`, `is_trip_collaborator`, `is_trip_editor` are `SECURITY DEFINER`. | BAH-107 |
 
-> ⚠️ Test 2.4 remains a gate. The source migration exists, but the gate is not passed until live/staging RLS behavior is proven across web, mobile, collaboration, share/invite, and service-role admin paths.
+> ⚠️ Test 2.4 remains a behavioral gate. The table-level RLS issue is remediated, but the launch gate is not complete until live/staging RLS behavior is proven across web, mobile, collaboration, share/invite, and service-role admin paths.
 
 ---
 
@@ -106,6 +107,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
+| 6.0 Table-level RLS launch gate | Codex | Production Supabase | 2026-06-21 | Pass | `public.trips` and `public.trip_collaborators` have RLS enabled, `public.trips` keeps force-RLS disabled for the current validation window, required policies exist, helper functions are `SECURITY DEFINER`, and migration `20260621114605 trips_rls_launch_gate` is recorded. | BAH-107 |
 | 6.1 Owner read/write/delete | | | | | | |
 | 6.2 Non-owner restriction | | | | | | |
 | 6.3 Collaborator access | | | | | | |

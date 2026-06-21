@@ -36,6 +36,8 @@ describe('trips RLS launch gate migration', () => {
     }
 
     expect(migration).toContain('Missing trip RLS policies')
+    expect(migration).toContain("p.tablename = required.table_name")
+    expect(migration).toContain("left(required.policy_name, 63)")
   })
 
   test('audits table state and SECURITY DEFINER helpers at migration time', () => {

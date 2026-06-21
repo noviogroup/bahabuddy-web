@@ -1,15 +1,17 @@
 # Trips RLS Launch Gate Review - June 21, 2026
 
-Review time: June 21, 2026
+Review time: June 21, 2026, 07:47 EDT
 Scope: web Supabase migration set and launch-readiness blocker for `public.trips`
 
 ## Executive Status
 
-The web migration set now contains an explicit `public.trips` RLS launch gate.
+The web migration set now contains an explicit `public.trips` RLS launch gate, and the gate has been applied to the shared Supabase project.
 
 This closes a source-control gap: mobile already had a migration that re-enabled `public.trips` RLS, but the active web migration set did not. The new web migration enables RLS, keeps `FORCE RLS` disabled until the controlled validation window, grants recursion-safe helper execution to app roles, and fails loudly if expected policies or helper functions are missing.
 
-This does not prove the live Supabase project is fixed. The migration still needs to be applied and validated against the shared project before the RLS gate can be marked complete.
+Live Supabase validation on project `cxcfymhoncysyloutvkh` now confirms the table-level RLS gate is active: `public.trips` and `public.trip_collaborators` have RLS enabled, `public.trips` does not force RLS yet, the expected policies exist, and the helper functions are `SECURITY DEFINER`.
+
+The first live apply attempt exposed a PostgreSQL identifier detail: long policy names are stored in `pg_policies.policyname` as truncated identifiers. The source migration now validates policy table/name pairs and accepts both the source name and the 63-byte stored identifier form.
 
 ## Files Added
 
@@ -23,7 +25,8 @@ Completed on June 21, 2026:
 - `npm test -- tests/unit/trips-rls-launch-gate.test.ts` passed with 4 tests.
 - `npm run lint` passed with the existing image-optimization warnings.
 - `npm test` passed with 79 test files and 321 tests.
-- `npm run build` passed.
+- `npm run build` passed with existing image-optimization, Sanity API-version, and localstorage-file warnings.
+- `curl -I http://localhost:3011/` returned `200 OK` after restarting the dev server following the production build.
 
 ## Migration Contract
 
@@ -36,24 +39,24 @@ The migration:
 - verifies `relrowsecurity = true`
 - verifies `relforcerowsecurity = false`
 - verifies required trip and collaborator policies exist
+- tolerates PostgreSQL's 63-byte truncation of long policy identifiers while still checking the expected table
 - verifies trip helper functions are `SECURITY DEFINER`
 
-## Required Live Validation
+## Live Validation
 
-After applying the migration to staging or production, run:
+Applied to Supabase on June 21, 2026:
 
-```sql
-select relrowsecurity, relforcerowsecurity
-from pg_class
-where oid = 'public.trips'::regclass;
-```
+- Project: `cxcfymhoncysyloutvkh`
+- Recorded migration: `20260621114605 trips_rls_launch_gate`
+- `public.trips.relrowsecurity = true`
+- `public.trips.relforcerowsecurity = false`
+- `public.trip_collaborators.relrowsecurity = true`
+- `is_trip_owner(uuid)`, `is_trip_collaborator(uuid)`, and `is_trip_editor(uuid)` are `SECURITY DEFINER`
+- Required owner/collaborator policies are present. The collaborator read policy is stored by PostgreSQL as the truncated identifier `Users can read collaborators for own trips or where they are co`.
 
-Expected:
+## Remaining Behavioral Validation
 
-- `relrowsecurity = true`
-- `relforcerowsecurity = false`
-
-Then validate:
+The catalog state is now proven. The remaining launch checks are behavioral:
 
 - owner can create, read, update, and delete their trips
 - non-owner cannot read a trip by direct ID
@@ -65,4 +68,4 @@ Then validate:
 
 ## Decision
 
-Do not mark trips RLS complete until the migration is applied to the shared Supabase project and the live validation evidence is recorded in `FOUNDATION_TEST_RESULTS.md`.
+The table-level trips RLS launch gate is now applied and live-verified. Do not mark the broader trips/security launch gate complete until owner, non-owner, collaborator, service-role, share/invite, and web/mobile trip-list behavior is exercised with real sessions.
