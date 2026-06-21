@@ -17,6 +17,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
       { href: '/stays', label: 'Stays' },
       { href: '/flights', label: 'Flights' },
       { href: '/explore', label: 'Explore' },
+      { href: '/guides', label: 'Guides' },
       { href: '/nassau-cruise-itineraries', label: 'Guided tours' },
       { href: '/deals', label: 'Deals' },
       { href: '/concierge-trip-plan', label: 'Concierge' },

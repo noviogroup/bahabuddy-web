@@ -12,7 +12,6 @@ const productLinks = [
   { href: '/flights', label: 'Flights', icon: PlaneIcon },
   { href: '/explore', label: 'Explore', icon: CompassIcon },
   { href: '/destinations', label: 'Destinations', icon: PinIcon },
-  { href: '/guides', label: 'Guides', icon: GuideIcon },
   { href: '/deals', label: 'Deals', icon: TagIcon },
   { href: '/concierge-trip-plan', label: 'Concierge', icon: SparkIcon },
 ]
@@ -127,15 +126,6 @@ function PinIcon() {
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11Z" />
       <circle cx="12" cy="10" r="2.5" />
-    </svg>
-  )
-}
-
-function GuideIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7h8M8 11h8M8 15h5" />
     </svg>
   )
 }

@@ -45,10 +45,10 @@ describe('public marketplace shell brand layout', () => {
       'Flights',
       'Explore',
       'Destinations',
-      'Guides',
       'Deals',
       'Concierge',
     ])
+    expect(within(nav).queryByRole('link', { name: 'Guides' })).not.toBeInTheDocument()
     expect(within(nav).queryByRole('link', { name: /restaurants/i })).not.toBeInTheDocument()
 
     const stays = within(nav).getByRole('link', { name: 'Stays' })
@@ -104,6 +104,7 @@ describe('public marketplace shell brand layout', () => {
     expect(screen.getByRole('navigation', { name: 'Travel products' })).toBeInTheDocument()
     expect(screen.getByRole('navigation', { name: 'Stay types' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Stays' })).toHaveClass('text-gray-600')
+    expect(screen.getByRole('link', { name: 'Guides' })).toHaveAttribute('href', '/guides')
     expect(screen.getByRole('link', { name: 'Guided tours' })).toHaveAttribute('href', '/nassau-cruise-itineraries')
     expect(screen.getByRole('link', { name: 'Nassau' })).toHaveAttribute('href', '/explore/island/nassau-paradise-island')
     expect(screen.getByRole('link', { name: 'Houses' })).toHaveAttribute('href', '/stays?type=House')
