@@ -125,13 +125,13 @@ export default async function SharePage({ params }: { params: { code: string } }
 
         {flights.length > 0 && (
           <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">✈️ Flights</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Flights</h2>
             <div className="space-y-3">
               {flights.map(f => (
                 <div key={f.id} className="bg-white rounded-xl border border-brand-100 p-4">
                   <div className="flex items-center gap-3">
                     <span className="font-semibold">{f.origin}</span>
-                    <span className="text-gray-400">→</span>
+                    <span className="text-gray-400">to</span>
                     <span className="font-semibold">{f.destination}</span>
                     {f.airline && <span className="text-sm text-gray-500 ml-auto">{f.airline}</span>}
                   </div>

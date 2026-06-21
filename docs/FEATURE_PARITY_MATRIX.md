@@ -1,12 +1,14 @@
 # Baha Buddy Feature Parity Matrix
 
-Last reviewed: June 16, 2026
+Last reviewed: June 20, 2026, 21:35 EDT
 
 ## Purpose
 
 This document maps current product capability across Baha Buddy Web, Mobile, Admin, Supabase, and Edge Functions.
 
 It should be used before any new product enhancement work. The goal is to identify which modules are ahead, which are behind, and what must be brought to parity before building Cruise Day Planner, Self-Guided Tours, Partner Portal, Concierge Orders, or deeper revenue features.
+
+Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED-REVIEW.md`](./2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED-REVIEW.md).
 
 ---
 
@@ -104,8 +106,8 @@ It should be used before any new product enhancement work. The goal is to identi
 | Admin auth | N/A | N/A | Server-side admin auth exists | `admin_users` migration exists | N/A | ⚠️ Risk | Fail closed when admin allowlist is empty; keep service role server-only |
 | CI/tests | N/A | N/A | CI/test suite added | N/A | N/A | ✅ Current | Keep all admin changes behind tests |
 | User visibility | N/A | N/A | Users API/detail | `users`, trips, bookings, threads | N/A | ✅ Current | Add PII/audit guardrails |
-| Billing/cost dashboard | N/A | N/A | Billing API exists | `api_credit_status`, `ai_usage_log`, `api_usage_log` | N/A | 🟡 Partial | Consolidate AI/API cost sources |
-| Booking ops | N/A | N/A | Booking APIs exist | `bookings` has 0 | order functions | 🧪 Needs Test | Test actual booking lifecycle |
+| Billing/cost dashboard | N/A | N/A | Billing API uses canonical booking revenue plus AI/API cost views; Revenue Command Center separates captured and recognized booking revenue | `api_credit_status`, `ai_usage_log`, `api_usage_log`, `bookings` | N/A | 🟡 Partial | Consolidate AI/API cost sources and validate live booking revenue rows |
+| Booking ops | N/A | N/A | Booking, Revenue, Travelers, Trips, Payments, Billing, and Support APIs read canonical `bookings`; Revenue/Travelers/Trips/Support surface enriched trip accommodation/flight recovery context | `bookings` has 0 | order functions | 🧪 Needs Test | Test actual booking lifecycle with live provider rows |
 | Place management | N/A | N/A | Places module/API exists | `places`, `place_sources` | source functions | 🟡 Partial | Complete web/mobile migration to canonical places and add merge review |
 | Partner management | N/A | N/A | Partners module/API exists | `partners`, `partner_places`, `partner_leads`, `partner_campaigns`, `partner_payouts` | N/A | 🟡 Partial | Validate data, add partner lifecycle QA, and connect mobile/web placements |
 | Trip sharing/invite ops | N/A | N/A | Missing | share/invite tables empty | invite/share functions | 🔴 Gap | Add admin visibility after flow works |
@@ -118,8 +120,8 @@ It should be used before any new product enhancement work. The goal is to identi
 | Feature | Web | Mobile | Admin | Supabase | Status | Required Action |
 |---|---|---|---|---|---|
 | AI/API cost tracking | Web/admin support | Mobile via functions | Billing API | `ai_usage_log`, `api_credit_status` | 🟡 Partial | Normalize event/cost source names |
-| Booking revenue | Checkout exists | Stripe dependency/helpers | Billing revenue summary | `bookings` 0, revenue views expected | 🧪 Needs Test | Run E2E payment and webhook test |
-| Concierge product | Current web sales/order flow | Planned/undecided mobile placement | Concierge Orders + Payments modules exist | `concierge_orders` | 🟡 Partial | Decide mobile entry points and support handoff |
+| Booking revenue | Checkout exists | Stripe dependency/helpers | Revenue, Payments, and Billing use canonical booking reconciliation; Revenue shows captured payments, provider/payment/source/recovery breakdowns, and P0 booking issues | `bookings` 0, revenue views expected | 🧪 Needs Test | Run E2E payment and webhook test |
+| Concierge product | Current web sales/order flow | Planned/undecided mobile placement | Concierge Orders module remains separate; Payments & Receipts is now canonical booking-sourced | `concierge_orders` | 🟡 Partial | Decide mobile entry points and support handoff |
 | Partner subscriptions | Planned | N/A | Partners module foundation exists | `partners`, campaigns, payouts | 🟡 Partial | Add subscription/product rules after partner data QA |
 | Sponsored placements | Content system supports future | Mobile content support | Deals & Placements controls exist | `deals`, `partners`, `places` | 🟡 Partial | Connect placements to canonical mobile/web feeds with clear sponsored labels |
 | Tourism intelligence | Not yet | Not yet | Not yet | data scattered | ⏭ Later | Build after analytics/data model cleanup |

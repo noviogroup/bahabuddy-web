@@ -10,8 +10,12 @@ describe('resolveAirportCode', () => {
   test('resolves common origin cities', () => {
     expect(resolveAirportCode('Miami')).toBe('MIA')
     expect(resolveAirportCode('Fort Lauderdale')).toBe('FLL')
+    expect(resolveAirportCode('West Palm')).toBe('PBI')
     expect(resolveAirportCode('New York')).toBe('JFK')
     expect(resolveAirportCode('Atlanta')).toBe('ATL')
+    expect(resolveAirportCode('Raleigh')).toBe('RDU')
+    expect(resolveAirportCode('Nashville')).toBe('BNA')
+    expect(resolveAirportCode('Montréal-Trudeau International Airport')).toBe('YUL')
   })
 
   test('returns null for unknown values', () => {

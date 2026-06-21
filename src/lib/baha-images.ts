@@ -60,6 +60,7 @@ export const BahaImages = {
   snorkeling:       npi('styles/portrait/public/images/2024-05/D80_6558%20%2B%206557_Hires.jpg'),
   beach:            npi('images/2025-04/people-relaxing.png'),
   bahamasLifestyle: tambourine('goombay-summer-2023-intro-64b04840c1ccc.png'),
+  flight:           tambourine('cache/screenshot-2026-04-28-200148-69f14af22b990-1500x643.png'),
 
   // ── Seasonal / editorial ─────────────────────────────────────────────
   junkanoo:         npi('styles/portrait/public/images/2025-04/250220_NPI_AQ1_9267.jpg'),

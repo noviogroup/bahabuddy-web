@@ -42,6 +42,14 @@ export async function GET(
 
   const paymentStatus = paymentStatusForBooking(booking)
   const providerStatus = providerStatusFor(providerReference, providerRow?.status, booking.status)
+  const localBookingReconciled = localBookingReconciledFor(booking.status)
+  const tripItemReconciled = tripItemReconciledFor(provider, providerRow, providerReference)
+  const reconciled =
+    paymentStatus === 'paid'
+    && providerStatus === 'confirmed'
+    && Boolean(providerReference)
+    && localBookingReconciled
+    && tripItemReconciled
 
   return NextResponse.json({
     tripId,
@@ -56,7 +64,7 @@ export async function GET(
     sourceSurface: sourceSurfaceFor(booking),
     booking,
     providerRow,
-    reconciled: paymentStatus === 'paid' && providerStatus === 'confirmed' && Boolean(providerReference),
+    reconciled,
   })
 }
 
@@ -218,6 +226,29 @@ function providerStatusFor(
   if (providerReference && ['booked', 'confirmed', 'paid', 'success', 'succeeded', 'ticketed'].includes(status)) return 'confirmed'
   if (providerReference && !status) return 'confirmed'
   return 'pending'
+}
+
+function localBookingReconciledFor(bookingStatus: string | null | undefined): boolean {
+  const status = (bookingStatus ?? '').toLowerCase()
+  return ['booked', 'confirmed', 'paid', 'success', 'succeeded', 'ticketed'].includes(status)
+}
+
+function tripItemReconciledFor(
+  provider: string,
+  providerRow: ProviderRow | null,
+  providerReference: string | null,
+): boolean {
+  if (!providerRow?.id || !providerReference) return false
+  const status = (providerRow.status ?? '').toLowerCase()
+  if (['failed', 'error', 'cancelled', 'canceled', 'refunded'].includes(status)) return false
+  if (['booked', 'confirmed', 'paid', 'success', 'succeeded', 'ticketed'].includes(status)) return true
+
+  // trip_flights does not have a canonical status column in the current
+  // schema, so a matched flight row with the same provider reference is the
+  // trip-item reconciliation signal.
+  if (provider.startsWith('flight_') && providerRow.booking_reference === providerReference) return true
+
+  return false
 }
 
 function sourceSurfaceFor(booking: BookingRecord): string {

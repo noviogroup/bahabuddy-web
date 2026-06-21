@@ -1,17 +1,18 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans } from 'next/font/google'
+import { Figtree } from 'next/font/google'
 import AnalyticsProvider from '@/components/AnalyticsProvider'
 import GlobalPublicHeader from '@/components/GlobalPublicHeader'
+import TravelOriginPrompt from '@/components/TravelOriginPrompt'
 import './globals.css'
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bahabuddy.app'
 
-// Brand typography — Plus Jakarta Sans across all weights (matches mobile BahaTypography).
-// Exposed as a CSS variable so tailwind.config.ts can reference it via `var(--font-plus-jakarta)`.
-const plusJakarta = Plus_Jakarta_Sans({
+// Brand typography — Figtree across all weights, matching mobile BahaTypography.
+// Exposed as a CSS variable so tailwind.config.ts can reference it via `var(--font-figtree)`.
+const figtree = Figtree({
   subsets: ['latin'],
   weight: ['400', '500', '600', '700', '800'],
-  variable: '--font-plus-jakarta',
+  variable: '--font-figtree',
   display: 'swap',
 })
 
@@ -79,10 +80,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={plusJakarta.variable}>
+    <html lang="en" className={figtree.variable}>
       <body className="font-sans antialiased text-charcoal bg-offwhite">
         <AnalyticsProvider />
         <GlobalPublicHeader />
+        <TravelOriginPrompt />
         {children}
       </body>
     </html>

@@ -13,7 +13,7 @@
  * the same three tabs.
  */
 
-import { useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { SegmentedToggle } from '@/components/ui'
 
 interface Props {
@@ -33,8 +33,21 @@ export default function TripTabView({
 }: Props) {
   const [tab, setTab] = useState<Tab>('timeline')
 
+  useEffect(() => {
+    function syncHash() {
+      const next = window.location.hash.replace('#', '')
+      if (next === 'timeline' || next === 'map' || next === 'budget') {
+        setTab(next)
+      }
+    }
+
+    syncHash()
+    window.addEventListener('hashchange', syncHash)
+    return () => window.removeEventListener('hashchange', syncHash)
+  }, [])
+
   return (
-    <div>
+    <div id={tab}>
       <div className="mb-5">
         <SegmentedToggle<Tab>
           value={tab}

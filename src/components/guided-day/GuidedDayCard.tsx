@@ -9,13 +9,16 @@ export default function GuidedDayCard({ plan }: GuidedDayCardProps) {
   const hours = `${Math.round(plan.duration_min_minutes / 60)}-${Math.round(plan.duration_max_minutes / 60)} hrs`
 
   return (
-    <article className="rounded-baha-xl border border-sand-200 bg-white p-6 shadow-card">
+    <article className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-wide text-brand-700">{plan.area}</p>
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
+            {plan.area}
+          </p>
           <h3 className="mt-2 text-xl font-extrabold text-night">{plan.title}</h3>
         </div>
-        <p className="rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">
+        <p className="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-brand-700">
           ${plan.base_price.toFixed(2)}
         </p>
       </div>
@@ -25,9 +28,9 @@ export default function GuidedDayCard({ plan }: GuidedDayCardProps) {
       )}
 
       <div className="mt-5 flex flex-wrap gap-2 text-xs font-semibold text-charcoal">
-        <span className="rounded-full bg-sand-100 px-3 py-1">{hours}</span>
-        <span className="rounded-full bg-sand-100 px-3 py-1">{plan.mobility_level}</span>
-        <span className="rounded-full bg-sand-100 px-3 py-1">{plan.budget_level}</span>
+        <span className="rounded-full bg-gray-100 px-3 py-1">{hours}</span>
+        <span className="rounded-full bg-gray-100 px-3 py-1">{plan.mobility_level}</span>
+        <span className="rounded-full bg-gray-100 px-3 py-1">{plan.budget_level}</span>
       </div>
 
       <Link

@@ -1,14 +1,12 @@
 /**
  * ReviewSnippet — a single quoted review used as social proof.
  *
- * Renders the quote in serif italic (Fraunces is the brand serif on
- * mobile; on web we fall back to the system serif stack via Tailwind's
- * `font-serif` class) so it visually reads as "a person said this",
- * distinct from descriptive copy.
+ * Renders the quote in italic Figtree so social proof still feels
+ * distinct while staying inside the Baha Buddy mobile typography system.
  *
  * Variants:
  *   - 'inline'  : flush, no padding, sits inside a row of other content.
- *   - 'callout' : padded sand-toned card. Use when the review is the
+ *   - 'callout' : padded neutral card. Use when the review is the
  *                 focal point of a section (default).
  *
  * Truncation: pass `clamp` to limit lines. Default is 2 lines —
@@ -18,7 +16,7 @@
 interface Props {
   text: string
   author?: string | null
-  /** 1–5 reviewer rating. Renders gold stars before the quote. */
+  /** 1–5 reviewer rating. Renders as a compact text label before the quote. */
   rating?: number | null
   /** ISO date or relative label ("2 weeks ago"). */
   when?: string | null
@@ -63,17 +61,17 @@ export function ReviewSnippet({
 
   const relWhen = formatRelative(when)
   const container = variant === 'callout'
-    ? 'p-2.5 bg-sand-100 rounded-xl'
+    ? 'p-2.5 bg-gray-50 rounded-xl'
     : ''
 
   return (
     <figure className={`${container} ${className}`}>
       {rating != null && rating > 0 && (
-        <span className="text-gold-500 text-[11px] tracking-wide" aria-hidden="true">
-          {'★'.repeat(Math.min(5, Math.max(1, Math.round(rating))))}
+        <span className="text-charcoal text-[11px] font-extrabold tracking-wide">
+          Rating {Number(rating).toFixed(1)}
         </span>
       )}
-      <blockquote className={`font-serif italic text-[13px] leading-snug text-gray-800 ${CLAMP[clamp]}`}>
+      <blockquote className={`italic text-[13px] font-medium leading-snug text-gray-800 ${CLAMP[clamp]}`}>
         &ldquo;{text.replace(/^["']|["']$/g, '')}&rdquo;
       </blockquote>
       {(author || relWhen) && (

@@ -236,42 +236,15 @@ describe('hotel booking APIs', () => {
 })
 
 describe('flight booking APIs', () => {
-  test('verifies LiteAPI fares and surfaces price changes', async () => {
-    mocks.callTravelProvider.mockResolvedValue({
-      status: 200,
-      data: {
-        data: [{
-          offerId: 'offer-123',
-          pricing: { display: { total: '345.50', currency: 'USD' } },
-          changes: { priceChanged: true, previousPrice: 320, messages: ['Fare changed'] },
-          journey: {
-            segments: [{
-              departure: { iataCode: 'MIA' },
-              arrival: { iataCode: 'NAS' },
-              airlineName: 'Bahamasair',
-              departureTime: '2026-08-01T10:00:00Z',
-              arrivalTime: '2026-08-01T11:00:00Z',
-            }],
-          },
-        }],
-      },
-    })
-
+  test('keeps the old flight verify route as a safe prebook-redirect contract', async () => {
     const response = await flightVerify(jsonRequest({ offerId: 'offer-123' }))
     const body = await response.json()
 
-    expect(response.status).toBe(200)
-    expect(mocks.callTravelProvider).toHaveBeenCalledWith('/flights/verify', { offerId: 'offer-123' })
+    expect(response.status).toBe(409)
+    expect(mocks.callTravelProvider).not.toHaveBeenCalled()
     expect(body).toMatchObject({
-      offer_id: 'offer-123',
-      origin: 'MIA',
-      destination: 'NAS',
-      airline: 'Bahamasair',
-      price: 345.5,
-      currency: 'USD',
-      price_changed: true,
-      previous_price: 320,
-      change_messages: ['Fare changed'],
+      error: 'LiteAPI flight fare verification happens during prebook.',
+      nextStep: 'POST /api/booking/flights/prebook with traveler and passport details.',
     })
   })
 
@@ -504,6 +477,116 @@ describe('booking return API', () => {
       tripItemId: 'refunded-stay-item',
       paymentStatus: 'refunded',
       providerStatus: 'cancelled',
+      reconciled: false,
+    })
+  })
+
+  test('does not reconcile paid provider-confirmed rows until the local booking row is confirmed', async () => {
+    const booking = {
+      id: 'booking-1',
+      trip_id: 'trip-1',
+      user_id: 'user-1',
+      booking_type: 'accommodation',
+      type: 'hotel',
+      provider: 'liteapi',
+      status: 'pending',
+      amount: 1200,
+      currency: 'usd',
+      paid_at: '2026-06-17T10:00:00Z',
+      stripe_payment_intent_id: 'pi_pending_booking',
+      booking_ref: 'lite-booking-1',
+      booking_reference: 'hotel-confirmation-1',
+      external_reference: 'hotel-confirmation-1',
+      financial_metadata: { source_surface: 'web', provider_status: 'CONFIRMED' },
+      raw_response: {},
+    }
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      if (table === 'bookings') return selectMaybeSingle(booking)
+      if (table === 'trip_accommodations') {
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn(() => query),
+          order: vi.fn(() => query),
+          limit: vi.fn().mockResolvedValue({
+            data: [{
+              id: 'stay-item-1',
+              status: 'booked',
+              booking_reference: 'hotel-confirmation-1',
+              stripe_payment_intent_id: 'pi_pending_booking',
+            }],
+            error: null,
+          }),
+        }
+        return query
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+
+    const response = await getBookingReturn(
+      new Request('http://localhost.test/api'),
+      { params: { id: 'trip-1', bookingId: 'booking-1' } },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      paymentStatus: 'paid',
+      providerStatus: 'confirmed',
+      providerReference: 'hotel-confirmation-1',
+      tripItemId: 'stay-item-1',
+      reconciled: false,
+    })
+  })
+
+  test('does not reconcile when the provider reference exists but no canonical trip item is attached', async () => {
+    const booking = {
+      id: 'booking-1',
+      trip_id: 'trip-1',
+      user_id: 'user-1',
+      booking_type: 'accommodation',
+      type: 'hotel',
+      provider: 'liteapi',
+      status: 'confirmed',
+      amount: 1200,
+      currency: 'usd',
+      paid_at: '2026-06-17T10:00:00Z',
+      stripe_payment_intent_id: 'pi_missing_item',
+      booking_ref: 'lite-booking-1',
+      booking_reference: 'hotel-confirmation-1',
+      external_reference: 'hotel-confirmation-1',
+      financial_metadata: { source_surface: 'web', provider_status: 'CONFIRMED' },
+      raw_response: {},
+    }
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      if (table === 'bookings') return selectMaybeSingle(booking)
+      if (table === 'trip_accommodations') {
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn(() => query),
+          order: vi.fn(() => query),
+          limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }
+        return query
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+
+    const response = await getBookingReturn(
+      new Request('http://localhost.test/api'),
+      { params: { id: 'trip-1', bookingId: 'booking-1' } },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(body).toMatchObject({
+      tripItemId: null,
+      paymentStatus: 'paid',
+      providerStatus: 'confirmed',
+      providerReference: 'hotel-confirmation-1',
       reconciled: false,
     })
   })

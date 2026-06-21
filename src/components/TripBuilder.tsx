@@ -4,6 +4,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { BahaDateRangePicker } from '@/components/ui'
+import {
+  TravelSearchField,
+  TravelSearchInput,
+  TravelSearchSelect,
+  TravelSearchTextarea,
+} from '@/components/marketplace/TravelSearchFields'
 
 interface Attraction {
   id: string
@@ -109,7 +115,11 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
             <h3 className="font-semibold text-gray-900">Add to Day {dayNumber}</h3>
             <p className="text-xs text-gray-400">{slotLabel}</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+          <button onClick={onClose} aria-label="Close" className="text-gray-400 hover:text-gray-600 leading-none">
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
         </div>
 
         {/* Tabs */}
@@ -135,14 +145,16 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
         {tab === 'search' ? (
           <>
             <div className="px-5 pt-3">
-              <input
-                type="text"
-                placeholder="Search attractions…"
-                value={query}
-                onChange={e => setQuery(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
-                autoFocus
-              />
+              <TravelSearchField label="Search attractions" htmlFor="activity-search" className="bg-white">
+                <TravelSearchInput
+                  id="activity-search"
+                  type="text"
+                  placeholder="Search beaches, tours, food, culture"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  autoFocus
+                />
+              </TravelSearchField>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-2">
               {loading ? (
@@ -175,27 +187,26 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
           </>
         ) : (
           <div className="flex-1 px-5 py-4 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Activity name</label>
-              <input
+            <TravelSearchField label="Activity name" htmlFor="custom-activity-name" className="bg-white">
+              <TravelSearchInput
+                id="custom-activity-name"
                 type="text"
-                placeholder="e.g. Beach walk, dinner at Graycliff…"
+                placeholder="Beach walk, dinner at Graycliff"
                 value={customName}
                 onChange={e => setCustomName(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
                 autoFocus
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes (optional)</label>
-              <textarea
-                placeholder="Any details, reminders, or links…"
+            </TravelSearchField>
+            <TravelSearchField label="Notes" hint="Optional" htmlFor="custom-activity-notes" className="bg-white">
+              <TravelSearchTextarea
+                id="custom-activity-notes"
+                placeholder="Any details, reminders, or links"
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400 resize-none"
+                className="min-h-24 resize-none"
               />
-            </div>
+            </TravelSearchField>
             <button
               disabled={!customName.trim()}
               onClick={() => {
@@ -304,29 +315,27 @@ export default function TripBuilder() {
       <section className="bg-white rounded-2xl border border-gray-200 p-6 mb-6 space-y-4">
         <h2 className="text-base font-semibold text-gray-800">Trip details</h2>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Trip name</label>
-          <input
+        <TravelSearchField label="Trip name" htmlFor="trip-builder-title" className="bg-white">
+          <TravelSearchInput
+            id="trip-builder-title"
             type="text"
             placeholder="e.g. Bahamas Summer 2026"
             value={title}
             onChange={e => setTitle(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-400"
           />
-        </div>
+        </TravelSearchField>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Main island</label>
-          <select
+        <TravelSearchField label="Main island" htmlFor="trip-builder-destination" className="bg-white">
+          <TravelSearchSelect
+            id="trip-builder-destination"
             value={destination}
             onChange={e => setDestination(e.target.value)}
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-400"
           >
             {ISLANDS.map(island => (
               <option key={island} value={island}>{island}</option>
             ))}
-          </select>
-        </div>
+          </TravelSearchSelect>
+        </TravelSearchField>
 
         <BahaDateRangePicker
           label="Travel dates"
@@ -404,7 +413,9 @@ export default function TripBuilder() {
                                 className="text-gray-200 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100 text-xs shrink-0"
                                 aria-label="Remove"
                               >
-                                ✕
+                                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="m6 6 12 12M18 6 6 18" />
+                                </svg>
                               </button>
                             </li>
                           ))}

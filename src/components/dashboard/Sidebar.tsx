@@ -26,6 +26,7 @@ import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { BahaLogo } from '@/components/ui'
 import SignOutButton from '@/components/SignOutButton'
+import { buildExplorePlacesHref } from '@/lib/explore-routing'
 
 interface NavItem {
   href: string
@@ -78,8 +79,7 @@ const ICON_TICKET = (
   </svg>
 )
 
-const THINGS_TO_DO_CHAT =
-  '/dashboard/chat?q=' + encodeURIComponent('What can I do in the Bahamas?')
+const THINGS_TO_DO_HREF = buildExplorePlacesHref({ search: 'things to do' })
 
 const NAV_ITEMS: NavItem[] = [
   { href: '/dashboard', label: 'Home',     icon: ICON_HOME,    matchPrefixes: ['/dashboard'] },
@@ -89,9 +89,9 @@ const NAV_ITEMS: NavItem[] = [
 ]
 
 const BOOK_NOW_ITEMS: NavItem[] = [
-  { href: '/hotels',            label: 'Stay',          icon: ICON_BED,    matchPrefixes: ['/hotels'] },
+  { href: '/stays',             label: 'Stays',         icon: ICON_BED,    matchPrefixes: ['/stays', '/hotels', '/hotel'] },
   { href: '/flights',           label: 'Flights',       icon: ICON_FLIGHT, matchPrefixes: ['/flights'] },
-  { href: THINGS_TO_DO_CHAT,   label: 'Things to Do',  icon: ICON_TICKET, matchPrefixes: ['/dashboard/chat'] },
+  { href: THINGS_TO_DO_HREF,    label: 'Things to Do',  icon: ICON_TICKET, matchPrefixes: ['/explore/places'] },
 ]
 
 function cn(...parts: Array<string | false | null | undefined>): string {

@@ -248,7 +248,7 @@ function ContextChip({
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center gap-1.5 bg-gray-50 hover:bg-night hover:text-white text-night text-xs font-semibold pl-1.5 pr-3 py-1 rounded-full border border-gray-200 hover:border-night transition-colors shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-1 pl-1.5 pr-3 text-xs font-semibold text-night transition-colors hover:border-brand-600 hover:bg-brand-600 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 shrink-0"
     >
       {leading}
       <span className="max-w-[120px] truncate">{label}</span>
@@ -318,9 +318,16 @@ function SaveButton({ saving, disabled, onClick, label = 'Update' }: {
       type="button"
       onClick={onClick}
       disabled={saving || disabled}
-      className="w-full bg-night text-white hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed font-bold py-2.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+      className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-2.5 font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
     >
-      {saving ? 'Saving…' : label}
+      {saving ? (
+        'Saving...'
+      ) : (
+        <>
+          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+          {label}
+        </>
+      )}
     </button>
   )
 }
@@ -379,7 +386,7 @@ function IslandEditor({
               onClick={() => setSlug(island.slug)}
               aria-pressed={active}
               className={`relative h-20 rounded-baha-md overflow-hidden border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
-                active ? 'border-brand-500 shadow-card' : 'border-transparent hover:shadow-card'
+                active ? 'border-brand-600 shadow-card' : 'border-transparent hover:shadow-card'
               }`}
             >
               <Image src={getIslandHeroImage(island)} alt="" fill sizes="160px" className="object-cover" />
@@ -429,7 +436,7 @@ function DatesEditor({
               type="button"
               onClick={() => onSave(null, null)}
               disabled={saving || isFlexible}
-              className="flex-1 bg-gray-100 hover:bg-gray-200 text-night disabled:opacity-50 disabled:cursor-not-allowed font-bold py-2.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+              className="flex-1 rounded-full border border-gray-200 bg-white py-2.5 font-bold text-night transition-colors hover:border-gray-300 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Flexible
             </button>
@@ -501,8 +508,8 @@ function WhoEditor({
                 aria-pressed={active}
                 className={`px-4 py-1.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
                   active
-                    ? 'bg-night text-white border-night'
-                    : 'bg-white text-night border-gray-300 hover:border-night'
+                    ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                    : 'border-gray-300 bg-white text-night hover:border-gray-400 hover:bg-gray-50'
                 }`}
               >
                 {p.label}
@@ -522,7 +529,7 @@ function WhoEditor({
             type="button"
             onClick={() => setSize((s) => Math.max(1, s - 1))}
             aria-label="Decrease travelers"
-            className="w-8 h-8 rounded-full border border-gray-300 text-night hover:border-night flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 text-night transition-colors hover:border-brand-600 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4" />
@@ -533,7 +540,7 @@ function WhoEditor({
             type="button"
             onClick={() => setSize((s) => Math.min(20, s + 1))}
             aria-label="Increase travelers"
-            className="w-8 h-8 rounded-full border border-gray-300 text-night hover:border-night flex items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 text-night transition-colors hover:border-brand-600 hover:text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -589,13 +596,13 @@ function BudgetEditor({
                 onClick={() => setTierIdx(i)}
                 aria-pressed={active}
                 className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-baha-md border text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 ${
-                  active ? 'bg-brand-50 border-brand-300' : 'bg-white border-gray-200 hover:border-night'
+                  active ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-400 hover:bg-gray-50'
                 }`}
               >
                 <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  active ? 'border-brand-500' : 'border-gray-300'
+                  active ? 'border-brand-600' : 'border-gray-300'
                 }`} aria-hidden="true">
-                  {active && <span className="w-2 h-2 rounded-full bg-brand-500" />}
+                  {active && <span className="w-2 h-2 rounded-full bg-gold-400" />}
                 </span>
                 <span className="font-bold text-sm text-night w-12 shrink-0">{tier.symbol || '—'}</span>
                 <span className="text-sm text-night">{tier.label}</span>

@@ -210,7 +210,7 @@ function parseRoute(body: TripItemBody): { origin: string; destination: string }
   if (source && destination) return { origin: source.toUpperCase(), destination: destination.toUpperCase() }
 
   const route = body.name ?? ''
-  const parts = route.split(/[→>-]/).map((part) => part.trim()).filter(Boolean)
+  const parts = route.split(/\s+to\s+|[→>-]/i).map((part) => part.trim()).filter(Boolean)
   return {
     origin: (parts[0] ?? 'TBD').toUpperCase(),
     destination: (parts[1] ?? 'BS').toUpperCase(),

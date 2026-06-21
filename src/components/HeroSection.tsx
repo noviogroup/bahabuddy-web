@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import MarketingTopBar from '@/components/MarketingTopBar'
+import MarketplacePublicHeader from '@/components/marketplace/MarketplacePublicHeader'
 import StoreBadgeLinks from '@/components/StoreBadgeLinks'
-import { BahaLogo, BuddyAvatar } from '@/components/ui'
+import { BuddyAvatar } from '@/components/ui'
 import MarketingHeroSearch from '@/components/marketing/MarketingHeroSearch'
 import type { IslandHeroSlide } from '@/lib/islands'
 
@@ -39,7 +39,7 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
   }, [slides.length])
 
   return (
-    <section className="relative overflow-hidden min-h-screen flex flex-col text-white">
+    <section className="relative flex min-h-screen flex-col overflow-hidden text-white">
       {/* Rotating island hero photos — sourced from islands table (server-fetched in app/page.tsx) */}
       <div className="absolute inset-0">
         {slides.map((s, i) => (
@@ -56,20 +56,20 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
             unoptimized
           />
         ))}
-        {/* Light overlay — photos stay vivid; bottom gradient for hero text */}
+        {/* Royal-blue overlay — photos stay vivid while matching the app shell. */}
         <div
-          className="absolute inset-0 bg-gradient-to-b from-black/20 via-black/5 to-black/45"
+          className="absolute inset-0 bg-gradient-to-br from-brand-900/55 via-brand-700/20 to-night/70"
           aria-hidden
         />
         <div
-          className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/50 to-transparent pointer-events-none"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-night/70 to-transparent"
           aria-hidden
         />
       </div>
 
       {/* Island label — ties each photo to a destination */}
       {slide && (
-        <div className="absolute bottom-6 left-4 sm:left-6 z-10 max-w-xs text-left pointer-events-auto">
+        <div className="pointer-events-auto absolute bottom-6 left-4 z-10 hidden max-w-xs text-left sm:left-6 md:block">
           <Link
             href={`/explore/island/${slide.slug}`}
             className="inline-block text-sm font-bold tracking-wide text-white hover:text-gold-200 transition-colors"
@@ -103,116 +103,76 @@ export default function HeroSection({ slides }: { slides: IslandHeroSlide[] }) {
         </div>
       )}
 
-      {/* Promo bar + nav — sticky together over hero */}
-      <div className="sticky top-0 z-20 w-full">
-        <MarketingTopBar />
-        <header className="relative w-full">
-          <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-            <BahaLogo href="/" size="md" layout="pillWordmark" priority />
-            <nav className="flex items-center gap-4 sm:gap-5">
-              <Link
-                href="/destinations"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
-                style={{ textShadow: navTextShadow }}
-              >
-                Destinations
-              </Link>
-              <Link
-                href="/stays"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
-                style={{ textShadow: navTextShadow }}
-              >
-                Stays
-              </Link>
-              <Link
-                href="/flights"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
-                style={{ textShadow: navTextShadow }}
-              >
-                Flights
-              </Link>
-              <Link
-                href="/guides"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
-                style={{ textShadow: navTextShadow }}
-              >
-                Guides
-              </Link>
-              <Link
-                href="/deals"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden lg:block"
-                style={{ textShadow: navTextShadow }}
-              >
-                Deals
-              </Link>
-              <Link
-                href="/concierge-trip-plan"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors hidden xl:block"
-                style={{ textShadow: navTextShadow }}
-              >
-                Concierge
-              </Link>
-              <Link
-                href="/dashboard"
-                className="hidden sm:inline-flex items-center rounded-full bg-white px-4 py-2 text-sm font-extrabold text-brand-700 shadow-soft transition-colors hover:bg-white/90"
-              >
-                Start planning
-              </Link>
-              <Link
-                href="/login"
-                className="text-sm font-bold text-white hover:text-white/85 transition-colors"
-                style={{ textShadow: navTextShadow }}
-              >
-                Sign in
-              </Link>
-            </nav>
-          </div>
-        </header>
+      {/* Public marketplace nav */}
+      <div className="relative z-20 w-full">
+        <MarketplacePublicHeader activePath="/" />
       </div>
 
-      {/* Hero content — centered */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-16 text-center">
-        <div
-          className="inline-flex items-center gap-2.5 bg-black/[0.02] backdrop-blur-md border border-white/30 rounded-full pl-1.5 pr-4 py-1.5 text-sm font-medium mb-8 tracking-wide"
-          style={{ textShadow: heroTextShadow }}
-        >
-          <BuddyAvatar size="sm" state="greeting" className="shrink-0 ring-2 ring-white/40" />
-          <span>Your AI Bahamas Travel Companion</span>
+      {/* Hero content */}
+      <div className="relative z-10 flex flex-1 items-center px-4 py-10 md:py-16">
+        <div className="mx-auto grid w-full max-w-6xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+          <div className="text-left">
+            <div
+              className="mb-6 inline-flex items-center gap-2.5 rounded-full border border-white/35 bg-white/15 py-1.5 pl-1.5 pr-4 text-sm font-bold tracking-wide text-white shadow-soft backdrop-blur-md"
+              style={{ textShadow: heroTextShadow }}
+            >
+              <BuddyAvatar size="sm" state="greeting" className="shrink-0 ring-2 ring-white/40" />
+              <span>AI Bahamas travel companion</span>
+            </div>
+
+            <h1
+              className="max-w-3xl text-5xl font-extrabold leading-[1.02] tracking-tight md:text-6xl lg:text-[4.65rem]"
+              style={{ textShadow: heroTextShadow }}
+            >
+              Plan, book, and travel the{' '}
+              <span className="text-gold-300">Bahamas</span>{' '}
+              with Buddy.
+            </h1>
+
+            <p className="mt-6 max-w-xl text-lg font-semibold leading-8 text-white/90" style={{ textShadow: heroTextShadow }}>
+              Browse stays, compare live flights, explore islands, and turn the whole trip into one saved itinerary.
+            </p>
+
+            <div className="mt-8 grid max-w-xl gap-3 sm:grid-cols-3">
+              {[
+                ['Stays', 'Hotels, villas, homes', '/stays'],
+                ['Flights', 'Live fares to the islands', '/flights'],
+                ['Explore', 'Food, tours, beaches', '/explore'],
+              ].map(([label, body, href]) => (
+                <Link
+                  key={label}
+                  href={href}
+                  className="group rounded-2xl border border-white/25 bg-white/12 p-4 text-left backdrop-blur-md transition hover:border-white/45 hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300"
+                >
+                  <span className="mb-3 block h-2 w-8 rounded-full bg-gold-400 transition group-hover:w-10" aria-hidden="true" />
+                  <span className="block text-sm font-extrabold text-white">{label}</span>
+                  <span className="mt-1 block text-xs font-semibold leading-5 text-white/75">{body}</span>
+                </Link>
+              ))}
+            </div>
+
+            <StoreBadgeLinks className="mt-8 justify-start" />
+          </div>
+
+          <div className="lg:justify-self-end">
+            {/**
+              MarketingHeroSearch is the direct-intent marketplace panel:
+              Plan a Trip, Stays, Flights, and Things to Do. The homepage
+              keeps Buddy as the planning hook while direct commerce paths
+              stay visible above the fold.
+            */}
+            <MarketingHeroSearch />
+
+            <div className="mt-4 rounded-2xl border border-white/25 bg-white/14 p-4 text-sm font-semibold leading-6 text-white/85 shadow-soft backdrop-blur-md">
+              <span className="mr-2 inline-block h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              Need local review before you book?
+              {' '}
+              <Link href="/concierge-trip-plan" className="font-extrabold text-white underline decoration-gold-300 underline-offset-4 hover:text-gold-100">
+                Get a Concierge Trip Plan
+              </Link>
+            </div>
+          </div>
         </div>
-
-        <h1
-          className="text-5xl md:text-6xl lg:text-[4.5rem] font-bold tracking-tight leading-[1.05] mb-5 max-w-3xl"
-          style={{ textShadow: heroTextShadow }}
-        >
-          Where in the{' '}
-          <span className="text-gold-300">Bahamas</span>{' '}
-          do you want to go?
-        </h1>
-
-        <p className="text-lg text-white/90 mb-10 max-w-lg leading-relaxed" style={{ textShadow: heroTextShadow }}>
-          Tell Baha Buddy what you&apos;re dreaming of — we&apos;ll build your perfect island itinerary.
-        </p>
-
-        {/**
-          MarketingHeroSearch is the 4-tab structured search panel:
-          Plan a Trip (chat input + rotating placeholder + suggestion
-          chips), Stays, Flights, Things to Do. Replaces the pre-existing
-          inline <form> + chips block — see MarketingHeroSearch.tsx for
-          the full breakdown of the structured tabs.
-        */}
-        <MarketingHeroSearch />
-
-        <div className="mt-5">
-          <Link
-            href="/concierge-trip-plan"
-            className="inline-flex items-center justify-center rounded-full bg-white/20 border border-white/40 px-5 py-2.5 text-sm font-bold text-white backdrop-blur-md hover:bg-white/25 transition-colors"
-            style={{ textShadow: navTextShadow }}
-          >
-            Want local help? Pay for a Concierge Trip Plan →
-          </Link>
-        </div>
-
-        <StoreBadgeLinks className="mt-8" />
       </div>
     </section>
   )

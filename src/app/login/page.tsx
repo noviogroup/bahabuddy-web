@@ -133,32 +133,47 @@ function AuthForm() {
     }
   }
 
+  const methodButtonClass = (nextMethod: Method) => [
+    'flex-1 rounded-full py-2 text-xs font-extrabold uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
+    method === nextMethod
+      ? 'bg-brand-600 text-white shadow-sm'
+      : 'text-gray-600 hover:bg-white hover:text-night',
+  ].join(' ')
+
+  const primaryButtonClass = 'inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60'
+
   return (
-    <div className="bg-white rounded-2xl shadow-lg p-6 sm:p-8">
+    <div className="rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
       <div className="flex rounded-full bg-gray-100 p-1 mb-5">
-        <button type="button" onClick={() => switchMode('signin')} className={`flex-1 py-2 text-sm font-bold rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${mode === 'signin' ? 'bg-white text-brand-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`} aria-pressed={mode === 'signin'}>Sign in</button>
-        <button type="button" onClick={() => switchMode('signup')} className={`flex-1 py-2 text-sm font-bold rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 ${mode === 'signup' ? 'bg-white text-brand-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`} aria-pressed={mode === 'signup'}>Sign up</button>
+        <button type="button" onClick={() => switchMode('signin')} className={`flex-1 py-2 text-sm font-bold rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 ${mode === 'signin' ? 'bg-white text-night shadow-sm' : 'text-gray-500 hover:text-gray-700'}`} aria-pressed={mode === 'signin'}>Sign in</button>
+        <button type="button" onClick={() => switchMode('signup')} className={`flex-1 py-2 text-sm font-bold rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 ${mode === 'signup' ? 'bg-white text-night shadow-sm' : 'text-gray-500 hover:text-gray-700'}`} aria-pressed={mode === 'signup'}>Sign up</button>
       </div>
 
-      <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-5 text-xs">
-        <button type="button" onClick={() => { setMethod('password'); setMessage(null) }} className={`flex-1 py-2 font-medium transition-colors ${method === 'password' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`} aria-pressed={method === 'password'}>Password</button>
-        <button type="button" onClick={() => { setMethod('magic'); setMessage(null) }} className={`flex-1 py-2 font-medium transition-colors ${method === 'magic' ? 'bg-brand-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`} aria-pressed={method === 'magic'}>Magic link</button>
+      <div className="mb-5 flex rounded-full border border-gray-200 bg-gray-50 p-1 text-xs">
+        <button type="button" onClick={() => { setMethod('password'); setMessage(null) }} className={methodButtonClass('password')} aria-pressed={method === 'password'}>Password</button>
+        <button type="button" onClick={() => { setMethod('magic'); setMessage(null) }} className={methodButtonClass('magic')} aria-pressed={method === 'magic'}>Magic link</button>
       </div>
 
       {message && <div role={message.type === 'error' ? 'alert' : 'status'} className={`rounded-lg px-4 py-3 mb-4 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>{message.text}</div>}
 
       {method === 'password' ? (
         <form onSubmit={handlePasswordSubmit} className="space-y-4">
-          {mode === 'signup' && <div><label htmlFor="auth-name" className="block text-sm font-medium text-gray-700 mb-1">What should Buddy call you? <span className="text-gray-400 font-normal">(optional)</span></label><input id="auth-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="First name" autoComplete="given-name" maxLength={60} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" /></div>}
-          <div><label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="auth-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" /></div>
-          <div><label htmlFor="auth-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label><input id="auth-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" /></div>
-          <button type="submit" disabled={loading} className="w-full bg-brand-600 text-white font-semibold py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-60 transition-colors">{loading ? 'Please wait…' : mode === 'signup' ? 'Create account' : 'Sign in'}</button>
+          {mode === 'signup' && <div><label htmlFor="auth-name" className="block text-sm font-medium text-gray-700 mb-1">What should Buddy call you? <span className="text-gray-400 font-normal">(optional)</span></label><input id="auth-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="First name" autoComplete="given-name" maxLength={60} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" /></div>}
+          <div><label htmlFor="auth-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="auth-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" /></div>
+          <div><label htmlFor="auth-password" className="block text-sm font-medium text-gray-700 mb-1">Password</label><input id="auth-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" /></div>
+          <button type="submit" disabled={loading} className={primaryButtonClass}>
+            {!loading && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
+            {loading ? 'Please wait...' : mode === 'signup' ? 'Create account' : 'Sign in'}
+          </button>
         </form>
       ) : (
         <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
-          {mode === 'signup' && <div><label htmlFor="magic-name" className="block text-sm font-medium text-gray-700 mb-1">What should Buddy call you? <span className="text-gray-400 font-normal">(optional)</span></label><input id="magic-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="First name" autoComplete="given-name" maxLength={60} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" /></div>}
-          <div><label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="magic-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" /></div>
-          <button type="submit" disabled={loading} className="w-full bg-brand-600 text-white font-semibold py-2.5 rounded-lg hover:bg-brand-700 disabled:opacity-60 transition-colors">{loading ? 'Sending…' : 'Send magic link'}</button>
+          {mode === 'signup' && <div><label htmlFor="magic-name" className="block text-sm font-medium text-gray-700 mb-1">What should Buddy call you? <span className="text-gray-400 font-normal">(optional)</span></label><input id="magic-name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} placeholder="First name" autoComplete="given-name" maxLength={60} className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" /></div>}
+          <div><label htmlFor="magic-email" className="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="magic-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-300" /></div>
+          <button type="submit" disabled={loading} className={primaryButtonClass}>
+            {!loading && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
+            {loading ? 'Sending...' : 'Send magic link'}
+          </button>
         </form>
       )}
     </div>
@@ -167,10 +182,10 @@ function AuthForm() {
 
 export default function LoginPage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-brand-50 via-white to-sand-50 flex items-center justify-center px-4 py-10">
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="text-center mb-6"><BahaLogo className="mx-auto h-12 w-auto" /><h1 className="mt-4 text-3xl font-extrabold text-gray-900">Welcome to Baha Buddy</h1><p className="mt-2 text-gray-600">Sign in or create an account to continue.</p></div>
-        <Suspense fallback={<div className="bg-white rounded-2xl shadow-lg p-8 text-center text-gray-500">Loading…</div>}><AuthForm /></Suspense>
+        <div className="mb-6 text-center"><BahaLogo className="mx-auto h-12 w-auto" /><h1 className="mt-4 text-3xl font-extrabold text-gray-900">Welcome to Baha Buddy</h1><p className="mt-2 text-gray-600">Sign in or create an account to continue.</p></div>
+        <Suspense fallback={<div className="rounded-baha-lg border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm">Loading...</div>}><AuthForm /></Suspense>
       </div>
     </main>
   )

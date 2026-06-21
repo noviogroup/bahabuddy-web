@@ -8,6 +8,10 @@ import { HotelCard as NewHotelCard, type HotelCardData,
          FlightCard as NewFlightCard, type FlightCardData, type FlightLayover,
          DestinationCard as NewDestinationCard, type DestinationCardData,
          MapCard as NewMapCard, type MapCardData, type MapLocation } from './cards'
+import {
+  appendFlightCheckoutSummary,
+  flightCheckoutSummaryFromCard,
+} from '@/lib/flight-checkout-summary'
 
 /**
  * RichCards — every visual card type that appears inline in chat.
@@ -21,7 +25,7 @@ import { HotelCard as NewHotelCard, type HotelCardData,
  *   - HotelCard / RestaurantCard / ActivityCard expose real detail links
  *     when `place_id` is present. Hotels link to /stays/[id],
  *     restaurants to /restaurants/[id], and activities to /activities/[id].
- *   - DestinationCard links to /explore/places/[island-slug] (the
+ *   - DestinationCard links to /explore/island/[island-slug] (the
  *     marketing surface) when the island slug is recognizable.
  *   - Flight, DayPlan, Summary, Map cards have no detail page concept;
  *     they remain non-linking.
@@ -156,6 +160,7 @@ export interface CardData {
   fare_brand?: string
   currency?: string
   refundable?: boolean
+  changeable?: boolean
   expiration?: string
   /** Flight: ordered layovers when not direct. */
   layovers?: FlightLayover[]
@@ -295,7 +300,7 @@ function imageUrlFromValue(value: unknown): string | undefined {
  * the tighter `HotelCardData` consumed by the new `HotelCard` component.
  *
  * The new card lives under `src/components/cards/HotelCard.tsx` so it
- * can be reused on /hotels list pages, in trip summaries, etc. — the
+ * can be reused on /stays list pages, in trip summaries, etc. — the
  * old inline `HotelCard` function below is kept commented out for
  * reference but no longer dispatched from the switch.
  *
@@ -305,7 +310,6 @@ function imageUrlFromValue(value: unknown): string | undefined {
  */
 function HotelCardAdapter({
   data,
-  onSendMessage,
   activeTripId,
   onAddToTrip,
 }: {
@@ -337,8 +341,6 @@ function HotelCardAdapter({
 
   const handleSave = activeTripId && onAddToTrip
     ? () => onAddToTrip(data, activeTripId)
-    : onSendMessage
-    ? (d: HotelCardData) => onSendMessage(`Help me add ${d.name} to my trip`)
     : undefined
 
   return <NewHotelCard data={hotelData} size="compact" onSave={handleSave} />
@@ -349,7 +351,6 @@ function HotelCardAdapter({
 /** Adapts loose `CardData` to `RestaurantCardData`. */
 function RestaurantCardAdapter({
   data,
-  onSendMessage,
   activeTripId,
   onAddToTrip,
 }: {
@@ -379,8 +380,6 @@ function RestaurantCardAdapter({
 
   const handleSave = activeTripId && onAddToTrip
     ? () => onAddToTrip(data, activeTripId)
-    : onSendMessage
-    ? (d: RestaurantCardData) => onSendMessage(`Help me add ${d.name} to my trip`)
     : undefined
 
   return <NewRestaurantCard data={restaurantData} size="compact" onSave={handleSave} />
@@ -391,7 +390,6 @@ function RestaurantCardAdapter({
 /** Adapts loose `CardData` to `ActivityCardData`. */
 function ActivityCardAdapter({
   data,
-  onSendMessage,
   activeTripId,
   onAddToTrip,
 }: {
@@ -426,8 +424,6 @@ function ActivityCardAdapter({
 
   const handleSave = activeTripId && onAddToTrip
     ? () => onAddToTrip(data, activeTripId)
-    : onSendMessage
-    ? (d: ActivityCardData) => onSendMessage(`Help me add ${d.name} to my trip`)
     : undefined
 
   return <NewActivityCard data={activityData} size="compact" onSave={handleSave} />
@@ -498,6 +494,13 @@ function FlightCardAdapter({
   activeTripId?: string
   onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
+  const offerId = flightOfferId(data)
+  const bookingHref = offerId
+    ? appendFlightCheckoutSummary(
+      `/flights/${encodeURIComponent(offerId)}/book`,
+      flightCheckoutSummaryFromCard(data),
+    )
+    : null
   const flightData: FlightCardData = {
     route: data.route,
     airline: data.airline,
@@ -513,30 +516,30 @@ function FlightCardAdapter({
     cabin_class: data.cabin_class,
     fare_brand: data.fare_brand,
     refundable: data.refundable,
+    changeable: data.changeable,
     expiration: data.expiration,
     layovers: data.layovers,
     baggage: data.baggage,
     duffel_offer_id: data.duffel_offer_id,
   }
 
-  return (
-    <div className="space-y-2">
-      <NewFlightCard data={flightData} />
-      <div className="flex flex-wrap justify-end gap-2">
+  const actions = (
+    <>
         {activeTripId && onAddToTrip && (
           <button
             type="button"
             onClick={() => onAddToTrip(data, activeTripId)}
-            className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 px-3 py-1 rounded-full border border-brand-200 hover:bg-brand-50 transition-colors"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Add to trip
           </button>
         )}
-        {(data.duffel_offer_id || data.offer_id || data.provider_offer_id) && (
+        {bookingHref && (
           <a
-            href={`/flights/${encodeURIComponent(String(data.duffel_offer_id ?? data.offer_id ?? data.provider_offer_id))}/book`}
-            className="text-[11px] font-semibold text-white bg-brand-600 hover:bg-brand-700 px-3 py-1 rounded-full transition-colors"
+            href={bookingHref}
+            className="inline-flex h-9 min-w-32 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-xs font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
           >
+            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Book this fare
           </a>
         )}
@@ -544,24 +547,31 @@ function FlightCardAdapter({
           <button
             type="button"
             onClick={() => onSendMessage(`Help me save the ${data.airline ?? 'flight'} option to my trip`)}
-            className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 px-3 py-1 rounded-full border border-brand-200 hover:bg-brand-50 transition-colors"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Plan this flight
           </button>
         )}
-      </div>
-    </div>
+    </>
   )
+
+  return <NewFlightCard data={flightData} actions={actions} />
+}
+
+function flightOfferId(data: CardData): string | null {
+  const value = data.offer_id ?? data.provider_offer_id ?? data.duffel_offer_id
+  return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
 // ─── Destination Card adapter (new cards/ system) ─────────────────────────
 
 /** Adapts loose `CardData` to `DestinationCardData`. */
 function DestinationCardAdapter({ data }: { data: CardData }) {
+  const images = cardImageSet(data)
   const destinationData: DestinationCardData = {
     name: data.name ?? data.title ?? 'Island',
     island_id: data.island_id,
-    photo_url: data.photo ?? data.thumbnail ?? data.photo_url,
+    photo_url: images.hero,
     tagline: data.tagline,
     getting_there: data.getting_there,
     days_recommended: data.days_recommended ?? data.duration, // legacy fallback

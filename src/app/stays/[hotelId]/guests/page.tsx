@@ -9,6 +9,8 @@ interface SearchParams {
   checkin?: string
   checkout?: string
   adults?: string
+  children?: string
+  rooms?: string
   room?: string
   amount?: string
   currency?: string
@@ -53,6 +55,8 @@ export default async function StayGuestsPage({
       checkin={checkin}
       checkout={checkout}
       adults={Math.max(1, Number(searchParams.adults ?? 2))}
+      childrenCount={Math.max(0, Number(searchParams.children ?? 0))}
+      requestedRooms={Math.max(1, Number(searchParams.rooms ?? 1))}
       roomName={searchParams.room ?? 'Selected room'}
       amountCents={amountCents}
       currency={(searchParams.currency ?? 'USD').toUpperCase()}

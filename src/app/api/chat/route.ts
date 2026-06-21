@@ -3,6 +3,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
 import { TOOL_DEFINITIONS, executeTool, toolProgressLabel } from '@/lib/chat-tools'
+import { stripCustomerFacingEmoji } from '@/lib/customer-facing-text'
 import type { CardData } from '@/components/RichCards'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
@@ -49,7 +50,7 @@ You are a stylized Bahamian guide — a cool island brother with relaxed, confid
 - Use line breaks between distinct ideas but keep the tone like you're texting a friend, not writing a report.
 - Example of what NOT to do: "**Option 1: Split Island Trip**\\n- Days 1-2: Exuma\\n- Days 3-4: Harbour Island"
 - Example of what TO do: "Here's what I'd do — spend the first two days in Exuma swimming with the pigs and exploring the cays, then hop over to Harbour Island for a couple days of pink sand and sunset dining."
-- Never use emoji excessively. One per message max, and only when it adds warmth.
+- Do not use emoji in customer-facing chat responses, card prose, labels, empty states, or itinerary text. Use plain words and server-rendered SVG/icon UI instead.
 
 ## ADAPTIVE TONE RULES
 Detect the trip context from user messages and their profile, then shift your tone accordingly:
@@ -363,8 +364,9 @@ export async function POST(req: NextRequest) {
             let turnText = ''
             for await (const event of response) {
               if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                turnText += event.delta.text
-                send({ type: 'text_delta', delta: event.delta.text })
+                const textDelta = stripCustomerFacingEmoji(event.delta.text)
+                turnText += textDelta
+                if (textDelta) send({ type: 'text_delta', delta: textDelta })
               }
             }
             allText += turnText

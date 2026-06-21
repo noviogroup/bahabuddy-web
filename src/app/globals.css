@@ -9,22 +9,37 @@
  */
 
 :root {
-  --background: #F8FAFB;   /* BahaColors.offWhite */
-  --foreground: #1A2332;   /* BahaColors.night */
+  --background: #F4F8FB;   /* BahaColors.offWhite */
+  --foreground: #0B2545;   /* BahaColors.night */
 
-  /* Brand */
-  --brand:        #2E78D2;
-  --brand-dark:   #1B5FAF;
-  --brand-bright: #38BDF8;
+  /* Brand
+     Public web surfaces use the Buddy logo royal blue. Exact mobile aliases remain
+     available separately for any component that needs the full palette. */
+  --baha-brand-blue:     #0679DA;
+  --baha-brand-blue-alt: #0382DE;
+  --brand-blue:     #0679DA;
+  --brand-blue-alt: #0382DE;
+  --deep-navy:      #0B2545;
+  --royal-blue:     #156FD1;
+  --wave-cyan:      #02ABF1;
+  --wave-cyan-light:#E0F7FF;
+  --brand:        #156FD1;
+  --brand-alt:    #156FD1;
+  --brand-dark:   #0B4D96;
+  --brand-bright: #02ABF1;
 
   /* Accents */
-  --gold:         #F5B731;
-  --gold-dark:    #D49A1B;
-  --coral:        #E8734A;
-  --palm:         #2D8B56;
+  --sun-yellow:      #FDC736;
+  --sun-yellow-dark: #D89B00;
+  --gold:            #FDC736;
+  --gold-dark:       #D89B00;
+  --coral:           #FF7A59;
+  --palm:            #2D8B56;
 
   /* Text scale */
-  --night:    #1A2332;
+  --off-white: #F4F8FB;
+  --white:     #FFFFFF;
+  --night:    #0B2545;
   --charcoal: #374151;
   --grey:     #6B7280;
 }
@@ -32,7 +47,7 @@
 body {
   color: var(--foreground);
   background: var(--background);
-  /* Font now driven by tailwind's font-sans (Plus Jakarta Sans via next/font). */
+  /* Font now driven by tailwind's font-sans (Figtree via next/font). */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -51,10 +66,10 @@ body {
 
   /* Ambient time-of-day gradient utility (used by Home Dashboard).
      Tinted very subtly — the gradient is a mood, not a statement. */
-  .bg-ambient-morning   { background: linear-gradient(180deg, #FFF8F0 0%, #FFF4E6 50%, #F8FAFB 100%); }
-  .bg-ambient-afternoon { background: linear-gradient(180deg, #F0F7FA 0%, #F8FAFB 50%, #F8FAFB 100%); }
-  .bg-ambient-evening   { background: linear-gradient(180deg, #FFF0E8 0%, #F8F4F0 50%, #F8FAFB 100%); }
-  .bg-ambient-night     { background: linear-gradient(180deg, #E8F0F8 0%, #F0F4F8 50%, #F8FAFB 100%); }
+  .bg-ambient-morning   { background: linear-gradient(180deg, #FFF4E6 0%, #EAF8FF 50%, #F4F8FB 100%); }
+  .bg-ambient-afternoon { background: linear-gradient(180deg, #E0F7FF 0%, #F4F8FB 50%, #F4F8FB 100%); }
+  .bg-ambient-evening   { background: linear-gradient(180deg, #FFF4E6 0%, #EAF8FF 50%, #F4F8FB 100%); }
+  .bg-ambient-night     { background: linear-gradient(180deg, #EAF8FF 0%, #F4F8FB 50%, #F4F8FB 100%); }
 }
 
 @media (prefers-reduced-motion: reduce) {

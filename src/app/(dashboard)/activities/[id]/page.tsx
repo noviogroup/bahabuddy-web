@@ -1,7 +1,10 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
-import { BackLink } from '@/components/detail/BackLink'
+import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
+import DirectTripItemActions from '@/components/trip/DirectTripItemActions'
 
 /**
  * /activities/[id] — Activity / experience detail page.
@@ -32,6 +35,7 @@ const ISLAND_DISPLAY: Record<string, string> = {
 }
 
 const ACTIVITY_TYPE_LABEL: Record<string, string> = {
+  attraction: 'Attraction',
   tourist_attraction: 'Attraction',
   amusement_park: 'Park',
   aquarium: 'Aquarium',
@@ -42,6 +46,13 @@ const ACTIVITY_TYPE_LABEL: Record<string, string> = {
 }
 
 export const dynamic = 'force-dynamic'
+
+function buildActivityBrowseHref(island?: string | null): string {
+  const params = new URLSearchParams()
+  params.set('category', 'Activity')
+  if (island) params.set('island', island)
+  return `/explore/places?${params.toString()}`
+}
 
 interface ActivityRow {
   place_id: string
@@ -78,58 +89,34 @@ export default async function ActivityDetailPage({ params }: { params: { id: str
   const typeLabel = activity.type ? ACTIVITY_TYPE_LABEL[activity.type] ?? null : null
 
   const planPrompt = `I'm looking at "${name}"${island ? ` on ${island}` : ''}. Tell me more — what to expect, how long it takes, what to bring, and whether it fits my trip.`
-  const addPrompt = `Add "${name}"${island ? ` on ${island}` : ''} to my trip.`
+  const addPrompt = `Help me plan around "${name}"${island ? ` on ${island}` : ''}.`
+  const browseHref = buildActivityBrowseHref(island)
+  const returnPath = `/activities/${encodeURIComponent(activity.place_id)}#trip-actions`
+  const subtitle = activity.description
+    ? activity.description
+    : `Review this ${typeLabel?.toLowerCase() ?? 'experience'}${island ? ` in ${island}` : ''}, save it directly to a trip, or ask Buddy for context.`
 
   return (
-    <main className="max-w-4xl mx-auto px-4 py-8">
-      <BackLink href="/dashboard/chat" label="Back to chat" />
-
-      {/* Hero */}
-      <div className="relative aspect-[16/9] sm:aspect-[2/1] rounded-baha-lg overflow-hidden mb-6 bg-gradient-to-br from-sky-400 to-blue-600">
-        {activity.photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={activity.photo_url}
-            alt=""
-            className="w-full h-full object-cover"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-7xl opacity-50" aria-hidden="true">🏖️</span>
-          </div>
+    <div className="min-h-screen bg-white">
+      <CompactPageHeader
+        eyebrow="Experience detail"
+        title={name}
+        subtitle={subtitle}
+        crumbs={[
+          { href: '/explore', label: 'Explore' },
+          { href: browseHref, label: 'Activities' },
+          { label: name },
+        ]}
+        actions={(
+          <Link
+            href={browseHref}
+            className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:bg-gray-50"
+          >
+            Browse more activities
+          </Link>
         )}
-      </div>
-
-      {/* Header */}
-      <header className="mb-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-night leading-tight">
-              {name}
-            </h1>
-            {island && (
-              <p className="text-base text-gray-500 mt-1">
-                {island}
-              </p>
-            )}
-          </div>
-          {rating > 0 && (
-            <div className="bg-brand-50 border border-brand-200 rounded-xl px-3 py-2 text-right">
-              <p className="text-2xl font-extrabold text-brand-700 leading-none">
-                {rating.toFixed(1)}
-                <span className="text-sm font-medium text-brand-500 ml-1">/5</span>
-              </p>
-              {reviews > 0 && (
-                <p className="text-[11px] text-brand-600 mt-0.5">
-                  {reviews.toLocaleString()} reviews
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Metadata pills */}
-        <div className="flex flex-wrap gap-2 mt-4">
+      >
+        <div className="flex flex-wrap gap-2">
           {typeLabel && (
             <span className="inline-flex items-center gap-1.5 bg-gray-100 text-gray-700 rounded-full px-3 py-1 text-xs font-semibold">
               {typeLabel}
@@ -145,38 +132,128 @@ export default async function ActivityDetailPage({ params }: { params: { id: str
               {activity.address}
             </span>
           )}
+          {rating > 0 && (
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1 text-xs font-extrabold text-night ring-1 ring-gray-200">
+              Rating {rating.toFixed(1)}/5
+              {reviews > 0 ? ` from ${reviews.toLocaleString()} reviews` : ''}
+            </span>
+          )}
         </div>
-      </header>
+      </CompactPageHeader>
 
-      {/* Description */}
-      {activity.description && (
-        <section className="mb-8">
-          <h2 className="text-lg font-bold text-night mb-3">About this experience</h2>
-          <p className="text-gray-700 leading-relaxed">
-            {activity.description}
-          </p>
-        </section>
-      )}
+      <main className="mx-auto max-w-6xl px-4 py-6">
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(20rem,0.65fr)] lg:items-start">
+          <ImageWithSourcePolicy
+            src={activity.photo_url}
+            alt={name}
+            title={name}
+            eyebrow="Experience photo"
+            description="Activity details are available. Provider photo is not available yet."
+            pendingLabel="Photo pending"
+            className="aspect-[4/3] rounded-baha-lg border border-gray-200 bg-white shadow-sm sm:aspect-[16/10] lg:aspect-[4/3]"
+            imageClassName="object-cover transition-transform duration-500 hover:scale-105"
+            sizes="(max-width: 1024px) 100vw, 60vw"
+            priority
+            tone="activity"
+          >
+            <div className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-extrabold text-night shadow-sm">
+              {island || 'Bahamas'}
+            </div>
+          </ImageWithSourcePolicy>
 
-      {/* Vibe tags */}
-      {vibeTags.length > 0 && (
-        <section className="mb-8">
-          <h2 className="text-lg font-bold text-night mb-3">Vibe</h2>
-          <div className="flex flex-wrap gap-2">
-            {vibeTags.map(t => (
-              <span
-                key={t}
-                className="bg-brand-50 text-brand-700 rounded-full px-3 py-1.5 text-sm font-medium capitalize"
-              >
-                {t.replace(/-/g, ' ')}
-              </span>
-            ))}
+          <div id="trip-actions">
+            <DirectTripItemActions
+              itemType="activity"
+              sourceId={activity.place_id}
+              sourceType="web_activity_detail"
+              name={name}
+              island={island || null}
+              imageUrl={activity.photo_url}
+              returnPath={returnPath}
+              heading="Save this experience"
+              description="Add this activity directly to a trip. Buddy remains secondary for questions and planning."
+              primaryLabel="Add experience to trip"
+              createTripLabel="Create trip for this experience"
+              savedLabel="Saved experience to trip"
+              timeSlot="afternoon"
+              notes={activity.description?.slice(0, 180) ?? null}
+              metadata={{
+                category: activity.type,
+                vibeTags,
+                rating: activity.rating,
+                reviewCount: activity.user_ratings_total,
+                address: activity.address,
+                kidFriendly: activity.kid_friendly,
+              }}
+            />
           </div>
         </section>
-      )}
 
-      {/* CTA panel */}
-      <PlanWithBuddyCTA planPrompt={planPrompt} addPrompt={addPrompt} kind="experience" />
-    </main>
+        <section className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="space-y-6">
+            {activity.description && (
+              <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-bold text-night">About this experience</h2>
+                <p className="mt-3 text-gray-700 leading-relaxed">
+                  {activity.description}
+                </p>
+              </section>
+            )}
+
+            {vibeTags.length > 0 && (
+              <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
+                <h2 className="text-lg font-bold text-night">Vibe</h2>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {vibeTags.map(t => (
+                    <span
+                      key={t}
+                      className="bg-gray-100 text-charcoal rounded-full px-3 py-1.5 text-sm font-medium capitalize"
+                    >
+                      {t.replace(/-/g, ' ')}
+                    </span>
+                  ))}
+                </div>
+              </section>
+            )}
+          </div>
+
+          <aside className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
+              Trip fit
+            </p>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className="font-extrabold text-night">Location</dt>
+                <dd className="mt-1 text-charcoal">{island || 'Bahamas'}</dd>
+              </div>
+              {typeLabel && (
+                <div>
+                  <dt className="font-extrabold text-night">Type</dt>
+                  <dd className="mt-1 text-charcoal">{typeLabel}</dd>
+                </div>
+              )}
+              {rating > 0 && (
+                <div>
+                  <dt className="font-extrabold text-night">Rating</dt>
+                  <dd className="mt-1 text-charcoal">
+                    {rating.toFixed(1)}/5{reviews > 0 ? ` from ${reviews.toLocaleString()} reviews` : ''}
+                  </dd>
+                </div>
+              )}
+              {activity.kid_friendly && (
+                <div>
+                  <dt className="font-extrabold text-night">Family fit</dt>
+                  <dd className="mt-1 text-charcoal">Marked kid-friendly in place data.</dd>
+                </div>
+              )}
+            </dl>
+          </aside>
+        </section>
+
+        <div className="mt-8">
+          <PlanWithBuddyCTA planPrompt={planPrompt} addPrompt={addPrompt} kind="experience" />
+        </div>
+      </main>
+    </div>
   )
 }

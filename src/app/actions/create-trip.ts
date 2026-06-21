@@ -5,8 +5,9 @@
  *
  * Inserts a draft `trips` row scoped to the current user, optionally
  * stamping date_start/date_end and the user's freeform preferences as
- * the initial chat seed. Returns the new trip id so the client can
- * navigate to `/dashboard/chat?trip=<id>&q=<preferences>`.
+ * planning context. Returns the new trip id so the client can open the
+ * canonical trip record or, when explicitly requested, start Buddy with
+ * that trip context.
  *
  * Auth: relies on the user's Supabase session cookie. If somehow
  * called unauthenticated the action throws — wrapping page is gated
@@ -34,14 +35,14 @@ export interface CreateTripInput {
   /** ISO date strings. Both null = flexible. */
   dateStart: string | null
   dateEnd: string | null
-  /** Freeform user notes — seeded as the first chat message. */
+  /** Freeform user notes saved as planning context and optional Buddy seed. */
   preferences: string
 }
 
 export interface CreateTripResult {
   ok: boolean
   tripId?: string
-  /** Encoded seed message for the chat URL, or empty string. */
+  /** Seed message for optional Buddy follow-up. */
   seedQuery?: string
   error?: string
 }
@@ -99,10 +100,10 @@ export async function createTripAction(
     return { ok: false, error: error?.message ?? 'Failed to create trip' }
   }
 
-  // Build a seed query for the chat using the destination and any
-  // preferences the user typed. This becomes the first message Buddy
-  // sees and is what gives the conversation initial context — exactly
-  // what MindTrip does after their modal closes.
+  // Build optional Buddy context using the destination and any
+  // preferences the user typed. Direct trip creation uses the trip id
+  // first; chat only consumes this when the user explicitly chooses
+  // the "Create and ask Buddy" path.
   const trimmedPrefs = input.preferences.trim()
   let seedQuery = `I'm planning a trip to ${island.name}`
   if (input.dateStart && input.dateEnd) {

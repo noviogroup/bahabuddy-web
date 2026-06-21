@@ -12,8 +12,8 @@ import TripBudget from '@/components/TripBudget'
 import TripReceipts from '@/components/TripReceipts'
 import TripRealtimeListener from '@/components/TripRealtimeListener'
 import TripStatusBadge, { type TripStatus } from '@/components/TripStatusBadge'
-import EmptySlotChatLink from '@/components/EmptySlotChatLink'
 import TripSuggestionRotator from '@/components/trip/TripSuggestionRotator'
+import TripTimelineCards, { tripTimelineDayCount } from '@/components/trip/TripTimelineCards'
 import { isStripeConfigured } from '@/lib/stripe/client'
 import { resolveDefaultHeaderImage } from '@/lib/default-headers'
 
@@ -24,13 +24,6 @@ function fmt(d: string | null) {
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-function fmtDatetime(d: string | null) {
-  if (!d) return '—'
-  return new Date(d).toLocaleString('en-US', {
-    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
-  })
-}
-
 function daysUntil(dateStr: string | null): number | null {
   if (!dateStr) return null
   const target = new Date(dateStr).getTime()
@@ -38,27 +31,6 @@ function daysUntil(dateStr: string | null): number | null {
   const diff = target - now
   if (diff <= 0) return null
   return Math.ceil(diff / 86_400_000)
-}
-
-function groupActivities(activities: TripActivity[]) {
-  const days: Record<number, Record<string, TripActivity[]>> = {}
-  for (const a of activities) {
-    if (!days[a.day_number]) days[a.day_number] = { morning: [], afternoon: [], evening: [] }
-    days[a.day_number][a.time_slot].push(a)
-  }
-  return days
-}
-
-function tripDayCount(activities: TripActivity[], trip: Trip): number {
-  let max = 0
-  for (const a of activities) max = Math.max(max, a.day_number ?? 0)
-  if (trip.date_start && trip.date_end) {
-    const days = Math.ceil(
-      (new Date(trip.date_end).getTime() - new Date(trip.date_start).getTime()) / 86_400_000,
-    ) + 1
-    max = Math.max(max, days)
-  }
-  return max
 }
 
 function isBookable(trip: Trip): boolean {
@@ -88,8 +60,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
   const flights = (flightsRes.data ?? []) as TripFlight[]
   const accommodations = (accRes.data ?? []) as TripAccommodation[]
   const activities = (activitiesRes.data ?? []) as TripActivity[]
-  const dayGroups = groupActivities(activities)
-  const totalDays = tripDayCount(activities, trip)
+  const totalDays = tripTimelineDayCount(activities, trip)
 
   const mapMarkers = buildMarkersFromTripData(activities, accommodations, flights)
 
@@ -113,110 +84,13 @@ export default async function TripPage({ params }: { params: { id: string } }) {
   })
 
   const timelineContent = (
-    <div className="space-y-6">
-      {flights.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <span aria-hidden="true">✈️</span>
-            Flights
-          </h2>
-          <div className="space-y-3">
-            {flights.map(f => (
-              <div key={f.id} className="bg-white rounded-baha-md border border-gray-200 p-4 shadow-soft">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold text-gray-900">{f.origin}</span>
-                    <span className="text-gray-400">→</span>
-                    <span className="font-semibold text-gray-900">{f.destination}</span>
-                  </div>
-                  {f.airline && <span className="text-sm text-gray-500">{f.airline}</span>}
-                </div>
-                <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-500">
-                  {f.departure_at && <span>Departs {fmtDatetime(f.departure_at)}</span>}
-                  {f.arrival_at && <span>Arrives {fmtDatetime(f.arrival_at)}</span>}
-                </div>
-                {f.booking_reference && (
-                  <p className="mt-2 text-xs font-mono bg-gray-50 px-2 py-1 rounded inline-block text-gray-600">
-                    Ref: {f.booking_reference}
-                  </p>
-                )}
-                {f.price && <p className="text-sm text-palm-600 font-medium mt-1">${f.price.toLocaleString()}</p>}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {accommodations.length > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">Accommodations</h2>
-          <div className="space-y-3">
-            {accommodations.map(a => (
-              <div key={a.id} className="bg-white rounded-baha-md border border-gray-200 p-4 shadow-soft">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{a.name}</h3>
-                    {a.island && <p className="text-sm text-gray-500">{a.island}</p>}
-                  </div>
-                  {a.price_per_night && <span className="text-sm font-medium text-palm-600 shrink-0">${a.price_per_night}/night</span>}
-                </div>
-                {(a.check_in || a.check_out) && <p className="text-sm text-gray-500 mt-1">{fmt(a.check_in)} → {fmt(a.check_out)}</p>}
-                {a.booking_reference && (
-                  <p className="mt-2 text-xs font-mono bg-gray-50 px-2 py-1 rounded inline-block text-gray-600">Ref: {a.booking_reference}</p>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {totalDays > 0 && (
-        <section>
-          <h2 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">Itinerary</h2>
-          <div className="space-y-4">
-            {Array.from({ length: totalDays }, (_, idx) => idx + 1).map(dayNum => {
-              const slots = dayGroups[dayNum] ?? { morning: [], afternoon: [], evening: [] }
-              const dayHasContent = slots.morning.length + slots.afternoon.length + slots.evening.length > 0
-              return (
-                <div key={dayNum} className="bg-white rounded-baha-md border border-gray-200 p-4 shadow-soft">
-                  <h3 className="font-semibold text-gray-800 mb-3">Day {dayNum}</h3>
-                  {(['morning', 'afternoon', 'evening'] as const).map(slot => {
-                    const items = slots[slot] ?? []
-                    return (
-                      <div key={slot} className="mb-3 last:mb-0">
-                        <p className="text-xs text-gray-400 uppercase tracking-wide mb-1.5 capitalize">{slot}</p>
-                        {items.length > 0 ? (
-                          <ul className="space-y-1">
-                            {items.map(item => (
-                              <li key={item.id} className="text-sm text-gray-700 flex items-start gap-2">
-                                <span className="text-gray-300 mt-0.5">•</span>
-                                <span>
-                                  {item.activity_name}
-                                  {item.notes && <span className="text-gray-400 ml-1">— {item.notes}</span>}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
-                        ) : dayHasContent ? (
-                          <EmptySlotChatLink dayNumber={dayNum} slot={slot} tripName={trip.name} island={primaryIsland} />
-                        ) : null}
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
-
-      {flights.length === 0 && accommodations.length === 0 && activities.length === 0 && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-10 text-center shadow-soft">
-          <p className="text-gray-500 text-sm mb-3">This trip is just an idea right now.</p>
-          <p className="text-gray-400 text-xs">Keep planning with Buddy in the chat panel — flights, hotels, and activities will appear here as you add them.</p>
-        </div>
-      )}
-    </div>
+    <TripTimelineCards
+      trip={trip}
+      flights={flights}
+      accommodations={accommodations}
+      activities={activities}
+      primaryIsland={primaryIsland}
+    />
   )
 
   const checkoutHref = bookable
@@ -314,7 +188,9 @@ export default async function TripPage({ params }: { params: { id: string } }) {
 
         {bookable && checkoutHref && (
           <section className="rounded-baha-lg bg-gradient-to-br from-brand-600 to-brand-500 text-white p-6 shadow-card relative overflow-hidden">
-            <div className="absolute -bottom-8 -right-8 text-9xl opacity-10 select-none pointer-events-none" aria-hidden="true">✈️</div>
+            <svg className="absolute -bottom-8 -right-8 h-36 w-36 text-white/10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16l7-3V7a2 2 0 0 1 4 0v6l7 3v2l-7-2v3l2 1.5V22l-4-1-4 1v-1.5L10 19v-3l-7 2v-2Z" />
+            </svg>
             <div className="relative flex items-center justify-between gap-4 flex-wrap">
               <div>
                 <p className="text-brand-100 text-xs font-bold uppercase tracking-widest">Ready when you are</p>

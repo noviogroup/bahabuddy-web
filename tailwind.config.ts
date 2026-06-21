@@ -26,34 +26,58 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
 
-        // ── Primary brand (ocean) ──
+        // ── Exact BahaColors aliases for cross-platform parity ──
+        baha: {
+          brandBlue: "#0679DA",
+          brandBlueAlt: "#0382DE",
+          deepNavy: "#0B2545",
+          royalBlue: "#156FD1",
+          waveCyan: "#02ABF1",
+          waveCyanLight: "#E0F7FF",
+          sunYellow: "#FDC736",
+          sunYellowDark: "#D89B00",
+          offWhite: "#F4F8FB",
+          white: "#FFFFFF",
+          charcoal: "#374151",
+          grey: "#6B7280",
+          palm: "#2D8B56",
+          coral: "#FF7A59",
+        },
+
+        // ── Primary brand (mobile app + logo royal blue) ──
+        // The exact BahaColors values stay available under `baha.*`.
+        // The utility scale uses royalBlue for common public surfaces
+        // so existing `bg-brand-600` usage matches the Buddy logo/app shell.
         brand: {
-          50:  "#EBF3FC",
-          100: "#D0E5F8",
-          200: "#A2CCF2",
-          300: "#73B2EB",
-          400: "#4C97E4",
-          500: "#2E78D2",  // BahaColors.ocean — primary
-          600: "#2565B0",
-          700: "#1C528E",
-          800: "#143F6C",
-          900: "#0C2C4A",
+          50:  "#EAF8FF",
+          100: "#D6F1FF",
+          200: "#ADE3FF",
+          300: "#7ED1FB",
+          400: "#02ABF1",  // BahaColors.waveCyan — light icon/hover accent
+          500: "#0679DA",  // BahaColors.brandBlue — bright app blue
+          600: "#156FD1",  // BahaColors.royalBlue — primary logo/app surface
+          700: "#0B4D96",  // darker pressed/hover state
+          800: "#0B3F7A",
+          900: "#0B2545",  // BahaColors.deepNavy
         },
 
         // ── Cyan wave (from logo) ──
         cyan: {
-          DEFAULT: "#38BDF8", // BahaColors.oceanBright
+          DEFAULT: "#02ABF1", // BahaColors.waveCyan
+          50: "#E0F7FF",
+          500: "#02ABF1",
+          700: "#0077B6",
         },
 
         // ── Secondary — Gold ──
         gold: {
-          50:  "#FEF9EC",
-          100: "#FDF0C9",
-          200: "#FBE193",
-          300: "#F9D25E",
-          400: "#F7C238",
-          500: "#F5B731",  // BahaColors.gold
-          600: "#D49A1B",
+          50:  "#FFF9E6",
+          100: "#FFF0BE",
+          200: "#FFE184",
+          300: "#FFD35F",
+          400: "#FDC736",
+          500: "#FDC736",  // BahaColors.sunYellow
+          600: "#D89B00",  // BahaColors.sunYellowDark
           700: "#A97C14",
           800: "#7E5E0F",
           900: "#543F0A",
@@ -61,13 +85,13 @@ const config: Config = {
 
         // ── Accent — Coral (warm complement) ──
         coral: {
-          50:  "#FEF1EC",
-          100: "#FDDED2",
-          200: "#FABBA1",
-          300: "#F49872",
-          400: "#EE7E55",
-          500: "#E8734A",  // BahaColors.coral
-          600: "#C45A34",
+          50:  "#FFF1ED",
+          100: "#FFE3DA",
+          200: "#FFC7B8",
+          300: "#FFA38C",
+          400: "#FF8C6E",
+          500: "#FF7A59",  // BahaColors.coral
+          600: "#E45635",
           700: "#9D4525",
           800: "#76321A",
           900: "#4E2010",
@@ -102,26 +126,26 @@ const config: Config = {
         },
 
         // ── Neutrals (named tokens for direct ports from mobile) ──
-        night:    "#1A2332",  // BahaColors.night
+        night:    "#0B2545",  // BahaColors.night / deepNavy
         charcoal: "#374151",  // BahaColors.charcoal
-        offwhite: "#F8FAFB",  // BahaColors.offWhite
+        offwhite: "#F4F8FB",  // BahaColors.offWhite
 
         // ── Chat surfaces (mobile parity) ──
         "buddy-bubble": "#F0F5FA",  // BahaColors.buddyBubble — Buddy speech bg
-        "user-bubble": "#2E78D2",   // BahaColors.userBubble — user speech bg
+        "user-bubble": "#0B2545",   // BahaColors.userBubble — user speech bg
       },
 
       fontFamily: {
-        // Plus Jakarta Sans wired via next/font/google in app/layout.tsx
-        // (--font-plus-jakarta CSS var). Falls back to system stack.
-        sans: ["var(--font-plus-jakarta)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
+        // Figtree wired via next/font/google in app/layout.tsx.
+        // This mirrors mobile BahaTypography.
+        sans: ["var(--font-figtree)", "system-ui", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "Roboto", "sans-serif"],
       },
 
       backgroundImage: {
-        // Mobile gradients ported from BahaColors.* gradients
-        "gradient-brand":   "linear-gradient(135deg, #1B5FAF 0%, #2E78D2 50%, #38BDF8 100%)",
-        "gradient-sunset":  "linear-gradient(135deg, #F5B731 0%, #E8734A 50%, #2E78D2 100%)",
-        "gradient-splash":  "linear-gradient(180deg, #1B5FAF 0%, #2E78D2 33%, #5A9BE6 66%, #38BDF8 100%)",
+        // Mobile-inspired gradients with royal logo blue as the public web base.
+        "gradient-brand":   "linear-gradient(135deg, #156FD1 0%, #156FD1 55%, #02ABF1 100%)",
+        "gradient-sunset":  "linear-gradient(135deg, #FDC736 0%, #02ABF1 50%, #156FD1 100%)",
+        "gradient-splash":  "linear-gradient(180deg, #0B2545 0%, #156FD1 42%, #156FD1 68%, #02ABF1 100%)",
 
         // Hero card overlays
         "hero-dark":   "linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.65) 100%)",
@@ -131,10 +155,10 @@ const config: Config = {
 
       boxShadow: {
         // Brand-tinted lifts — the default "card has weight" shadow
-        card:        "0 4px 12px rgba(46, 120, 210, 0.08)",
-        "card-hover":"0 8px 20px rgba(46, 120, 210, 0.12)",
+        card:        "0 4px 12px rgba(21, 111, 209, 0.08)",
+        "card-hover":"0 8px 20px rgba(21, 111, 209, 0.12)",
         // Gold accent shadow — reserved for Buddy's Pick and similar standout cards
-        "gold-glow": "0 8px 20px rgba(245, 183, 49, 0.18)",
+        "gold-glow": "0 8px 20px rgba(253, 199, 54, 0.18)",
         // Soft surface elevation (no tint)
         soft:        "0 2px 8px rgba(26, 35, 50, 0.06)",
         // Inputs / form fields
@@ -181,8 +205,8 @@ const config: Config = {
           "50%":      { opacity: "1",   transform: "translateY(-2px)" },
         },
         "buddy-pulse": {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(46, 120, 210, 0.4)" },
-          "50%":      { boxShadow: "0 0 0 12px rgba(46, 120, 210, 0)" },
+          "0%, 100%": { boxShadow: "0 0 0 0 rgba(21, 111, 209, 0.4)" },
+          "50%":      { boxShadow: "0 0 0 12px rgba(21, 111, 209, 0)" },
         },
         fadeIn: {
           "0%":   { opacity: "0" },

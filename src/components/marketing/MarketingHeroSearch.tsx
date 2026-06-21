@@ -5,31 +5,38 @@
  *
  * Marketing-site equivalent of the dashboard's `HeroSearchPanel`. Same
  * four-category model (Plan a Trip / Stays / Flights / Things to Do),
- * but adapted for an unauthenticated visitor on a photo-backdrop hero:
+ * but adapted for an unauthenticated visitor on the public homepage hero:
  *
- *   • Translucent glass styling instead of white card, so it sits
- *     gracefully over the rotating island hero photos.
+ *   • A white marketplace card over the rotating island hero photos,
+ *     matching the compact public booking surfaces used on inner pages.
  *
- *   • The "Plan a Trip" tab is the existing brand moment — chat input,
- *     rotating placeholder, suggestion chips — preserved verbatim from
- *     HeroSection.tsx. We don't want to lose the conversational hook
- *     that's already converting.
+ *   • The "Plan a Trip" tab keeps the existing Buddy-style prompt input,
+ *     rotating placeholder, and suggestion chips, but routes into direct
+ *     trip creation instead of sending the visitor back to chat.
  *
  *   • The other three tabs use simplified forms (Where + Travelers
  *     only — no date pickers, no rooms picker). Marketing-funnel
  *     visitors haven't committed yet; lower friction = better
  *     conversion. Dates default to "today + 14" server-side so the
- *     resulting /hotels or /flights search lands somewhere reasonable
+ *     resulting /stays or /flights search lands somewhere reasonable
  *     that the user can tweak after signing in.
  *
  * Routing for unauthenticated visitors:
- *   - Plan a Trip   → /dashboard?q=…   (middleware preserves ?q= through /login)
+ *   - Plan a Trip   → /dashboard/trips/new?source=marketing_hero&seed=…
  *   - Stays         → /stays?island=…
  *   - Flights       → /flights?origin=…&destination=…
- *   - Things to Do  → /dashboard/chat?q=…
+ *   - Things to Do  → /explore/places?…
  */
 
-import { useEffect, useState, useCallback, type ReactNode, type FormEvent } from 'react'
+import { useEffect, useRef, useState, useCallback, type ReactNode, type FormEvent, type KeyboardEvent } from 'react'
+import TravelSearchCombobox from '@/components/marketplace/TravelSearchCombobox'
+import { BAHAMAS_AIRPORT_OPTIONS, ORIGIN_AIRPORT_OPTIONS } from '@/lib/airports'
+import { buildExplorePlacesHref } from '@/lib/explore-routing'
+import {
+  readStoredTravelOrigin,
+  TRAVEL_ORIGIN_EVENT,
+  type TravelOriginEventDetail,
+} from '@/lib/travel-origin'
 
 // ─── Reference data — kept in sync with dashboard HeroSearchPanel ─────────────
 
@@ -51,23 +58,6 @@ const ISLANDS: readonly Island[] = [
   { slug: 'abacos',          label: 'The Abacos' },
 ]
 
-const FLIGHT_DESTINATIONS: readonly { code: string; label: string }[] = [
-  { code: 'NAS', label: 'Nassau (NAS)' },
-  { code: 'EXU', label: 'Exuma (EXU)' },
-  { code: 'ELH', label: 'North Eleuthera (ELH)' },
-  { code: 'GHB', label: 'Governor\u2019s Harbour (GHB)' },
-  { code: 'FPO', label: 'Freeport (FPO)' },
-  { code: 'BIM', label: 'Bimini (BIM)' },
-  { code: 'ASD', label: 'Andros (ASD)' },
-  { code: 'MHH', label: 'Marsh Harbour (MHH)' },
-]
-
-const ORIGIN_SUGGESTIONS: readonly string[] = [
-  'Miami', 'Fort Lauderdale', 'New York', 'Newark', 'Atlanta',
-  'Charlotte', 'Dallas', 'Houston', 'Chicago', 'Los Angeles',
-  'Boston', 'Orlando', 'Toronto', 'London',
-]
-
 const ACTIVITY_VIBES: readonly { key: string; label: string }[] = [
   { key: 'beach',     label: 'Beach & Chill' },
   { key: 'adventure', label: 'Adventure' },
@@ -77,10 +67,9 @@ const ACTIVITY_VIBES: readonly { key: string; label: string }[] = [
   { key: 'romance',   label: 'Romance' },
 ]
 
-// ─── Chat-tab (Plan a Trip) brand assets ─────────────────────────────────────
-// Verbatim port from HeroSection.tsx so the conversational lane retains
-// its existing copy + animation. Keep these in sync if marketing updates
-// the hero microcopy.
+// ─── Plan-tab brand assets ──────────────────────────────────────────────────
+// Conversational prompt examples that seed the direct trip-creation flow.
+// Keep these in sync if marketing updates the hero microcopy.
 
 const ROTATING_PLACEHOLDERS = [
   'Plan a trip to see the swimming pigs in Exuma…',
@@ -150,6 +139,15 @@ const TABS: readonly Tab[] = [
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
 
+export function marketingHeroTripHref(seed: string): string {
+  const clean = seed.replace(/\s+/g, ' ').trim()
+  const params = new URLSearchParams()
+  params.set('source', 'marketing_hero')
+  params.set('returnTo', '/')
+  if (clean) params.set('seed', clean)
+  return `/dashboard/trips/new?${params.toString()}`
+}
+
 function isoDateOffset(days: number): string {
   const d = new Date()
   d.setDate(d.getDate() + days)
@@ -161,7 +159,7 @@ function isoDateOffset(days: number): string {
 export default function MarketingHeroSearch() {
   const [activeTab, setActiveTab] = useState<TabKey>('plan')
 
-  // ── Plan a Trip state (chat input + chips) ──
+  // ── Plan a Trip state (prompt input + chips) ──
   const [query, setQuery] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderVisible, setPlaceholderVisible] = useState(true)
@@ -178,6 +176,19 @@ export default function MarketingHeroSearch() {
   // ── Things to Do state ──
   const [thingsIsland, setThingsIsland] = useState<string>('nassau')
   const [thingsVibes, setThingsVibes] = useState<Set<string>>(new Set())
+
+  useEffect(() => {
+    const storedOrigin = readStoredTravelOrigin()?.origin
+    if (storedOrigin) setFlightOrigin(storedOrigin)
+
+    function handleOriginUpdated(event: Event) {
+      const nextOrigin = (event as CustomEvent<TravelOriginEventDetail>).detail?.origin?.trim()
+      if (nextOrigin) setFlightOrigin(nextOrigin)
+    }
+
+    window.addEventListener(TRAVEL_ORIGIN_EVENT, handleOriginUpdated)
+    return () => window.removeEventListener(TRAVEL_ORIGIN_EVENT, handleOriginUpdated)
+  }, [])
 
   // Rotating placeholder on the Plan tab when no query typed.
   useEffect(() => {
@@ -207,7 +218,7 @@ export default function MarketingHeroSearch() {
   function submitPlan(e: FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
-    window.location.href = `/dashboard?q=${encodeURIComponent(query.trim())}`
+    window.location.href = marketingHeroTripHref(query)
   }
 
   const handleChip = useCallback((prompt: string) => {
@@ -242,17 +253,11 @@ export default function MarketingHeroSearch() {
 
   function submitThings(e: FormEvent) {
     e.preventDefault()
-    const islandLabel = ISLANDS.find(i => i.slug === thingsIsland)?.label ?? 'the Bahamas'
-    const parts: string[] = [`Show me things to do in ${islandLabel}`]
-    if (thingsVibes.size > 0) {
-      const vibeLabels = ACTIVITY_VIBES
-        .filter(v => thingsVibes.has(v.key))
-        .map(v => v.label.toLowerCase())
-        .join(', ')
-      parts.push(`\u2014 I\u2019m into ${vibeLabels}`)
-    }
-    const q = parts.join(' ') + '.'
-    window.location.href = `/dashboard/chat?q=${encodeURIComponent(q)}`
+    window.location.href = buildExplorePlacesHref({
+      islandSlug: thingsIsland,
+      vibes: thingsVibes,
+      search: thingsVibes.size > 0 ? undefined : 'things to do',
+    })
   }
 
   function toggleVibe(key: string) {
@@ -267,10 +272,10 @@ export default function MarketingHeroSearch() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="bg-black/30 backdrop-blur-md border border-white/40 rounded-2xl shadow-2xl overflow-hidden">
+    <div className="mx-auto w-full max-w-3xl">
+      <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-2xl shadow-brand-950/25">
         {/* Tab strip */}
-        <div role="tablist" aria-label="Search category" className="flex items-stretch gap-0 overflow-x-auto border-b border-white">
+        <div role="tablist" aria-label="Search category" className="flex items-stretch gap-0 overflow-x-auto border-b border-gray-200 bg-white">
           {TABS.map(tab => {
             const active = activeTab === tab.key
             return (
@@ -279,13 +284,13 @@ export default function MarketingHeroSearch() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setActiveTab(tab.key)}
-                className={`group relative flex items-center gap-2 px-4 sm:px-5 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
-                  active ? 'text-white' : 'text-white/70 hover:text-white'
+                className={`group relative flex items-center gap-2 px-4 py-4 text-sm font-extrabold whitespace-nowrap transition-colors sm:px-5 ${
+                  active ? 'text-brand-700' : 'text-gray-500 hover:text-night'
                 }`}
               >
                 <span
                   className={`flex items-center justify-center transition-colors ${
-                    active ? 'text-gold-300' : 'text-white/60 group-hover:text-white/85'
+                    active ? 'text-gold-500' : 'text-gray-400 group-hover:text-brand-700'
                   }`}
                 >
                   {tab.icon}
@@ -294,7 +299,7 @@ export default function MarketingHeroSearch() {
                 {active && (
                   <span
                     aria-hidden="true"
-                    className="absolute left-3 right-3 -bottom-px h-0.5 bg-gold-300 rounded-full"
+                    className="absolute left-3 right-3 -bottom-px h-0.5 rounded-full bg-gold-400"
                   />
                 )}
               </button>
@@ -303,22 +308,22 @@ export default function MarketingHeroSearch() {
         </div>
 
         {/* Form area */}
-        <div className="p-3 sm:p-4">
+        <div className="bg-offwhite p-3 sm:p-4">
           {activeTab === 'plan' && (
-            <form onSubmit={submitPlan} aria-label="Plan a trip with Baha Buddy">
-              <div className="flex gap-2 bg-black/25 border border-white/25 rounded-xl p-1.5">
+            <form onSubmit={submitPlan} aria-label="Create a trip with Baha Buddy">
+              <div className="flex gap-2 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-input">
                 <div className="relative flex-1 min-w-0">
                   <input
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
-                    aria-label="Ask Baha Buddy about your Bahamas trip"
-                    className="relative z-10 w-full bg-transparent text-white px-3 py-3 text-base outline-none min-w-0"
+                    aria-label="Tell Baha Buddy what kind of Bahamas trip you want"
+                    className="relative z-10 min-w-0 w-full bg-transparent px-3 py-3 text-base font-bold text-night outline-none"
                   />
                   {!query && (
                     <span
                       aria-hidden
-                      className={`pointer-events-none absolute left-3 right-3 top-1/2 z-0 -translate-y-1/2 truncate text-left text-base text-white/60 transition-opacity duration-300 ease-in-out ${
+                      className={`pointer-events-none absolute left-3 right-3 top-1/2 z-0 -translate-y-1/2 truncate text-left text-base font-semibold text-gray-400 transition-opacity duration-300 ease-in-out ${
                         placeholderVisible ? 'opacity-100' : 'opacity-0'
                       }`}
                     >
@@ -328,9 +333,10 @@ export default function MarketingHeroSearch() {
                 </div>
                 <button
                   type="submit"
-                  className="bg-brand-500 hover:bg-brand-400 active:bg-brand-600 text-white rounded-lg px-4 py-2.5 font-semibold text-sm transition-colors flex items-center gap-2 flex-shrink-0 shadow-lg"
+                  className="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-card transition-colors hover:bg-brand-700 active:bg-brand-700"
                 >
-                  Plan my trip
+                  <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+                  Start trip
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
@@ -342,14 +348,14 @@ export default function MarketingHeroSearch() {
           {activeTab === 'stays' && (
             <form onSubmit={submitStays} aria-label="Search hotels" className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                <DarkSelect
+                <HeroSearchSelect
                   id="m-stays-island"
                   label="Where to"
                   value={staysIsland}
                   onChange={setStaysIsland}
                   options={ISLANDS.map(i => ({ value: i.slug, label: i.label }))}
                 />
-                <DarkSelect
+                <HeroSearchSelect
                   id="m-stays-travelers"
                   label="Travelers"
                   value={String(staysTravelers)}
@@ -367,25 +373,35 @@ export default function MarketingHeroSearch() {
           {activeTab === 'flights' && (
             <form onSubmit={submitFlights} aria-label="Search flights" className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <DarkTextInput
-                  id="m-flight-from"
-                  label="From"
-                  value={flightOrigin}
-                  onChange={setFlightOrigin}
-                  listId="m-flight-from-list"
-                  placeholder="City"
-                />
-                <datalist id="m-flight-from-list">
-                  {ORIGIN_SUGGESTIONS.map(o => <option key={o} value={o} />)}
-                </datalist>
-                <DarkSelect
-                  id="m-flight-to"
-                  label="To"
-                  value={flightDestination}
-                  onChange={setFlightDestination}
-                  options={FLIGHT_DESTINATIONS.map(d => ({ value: d.code, label: d.label }))}
-                />
-                <DarkSelect
+                <HeroSearchComboboxField label="From" htmlFor="m-flight-from">
+                  <TravelSearchCombobox
+                    id="m-flight-from"
+                    name="m-flight-from"
+                    value={flightOrigin}
+                    onChange={setFlightOrigin}
+                    options={ORIGIN_AIRPORT_OPTIONS}
+                    ariaLabel="From"
+                    allowCustomValue
+                    placeholder="City or airport"
+                    emptyLabel="Type a city, airport, or 3-letter code"
+                    helperText="Try Miami, West Palm Beach, JFK, Atlanta, Toronto"
+                    customOptionLabel={(nextQuery) => `Use "${nextQuery}" as departure city`}
+                  />
+                </HeroSearchComboboxField>
+                <HeroSearchComboboxField label="To" htmlFor="m-flight-to">
+                  <TravelSearchCombobox
+                    id="m-flight-to"
+                    name="m-flight-to"
+                    value={flightDestination}
+                    onChange={setFlightDestination}
+                    options={BAHAMAS_AIRPORT_OPTIONS}
+                    ariaLabel="To"
+                    placeholder="Island or airport"
+                    emptyLabel="Choose a Bahamas airport"
+                    helperText="Search Nassau, Exuma, Eleuthera, Abaco, Bimini, or code"
+                  />
+                </HeroSearchComboboxField>
+                <HeroSearchSelect
                   id="m-flight-travelers"
                   label="Travelers"
                   value={String(flightTravelers)}
@@ -402,7 +418,7 @@ export default function MarketingHeroSearch() {
 
           {activeTab === 'things' && (
             <form onSubmit={submitThings} aria-label="Find things to do" className="space-y-3">
-              <DarkSelect
+              <HeroSearchSelect
                 id="m-things-island"
                 label="Where"
                 value={thingsIsland}
@@ -410,7 +426,7 @@ export default function MarketingHeroSearch() {
                 options={ISLANDS.map(i => ({ value: i.slug, label: i.label }))}
               />
               <div>
-                <p className="text-[10px] font-semibold text-white/60 uppercase tracking-wide mb-1.5">
+                <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
                   Optional &mdash; what&rsquo;s your vibe?
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -425,7 +441,7 @@ export default function MarketingHeroSearch() {
                         className={`px-3 py-1.5 text-xs font-semibold rounded-full border transition-colors ${
                           active
                             ? 'bg-gold-400 border-gold-400 text-night'
-                            : 'bg-black/25 border-white/30 text-white hover:bg-black/40 hover:border-white/50'
+                            : 'border-gray-200 bg-white text-charcoal hover:border-brand-200 hover:bg-brand-50'
                         }`}
                       >
                         {v.label}
@@ -444,14 +460,14 @@ export default function MarketingHeroSearch() {
           panel so the chip row keeps its own breathing room and matches
           the pre-existing hero layout. */}
       {activeTab === 'plan' && (
-        <div className="w-full max-w-3xl mx-auto overflow-x-auto pt-4 pb-1 -mx-4 px-4">
-          <div className="flex gap-2 flex-wrap justify-center">
+        <div className="-mx-4 w-full max-w-3xl overflow-x-auto px-4 pb-1 pt-4">
+          <div className="flex flex-wrap justify-center gap-2">
             {QUICK_CHIPS.map((chip) => (
               <button
                 key={chip.label}
                 type="button"
                 onClick={() => handleChip(chip.prompt)}
-                className="bg-black/25 hover:bg-black/40 active:bg-black/40 backdrop-blur-md border border-white/25 text-white text-sm rounded-full px-4 py-2 transition-all shadow-sm whitespace-nowrap"
+                className="whitespace-nowrap rounded-full border border-white/75 bg-white/90 px-4 py-2 text-sm font-extrabold text-brand-700 shadow-soft backdrop-blur-md transition-all hover:border-gold-300 hover:bg-gold-50 active:bg-gold-50"
               >
                 {chip.label}
               </button>
@@ -465,7 +481,7 @@ export default function MarketingHeroSearch() {
 
 // ─── Internal field components ──────────────────────────────────────────────
 
-interface DarkSelectProps {
+interface HeroSearchSelectProps {
   id: string
   label: string
   value: string
@@ -473,10 +489,85 @@ interface DarkSelectProps {
   options: readonly { value: string; label: string }[]
 }
 
-function DarkSelect({ id, label, value, onChange, options }: DarkSelectProps) {
+function HeroSearchSelect({ id, label, value, onChange, options }: HeroSearchSelectProps) {
+  const rootRef = useRef<HTMLLabelElement>(null)
+  const [open, setOpen] = useState(false)
+  const selectedIndex = Math.max(0, options.findIndex((option) => option.value === value))
+  const [activeIndex, setActiveIndex] = useState(selectedIndex)
+  const selectedOption = options.find((option) => option.value === value) ?? options[0]
+  const activeOption = options[activeIndex] ?? selectedOption
+  const listboxId = `${id}-listbox`
+
+  useEffect(() => {
+    function handlePointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handlePointerDown)
+    return () => document.removeEventListener('mousedown', handlePointerDown)
+  }, [])
+
+  useEffect(() => {
+    setActiveIndex(selectedIndex)
+  }, [selectedIndex])
+
+  function chooseOption(nextValue: string) {
+    onChange(nextValue)
+    setOpen(false)
+  }
+
+  function handleKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex((current) => Math.min(current + 1, options.length - 1))
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex((current) => Math.max(current - 1, 0))
+      return
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex(0)
+      return
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex(Math.max(0, options.length - 1))
+      return
+    }
+
+    if ((event.key === 'Enter' || event.key === ' ') && open && activeOption) {
+      event.preventDefault()
+      chooseOption(activeOption.value)
+      return
+    }
+
+    if ((event.key === 'Enter' || event.key === ' ') && !open) {
+      event.preventDefault()
+      setOpen(true)
+      setActiveIndex(selectedIndex)
+      return
+    }
+
+    if (event.key === 'Escape') {
+      setOpen(false)
+    }
+  }
+
   return (
-    <label htmlFor={id} className="block">
-      <span className="block text-[10px] font-semibold text-white/60 uppercase tracking-wide mb-1">
+    <label ref={rootRef} htmlFor={id} className="block">
+      <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
         {label}
       </span>
       <div className="relative">
@@ -485,55 +576,97 @@ function DarkSelect({ id, label, value, onChange, options }: DarkSelectProps) {
           name={id}
           value={value}
           onChange={e => onChange(e.target.value)}
-          className="w-full h-11 appearance-none bg-black/25 border border-white/30 rounded-lg pl-3 pr-9 text-sm text-white focus:border-gold-300 focus:outline-none focus:ring-2 focus:ring-gold-300/30 transition-colors"
+          className="sr-only"
+          tabIndex={-1}
         >
           {options.map(o => (
-            <option key={o.value} value={o.value} className="bg-night text-white">
+            <option key={o.value} value={o.value}>
               {o.label}
             </option>
           ))}
         </select>
-        <svg
-          aria-hidden="true"
-          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/70"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2}
+
+        <button
+          type="button"
+          aria-label={`Open ${label} menu`}
+          aria-haspopup="listbox"
+          aria-expanded={open}
+          aria-controls={listboxId}
+          onClick={() => {
+            setOpen((current) => !current)
+            setActiveIndex(selectedIndex)
+          }}
+          onKeyDown={handleKeyDown}
+          className={`flex h-12 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm font-extrabold text-night shadow-input transition-colors focus:outline-none focus:ring-4 focus:ring-brand-100 ${
+            open
+              ? 'border-brand-500 bg-white'
+              : 'border-gray-200 bg-white hover:border-gray-300'
+          }`}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
-        </svg>
+          <span className="min-w-0 truncate">{selectedOption?.label ?? 'Select'}</span>
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-700 shadow-sm" aria-hidden="true">
+            <svg className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
+        </button>
+
+        {open && (
+          <div
+            id={listboxId}
+            role="listbox"
+            className="absolute left-0 z-50 mt-2 min-w-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl shadow-gray-950/10 ring-1 ring-black/5"
+          >
+            {options.map((option, index) => {
+              const active = index === activeIndex
+              const selected = option.value === value
+              return (
+                <button
+                  key={option.value}
+                  id={`${listboxId}-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  onMouseEnter={() => setActiveIndex(index)}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    chooseOption(option.value)
+                  }}
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-extrabold transition-colors ${
+                    active ? 'bg-brand-50 text-night' : 'text-charcoal hover:bg-gray-50 hover:text-night'
+                  }`}
+                >
+                  <span className="min-w-0 truncate">{option.label}</span>
+                  {selected && (
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold-400 text-night" aria-hidden="true">
+                      <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none">
+                        <path d="m3.5 8.2 2.8 2.8 6.2-6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </div>
     </label>
   )
 }
 
-interface DarkTextInputProps {
-  id: string
+interface HeroSearchComboboxFieldProps {
   label: string
-  value: string
-  onChange: (v: string) => void
-  placeholder?: string
-  listId?: string
+  htmlFor: string
+  children: ReactNode
 }
 
-function DarkTextInput({ id, label, value, onChange, placeholder, listId }: DarkTextInputProps) {
+function HeroSearchComboboxField({ label, htmlFor, children }: HeroSearchComboboxFieldProps) {
   return (
-    <label htmlFor={id} className="block">
-      <span className="block text-[10px] font-semibold text-white/60 uppercase tracking-wide mb-1">
+    <label htmlFor={htmlFor} className="block">
+      <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
         {label}
       </span>
-      <input
-        id={id}
-        name={id}
-        type="text"
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        placeholder={placeholder}
-        list={listId}
-        autoComplete="off"
-        className="w-full h-11 bg-black/25 border border-white/30 rounded-lg px-3 text-sm text-white placeholder:text-white/40 focus:border-gold-300 focus:outline-none focus:ring-2 focus:ring-gold-300/30 transition-colors"
-      />
+      {children}
     </label>
   )
 }
@@ -543,8 +676,9 @@ function SubmitBar({ cta }: { cta: string }) {
     <div className="flex justify-end pt-1">
       <button
         type="submit"
-        className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-400 active:bg-brand-600 text-white font-semibold px-5 py-2.5 rounded-lg shadow-lg transition-colors"
+        className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 font-extrabold text-white shadow-card transition-colors hover:bg-brand-700 active:bg-brand-700"
       >
+        <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
         {cta}
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />

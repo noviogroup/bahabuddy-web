@@ -2,8 +2,12 @@
   "name": "bahabuddy-web",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20 <23"
+  },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --turbo",
+    "dev:webpack": "next dev",
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
@@ -11,7 +15,9 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
-    "sync": "bash scripts/git-sync.sh"
+    "sync": "bash scripts/git-sync.sh",
+    "screenshots:web": "node scripts/capture-web-screenshots.mjs",
+    "screenshots:web:auth": "node scripts/capture-auth-web-screenshots.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -44,6 +50,7 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "jsdom": "^25.0.1",
+    "playwright": "^1.61.0",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5",

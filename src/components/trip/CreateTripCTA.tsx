@@ -9,7 +9,7 @@
  *   IslandExplorerRow
  *   CreateTripCTA       ← here, primary action for new users
  *   AdaptiveHeroCard    ← secondary, still useful as inspiration
- *   QuickActionsRow
+ *   HeroSearchPanel     ← direct stays/flights/explore/trip search
  *   …
  *
  * Imagery: full-width Bahamas photo background with gold/coral accent.
@@ -18,7 +18,7 @@
  * so the white text is legible at any image variance.
  *
  * Copy adapts to trip count:
- *   - 0 trips:    "Plan your Bahamas trip" / "Tell Buddy where you're headed."
+ *   - 0 trips:    "Plan your Bahamas trip" / "Choose an island and create the trip record."
  *   - 1+ trips:   "Plan another trip" / "New island, new plan."
  *
  * This component is a thin client wrapper — modal lives on a sibling
@@ -41,7 +41,7 @@ export default function CreateTripCTA({ tripCount }: CreateTripCTAProps) {
   const isFirstTrip = tripCount === 0
   const title = isFirstTrip ? 'Plan your Bahamas trip' : 'Plan another trip'
   const subtitle = isFirstTrip
-    ? 'Tell Buddy where you\'re headed — he\'ll figure out the rest.'
+    ? 'Choose an island and create the trip record first.'
     : 'New island, new plan. Buddy keeps your existing trips safe.'
   const cta = isFirstTrip ? 'Start a trip' : 'New trip'
 

@@ -4,7 +4,6 @@ interface BudgetItem {
   label: string
   amount: number
   color: string
-  icon: string
 }
 
 interface Props {
@@ -26,8 +25,8 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
     : 0
 
   const categories: BudgetItem[] = [
-    { label: 'Flights', amount: flightTotal, color: 'bg-brand-500', icon: '✈️' },
-    { label: 'Hotels', amount: hotelTotal, color: 'bg-purple-500', icon: '🏨' },
+    { label: 'Flights', amount: flightTotal, color: 'bg-brand-500' },
+    { label: 'Hotels', amount: hotelTotal, color: 'bg-purple-500' },
   ]
 
   const hasAnyData = flightTotal > 0 || hotelTotal > 0 || budgetEstimate != null
@@ -106,7 +105,7 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
                   <div key={cat.label}>
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-2">
-                        <span>{cat.icon}</span>
+                        <span className={`h-2.5 w-2.5 rounded-full ${cat.color}`} aria-hidden="true" />
                         <span className="text-sm font-medium text-gray-700">{cat.label}</span>
                       </div>
                       <div className="text-right">

@@ -117,7 +117,7 @@ export default function BahaDatePicker({
       {label && (
         <label
           htmlFor={`${id}-trigger`}
-          className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1"
+          className="mb-2 block px-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-night"
         >
           {label}
         </label>
@@ -128,11 +128,11 @@ export default function BahaDatePicker({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`w-full flex items-center gap-2 rounded-baha-md border bg-white px-3 py-2.5 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-500 ${
-          open ? 'border-brand-500 ring-2 ring-brand-100' : 'border-gray-300 hover:border-gray-400'
-        } ${!value ? 'text-gray-400' : 'text-night font-medium'}`}
+        className={`flex h-12 w-full items-center gap-2 rounded-xl border bg-white px-4 text-left text-sm font-extrabold outline-none transition-all focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100 ${
+          open ? 'border-gray-500 ring-4 ring-gray-100' : 'border-gray-200 hover:border-gray-300'
+        } ${!value ? 'text-gray-400' : 'text-night'}`}
       >
-        <CalendarIcon className="w-5 h-5 shrink-0 text-brand-500" />
+        <CalendarIcon className="w-5 h-5 shrink-0 text-charcoal" />
         <span className="flex-1 truncate">{display}</span>
       </button>
       {name && (

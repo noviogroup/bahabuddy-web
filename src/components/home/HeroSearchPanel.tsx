@@ -9,21 +9,19 @@
  * lane INTO the experience — not as a replacement for it.
  *
  * Categories:
- *   1. Plan a Trip   → /dashboard/chat (with optional pre-filled prompt)
- *   2. Stays         → /hotels?island=…&checkIn=…&checkOut=…&adults=…&rooms=…
+ *   1. Plan a Trip   → /dashboard/trips/new (with optional seeded context)
+ *   2. Stays         → /stays?island=…&checkIn=…&checkOut=…&adults=…&rooms=…
  *   3. Flights       → /flights?origin=…&destination=…&depart=…&return=…&passengers=…
- *   4. Things to Do  → /dashboard/chat?q=<structured prompt> (no native activities page yet)
+ *   4. Things to Do  → /explore/places?… with Buddy as a secondary path
  *
- * The two surfaces with real search pages (hotels + flights) deep-link
- * straight into pre-filled forms. The rest route through Buddy with a
- * structured opening message so he can run the right tools and respond
- * with cards inside the conversation.
+ * Direct marketplace searches deep-link straight into pre-filled forms.
+ * Buddy remains available as a secondary planning workspace.
  *
  * Mobile reference: forthcoming Flutter `HeroSearchPanel` widget that
  * will mirror this layout. Web is leading on this surface.
  *
  * Composition: replaces the previous `QuickActionsRow` (chat-mediated
- * quick prompts) + "Or search directly" grid (links to /hotels and
+ * quick prompts) + "Or search directly" grid (links to /stays and
  * /flights). One unified primary action surface.
  */
 
@@ -39,6 +37,10 @@ import {
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { BahaDatePicker } from '@/components/ui'
+import TravelSearchCombobox from '@/components/marketplace/TravelSearchCombobox'
+import { TravelSearchSelect } from '@/components/marketplace/TravelSearchFields'
+import { BAHAMAS_AIRPORT_OPTIONS, ORIGIN_AIRPORT_OPTIONS } from '@/lib/airports'
+import { buildExplorePlacesHref } from '@/lib/explore-routing'
 
 // ─── Reference data ──────────────────────────────────────────────────────────
 // Mirrors HotelSearchClient.ISLANDS and FlightSearchClient.BAHAMAS_DESTINATIONS
@@ -66,33 +68,10 @@ const ISLANDS: readonly Island[] = [
 
 /** Bahamas airport selector (flights only). Matches FlightSearchClient. */
 const FLIGHT_DESTINATIONS: readonly { code: string; label: string }[] = [
-  { code: 'NAS', label: 'Nassau (NAS)' },
-  { code: 'EXU', label: 'Exuma (EXU)' },
-  { code: 'ELH', label: 'North Eleuthera (ELH)' },
-  { code: 'GHB', label: 'Governor\u2019s Harbour (GHB)' },
-  { code: 'FPO', label: 'Freeport / Grand Bahama (FPO)' },
-  { code: 'BIM', label: 'Bimini (BIM)' },
-  { code: 'ASD', label: 'Andros (ASD)' },
-  { code: 'MHH', label: 'Marsh Harbour / Abacos (MHH)' },
-]
-
-/** Origin-city autocomplete options for flights. Mirrors the Duffel-
- *  backed CITY_TO_IATA list used in FlightSearchClient. */
-const ORIGIN_SUGGESTIONS: readonly { label: string; value: string }[] = [
-  { label: 'Miami (MIA)',           value: 'Miami' },
-  { label: 'Fort Lauderdale (FLL)', value: 'Fort Lauderdale' },
-  { label: 'New York JFK (JFK)',    value: 'New York' },
-  { label: 'Newark (EWR)',          value: 'Newark' },
-  { label: 'Atlanta (ATL)',         value: 'Atlanta' },
-  { label: 'Charlotte (CLT)',       value: 'Charlotte' },
-  { label: 'Dallas (DFW)',          value: 'Dallas' },
-  { label: 'Houston (IAH)',         value: 'Houston' },
-  { label: 'Chicago (ORD)',         value: 'Chicago' },
-  { label: 'Los Angeles (LAX)',     value: 'Los Angeles' },
-  { label: 'Boston (BOS)',          value: 'Boston' },
-  { label: 'Orlando (MCO)',         value: 'Orlando' },
-  { label: 'Toronto (YYZ)',         value: 'Toronto' },
-  { label: 'London (LHR)',          value: 'London' },
+  ...BAHAMAS_AIRPORT_OPTIONS.map((airport) => ({
+    code: airport.code,
+    label: `${airport.label} (${airport.code})`,
+  })),
 ]
 
 /** Vibe chips for Things to Do — matches AppConstants.travelVibes. */
@@ -399,8 +378,10 @@ export default function HeroSearchPanel() {
   function submitPlan(e: FormEvent) {
     e.preventDefault()
     const q = planPrompt.trim()
-    if (q) router.push(`/dashboard/chat?q=${encodeURIComponent(q)}`)
-    else router.push('/dashboard/chat')
+    const params = new URLSearchParams()
+    params.set('source', 'dashboard_search')
+    if (q) params.set('seed', q)
+    router.push(`/dashboard/trips/new?${params.toString()}`)
   }
 
   function submitStays(e: FormEvent) {
@@ -412,7 +393,7 @@ export default function HeroSearchPanel() {
     params.set('adults', String(staysTravelers.adults))
     params.set('children', String(staysTravelers.children))
     params.set('rooms', String(staysTravelers.rooms))
-    router.push(`/hotels?${params.toString()}`)
+    router.push(`/stays?${params.toString()}`)
   }
 
   function submitFlights(e: FormEvent) {
@@ -432,20 +413,11 @@ export default function HeroSearchPanel() {
 
   function submitThings(e: FormEvent) {
     e.preventDefault()
-    const islandLabel = ISLANDS.find(i => i.slug === thingsIsland)?.label ?? 'the Bahamas'
-    const partySize = thingsTravelers.adults + thingsTravelers.children
-    const parts: string[] = [`Show me things to do in ${islandLabel}`]
-    if (thingsDate) parts.push(`on ${formatShortDate(thingsDate)}`)
-    parts.push(`for ${partySize} ${partySize === 1 ? 'person' : 'people'}`)
-    if (thingsVibes.size > 0) {
-      const vibeLabels = ACTIVITY_VIBES
-        .filter(v => thingsVibes.has(v.key))
-        .map(v => v.label.toLowerCase())
-        .join(', ')
-      parts.push(`— I'm into ${vibeLabels}`)
-    }
-    const q = parts.join(' ') + '.'
-    router.push(`/dashboard/chat?q=${encodeURIComponent(q)}`)
+    router.push(buildExplorePlacesHref({
+      islandSlug: thingsIsland,
+      vibes: thingsVibes,
+      search: thingsVibes.size > 0 ? undefined : 'things to do',
+    }))
   }
 
   // ── Buddy-side chat fallback (each non-plan tab links to chat too) ────────
@@ -605,10 +577,10 @@ interface PlanFormProps {
 
 function PlanForm({ value, onChange, onSubmit }: PlanFormProps) {
   return (
-    <form onSubmit={onSubmit} aria-label="Plan a trip with Buddy" className="space-y-4">
+    <form onSubmit={onSubmit} aria-label="Create a trip" className="space-y-4">
       <div>
         <label htmlFor="plan-prompt" className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
-          Tell Buddy what you&rsquo;re thinking
+          Trip idea
         </label>
         <textarea
           id="plan-prompt"
@@ -616,19 +588,19 @@ function PlanForm({ value, onChange, onSubmit }: PlanFormProps) {
           value={value}
           onChange={(e) => onChange(e.target.value)}
           rows={2}
-          placeholder="A vibe, a dream, a rough idea... e.g. honeymoon in Exuma in May, or family trip with two kids."
+          placeholder="A vibe, a dream, or rough notes. Example: honeymoon in Exuma in May, or family trip with two kids."
           className="w-full rounded-baha-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-night placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 resize-none"
         />
       </div>
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <p className="text-xs text-gray-500">
-          Buddy plans flights, hotels, activities, and the day-by-day for you.
+          Create the trip first, then add stays, flights, restaurants, tours, and Buddy help when useful.
         </p>
         <button
           type="submit"
           className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold px-5 py-2.5 rounded-full transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
         >
-          Start with Buddy
+          Create trip
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
@@ -753,40 +725,38 @@ function FlightsForm(p: FlightsFormProps) {
           <label htmlFor="flight-origin" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
             From
           </label>
-          <input
+          <TravelSearchCombobox
             id="flight-origin"
             name="flight-origin"
-            type="text"
-            required
-            autoComplete="off"
-            list="hero-origin-options"
             value={p.origin}
-            onChange={e => p.onOriginChange(e.target.value)}
+            onChange={p.onOriginChange}
+            options={ORIGIN_AIRPORT_OPTIONS}
+            ariaLabel="From"
+            allowCustomValue
             placeholder="City or airport"
-            className="w-full h-[46px] rounded-baha-md border border-gray-300 bg-white px-3 text-sm text-night placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            emptyLabel="Type a city, airport, or 3-letter code"
+            helperText="Try Miami, West Palm Beach, JFK, Atlanta, Toronto"
+            customOptionLabel={(query) => `Use "${query}" as departure city`}
+            className="h-[46px]"
           />
-          <datalist id="hero-origin-options">
-            {ORIGIN_SUGGESTIONS.map(o => (
-              <option key={o.label} value={o.value} label={o.label} />
-            ))}
-          </datalist>
         </div>
 
         <div>
           <label htmlFor="flight-dest" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
             To
           </label>
-          <select
+          <TravelSearchCombobox
             id="flight-dest"
             name="flight-dest"
             value={p.destination}
-            onChange={e => p.onDestinationChange(e.target.value)}
-            className="w-full h-[46px] rounded-baha-md border border-gray-300 bg-white px-3 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-          >
-            {FLIGHT_DESTINATIONS.map(d => (
-              <option key={d.code} value={d.code}>{d.label}</option>
-            ))}
-          </select>
+            onChange={p.onDestinationChange}
+            options={BAHAMAS_AIRPORT_OPTIONS}
+            ariaLabel="To"
+            placeholder="Island or airport"
+            emptyLabel="Choose a Bahamas airport"
+            helperText="Search Nassau, Exuma, Eleuthera, Abaco, Bimini, or code"
+            className="h-[46px]"
+          />
         </div>
 
         <BahaDatePicker
@@ -827,18 +797,19 @@ function FlightsForm(p: FlightsFormProps) {
           <label htmlFor="flight-cabin" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
             Cabin
           </label>
-          <select
+          <TravelSearchSelect
             id="flight-cabin"
             name="flight-cabin"
+            aria-label="Cabin"
             value={p.cabin}
             onChange={e => p.onCabinChange(e.target.value)}
-            className="w-full h-[46px] rounded-baha-md border border-gray-300 bg-white px-3 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+            className="h-[46px]"
           >
             <option value="economy">Economy</option>
             <option value="premium_economy">Premium Economy</option>
             <option value="business">Business</option>
             <option value="first">First</option>
-          </select>
+          </TravelSearchSelect>
         </div>
       </div>
 
@@ -942,17 +913,18 @@ function IslandSelect({ id, label, value, onChange }: IslandSelectProps) {
       <label htmlFor={id} className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
         {label}
       </label>
-      <select
+      <TravelSearchSelect
         id={id}
         name={id}
+        aria-label={label}
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="w-full h-[46px] rounded-baha-md border border-gray-300 bg-white px-3 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        className="h-[46px]"
       >
         {ISLANDS.map(i => (
           <option key={i.slug} value={i.slug}>{i.label}</option>
         ))}
-      </select>
+      </TravelSearchSelect>
     </div>
   )
 }

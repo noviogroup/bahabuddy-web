@@ -1,5 +1,4 @@
 import { createClient } from '@/lib/supabase/server'
-import { redirect } from 'next/navigation'
 import { Suspense } from 'react'
 import ChatPage from '@/components/ChatPage'
 import { BuddyAvatar } from '@/components/ui'
@@ -14,9 +13,8 @@ export const metadata = {
 async function ChatPageWrapper() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
 
-  return <ChatPage userEmail={user.email ?? ''} />
+  return <ChatPage userEmail={user?.email ?? undefined} guestMode={!user} />
 }
 
 export default function ChatRoute() {

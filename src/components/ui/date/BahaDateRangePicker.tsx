@@ -117,7 +117,7 @@ export default function BahaDateRangePicker({
           {calendar}
         </div>
         {nights != null && (
-          <p className="text-sm text-brand-600 font-semibold mt-2">
+          <p className="text-sm text-charcoal font-semibold mt-2">
             {nights} night{nights !== 1 ? 's' : ''}
           </p>
         )}
@@ -139,11 +139,11 @@ export default function BahaDateRangePicker({
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`w-full flex items-center gap-2 rounded-baha-md border bg-white px-3 py-2.5 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-500 ${
-          open ? 'border-brand-500 ring-2 ring-brand-100' : 'border-gray-300 hover:border-gray-400'
+        className={`w-full flex items-center gap-2 rounded-baha-md border bg-white px-3 py-2.5 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 ${
+          open ? 'border-gray-500 ring-2 ring-gray-100' : 'border-gray-300 hover:border-gray-400'
         } ${!start && !end ? 'text-gray-400' : 'text-night font-medium'}`}
       >
-        <CalendarIcon className="w-5 h-5 shrink-0 text-brand-500" />
+        <CalendarIcon className="w-5 h-5 shrink-0 text-charcoal" />
         <span className="flex-1 truncate">{display}</span>
       </button>
 
@@ -155,7 +155,7 @@ export default function BahaDateRangePicker({
         >
           {calendar}
           {nights != null && (
-            <p className="text-sm text-brand-600 font-semibold mt-3 text-center border-t border-gray-100 pt-3">
+            <p className="text-sm text-charcoal font-semibold mt-3 text-center border-t border-gray-100 pt-3">
               {nights} night{nights !== 1 ? 's' : ''}
             </p>
           )}

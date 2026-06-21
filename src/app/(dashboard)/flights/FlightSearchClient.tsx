@@ -20,56 +20,34 @@
  *   - Cabin: economy
  *
  * Defaults that match mobile's known origin cities (CITY_TO_IATA in
- * chat-tools.ts). The datalist surfaces them as autocomplete hints.
+ * chat-tools.ts). The airport combobox surfaces city, airport, and code
+ * matches without requiring users to know IATA codes.
  */
 
 import { useState, useMemo, useEffect, useRef, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { RichCardRenderer, type CardData } from '@/components/RichCards'
+import { FilterButton } from '@/components/marketplace/ResultFilterPanel'
 import { track } from '@/lib/analytics'
+import {
+  FLIGHT_RESULT_MODES,
+  rankFlightResults,
+  type FlightResultMode,
+} from '@/lib/flight-result-filters'
+import {
+  readStoredTravelOrigin,
+  TRAVEL_ORIGIN_EVENT,
+  type TravelOriginEventDetail,
+} from '@/lib/travel-origin'
+import { BAHAMAS_AIRPORT_OPTIONS, ORIGIN_AIRPORT_OPTIONS } from '@/lib/airports'
 import { BahaDatePicker } from '@/components/ui'
+import {
+  TravelSearchField,
+  TravelSearchSelect,
+} from '@/components/marketplace/TravelSearchFields'
+import TravelSearchCombobox from '@/components/marketplace/TravelSearchCombobox'
 
 // ─── Reference data ──────────────────────────────────────────────────────────
-
-/** Mirror of the chat-tool's CITY_TO_IATA. Used as datalist suggestions
- *  on the origin field. Keep these in sync — the executor's
- *  resolveAirportCode() is the actual source of truth and accepts both
- *  city names and IATA codes. */
-const ORIGIN_SUGGESTIONS: Array<{ label: string; value: string }> = [
-  { label: 'Miami (MIA)',           value: 'Miami' },
-  { label: 'Fort Lauderdale (FLL)', value: 'Fort Lauderdale' },
-  { label: 'New York JFK (JFK)',    value: 'New York' },
-  { label: 'Newark (EWR)',          value: 'Newark' },
-  { label: 'LaGuardia (LGA)',       value: 'LaGuardia' },
-  { label: 'Atlanta (ATL)',         value: 'Atlanta' },
-  { label: 'Charlotte (CLT)',       value: 'Charlotte' },
-  { label: 'Dallas (DFW)',          value: 'Dallas' },
-  { label: 'Houston (IAH)',         value: 'Houston' },
-  { label: 'Chicago (ORD)',         value: 'Chicago' },
-  { label: 'Los Angeles (LAX)',     value: 'Los Angeles' },
-  { label: 'San Francisco (SFO)',   value: 'San Francisco' },
-  { label: 'Boston (BOS)',          value: 'Boston' },
-  { label: 'Philadelphia (PHL)',    value: 'Philadelphia' },
-  { label: 'Washington (IAD)',      value: 'Washington' },
-  { label: 'Orlando (MCO)',         value: 'Orlando' },
-  { label: 'Tampa (TPA)',           value: 'Tampa' },
-  { label: 'Detroit (DTW)',         value: 'Detroit' },
-  { label: 'Denver (DEN)',          value: 'Denver' },
-  { label: 'Seattle (SEA)',         value: 'Seattle' },
-  { label: 'Toronto (YYZ)',         value: 'Toronto' },
-  { label: 'London (LHR)',          value: 'London' },
-]
-
-const BAHAMAS_DESTINATIONS: Array<{ code: string; label: string }> = [
-  { code: 'NAS', label: 'Nassau (NAS)' },
-  { code: 'EXU', label: 'Exuma (EXU)' },
-  { code: 'ELH', label: 'North Eleuthera (ELH)' },
-  { code: 'GHB', label: 'Governor\u2019s Harbour (GHB)' },
-  { code: 'FPO', label: 'Freeport / Grand Bahama (FPO)' },
-  { code: 'BIM', label: 'Bimini (BIM)' },
-  { code: 'ASD', label: 'Andros (ASD)' },
-  { code: 'MHH', label: 'Marsh Harbour / Abacos (MHH)' },
-]
 
 const POPULAR_ROUTES: Array<{ label: string; origin: string; destination: string }> = [
   { label: 'Miami to Nassau', origin: 'Miami', destination: 'NAS' },
@@ -90,8 +68,18 @@ const CABIN_CLASSES: Array<{ value: string; label: string }> = [
 
 type Status = 'idle' | 'loading' | 'results' | 'error'
 
+type FlightSearchArgs = {
+  originCity: string
+  destination: string
+  departureDate: string
+  returnDate: string
+  tripType: 'round_trip' | 'one_way'
+  passengers: number
+  cabinClass: string
+}
+
 /** Valid Bahamas airport codes for URL-param validation. */
-const BAHAMAS_DESTINATION_CODES = new Set(BAHAMAS_DESTINATIONS.map(d => d.code))
+const BAHAMAS_DESTINATION_CODES = new Set(BAHAMAS_AIRPORT_OPTIONS.map(d => d.code))
 
 /** Valid cabin classes for URL-param validation. */
 const CABIN_VALUES = new Set(CABIN_CLASSES.map(c => c.value))
@@ -159,6 +147,9 @@ export default function FlightSearchClient() {
   const [results, setResults] = useState<CardData[]>([])
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
   const [lastSearchLabel, setLastSearchLabel] = useState('Miami to Nassau')
+  const [resultMode, setResultMode] = useState<FlightResultMode>('best')
+  const passengerFilterRef = useRef<HTMLSelectElement>(null)
+  const cabinFilterRef = useRef<HTMLSelectElement>(null)
 
   /** Default return date when user toggles to round-trip: departure + 5 days. */
   function ensureReturnDate(dep: string) {
@@ -172,15 +163,7 @@ export default function FlightSearchClient() {
   /** Core search executor — stateless, takes everything as args so the
    *  auto-search-on-mount path (which fires before React commits any
    *  user typing) can call it with the URL-derived values directly. */
-  async function runSearch(args: {
-    originCity: string
-    destination: string
-    departureDate: string
-    returnDate: string
-    tripType: 'round_trip' | 'one_way'
-    passengers: number
-    cabinClass: string
-  }) {
+  async function runSearch(args: FlightSearchArgs) {
     setStatus('loading')
     setErrorMessage(null)
     setEmptyMessage(null)
@@ -203,6 +186,7 @@ export default function FlightSearchClient() {
     }
 
     try {
+      syncFlightSearchUrl(args)
       const body: Record<string, unknown> = {
         origin_city: args.originCity.trim(),
         destination: args.destination,
@@ -260,8 +244,18 @@ export default function FlightSearchClient() {
   useEffect(() => {
     if (didAutoSearchRef.current) return
     didAutoSearchRef.current = true
+    const storedOrigin = initial.hasDeepLink ? null : readStoredTravelOrigin()?.origin ?? null
+    const searchOrigin = storedOrigin ?? initial.origin
+    if (storedOrigin) {
+      setOriginCity(storedOrigin)
+      track('flight_origin_preference_applied', {
+        origin: storedOrigin,
+        source: 'stored_preference',
+        destination: initial.destination,
+      })
+    }
     void runSearch({
-      originCity: initial.origin,
+      originCity: searchOrigin,
       destination: initial.destination,
       departureDate: initial.depart,
       returnDate: initial.returnDate,
@@ -272,17 +266,35 @@ export default function FlightSearchClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  useEffect(() => {
+    function handleOriginUpdated(event: Event) {
+      const nextOrigin = (event as CustomEvent<TravelOriginEventDetail>).detail?.origin?.trim()
+      if (!nextOrigin) return
+      setOriginCity(nextOrigin)
+      track('flight_origin_preference_applied', {
+        origin: nextOrigin,
+        source: 'public_prompt_event',
+        destination,
+      })
+      void runSearch({
+        originCity: nextOrigin,
+        destination,
+        departureDate,
+        returnDate,
+        tripType,
+        passengers,
+        cabinClass,
+      })
+    }
+
+    window.addEventListener(TRAVEL_ORIGIN_EVENT, handleOriginUpdated)
+    return () => window.removeEventListener(TRAVEL_ORIGIN_EVENT, handleOriginUpdated)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destination, departureDate, returnDate, tripType, passengers, cabinClass])
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
-    await runSearch({
-      originCity,
-      destination,
-      departureDate,
-      returnDate,
-      tripType,
-      passengers,
-      cabinClass,
-    })
+    await runSearch(currentSearchArgs())
   }
 
   async function handlePopularRoute(route: { label: string; origin: string; destination: string }) {
@@ -301,122 +313,136 @@ export default function FlightSearchClient() {
     })
   }
 
+  function currentSearchArgs(overrides: Partial<FlightSearchArgs> = {}): FlightSearchArgs {
+    return {
+      originCity,
+      destination,
+      departureDate,
+      returnDate,
+      tripType,
+      passengers,
+      cabinClass,
+      ...overrides,
+    }
+  }
+
+  async function applySidebarFilters() {
+    const nextPassengers = passengerFilterRef.current ? Number(passengerFilterRef.current.value) : passengers
+    const nextCabinClass = cabinFilterRef.current?.value ?? cabinClass
+
+    setPassengers(nextPassengers)
+    setCabinClass(nextCabinClass)
+    await runSearch(currentSearchArgs({
+      passengers: nextPassengers,
+      cabinClass: nextCabinClass,
+    }))
+  }
+
+  function handleTripTypeChange(nextTripType: 'round_trip' | 'one_way') {
+    setTripType(nextTripType)
+    if (nextTripType === 'round_trip') {
+      ensureReturnDate(departureDate)
+    }
+  }
+
+  function syncFlightSearchUrl(args: FlightSearchArgs) {
+    const params = new URLSearchParams()
+    params.set('origin', args.originCity.trim())
+    params.set('destination', args.destination)
+    params.set('tripType', args.tripType)
+    params.set('depart', args.departureDate)
+    if (args.tripType === 'round_trip' && args.returnDate) {
+      params.set('return', args.returnDate)
+    }
+    params.set('passengers', String(args.passengers))
+    params.set('cabin', args.cabinClass)
+    window.history.replaceState(null, '', `/flights?${params.toString()}`)
+  }
+
   const isLoading = status === 'loading'
+  const displayedResults = useMemo(
+    () => rankFlightResults(results, resultMode),
+    [results, resultMode],
+  )
+  const activeResultMode = FLIGHT_RESULT_MODES.find((mode) => mode.value === resultMode) ?? FLIGHT_RESULT_MODES[0]
+  const nonstopCount = useMemo(
+    () => rankFlightResults(results, 'nonstop').length,
+    [results],
+  )
+  const destinationLabel = BAHAMAS_AIRPORT_OPTIONS.find((item) => item.code === destination)?.label ?? 'The Bahamas'
+  const cabinLabel = CABIN_CLASSES.find(c => c.value === cabinClass)?.label ?? 'Economy'
+  const travelerLabel = `${passengers} ${passengers === 1 ? 'traveler' : 'travelers'}`
+  const personalizedRoutes = useMemo(() => {
+    const origin = originCity.trim() || 'Miami'
+    const primaryRoutes = [
+      { label: `${origin} to Nassau`, origin, destination: 'NAS' },
+      { label: `${origin} to Exuma`, origin, destination: 'EXU' },
+      { label: `${origin} to Eleuthera`, origin, destination: 'ELH' },
+    ]
+    const seen = new Set(primaryRoutes.map((route) => `${route.origin}|${route.destination}`.toLowerCase()))
+    return [
+      ...primaryRoutes,
+      ...POPULAR_ROUTES.filter((route) => {
+        const key = `${route.origin}|${route.destination}`.toLowerCase()
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      }).slice(0, 3),
+    ]
+  }, [originCity])
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-baha-lg border border-brand-100 bg-white p-5 shadow-card">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-600">
-              Live Fare Board
-            </p>
-            <h2 className="mt-1 text-xl font-extrabold text-night">
-              Popular routes to The Bahamas
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Tap a route to fetch current LiteAPI offers, then verify and book when you are ready.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {POPULAR_ROUTES.map((route) => (
-              <button
-                key={route.label}
-                type="button"
-                onClick={() => void handlePopularRoute(route)}
-                disabled={isLoading}
-                className="rounded-full border border-brand-100 bg-brand-50 px-3 py-1.5 text-xs font-extrabold text-brand-700 transition-colors hover:bg-brand-100 disabled:opacity-60"
-              >
-                {route.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Search form ──────────────────────────────────────────────── */}
+    <div className="space-y-5">
       <form
         onSubmit={handleSubmit}
-        className="bg-white rounded-baha-lg border border-gray-200 shadow-card p-5 space-y-4"
+        className="rounded-baha-lg border border-gray-200 bg-white p-3 shadow-sm md:p-4"
         aria-label="Flight search"
       >
-        {/* Round-trip / one-way segmented control */}
-        <div role="radiogroup" aria-label="Trip type" className="inline-flex bg-gray-100 rounded-full p-1 text-sm">
-          <button
-            type="button"
-            role="radio"
-            aria-checked={tripType === 'round_trip'}
-            onClick={() => {
-              setTripType('round_trip')
-              ensureReturnDate(departureDate)
-            }}
-            className={`px-4 py-1.5 rounded-full font-medium transition-colors ${
-              tripType === 'round_trip'
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-gray-600 hover:text-night'
-            }`}
-          >
-            Round-trip
-          </button>
-          <button
-            type="button"
-            role="radio"
-            aria-checked={tripType === 'one_way'}
-            onClick={() => setTripType('one_way')}
-            className={`px-4 py-1.5 rounded-full font-medium transition-colors ${
-              tripType === 'one_way'
-                ? 'bg-white text-brand-700 shadow-sm'
-                : 'text-gray-600 hover:text-night'
-            }`}
-          >
-            One-way
-          </button>
+        <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
+              Inline flight search
+            </p>
+            <h2 className="mt-1 text-xl font-extrabold text-night">
+              Compare Bahamas flights
+            </h2>
+          </div>
+          <p className="max-w-md text-xs font-semibold leading-5 text-gray-500 md:text-right">
+            Search is public. Save, checkout, and booking require a traveler account.
+          </p>
         </div>
 
-        {/* Origin + destination — single row on sm+ */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="origin" className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              From
-            </label>
-            <input
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(11rem,0.8fr)_minmax(11rem,0.8fr)_auto]">
+          <TravelSearchField label="From" hint="City or airport" htmlFor="origin">
+            <TravelSearchCombobox
               id="origin"
               name="origin"
-              type="text"
-              required
-              autoComplete="off"
-              list="origin-options"
               value={originCity}
-              onChange={e => setOriginCity(e.target.value)}
-              placeholder="City or airport (e.g. Miami)"
-              className="w-full rounded-baha-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-night placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+              onChange={setOriginCity}
+              options={ORIGIN_AIRPORT_OPTIONS}
+              ariaLabel="From"
+              allowCustomValue
+              placeholder="Start typing your city or airport"
+              emptyLabel="Type a city, airport name, or 3-letter airport code"
+              helperText="Try Miami, West Palm Beach, JFK, Atlanta, Toronto"
+              customOptionLabel={(query) => `Use "${query}" as departure city`}
             />
-            <datalist id="origin-options">
-              {ORIGIN_SUGGESTIONS.map(o => (
-                <option key={o.label} value={o.value} label={o.label} />
-              ))}
-            </datalist>
-          </div>
-          <div>
-            <label htmlFor="destination" className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              To
-            </label>
-            <select
+          </TravelSearchField>
+
+          <TravelSearchField label="To" hint="Bahamas airport" htmlFor="destination">
+            <TravelSearchCombobox
               id="destination"
               name="destination"
               value={destination}
-              onChange={e => setDestination(e.target.value)}
-              className="w-full rounded-baha-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            >
-              {BAHAMAS_DESTINATIONS.map(d => (
-                <option key={d.code} value={d.code}>{d.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
+              onChange={setDestination}
+              options={BAHAMAS_AIRPORT_OPTIONS}
+              ariaLabel="To"
+              placeholder="Search island or airport"
+              emptyLabel="Choose a Bahamas airport"
+              helperText="Search by island, airport, or Bahamas airport code"
+            />
+          </TravelSearchField>
 
-        {/* Dates — depart + return (return hidden on one-way) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <BahaDatePicker
             id="departure-date"
             name="departure-date"
@@ -432,9 +458,10 @@ export default function FlightSearchClient() {
                 setReturnDate(d.toISOString().split('T')[0])
               }
             }}
-            placeholder="Departure date"
+            placeholder="Departure"
           />
-          {tripType === 'round_trip' && (
+
+          {tripType === 'round_trip' ? (
             <BahaDatePicker
               id="return-date"
               name="return-date"
@@ -443,151 +470,344 @@ export default function FlightSearchClient() {
               minDate={departureDate || todayStr}
               value={returnDate}
               onChange={setReturnDate}
-              placeholder="Return date"
+              placeholder="Return"
             />
+          ) : (
+            <div className="hidden xl:block" aria-hidden="true" />
           )}
-        </div>
 
-        {/* Passengers + cabin */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="passengers" className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              Travelers
-            </label>
-            <select
-              id="passengers"
-              name="passengers"
-              value={passengers}
-              onChange={e => setPassengers(Number(e.target.value))}
-              className="w-full rounded-baha-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
+          <div className="flex items-end">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="inline-flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300 xl:min-w-36"
             >
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
-                <option key={n} value={n}>
-                  {n} {n === 1 ? 'traveler' : 'travelers'}
-                </option>
-              ))}
-            </select>
+              {isLoading ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
+                  </svg>
+                  Searching
+                </>
+              ) : (
+                <>
+                  Search
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </>
+              )}
+            </button>
           </div>
-          <div>
-            <label htmlFor="cabin-class" className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-              Cabin
-            </label>
-            <select
-              id="cabin-class"
-              name="cabin-class"
-              value={cabinClass}
-              onChange={e => setCabinClass(e.target.value)}
-              className="w-full rounded-baha-md border border-gray-300 bg-white px-3 py-2.5 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100"
-            >
-              {CABIN_CLASSES.map(c => (
-                <option key={c.value} value={c.value}>{c.label}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Submit */}
-        <div className="flex justify-end pt-1">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:bg-brand-300 disabled:cursor-not-allowed text-white font-semibold px-6 py-2.5 rounded-full transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
-          >
-            {isLoading ? (
-              <>
-                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
-                </svg>
-                Searching…
-              </>
-            ) : (
-              <>
-                Search flights
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </>
-            )}
-          </button>
         </div>
       </form>
 
-      {/* ─── Error banner ─────────────────────────────────────────────── */}
-      {status === 'error' && errorMessage && (
-        <div
-          role="alert"
-          className="rounded-baha-md bg-coral-50 border border-coral-200 text-coral-800 px-4 py-3 text-sm"
+      <div className="grid gap-5 lg:grid-cols-[17.25rem_minmax(0,1fr)] lg:items-start min-[1120px]:grid-cols-[17.25rem_minmax(0,1fr)_15.5rem]">
+        <aside
+          aria-label="Flight filters"
+          className="rounded-baha-lg border border-gray-200 bg-white shadow-sm lg:sticky lg:top-24"
         >
-          {errorMessage}
-        </div>
-      )}
-
-      {/* ─── Loading skeleton ─────────────────────────────────────────── */}
-      {isLoading && (
-        <div className="space-y-3" aria-live="polite" aria-busy="true">
-          {[0, 1, 2].map(i => (
-            <div
-              key={i}
-              className="h-24 rounded-2xl bg-gray-50 border border-gray-100 animate-pulse"
-            />
-          ))}
-        </div>
-      )}
-
-      {/* ─── Results ──────────────────────────────────────────────────── */}
-      {status === 'results' && results.length > 0 && (
-        <section aria-label="Flight results" className="space-y-2">
-          <div className="flex flex-col gap-1 px-1 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="text-xs font-extrabold uppercase tracking-wide text-brand-600">
-                Live results
-              </p>
-              <h2 className="text-lg font-extrabold text-night">
-                {lastSearchLabel}: {results.length} {results.length === 1 ? 'option' : 'options'}
-              </h2>
-            </div>
-            <p className="text-xs font-semibold text-gray-400">
-              Prices can expire. Verify before payment.
+          <div className="border-b border-gray-100 bg-white px-4 py-3">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
+              Filter flights
+            </p>
+            <h2 className="mt-1 text-lg font-extrabold text-night">
+              Refine results
+            </h2>
+            <p className="mt-1 text-xs font-semibold leading-5 text-gray-500">
+              {lastSearchLabel} · {travelerLabel} · {cabinLabel}
             </p>
           </div>
-          <div className="space-y-1">
-            {results.map((card, idx) => (
-              <RichCardRenderer key={idx} cardData={card} />
-            ))}
+
+          <div className="space-y-5 p-4">
+            <div>
+              <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-night">
+                Trip type
+              </p>
+              <div role="radiogroup" aria-label="Trip type" className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={tripType === 'round_trip'}
+                  onClick={() => handleTripTypeChange('round_trip')}
+                  className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${
+                    tripType === 'round_trip'
+                      ? 'border-gray-900 bg-white text-night ring-2 ring-gray-100'
+                      : 'border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50 hover:text-night'
+                  }`}
+                >
+                  Round-trip
+                </button>
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={tripType === 'one_way'}
+                  onClick={() => handleTripTypeChange('one_way')}
+                  className={`rounded-full border px-3 py-2 text-sm font-bold transition-colors ${
+                    tripType === 'one_way'
+                      ? 'border-gray-900 bg-white text-night ring-2 ring-gray-100'
+                      : 'border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50 hover:text-night'
+                  }`}
+                >
+                  One-way
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-night">
+                Popular Bahamas routes
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {personalizedRoutes.map((route) => (
+                  <button
+                    key={route.label}
+                    type="button"
+                    onClick={() => void handlePopularRoute(route)}
+                    disabled={isLoading}
+                    className="rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-extrabold text-charcoal transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-night disabled:opacity-60"
+                  >
+                    {route.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid gap-3">
+              <TravelSearchField label="Traveler count" hint="Per booking" htmlFor="passengers-filter">
+                <TravelSearchSelect
+                  ref={passengerFilterRef}
+                  id="passengers-filter"
+                  name="passengers-filter"
+                  value={passengers}
+                  onChange={e => setPassengers(Number(e.target.value))}
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n => (
+                    <option key={n} value={n}>
+                      {n} {n === 1 ? 'traveler' : 'travelers'}
+                    </option>
+                  ))}
+                </TravelSearchSelect>
+              </TravelSearchField>
+
+              <TravelSearchField label="Cabin class" hint="Fare family" htmlFor="cabin-class-filter">
+                <TravelSearchSelect
+                  ref={cabinFilterRef}
+                  id="cabin-class-filter"
+                  name="cabin-class-filter"
+                  value={cabinClass}
+                  onChange={e => setCabinClass(e.target.value)}
+                >
+                  {CABIN_CLASSES.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </TravelSearchSelect>
+              </TravelSearchField>
+            </div>
+
+            <div>
+              <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-night">
+                Result focus
+              </p>
+              <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 lg:flex-wrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {FLIGHT_RESULT_MODES.map((mode) => (
+                  <FilterButton
+                    key={mode.value}
+                    active={resultMode === mode.value}
+                    onClick={() => setResultMode(mode.value)}
+                    tone={mode.value === 'best' ? 'brand' : 'neutral'}
+                  >
+                    {mode.value === 'nonstop' ? `Nonstop (${nonstopCount})` : mode.label}
+                  </FilterButton>
+                ))}
+              </div>
+              <p className="mt-2 text-xs font-semibold leading-5 text-gray-500">
+                {activeResultMode.description}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => void applySidebarFilters()}
+              disabled={isLoading}
+              className="inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:border-gray-200 disabled:text-gray-400"
+            >
+              {isLoading ? 'Applying filters' : 'Apply filters'}
+            </button>
+
+            <p className="text-xs font-semibold leading-5 text-gray-500">
+              Prices can expire. Verify fare details before payment.
+            </p>
           </div>
-          <p className="text-xs text-gray-400 px-1 pt-2">
-            Prices are live LiteAPI offers and may expire quickly. Verify the fare before payment.
-          </p>
-        </section>
-      )}
+        </aside>
 
-      {/* ─── Empty (after a search) ───────────────────────────────────── */}
-      {status === 'results' && results.length === 0 && emptyMessage && (
-        <div className="rounded-baha-lg bg-white border border-gray-200 p-8 text-center shadow-soft">
-          <p className="text-2xl mb-2" aria-hidden="true">✈️</p>
-          <p className="text-sm text-gray-700">{emptyMessage}</p>
-        </div>
-      )}
+        <div className="min-w-0 space-y-5">
+          {status === 'error' && errorMessage && (
+            <div
+              role="alert"
+              className="rounded-baha-md border border-coral-200 bg-coral-50 px-4 py-3 text-sm text-coral-800"
+            >
+              {errorMessage}
+            </div>
+          )}
 
-      {/* ─── Idle empty state ─────────────────────────────────────────── */}
-      {status === 'idle' && (
-        <div className="rounded-baha-lg bg-brand-50/40 border border-brand-100 p-6 text-center">
-          <p className="text-2xl mb-2" aria-hidden="true">✈️</p>
-          <p className="text-sm text-night font-medium">
-            Pick your dates above and we’ll pull live prices.
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Daily nonstops to Nassau from Miami, Fort Lauderdale, New York,
-            Atlanta, and more.
-          </p>
+          {isLoading && (
+            <div className="space-y-3" aria-live="polite" aria-busy="true">
+              {[0, 1, 2].map(i => (
+                <div
+                  key={i}
+                  className="h-24 rounded-2xl border border-gray-100 bg-gray-50 animate-pulse"
+                />
+              ))}
+            </div>
+          )}
+
+          {status === 'results' && results.length > 0 && (
+            <section aria-label="Flight results" className="space-y-2">
+              <div className="flex flex-col gap-1 px-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-gray-500">
+                    Live results
+                  </p>
+                  <h2 className="text-lg font-extrabold text-night">
+                    {lastSearchLabel}: {displayedResults.length} of {results.length} {results.length === 1 ? 'option' : 'options'}
+                  </h2>
+                </div>
+                <p className="text-xs font-semibold text-gray-400">
+                  Prices can expire. Verify before payment.
+                </p>
+              </div>
+
+              <div className="space-y-1">
+                {displayedResults.length > 0 ? (
+                  displayedResults.map((card, idx) => (
+                    <RichCardRenderer
+                      key={String(card.provider_offer_id ?? card.offer_id ?? card.duffel_offer_id ?? idx)}
+                      cardData={card}
+                    />
+                  ))
+                ) : (
+                  <div className="rounded-baha-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
+                    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-charcoal" aria-hidden="true">
+                      <FlightGlyph />
+                    </div>
+                    <p className="text-sm font-bold text-night">
+                      No nonstop fares in this result set.
+                    </p>
+                    <p className="mt-1 text-xs font-semibold text-gray-500">
+                      Switch to Best or try nearby dates to compare connecting fares.
+                    </p>
+                  </div>
+                )}
+              </div>
+              <p className="px-1 pt-2 text-xs text-gray-400">
+                Prices are live LiteAPI offers and may expire quickly. Verify the fare before payment.
+              </p>
+            </section>
+          )}
+
+          {status === 'results' && results.length === 0 && emptyMessage && (
+            <div className="rounded-baha-lg border border-gray-200 bg-white p-8 text-center shadow-soft">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-charcoal" aria-hidden="true">
+                <FlightGlyph />
+              </div>
+              <p className="text-sm text-gray-700">{emptyMessage}</p>
+            </div>
+          )}
+
+          {status === 'idle' && (
+            <div className="rounded-baha-lg border border-gray-200 bg-white p-6 text-center shadow-sm">
+              <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white text-charcoal shadow-sm ring-1 ring-gray-200" aria-hidden="true">
+                <FlightGlyph />
+              </div>
+              <p className="text-sm font-medium text-night">
+                Pick your dates above and we will pull live prices.
+              </p>
+              <p className="mt-1 text-xs text-gray-500">
+                Daily nonstops to Nassau from Miami, Fort Lauderdale, New York,
+                Atlanta, and more.
+              </p>
+            </div>
+          )}
         </div>
-      )}
+
+        <aside
+          aria-label="Flight promotions"
+          className="space-y-4 lg:col-span-2 min-[1120px]:col-span-1 min-[1120px]:sticky min-[1120px]:top-24"
+        >
+          <section className="overflow-hidden rounded-baha-lg border border-gray-200 bg-white shadow-sm">
+            <div className="border-b border-gray-100 px-4 py-3">
+              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
+                Promo space
+              </p>
+              <h2 className="mt-1 text-lg font-extrabold text-night">
+                Baha Deals
+              </h2>
+            </div>
+            <div className="space-y-3 p-4">
+              <p className="text-sm font-semibold leading-6 text-gray-600">
+                Place seasonal flight offers, bank promos, and Bahamas travel packages here without pushing fare cards down the page.
+              </p>
+              <a
+                href="/deals"
+                className="inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+              >
+                View current deals
+              </a>
+            </div>
+          </section>
+
+          <section className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
+              Bundle this trip
+            </p>
+            <h3 className="mt-1 text-base font-extrabold text-night">
+              Pair {destinationLabel} flights with top stays
+            </h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-gray-500">
+              Move from airfare to hotels with the same dates and trip context.
+            </p>
+            <a
+              href="/stays?sort=stars"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            >
+              Browse stays
+            </a>
+          </section>
+
+          <section className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
+            <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
+              Concierge prompt
+            </p>
+            <h3 className="mt-1 text-base font-extrabold text-night">
+              Need arrival timing help?
+            </h3>
+            <p className="mt-2 text-sm font-semibold leading-6 text-gray-600">
+              Use this rail for transfer upsells, VIP arrival support, travel insurance, or destination guidance.
+            </p>
+            <a
+              href="/concierge-trip-plan"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white transition-colors hover:bg-brand-700"
+            >
+              See concierge options
+            </a>
+          </section>
+        </aside>
+      </div>
     </div>
   )
 }
 
 function searchLabel(origin: string, destinationCode: string): string {
-  const destination = BAHAMAS_DESTINATIONS.find((item) => item.code === destinationCode)?.label ?? destinationCode
-  return `${origin.trim() || 'Origin'} to ${destination.replace(/\s*\([A-Z]{3}\)\s*$/, '')}`
+  const destination = BAHAMAS_AIRPORT_OPTIONS.find((item) => item.code === destinationCode)?.label ?? destinationCode
+  return `${origin.trim() || 'Origin'} to ${destination}`
+}
+
+function FlightGlyph() {
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16l7-3V7a2 2 0 0 1 4 0v6l7 3v2l-7-2v3l2 1.5V22l-4-1-4 1v-1.5L10 19v-3l-7 2v-2Z" />
+    </svg>
+  )
 }

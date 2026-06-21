@@ -19,11 +19,10 @@ export const dynamic = 'force-dynamic'
  * Layout:
  *   - Header with title + count + "New trip" CTA
  *   - Responsive grid: 1 col phone, 2 col tablet, 3 col desktop
- *   - Empty state for users with 0 trips → "Start chatting with Buddy" CTA
+ *   - Empty state for users with 0 trips → direct trip creation CTA
  *
- * "New trip" CTA goes to /dashboard/chat?q=Plan a new trip — opening the
- * standalone chat is intentional (full focus on planning, no distractions
- * from a sidebar or other trips).
+ * "New trip" CTA goes to /dashboard/trips/new so the user creates the
+ * canonical trip record first. Buddy remains a secondary planning path.
  *
  * Auth gate: handled by the (dashboard) route group layout.
  */
@@ -76,14 +75,15 @@ export default async function TripIndexPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-night">My Trips</h1>
           <p className="text-sm text-gray-500 mt-1">
             {tripList.length === 0
-              ? 'No trips yet — start one with Buddy.'
+              ? 'No trips yet. Create one and add stays, flights, food, and tours directly.'
               : `${tripList.length} ${tripList.length === 1 ? 'trip' : 'trips'} planned and saved.`}
           </p>
         </div>
         <Link
-          href={`/dashboard/chat?q=${encodeURIComponent('Plan a new trip to the Bahamas')}`}
-          className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-4 py-2.5 rounded-full transition-colors shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+          href="/dashboard/trips/new?returnTo=%2Ftrip&source=trip_index"
+          className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
         >
+          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
@@ -108,21 +108,30 @@ function EmptyState() {
   return (
     <div className="bg-white rounded-baha-lg border border-gray-200 p-10 sm:p-16 text-center shadow-soft">
       <h2 className="text-xl font-bold text-night mb-2">
-        Your first Bahamas trip is one chat away
+        Start with a trip record
       </h2>
       <p className="text-sm text-gray-500 max-w-md mx-auto mb-6 leading-relaxed">
-        Tell Buddy what you&apos;re thinking — a vibe, a dream, a rough idea — and a complete
-        plan will appear here, ready to book.
+        Create the trip first, then add hotels, flights, restaurants, tours, and notes directly.
+        Buddy stays available when conversation adds planning value.
       </p>
-      <Link
-        href={`/dashboard/chat?q=${encodeURIComponent('Help me plan a trip to the Bahamas')}`}
-        className="inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-5 py-3 rounded-full transition-colors shadow-card"
-      >
-        Start planning with Buddy
-        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-        </svg>
-      </Link>
+      <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <Link
+          href="/dashboard/trips/new?returnTo=%2Ftrip&source=trip_index"
+          className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700"
+        >
+          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+          Create trip
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </Link>
+        <Link
+          href={`/dashboard/chat?q=${encodeURIComponent('Help me plan a trip to the Bahamas')}`}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+        >
+          Ask Buddy first
+        </Link>
+      </div>
     </div>
   )
 }

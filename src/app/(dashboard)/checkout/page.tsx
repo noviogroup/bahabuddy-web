@@ -148,21 +148,23 @@ export default async function CheckoutPage({
       </div>
 
       {/* Order summary */}
-      <section className="mb-8 rounded-baha-lg bg-gradient-to-br from-brand-600 to-brand-500 text-white p-6 shadow-card overflow-hidden relative">
-        <div className="absolute -top-12 -right-12 text-9xl opacity-10 select-none pointer-events-none" aria-hidden="true">✈️</div>
-        <p className="text-brand-100 text-xs font-bold uppercase tracking-widest">Checkout</p>
-        <h1 className="text-2xl sm:text-3xl font-extrabold mt-1">{tripRecord.name}</h1>
+      <section className="relative mb-8 overflow-hidden rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <svg className="absolute -right-8 -top-8 h-36 w-36 text-gray-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 16l7-3V7a2 2 0 0 1 4 0v6l7 3v2l-7-2v3l2 1.5V22l-4-1-4 1v-1.5L10 19v-3l-7 2v-2Z" />
+        </svg>
+        <p className="text-xs font-bold uppercase tracking-widest text-charcoal">Checkout</p>
+        <h1 className="mt-1 text-2xl font-extrabold text-night sm:text-3xl">{tripRecord.name}</h1>
         {(tripRecord.date_start || tripRecord.date_end) && (
-          <p className="text-brand-100 text-sm mt-1">
+          <p className="mt-1 text-sm text-charcoal">
             {fmtRange(tripRecord.date_start, tripRecord.date_end)}
           </p>
         )}
-        <div className="flex items-end justify-between mt-6 pt-4 border-t border-white/20">
+        <div className="mt-6 flex items-end justify-between border-t border-gray-200 pt-4">
           <div>
-            <p className="text-brand-100 text-xs uppercase tracking-wide">{labelFor(bookingType)}</p>
-            <p className="text-brand-100 text-sm mt-1">{description ?? 'Baha Buddy booking'}</p>
+            <p className="text-xs uppercase tracking-wide text-charcoal">{labelFor(bookingType)}</p>
+            <p className="mt-1 text-sm text-charcoal">{description ?? 'Baha Buddy booking'}</p>
           </div>
-          <p className="text-3xl sm:text-4xl font-extrabold">{formatAmount(amountCents)}</p>
+          <p className="text-3xl font-extrabold text-night sm:text-4xl">{formatAmount(amountCents)}</p>
         </div>
       </section>
 
@@ -242,7 +244,7 @@ function StripeNotConfigured() {
         </p>
         <Link
           href="/dashboard"
-          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+          className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-night transition-colors hover:text-gray-700"
         >
           ← Back to dashboard
         </Link>
@@ -263,14 +265,16 @@ function CheckoutError({
   return (
     <main className="max-w-xl mx-auto px-4 py-12">
       <div className="bg-white rounded-baha-lg border border-coral-200 p-8 sm:p-10 shadow-soft text-center">
-        <div className="text-5xl mb-4" aria-hidden="true">⚠️</div>
+        <svg className="mx-auto mb-4 h-12 w-12 text-coral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 4.3 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+        </svg>
         <h1 className="text-xl font-bold text-night mb-2">{title}</h1>
         <p className="text-sm text-gray-500 leading-relaxed">{body}</p>
         <div className="mt-6 flex items-center justify-center gap-3">
           {tripId && (
             <Link
               href={`/trip/${tripId}`}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+              className="inline-flex items-center gap-2 text-sm font-semibold text-night transition-colors hover:text-gray-700"
             >
               ← Back to trip
             </Link>

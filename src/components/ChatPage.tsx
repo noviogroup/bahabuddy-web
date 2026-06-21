@@ -15,9 +15,10 @@
 import ChatPanel from '@/components/dashboard/ChatPanel'
 
 interface ChatPageProps {
-  userEmail: string
+  userEmail?: string
+  guestMode?: boolean
 }
 
-export default function ChatPage({ userEmail }: ChatPageProps) {
-  return <ChatPanel mode="standalone" userEmail={userEmail} />
+export default function ChatPage({ userEmail, guestMode = false }: ChatPageProps) {
+  return <ChatPanel mode="standalone" userEmail={userEmail} guestMode={guestMode} />
 }

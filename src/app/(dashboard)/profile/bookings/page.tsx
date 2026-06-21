@@ -3,6 +3,13 @@ import { redirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import BookingsList, { type Booking } from '@/components/BookingsList'
+import {
+  createBookingListItems,
+  type AccommodationBookingRow,
+  type CanonicalBookingRow,
+  type FlightBookingRow,
+  type TripSummaryRow,
+} from '@/lib/booking-list'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,71 +46,40 @@ export default async function BookingsPage() {
     .select('id, name')
     .eq('user_id', user.id)
 
-  const tripList = trips ?? []
+  const tripList = (trips ?? []) as TripSummaryRow[]
   const tripIds = tripList.map(t => t.id)
-  const tripNameById: Record<string, string> = {}
-  for (const t of tripList) tripNameById[t.id] = t.name
 
-  const bookings: Booking[] = []
+  let bookings: Booking[] = []
 
   if (tripIds.length > 0) {
-    const [flightsRes, accRes] = await Promise.all([
+    const [bookingsRes, flightsRes, accRes] = await Promise.all([
+      supabase
+        .from('bookings')
+        .select('id, trip_id, booking_type, type, provider, status, amount, currency, paid_at, stripe_payment_intent_id, booking_ref, booking_reference, external_reference, reference_id, financial_metadata, created_at')
+        .in('trip_id', tripIds)
+        .order('created_at', { ascending: false }),
       supabase
         .from('trip_flights')
-        .select('id, trip_id, origin, destination, airline, departure_at, arrival_at, price, booking_reference')
+        .select('id, trip_id, origin, destination, airline, departure_at, arrival_at, price, booking_reference, stripe_payment_intent_id')
         .in('trip_id', tripIds)
         .order('departure_at', { ascending: false }),
       supabase
         .from('trip_accommodations')
-        .select('id, trip_id, name, island, check_in, check_out, price_per_night, booking_reference')
+        .select('id, trip_id, name, island, check_in, check_out, price_per_night, total_price, currency, status, booking_reference, stripe_payment_intent_id')
         .in('trip_id', tripIds)
         .order('check_in', { ascending: false }),
     ])
 
-    const flights = flightsRes.data ?? []
-    const accommodations = accRes.data ?? []
+    const canonicalBookings = (bookingsRes.data ?? []) as CanonicalBookingRow[]
+    const flights = (flightsRes.data ?? []) as FlightBookingRow[]
+    const accommodations = (accRes.data ?? []) as AccommodationBookingRow[]
 
-    for (const f of flights) {
-      const dep = f.departure_at
-        ? new Date(f.departure_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : null
-      const arr = f.arrival_at
-        ? new Date(f.arrival_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : null
-      const dates = dep ? (arr && arr !== dep ? `${dep} → ${arr}` : dep) : null
-      bookings.push({
-        id: f.id,
-        tripId: f.trip_id,
-        tripName: tripNameById[f.trip_id] ?? 'Unknown Trip',
-        type: 'flight',
-        title: `${f.origin} → ${f.destination}`,
-        subtitle: f.airline ?? null,
-        dates,
-        price: f.price,
-        bookingReference: f.booking_reference,
-      })
-    }
-
-    for (const a of accommodations) {
-      const checkIn = a.check_in
-        ? new Date(a.check_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : null
-      const checkOut = a.check_out
-        ? new Date(a.check_out).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-        : null
-      const dates = checkIn ? (checkOut ? `${checkIn} → ${checkOut}` : checkIn) : null
-      bookings.push({
-        id: a.id,
-        tripId: a.trip_id,
-        tripName: tripNameById[a.trip_id] ?? 'Unknown Trip',
-        type: 'hotel',
-        title: a.name,
-        subtitle: a.island ?? null,
-        dates,
-        price: a.price_per_night,
-        bookingReference: a.booking_reference,
-      })
-    }
+    bookings = createBookingListItems({
+      bookings: canonicalBookings,
+      trips: tripList,
+      flights,
+      accommodations,
+    })
   }
 
   return (

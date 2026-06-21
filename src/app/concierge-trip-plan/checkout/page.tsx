@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import Footer from '@/components/Footer'
 import { createClient } from '@/lib/supabase/server'
 import { CONCIERGE_OFFERS, getConciergeOffer } from '@/lib/stripe/concierge-offers'
+import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 
 export const metadata: Metadata = {
   title: 'Concierge Checkout',
@@ -41,31 +42,42 @@ export default async function ConciergeCheckoutPage({
     .maybeSingle()
 
   return (
-    <main className="min-h-screen bg-offwhite">
-      <section className="bg-gradient-brand text-white">
-        <div className="max-w-5xl mx-auto px-4 py-16 lg:py-20">
-          <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-bold backdrop-blur">
-            Secure account checkout
-          </p>
-          <h1 className="mt-6 text-4xl md:text-5xl font-extrabold tracking-tight">
-            Confirm your {offer.name.replace('Baha Buddy ', '')}
-          </h1>
-          <p className="mt-5 text-lg text-brand-50 leading-relaxed max-w-3xl">
-            Your payment will be linked to your Baha Buddy account so the team can deliver your itinerary into your dashboard and keep your planning history in one place.
-          </p>
-        </div>
-      </section>
+    <main className="min-h-screen bg-white">
+      <CompactPageHeader
+        eyebrow="Secure account checkout"
+        title={`Confirm your ${offer.name.replace('Baha Buddy ', '')}`}
+        subtitle="Your payment will be linked to your Baha Buddy account so the team can deliver your itinerary into your dashboard and keep your planning history in one place."
+        crumbs={[
+          { href: '/', label: 'Home' },
+          { href: '/concierge-trip-plan', label: 'Concierge' },
+          { label: 'Checkout' },
+        ]}
+        actions={(
+          <>
+            <Link href="/concierge-trip-plan" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+              Change offer
+            </Link>
+            <Link href="/dashboard" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+              Dashboard
+            </Link>
+          </>
+        )}
+      />
 
-      <section className="max-w-5xl mx-auto px-4 py-12 lg:py-16">
+      <section className="max-w-5xl mx-auto px-4 py-10">
         {searchParams?.checkout === 'cancelled' && (
-          <div className="mb-6 rounded-baha-lg border border-gold-200 bg-gold-50 px-4 py-3 text-sm font-semibold text-gold-800">
-            Checkout was cancelled. You can restart payment whenever you are ready.
+          <div className="mb-6 flex gap-3 rounded-baha-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold text-charcoal">
+            <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-gold-400" aria-hidden="true" />
+            <span>Checkout was cancelled. You can restart payment whenever you are ready.</span>
           </div>
         )}
 
         <div className="grid lg:grid-cols-[1fr_0.8fr] gap-8 items-start">
-          <div className="rounded-baha-xl bg-white border border-sand-200 p-6 lg:p-8 shadow-card">
-            <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Signed in as</p>
+          <div className="rounded-baha-xl bg-white border border-gray-200 p-6 lg:p-8 shadow-sm">
+            <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase tracking-wide">
+              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              Signed in as
+            </p>
             <h2 className="mt-2 text-2xl font-extrabold text-night">
               {profile?.display_name || user.email}
             </h2>
@@ -82,17 +94,20 @@ export default async function ConciergeCheckoutPage({
             </form>
 
             <div className="mt-5 flex flex-col sm:flex-row gap-3">
-              <Link href="/concierge-trip-plan" className="inline-flex items-center justify-center rounded-full bg-white border border-sand-200 px-5 py-2.5 text-charcoal font-bold hover:bg-sand-50 transition-colors">
+              <Link href="/concierge-trip-plan" className="inline-flex items-center justify-center rounded-full bg-white border border-gray-300 px-5 py-2.5 text-night font-bold transition-colors hover:border-gray-400 hover:bg-gray-50">
                 Change offer
               </Link>
-              <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full bg-brand-50 px-5 py-2.5 text-brand-700 font-bold hover:bg-brand-100 transition-colors">
+              <Link href="/dashboard" className="inline-flex items-center justify-center rounded-full bg-white border border-gray-300 px-5 py-2.5 text-night font-bold transition-colors hover:border-gray-400 hover:bg-gray-50">
                 Go to dashboard
               </Link>
             </div>
           </div>
 
-          <aside className="rounded-baha-xl bg-white border border-sand-200 p-6 shadow-card">
-            <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Order summary</p>
+          <aside className="rounded-baha-xl bg-white border border-gray-200 p-6 shadow-sm">
+            <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase tracking-wide">
+              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              Order summary
+            </p>
             <div className="mt-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-xl font-extrabold text-night">{offer.name}</h3>
@@ -101,7 +116,7 @@ export default async function ConciergeCheckoutPage({
               <p className="text-3xl font-extrabold text-night">${offer.priceUsd}</p>
             </div>
 
-            <div className="mt-6 rounded-baha-lg bg-brand-50 border border-brand-100 p-4 text-sm text-brand-900">
+            <div className="mt-6 rounded-baha-lg bg-gray-50 border border-gray-200 p-4 text-sm text-charcoal">
               <p className="font-bold mb-2">What happens next</p>
               <ol className="space-y-2 list-decimal list-inside">
                 <li>Pay securely with Stripe.</li>
@@ -111,12 +126,15 @@ export default async function ConciergeCheckoutPage({
               </ol>
             </div>
 
-            <div className="mt-6 border-t border-sand-200 pt-5">
+            <div className="mt-6 border-t border-gray-200 pt-5">
               <p className="text-xs font-bold text-charcoal uppercase tracking-wide mb-3">Other offers</p>
               <div className="space-y-2">
                 {Object.entries(CONCIERGE_OFFERS).map(([id, item]) => (
-                  <Link key={id} href={`/concierge-trip-plan/checkout?offer=${id}`} className={`block rounded-baha-md border px-4 py-3 text-sm transition-colors ${id === offerId ? 'border-brand-300 bg-brand-50 text-brand-900' : 'border-sand-200 hover:bg-sand-50 text-charcoal'}`}>
-                    <span className="font-bold">{item.name.replace('Baha Buddy ', '')}</span>
+                  <Link key={id} href={`/concierge-trip-plan/checkout?offer=${id}`} className={`block rounded-baha-md border px-4 py-3 text-sm transition-colors ${id === offerId ? 'border-gray-900 bg-white text-night ring-2 ring-gray-100' : 'border-gray-200 text-charcoal hover:border-gray-300 hover:bg-gray-50'}`}>
+                    <span className="inline-flex items-center gap-2 font-bold">
+                      {id === offerId && <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />}
+                      {item.name.replace('Baha Buddy ', '')}
+                    </span>
                     <span className="float-right font-extrabold">${item.priceUsd}</span>
                   </Link>
                 ))}

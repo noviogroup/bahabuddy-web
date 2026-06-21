@@ -47,8 +47,9 @@ export const dynamic = 'force-dynamic'
  * inline "Or search directly" Flights/Hotels grid have been folded into
  * `HeroSearchPanel`. One unified primary action surface — pills choose
  * the category (Plan a Trip / Stays / Flights / Things to Do), and a
- * structured form drives the user either into pre-filled native search
- * pages (/hotels, /flights) or into chat with a composed prompt.
+ * structured form drives the user into direct trip creation or pre-filled
+ * native search pages (/stays, /flights, /explore/places). Buddy remains
+ * available through explicit secondary chat controls.
  */
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -108,7 +109,7 @@ export default async function DashboardPage() {
         <BuddyPickCard />
       </div>
 
-      <div className="mb-6">
+      <div id="weather" className="mb-6">
         <WeatherGlanceCard island={weatherIsland} />
       </div>
 

@@ -28,8 +28,7 @@ describe('RichCardRenderer direct actions', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /expand goldwynn resort for more info/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Add to trip' }))
 
     expect(screen.getByAltText('Photo of Goldwynn Resort')).toHaveAttribute(
       'src',
@@ -37,10 +36,10 @@ describe('RichCardRenderer direct actions', () => {
     )
     expect(onAddToTrip).toHaveBeenCalledWith(card, 'trip-123')
     expect(onSendMessage).not.toHaveBeenCalled()
-    expect(screen.getByRole('link', { name: /view full details/i })).toHaveAttribute('href', '/stays/goldwynn-resort')
+    expect(screen.getByRole('link', { name: 'View stay' })).toHaveAttribute('href', '/stays/goldwynn-resort')
   })
 
-  test('hotel card falls back to Buddy prompt when no active trip is available', () => {
+  test('hotel card does not turn save into a chat prompt when no active trip is available', () => {
     const onAddToTrip = vi.fn()
     const onSendMessage = vi.fn()
 
@@ -52,11 +51,137 @@ describe('RichCardRenderer direct actions', () => {
       />,
     )
 
+    expect(screen.getByRole('link', { name: 'View stay' })).toHaveAttribute('href', '/stays/sls-baha-mar')
+    expect(screen.queryByRole('button', { name: 'Add to trip' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /expand sls baha mar for more info/i }))
-    fireEvent.click(screen.getByRole('button', { name: 'Save' }))
 
     expect(onAddToTrip).not.toHaveBeenCalled()
-    expect(onSendMessage).toHaveBeenCalledWith('Help me add SLS Baha Mar to my trip')
+    expect(onSendMessage).not.toHaveBeenCalled()
+    expect(screen.getByRole('link', { name: /view full details/i })).toHaveAttribute('href', '/stays/sls-baha-mar')
+  })
+
+  test('hotel card without provider imagery shows an honest photo pending state', () => {
+    render(
+      <RichCardRenderer
+        cardData={{
+          card_type: 'hotel',
+          place_id: 'no-photo-stay',
+          name: 'No Photo Stay',
+          island: 'Exuma',
+          rating: 4.5,
+          review_count: 24,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Photo pending')).toBeInTheDocument()
+    expect(screen.getByText('Card details are available. Provider photo is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByAltText('Photo of No Photo Stay')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View stay' })).toHaveAttribute('href', '/stays/no-photo-stay')
+  })
+
+  test('restaurant and activity cards expose collapsed direct detail and add actions', () => {
+    const onAddToTrip = vi.fn()
+    const onSendMessage = vi.fn()
+    const restaurant: CardData = {
+      card_type: 'restaurant',
+      place_id: 'fish-fry',
+      name: 'Arawak Cay Fish Fry',
+      island: 'New Providence',
+      cuisine: 'Bahamian',
+      rating: 4.4,
+      price_level: 2,
+      opening_hours: ['Monday: 11:00 AM - 10:00 PM'],
+    }
+    const activity: CardData = {
+      card_type: 'activity',
+      place_id: 'exuma-cays-tour',
+      name: 'Exuma Cays Boat Tour',
+      island: 'Exuma',
+      duration: '6 hours',
+      from_price: 225,
+      vibe_tags: ['adventure', 'beach'],
+    }
+
+    render(
+      <div>
+        <RichCardRenderer
+          cardData={restaurant}
+          activeTripId="trip-123"
+          onAddToTrip={onAddToTrip}
+          onSendMessage={onSendMessage}
+        />
+        <RichCardRenderer
+          cardData={activity}
+          activeTripId="trip-123"
+          onAddToTrip={onAddToTrip}
+          onSendMessage={onSendMessage}
+        />
+      </div>,
+    )
+
+    const addButtons = screen.getAllByRole('button', { name: 'Add to trip' })
+    expect(addButtons[0]).toHaveClass('bg-brand-600')
+    expect(addButtons[0]).not.toHaveClass('bg-night')
+    expect(addButtons[1]).toHaveClass('bg-brand-600')
+    expect(screen.getByText('Bahamian')).toHaveClass('bg-gray-100')
+    fireEvent.click(addButtons[0])
+    fireEvent.click(addButtons[1])
+
+    const detailLinks = screen.getAllByRole('link', { name: 'View details' })
+    expect(detailLinks[0]).toHaveAttribute('href', '/restaurants/fish-fry')
+    expect(detailLinks[1]).toHaveAttribute('href', '/activities/exuma-cays-tour')
+    expect(onAddToTrip).toHaveBeenNthCalledWith(1, restaurant, 'trip-123')
+    expect(onAddToTrip).toHaveBeenNthCalledWith(2, activity, 'trip-123')
+    expect(onSendMessage).not.toHaveBeenCalled()
+  })
+
+  test('destination card uses primary imagery and exposes a visible island action', () => {
+    const { container } = render(
+      <RichCardRenderer
+        cardData={{
+          card_type: 'destination',
+          name: 'The Exumas',
+          island_id: 'the-exumas',
+          tagline: 'Sandbars, cays, and quiet water',
+          primary_image_url: 'https://images.example/exuma-primary.jpg',
+          photo_url: 'https://images.example/exuma-fallback.jpg',
+          highlights: ['Sandbars', 'Boat days'],
+          getting_there: 'Fly from Nassau',
+          days_recommended: '3-5 days',
+          price_from: 620,
+        }}
+      />,
+    )
+
+    expect(screen.getByRole('link', { name: 'Read about The Exumas' })).toHaveAttribute(
+      'href',
+      '/explore/island/the-exumas',
+    )
+    expect(screen.getByText('View island guide')).toBeInTheDocument()
+    expect(screen.getByText('Fly from Nassau')).toBeInTheDocument()
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://images.example/exuma-primary.jpg')
+  })
+
+  test('destination card without imagery uses photo pending instead of decorative fallback art', () => {
+    render(
+      <RichCardRenderer
+        cardData={{
+          card_type: 'destination',
+          name: 'Andros',
+          island_id: 'andros',
+          tagline: 'Blue holes and bonefishing',
+          highlights: ['Blue holes', 'Nature'],
+          getting_there: 'Fly from Nassau',
+          days_recommended: '3-5 days',
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Photo pending')).toBeInTheDocument()
+    expect(screen.getByText('Island details are available. Destination image is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByAltText('Andros destination photo')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Read about Andros' })).toHaveAttribute('href', '/explore/island/andros')
   })
 
   test('flight card exposes direct add-to-trip and booking route for LiteAPI offers', () => {
@@ -78,6 +203,7 @@ describe('RichCardRenderer direct actions', () => {
       baggage: { carry_on: true, checked: 1 },
       refundable: true,
       expiration: '2026-06-18T16:30:00Z',
+      airline_logo_url: 'https://logos.example/bahamasair.svg',
       offer_id: 'lite-offer-123',
       provider_offer_id: 'lite-offer-123',
     }
@@ -95,12 +221,32 @@ describe('RichCardRenderer direct actions', () => {
 
     expect(onAddToTrip).toHaveBeenCalledWith(card, 'trip-123')
     expect(onSendMessage).not.toHaveBeenCalled()
+    expect(screen.getByLabelText('Flight booking preview')).toBeInTheDocument()
+    expect(screen.getByAltText('Bahamasair logo')).toHaveAttribute('src', 'https://logos.example/bahamasair.svg')
+    expect(screen.getByAltText('Bahamasair logo')).toHaveClass('object-contain')
+    expect(screen.getByAltText('Bahamasair logo')).toHaveStyle({ width: '44px', height: 'auto' })
+    expect(screen.getByAltText('Bahamasair logo').className).not.toMatch(/border|rounded|bg-/)
     expect(screen.getByText('Main Cabin')).toBeInTheDocument()
     expect(screen.getByText('2 travelers')).toBeInTheDocument()
+    expect(screen.getByText('Total for 2')).toBeInTheDocument()
+    expect(screen.getByText('$173 each')).toBeInTheDocument()
     expect(screen.getByText('Non-stop')).toBeInTheDocument()
-    expect(screen.getAllByText('Carry-on included').length).toBeGreaterThan(0)
+    expect(screen.getByText('Carry-on + 1 checked')).toBeInTheDocument()
     expect(screen.getByText('Refundable')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Book this fare' })).toHaveAttribute('href', '/flights/lite-offer-123/book')
+    expect(screen.getByText(/Verify by Jun 18/i)).toBeInTheDocument()
+    const href = screen.getByRole('link', { name: 'Book this fare' }).getAttribute('href') ?? ''
+    const bookingUrl = new URL(href, 'https://bahabuddy.test')
+    expect(bookingUrl.pathname).toBe('/flights/lite-offer-123/book')
+    expect(bookingUrl.searchParams.get('route')).toBe('MIA → NAS')
+    expect(bookingUrl.searchParams.get('airline')).toBe('Bahamasair')
+    expect(bookingUrl.searchParams.get('departure')).toBe('10:00 AM')
+    expect(bookingUrl.searchParams.get('arrival')).toBe('11:00 AM')
+    expect(bookingUrl.searchParams.get('price')).toBe('345')
+    expect(bookingUrl.searchParams.get('currency')).toBe('USD')
+    expect(bookingUrl.searchParams.get('passengers')).toBe('2')
+    expect(bookingUrl.searchParams.get('fare')).toBe('Main Cabin')
+    expect(bookingUrl.searchParams.get('carryOn')).toBe('1')
+    expect(bookingUrl.searchParams.get('checkedBags')).toBe('1')
     expect(screen.queryByRole('button', { name: 'Plan this flight' })).not.toBeInTheDocument()
   })
 
@@ -122,6 +268,10 @@ describe('RichCardRenderer direct actions', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Plan this flight' }))
 
     expect(onSendMessage).toHaveBeenCalledWith('Help me save the Bahamasair option to my trip')
-    expect(screen.getByRole('link', { name: 'Book this fare' })).toHaveAttribute('href', '/flights/lite-offer-123/book')
+    const href = screen.getByRole('link', { name: 'Book this fare' }).getAttribute('href') ?? ''
+    const bookingUrl = new URL(href, 'https://bahabuddy.test')
+    expect(bookingUrl.pathname).toBe('/flights/lite-offer-123/book')
+    expect(bookingUrl.searchParams.get('route')).toBe('MIA → NAS')
+    expect(bookingUrl.searchParams.get('airline')).toBe('Bahamasair')
   })
 })

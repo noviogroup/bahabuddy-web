@@ -1,16 +1,13 @@
 'use client'
 
 /**
- * QuickActionsRow — 4 tappable tiles that open chat with a preloaded prompt.
+ * QuickActionsRow — 4 tappable tiles for direct dashboard actions.
  *
  * Mobile reference: lib/features/home/widgets/quick_actions_row.dart
  *
- * Each tile pushes /dashboard/chat?q=<encoded prompt>. The chat panel
- * picks up the ?q= param on mount and pre-fills the input.
- *
- * On wide layouts (xl with docked chat), this still navigates to the
- * standalone chat route — desktop users who clicked a tile clearly want
- * a focused chat experience. The docked panel doesn't read URL params.
+ * This component is not currently rendered by `/dashboard`; `HeroSearchPanel`
+ * replaced it as the primary action surface. Keep it direct-action safe so
+ * reintroducing it later does not regress concrete actions back into chat.
  */
 
 import Link from 'next/link'
@@ -19,7 +16,7 @@ import type { ReactNode } from 'react'
 interface QuickAction {
   key: string
   label: string
-  prompt: string
+  href: string
   icon: ReactNode
 }
 
@@ -49,10 +46,10 @@ const ICON_ACTIVITIES = (
 )
 
 const ACTIONS: QuickAction[] = [
-  { key: 'new-trip',  label: 'New Trip',     prompt: 'Help me plan a new trip',               icon: ICON_PLUS },
-  { key: 'flights',   label: 'Flights',      prompt: 'Help me find flights to the Bahamas',   icon: ICON_FLIGHT },
-  { key: 'hotels',    label: 'Hotels',       prompt: 'Show me hotels in the Bahamas',         icon: ICON_HOTEL },
-  { key: 'things',    label: 'Things to Do', prompt: 'What can I do in the Bahamas?',         icon: ICON_ACTIVITIES },
+  { key: 'new-trip',  label: 'New Trip',     href: '/dashboard/trips/new?source=quick_action', icon: ICON_PLUS },
+  { key: 'flights',   label: 'Flights',      href: '/flights?destination=NAS&tripType=round_trip&passengers=1&cabin=economy', icon: ICON_FLIGHT },
+  { key: 'hotels',    label: 'Hotels',       href: '/stays?sort=stars', icon: ICON_HOTEL },
+  { key: 'things',    label: 'Things to Do', href: '/explore/places?search=things+to+do&category=Activity', icon: ICON_ACTIVITIES },
 ]
 
 export default function QuickActionsRow() {
@@ -61,7 +58,7 @@ export default function QuickActionsRow() {
       {ACTIONS.map(a => (
         <Link
           key={a.key}
-          href={`/dashboard/chat?q=${encodeURIComponent(a.prompt)}`}
+          href={a.href}
           className="group flex flex-col items-center gap-2 py-4 md:py-5 px-2 bg-white rounded-baha-lg border border-brand-50 shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200"
         >
           <span className="w-11 h-11 rounded-full bg-brand-50 text-brand-600 group-hover:bg-brand-500 group-hover:text-white flex items-center justify-center transition-colors duration-200">

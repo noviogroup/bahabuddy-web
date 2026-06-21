@@ -28,6 +28,7 @@
  *     to inferring from `name` via the local slug map.
  */
 
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import { CardShell, ChipRow, Rating } from './shared'
 import type { Chip } from './shared'
 
@@ -154,6 +155,11 @@ const I = {
       <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
     </svg>
   ),
+  arrowRight: (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>
+    </svg>
+  ),
 }
 
 export function DestinationCard({ data, className }: Props) {
@@ -172,26 +178,37 @@ export function DestinationCard({ data, className }: Props) {
     <>
       {/* Hero \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
       <div className="relative h-32">
-        {photo_url ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={photo_url} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-teal-500 to-brand-600" aria-hidden="true" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" aria-hidden="true" />
+        <ImageWithSourcePolicy
+          src={photo_url}
+          alt={`${name} destination photo`}
+          title={name}
+          eyebrow="Destination"
+          description="Island details are available. Destination image is not available yet."
+          pendingLabel="Photo pending"
+          className="h-32"
+          imageClassName="object-cover"
+          sizes="420px"
+          tone="island"
+        >
+          {photo_url && (
+            <>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" aria-hidden="true" />
 
-        {(rating ?? 0) > 0 && (
-          <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-md px-1.5 py-0.5 shadow-sm">
-            <Rating rating={rating} size="sm" showCount={false} />
-          </div>
-        )}
+              {(rating ?? 0) > 0 && (
+                <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm rounded-md px-1.5 py-0.5 shadow-sm">
+                  <Rating rating={rating} size="sm" showCount={false} />
+                </div>
+              )}
 
-        <div className="absolute bottom-2 left-3 right-3">
-          <p className="text-white text-xl font-extrabold drop-shadow leading-tight">{name}</p>
-          {tagline && (
-            <p className="text-white/90 text-xs italic mt-0.5 drop-shadow line-clamp-1">{tagline}</p>
+              <div className="absolute bottom-2 left-3 right-3">
+                <p className="text-white text-xl font-extrabold drop-shadow leading-tight">{name}</p>
+                {tagline && (
+                  <p className="text-white/90 text-xs italic mt-0.5 drop-shadow line-clamp-1">{tagline}</p>
+                )}
+              </div>
+            </>
           )}
-        </div>
+        </ImageWithSourcePolicy>
       </div>
 
       {/* Body \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
@@ -229,6 +246,16 @@ export function DestinationCard({ data, className }: Props) {
             <span className="text-brand-600 font-bold text-base">${Math.round(price_from).toLocaleString()}</span>
           </div>
         )}
+
+        <div className={`${price_from > 0 ? '' : 'pt-2 border-t border-gray-100'} flex items-center justify-between gap-3`}>
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+            Island preview
+          </span>
+          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-brand-700">
+            {href ? 'View island guide' : 'Ask Buddy for details'}
+            {I.arrowRight}
+          </span>
+        </div>
       </div>
     </>
   )

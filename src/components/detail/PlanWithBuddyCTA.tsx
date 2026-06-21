@@ -1,40 +1,42 @@
 import Link from 'next/link'
+import { buddyChatHref } from '@/lib/buddy-chat'
 
 /**
- * PlanWithBuddyCTA — the shared "chat handoff" panel at the bottom of
- * every detail page (article, hotel, activity, restaurant).
+ * PlanWithBuddyCTA — the shared Buddy support panel at the bottom of
+ * detail pages.
  *
- * The detail page is the *content* layer; this CTA is the bridge back
- * into the *action* layer (chat). It carries two affordances:
+ * The detail page is the content layer; this CTA keeps Buddy available
+ * for contextual questions and planning advice. Concrete save, add, or
+ * booking actions belong on the detail page itself via direct controls.
  *
- *   1. "Ask Buddy about this" — opens chat with a question-style prompt
+ * It carries two conversational affordances:
+ *
+ *   1. "Ask Buddy about this" - opens chat with a question prompt
  *      so the user can dig deeper conversationally
- *   2. "Add to my trip" — opens chat with an itinerary-action prompt
- *      so the agent runs create_itinerary_item or builds a slot
+ *   2. A contextual planning prompt that asks Buddy to compare, fit,
+ *      or plan around the item without mutating a trip
  *
  * Copy varies by `kind`. Stay = hotels. Experience = activities &
  * articles. Meal = restaurants.
- *
- * Both buttons funnel into /dashboard/chat?q=... which is the existing
- * pre-filled chat entry point used elsewhere (Sidebar quick actions,
- * EmptySlotChatLink on trip pages).
  */
 
 export type CTAKind = 'stay' | 'experience' | 'meal'
 
 interface PlanWithBuddyCTAProps {
-  /** Prompt for the "Ask Buddy about this" primary CTA. */
+  /** Prompt for the "Ask Buddy about this" contextual CTA. */
   planPrompt: string
-  /** Prompt for the "Add to my trip" secondary CTA. */
+  /** Secondary Buddy planning prompt. It must not request direct save/add/book. */
   addPrompt: string
+  /** Optional secondary label when the action is planning, not direct save. */
+  secondaryLabel?: string
   /** Kind drives the copy tone. */
   kind: CTAKind
 }
 
-export function PlanWithBuddyCTA({ planPrompt, addPrompt, kind }: PlanWithBuddyCTAProps) {
+export function PlanWithBuddyCTA({ planPrompt, addPrompt, secondaryLabel = 'Plan around this', kind }: PlanWithBuddyCTAProps) {
   const headline =
     kind === 'stay'      ? 'Make it part of your trip'
-    : kind === 'meal'    ? 'Add it to your plan'
+    : kind === 'meal'    ? 'Fit it into your day'
     :                      'Plan this experience'
 
   const sub =
@@ -43,33 +45,45 @@ export function PlanWithBuddyCTA({ planPrompt, addPrompt, kind }: PlanWithBuddyC
     :                      "Buddy can build a half-day or full-day around it, with timing, transport, and what else fits nearby."
 
   return (
-    <section className="bg-gradient-to-br from-brand-500 to-brand-700 rounded-baha-lg p-6 sm:p-8 text-white">
-      <p className="text-xs font-bold uppercase tracking-widest text-brand-100 mb-2">
+    <section className="rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+      <p className="mb-2 text-xs font-extrabold uppercase tracking-widest text-gray-500">
         Plan with Buddy
       </p>
-      <h2 className="text-xl sm:text-2xl font-bold mb-3">
+      <h2 className="mb-3 text-xl font-extrabold text-night sm:text-2xl">
         {headline}
       </h2>
-      <p className="text-sm text-brand-100 mb-5 leading-relaxed max-w-lg">
+      <p className="mb-5 max-w-lg text-sm leading-relaxed text-charcoal">
         {sub}
       </p>
       <div className="flex flex-wrap gap-3">
         <Link
-          href={`/dashboard/chat?q=${encodeURIComponent(planPrompt)}`}
-          className="inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-brand-50 text-sm font-bold px-5 py-2.5 rounded-full transition-colors shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+          href={buddyChatHref(planPrompt)}
+          className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-5 py-2.5 text-sm font-extrabold text-brand-700 transition-colors hover:border-brand-600 hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2"
         >
+          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
           Ask Buddy about this
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
           </svg>
         </Link>
         <Link
-          href={`/dashboard/chat?q=${encodeURIComponent(addPrompt)}`}
-          className="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors border border-white/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600"
+          href={buddyChatHref(toBuddyPlanningPrompt(addPrompt))}
+          className="inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2"
         >
-          Add to my trip
+          {secondaryLabel}
         </Link>
       </div>
     </section>
   )
+}
+
+function toBuddyPlanningPrompt(prompt: string): string {
+  const clean = prompt.trim()
+  const withoutMutationVerb = clean
+    .replace(/^(add|save)\s+/i, 'Help me plan around ')
+    .replace(/^book\s+/i, 'Help me understand booking options for ')
+    .replace(/\s+to my(?: Bahamas)?(?: trip| dining)? plan\.?$/i, '')
+    .replace(/\s+to my(?: Bahamas)? trip\.?$/i, '')
+
+  return withoutMutationVerb || clean
 }

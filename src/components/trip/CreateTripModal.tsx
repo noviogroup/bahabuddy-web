@@ -6,7 +6,7 @@
  * Three fields, one screen:
  *   - Destination: 10 mobile-canonical islands shown as photo tiles
  *   - Timing:      Flexible toggle + optional start/end date pickers
- *   - Preferences: freeform text seeded into the first chat message
+ *   - Preferences: freeform text saved as planning context
  *
  * Imagery-first design (per Valdez's emphasis):
  *   - Left rail is a full-bleed real Bahamas photo, not a cartoon.
@@ -14,9 +14,9 @@
  *   - Each destination tile is a real photo thumbnail + name overlay.
  *     Hover state lifts and brightens.
  *
- * On submit: server action inserts a draft trip row + returns its id
- * plus a seeded chat query. We then push to /dashboard/chat?trip=<id>&q=<seed>
- * so Buddy picks up the conversation already grounded in the trip.
+ * On submit: server action inserts a draft trip row and returns its id.
+ * We then open the canonical trip detail page. Buddy stays available as
+ * a secondary planning workspace instead of being the default route.
  *
  * Accessibility: focus is trapped via dialog/aria-modal pattern; ESC
  * closes; the first input gets focus on open.
@@ -128,12 +128,9 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
         return
       }
 
-      // Close modal optimistically then push to chat with the trip context.
+      // Close modal optimistically then open the canonical trip record.
       onClose()
-      const params = new URLSearchParams()
-      params.set('trip', result.tripId)
-      if (result.seedQuery) params.set('q', result.seedQuery)
-      router.push(`/dashboard/chat?${params.toString()}`)
+      router.push(`/trip/${encodeURIComponent(result.tripId)}`)
     } catch (e) {
       console.error('[CreateTripModal] submit failed', e)
       setError('Network hiccup. Mind trying that again?')
@@ -203,7 +200,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
         {/* Form rail */}
         <div className="flex-1 min-w-0 overflow-y-auto p-6">
           <h2 id={titleId} className="text-2xl font-extrabold text-night">Where to?</h2>
-          <p className="text-sm text-gray-500 mt-1">Pick a destination — Buddy handles the rest.</p>
+          <p className="text-sm text-gray-500 mt-1">Create the trip first, then add stays, flights, food, and tours directly.</p>
 
           {/* Destination */}
           <fieldset className="mt-5">
@@ -219,7 +216,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
                     aria-pressed={isActive}
                     className={`relative h-20 rounded-baha-md overflow-hidden border-2 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 ${
                       isActive
-                        ? 'border-brand-500 shadow-card scale-[1.02]'
+                        ? 'border-brand-600 shadow-card scale-[1.02]'
                         : 'border-transparent hover:scale-[1.02] hover:shadow-card'
                     }`}
                   >
@@ -236,7 +233,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
                       {island.name}
                     </span>
                     {isActive && (
-                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-brand-500 text-white flex items-center justify-center shadow">
+                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-gold-400 text-night flex items-center justify-center shadow">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
@@ -258,8 +255,8 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
                 aria-pressed={timing === 'flexible'}
                 className={`flex-1 px-4 py-2.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 ${
                   timing === 'flexible'
-                    ? 'bg-night text-white border-night'
-                    : 'bg-white text-night border-gray-300 hover:border-night'
+                    ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                    : 'border-gray-300 bg-white text-night hover:border-gray-400 hover:bg-gray-50'
                 }`}
               >
                 Flexible
@@ -270,8 +267,8 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
                 aria-pressed={timing === 'dates'}
                 className={`flex-1 px-4 py-2.5 rounded-full border text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 ${
                   timing === 'dates'
-                    ? 'bg-night text-white border-night'
-                    : 'bg-white text-night border-gray-300 hover:border-night'
+                    ? 'border-brand-600 bg-brand-600 text-white shadow-sm'
+                    : 'border-gray-300 bg-white text-night hover:border-gray-400 hover:bg-gray-50'
                 }`}
               >
                 Select dates
@@ -301,9 +298,9 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
               id={prefsId}
               value={preferences}
               onChange={(e) => setPreferences(e.target.value.slice(0, MAX_PREFS))}
-              placeholder="Travel companions, budget, must-dos, dietary needs, vibe — anything that helps Buddy."
+              placeholder="Travel companions, budget, must-dos, dietary needs, pace, or notes for the trip."
               rows={3}
-              className="w-full bg-gray-50 border border-gray-300 rounded-baha-md px-3 py-2.5 text-sm text-night placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-500 focus:bg-white leading-relaxed"
+              className="w-full bg-gray-50 border border-gray-300 rounded-baha-md px-3 py-2.5 text-sm text-night placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-200 focus:border-brand-600 focus:bg-white leading-relaxed"
             />
             <p className="text-xs text-gray-400 text-right mt-1">{preferences.length}/{MAX_PREFS} characters</p>
           </fieldset>
@@ -322,7 +319,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="mt-5 w-full bg-brand-500 hover:bg-brand-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-full transition-colors shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 flex items-center justify-center gap-2"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {submitting ? (
               <>
@@ -331,14 +328,17 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
                   <span className="w-1.5 h-1.5 bg-white rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '150ms' }} />
                   <span className="w-1.5 h-1.5 bg-white rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '300ms' }} />
                 </span>
-                Creating your trip…
+                Creating your trip...
               </>
             ) : (
-              'Start planning'
+              <>
+                <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+                Create trip
+              </>
             )}
           </button>
           <p className="text-xs text-gray-400 text-center mt-2">
-            Buddy will take it from here.
+            You can ask Buddy for help after the trip record is ready.
           </p>
         </div>
       </div>

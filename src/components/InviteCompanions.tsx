@@ -113,7 +113,7 @@ export default function InviteCompanions({ tripId }: Props) {
 
           {revoked && (
             <div className="text-sm text-green-600 mb-2" role="status" aria-live="polite">
-              ✓ Invite link revoked.
+              Invite link revoked.
             </div>
           )}
 

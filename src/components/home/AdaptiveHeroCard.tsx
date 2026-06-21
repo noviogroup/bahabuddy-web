@@ -87,10 +87,10 @@ export default function AdaptiveHeroCard({ trips }: AdaptiveHeroCardProps) {
       height="h-64 md:h-72"
       badge={`THIS ${currentMonth().toUpperCase()}`}
       badgeColor="gold"
-      title="Your perfect Bahamas trip starts with a chat"
-      subtitle="Tell Buddy what you're thinking — a vibe, a dream, a rough idea — and watch your plan come together."
-      ctaLabel="Start with Buddy"
-      href="/dashboard/chat"
+      title="Start with a Bahamas trip record"
+      subtitle="Choose an island, save the trip, then add stays, flights, restaurants, tours, and Buddy help when it adds value."
+      ctaLabel="Create trip"
+      href="/dashboard/trips/new?source=dashboard_hero"
       overlay="bottom"
     />
   )

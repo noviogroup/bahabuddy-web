@@ -80,6 +80,14 @@ export default function TripCard({ trip }: TripCardProps) {
                 : 'bg-gradient-to-br from-brand-400 to-brand-600'
             }`}
           >
+            <div className="px-6 text-center text-white">
+              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/75">
+                Trip image pending
+              </p>
+              <p className="mt-1 text-lg font-extrabold leading-tight">
+                {trip.islands?.[0] ?? 'Bahamas trip'}
+              </p>
+            </div>
           </div>
         )}
 

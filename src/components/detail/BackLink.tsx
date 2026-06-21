@@ -4,10 +4,9 @@ import Link from 'next/link'
  * BackLink — the small "← Back to …" link rendered at the top of every
  * detail page. Centralized so the visual treatment stays consistent.
  *
- * Detail pages choose where back goes:
- *   - hotels/activities/restaurants → /dashboard/chat (cards live in chat)
- *   - articles → /explore (cards live in the Explore grid)
- *   - destinations → /explore (or marketing /explore/places parent)
+ * Detail pages choose where back goes based on the user's browsing
+ * context. Marketplace and Explore details should return to direct
+ * inventory surfaces; chat remains a secondary planning affordance.
  */
 export function BackLink({ href, label }: { href: string; label: string }) {
   return (

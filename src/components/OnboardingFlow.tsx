@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import TravelSearchCombobox from '@/components/marketplace/TravelSearchCombobox'
+import { ORIGIN_AIRPORT_OPTIONS, resolveAirportCode } from '@/lib/airports'
 
 // ─── Step data ───────────────────────────────────────────────────────────────
 
@@ -68,7 +70,9 @@ export default function OnboardingFlow({ userId, defaultName }: Props) {
       if (name.trim()) updates.display_name = name.trim()
       if (interests.length > 0) updates.interest_tags = interests
       if (partyType) updates.party_type = partyType
-      if (homeAirport.trim()) updates.home_airport = homeAirport.trim().toUpperCase()
+      if (homeAirport.trim()) {
+        updates.home_airport = resolveAirportCode(homeAirport) ?? homeAirport.trim().toUpperCase()
+      }
 
       const { error: dbError } = await supabase
         .from('users')
@@ -198,7 +202,11 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
               <span className={`text-sm font-semibold ${selected ? 'text-brand-700' : 'text-gray-700'}`}>
                 {item.label}
               </span>
-              {selected && <span className="ml-auto text-brand-500 text-sm">✓</span>}
+              {selected && (
+                <svg className="ml-auto h-4 w-4 text-brand-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m5 13 4 4L19 7" />
+                </svg>
+              )}
             </button>
           )
         })}
@@ -265,18 +273,23 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
 
       {/* Home airport */}
       <div className="mb-8">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">
+        <label htmlFor="home-airport" className="block text-sm font-semibold text-gray-700 mb-2">
           Home airport <span className="text-gray-400 font-normal">(optional)</span>
         </label>
-        <input
-          type="text"
+        <TravelSearchCombobox
+          id="home-airport"
+          name="home_airport"
           value={homeAirport}
-          onChange={(e) => onHomeAirport(e.target.value.toUpperCase().slice(0, 3))}
-          placeholder="e.g. MIA"
-          maxLength={3}
-          className="w-full px-4 py-3.5 rounded-xl border border-gray-200 text-base font-mono tracking-widest focus:outline-none focus:ring-2 focus:ring-brand-400 transition-colors"
+          onChange={onHomeAirport}
+          options={ORIGIN_AIRPORT_OPTIONS}
+          ariaLabel="Home airport"
+          allowCustomValue
+          placeholder="Miami, Atlanta, Toronto"
+          emptyLabel="Type a city, airport, or 3-letter code"
+          helperText="Search by city, airport, or code"
+          customOptionLabel={(query) => `Use "${query}" as home airport`}
         />
-        <p className="text-xs text-gray-400 mt-1.5">3-letter IATA airport code — helps us find the best flights to the Bahamas.</p>
+        <p className="text-xs text-gray-400 mt-1.5">Search by city or airport. Baha Buddy saves the closest flight code for live Bahamas fare previews.</p>
       </div>
 
       {error && (

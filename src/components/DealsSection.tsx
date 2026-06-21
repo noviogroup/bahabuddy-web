@@ -1,7 +1,8 @@
-import Image from 'next/image'
 import Link from 'next/link'
 import StoreBadgeLinks from '@/components/StoreBadgeLinks'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import { BahaImages } from '@/lib/baha-images'
+import { dealActionLinks, dealIslandLabel } from '@/lib/deal-actions'
 
 interface Deal {
   id: string
@@ -130,7 +131,8 @@ interface Props {
 }
 
 export default function DealsSection({ deals }: Props) {
-  const items = deals.length > 0 ? deals : FALLBACK_DEALS
+  const usingFallbackDeals = deals.length === 0
+  const items = usingFallbackDeals ? FALLBACK_DEALS : deals
 
   return (
     <section className="py-24 bg-white">
@@ -154,29 +156,31 @@ export default function DealsSection({ deals }: Props) {
               label: deal.deal_type,
               color: 'bg-gray-100 text-gray-600',
             }
-            const imageUrl = dealImageUrl(deal)
+            const imageUrl = usingFallbackDeals ? dealImageUrl(deal) : deal.image_url
+            const action = dealActionLinks(deal)
+            const islandLabel = dealIslandLabel(deal.island)
 
             return (
               <div
                 key={deal.id}
                 className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group flex flex-col"
               >
-                {/* Image */}
-                <div className="relative h-48 overflow-hidden bg-stone-200">
-                  <Image
-                    src={imageUrl}
-                    alt={deal.image_url ? deal.title : `${deal.title} Bahamas travel deal`}
-                    fill
-                    loading="eager"
-                    unoptimized
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 640px) 100vw, 50vw"
-                  />
-
+                <ImageWithSourcePolicy
+                  src={imageUrl}
+                  alt={deal.title}
+                  title={deal.title}
+                  eyebrow={typeConfig.label}
+                  description="Deal details are available. Provider image is not available yet."
+                  className="h-48"
+                  imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
+                  sizes="(max-width: 640px) 100vw, 50vw"
+                  priority={usingFallbackDeals}
+                  tone="deal"
+                >
                   <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${typeConfig.color}`}>
                     {typeConfig.label}
                   </div>
-                </div>
+                </ImageWithSourcePolicy>
 
                 <div className="p-6 flex flex-col flex-1">
                   <div className="flex items-start justify-between gap-3 mb-2">
@@ -192,6 +196,10 @@ export default function DealsSection({ deals }: Props) {
                     <p className="text-xs text-gray-400 mb-2 font-medium">{deal.resort_name}</p>
                   )}
 
+                  <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.14em] text-brand-700">
+                    {islandLabel || action.contextLabel}
+                  </p>
+
                   <p className="text-sm text-gray-500 leading-relaxed mb-3 flex-1">
                     {deal.description}
                   </p>
@@ -203,7 +211,7 @@ export default function DealsSection({ deals }: Props) {
                           key={h}
                           className="text-xs bg-brand-50 text-brand-700 rounded-full px-3 py-0.5 font-medium"
                         >
-                          ✓ {h}
+                          {h}
                         </span>
                       ))}
                     </div>
@@ -215,12 +223,20 @@ export default function DealsSection({ deals }: Props) {
                         Expires {new Date(deal.valid_through).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </span>
                     )}
-                    <Link
-                      href={`/dashboard?q=${encodeURIComponent(`I'd like to book: ${deal.title}`)}`}
-                      className="ml-auto text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
-                    >
-                      Book Now →
-                    </Link>
+                    <div className="ml-auto flex flex-wrap justify-end gap-2">
+                      <Link
+                        href={action.primaryHref}
+                        className="text-xs font-extrabold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+                      >
+                        {action.primaryLabel}
+                      </Link>
+                      <Link
+                        href={action.secondaryHref}
+                        className="text-xs font-extrabold border border-brand-200 bg-white text-brand-700 hover:bg-brand-50 rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+                      >
+                        Ask Buddy
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>

@@ -39,9 +39,9 @@ function cn(...parts: Array<string | false | null | undefined>): string {
 function ThinkingDots() {
   return (
     <div className="absolute -top-1 -right-1 flex items-center gap-0.5 bg-white rounded-full px-1.5 py-1 shadow-card">
-      <span className="w-1 h-1 bg-brand-500 rounded-full animate-buddy-think" style={{ animationDelay: '0ms' }} />
-      <span className="w-1 h-1 bg-brand-500 rounded-full animate-buddy-think" style={{ animationDelay: '150ms' }} />
-      <span className="w-1 h-1 bg-brand-500 rounded-full animate-buddy-think" style={{ animationDelay: '300ms' }} />
+      <span className="w-1 h-1 bg-gray-500 rounded-full animate-buddy-think" style={{ animationDelay: '0ms' }} />
+      <span className="w-1 h-1 bg-gray-500 rounded-full animate-buddy-think" style={{ animationDelay: '150ms' }} />
+      <span className="w-1 h-1 bg-gray-500 rounded-full animate-buddy-think" style={{ animationDelay: '300ms' }} />
     </div>
   )
 }
@@ -66,11 +66,11 @@ export default function BuddyAvatar({
 
   const ringClass: Record<State, string> = {
     idle:        '',
-    listening:   'ring-2 ring-brand-300 ring-offset-2 ring-offset-white',
+    listening:   'ring-2 ring-gray-300 ring-offset-2 ring-offset-white',
     thinking:    '',
     excited:     '',
     presenting:  '',
-    celebrating: 'ring-2 ring-gold-400 ring-offset-2 ring-offset-white',
+    celebrating: 'ring-2 ring-gray-400 ring-offset-2 ring-offset-white',
     greeting:    '',
   }
 
@@ -86,7 +86,7 @@ export default function BuddyAvatar({
     >
       <div
         className={cn(
-          'rounded-full overflow-hidden bg-brand-50 transition-all duration-300',
+          'rounded-full overflow-hidden bg-gray-50 transition-all duration-300',
           stateClass[state],
           ringClass[state],
         )}

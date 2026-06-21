@@ -40,11 +40,11 @@ interface CheckoutFormProps {
 const STRIPE_APPEARANCE: Appearance = {
   theme: 'stripe',
   variables: {
-    colorPrimary: '#2E78D2', // brand.500
+    colorPrimary: '#156FD1',
     colorBackground: '#ffffff',
-    colorText: '#1F2937',
-    colorDanger: '#E8734A', // coral.500
-    fontFamily: 'Plus Jakarta Sans, system-ui, -apple-system, sans-serif',
+    colorText: '#0B2545',
+    colorDanger: '#FF7A59',
+    fontFamily: 'Figtree, system-ui, -apple-system, sans-serif',
     spacingUnit: '4px',
     borderRadius: '12px',
   },
@@ -54,8 +54,8 @@ const STRIPE_APPEARANCE: Appearance = {
       boxShadow: 'none',
     },
     '.Input:focus': {
-      border: '1px solid #2E78D2',
-      boxShadow: '0 0 0 2px rgba(46, 120, 210, 0.2)',
+      border: '1px solid #156FD1',
+      boxShadow: '0 0 0 2px rgba(21, 111, 209, 0.2)',
     },
   },
 }
@@ -156,7 +156,7 @@ function InnerForm({
       <button
         type="submit"
         disabled={!stripe || !elements || isProcessing}
-        className="w-full inline-flex items-center justify-center gap-2 bg-brand-500 hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-full transition-colors shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+        className="w-full inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 px-6 rounded-full transition-colors shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300 focus-visible:ring-offset-2"
       >
         {isProcessing ? (
           <>
@@ -168,6 +168,7 @@ function InnerForm({
           </>
         ) : (
           <>
+            <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
             Pay {formattedAmount}
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M5 12h14M13 5l7 7-7 7" />

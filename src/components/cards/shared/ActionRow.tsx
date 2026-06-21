@@ -40,7 +40,7 @@ interface Props {
 
 const TONE_CLASSES: Record<NonNullable<Action['tone']>, string> = {
   neutral: 'border-gray-200 text-gray-700 hover:bg-gray-50',
-  brand:   'border-brand-200 text-brand-700 hover:bg-brand-50',
+  brand:   'border-gray-200 text-night hover:bg-gray-50',
   palm:    'border-palm-200 text-palm-700 hover:bg-palm-50',
   coral:   'border-coral-200 text-coral-700 hover:bg-coral-50',
 }

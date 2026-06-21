@@ -1,3 +1,10 @@
+import {
+  TravelSearchField,
+  TravelSearchInput,
+  TravelSearchSelect,
+  TravelSearchTextarea,
+} from '@/components/marketplace/TravelSearchFields'
+
 const leadTypes = [
   'Bahamas visitor visa support',
   'Travel document checklist',
@@ -26,32 +33,27 @@ export default function TravelDocumentLeadForm() {
       </p>
 
       <div className="grid sm:grid-cols-2 gap-4">
-        <label className="block">
-          <span className="text-sm font-semibold text-white">Name *</span>
-          <input name="name" required className="mt-2 w-full rounded-baha-md border border-white/20 bg-white px-4 py-3 text-sm text-night outline-none focus:border-gold-400" />
-        </label>
-        <label className="block">
-          <span className="text-sm font-semibold text-white">Email *</span>
-          <input name="email" type="email" required className="mt-2 w-full rounded-baha-md border border-white/20 bg-white px-4 py-3 text-sm text-night outline-none focus:border-gold-400" />
-        </label>
-        <label className="block">
-          <span className="text-sm font-semibold text-white">Nationality</span>
-          <input name="nationality" className="mt-2 w-full rounded-baha-md border border-white/20 bg-white px-4 py-3 text-sm text-night outline-none focus:border-gold-400" />
-        </label>
-        <label className="block">
-          <span className="text-sm font-semibold text-white">Lead type</span>
-          <select name="lead_type" className="mt-2 w-full rounded-baha-md border border-white/20 bg-white px-4 py-3 text-sm text-night outline-none focus:border-gold-400">
+        <TravelSearchField label="Name" hint="Required" htmlFor="document-lead-name" className="bg-white">
+          <TravelSearchInput id="document-lead-name" name="name" required />
+        </TravelSearchField>
+        <TravelSearchField label="Email" hint="Required" htmlFor="document-lead-email" className="bg-white">
+          <TravelSearchInput id="document-lead-email" name="email" type="email" required />
+        </TravelSearchField>
+        <TravelSearchField label="Nationality" htmlFor="document-lead-nationality" className="bg-white">
+          <TravelSearchInput id="document-lead-nationality" name="nationality" />
+        </TravelSearchField>
+        <TravelSearchField label="Lead type" htmlFor="document-lead-type" className="bg-white">
+          <TravelSearchSelect id="document-lead-type" name="lead_type">
             {leadTypes.map((type) => (
               <option key={type} value={type}>{type}</option>
             ))}
-          </select>
-        </label>
+          </TravelSearchSelect>
+        </TravelSearchField>
       </div>
 
-      <label className="block">
-        <span className="text-sm font-semibold text-white">Notes</span>
-        <textarea name="notes" rows={3} className="mt-2 w-full rounded-baha-md border border-white/20 bg-white px-4 py-3 text-sm text-night outline-none focus:border-gold-400" />
-      </label>
+      <TravelSearchField label="Notes" htmlFor="document-lead-notes" className="bg-white">
+        <TravelSearchTextarea id="document-lead-notes" name="notes" rows={3} className="min-h-24" />
+      </TravelSearchField>
 
       <button type="submit" className="w-full rounded-full bg-gold-400 px-6 py-3 text-night font-extrabold hover:bg-gold-300 transition-colors">
         Submit travel-document request

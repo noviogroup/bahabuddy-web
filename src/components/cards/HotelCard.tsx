@@ -12,16 +12,16 @@
  *   - 'compact'  : Default for chat. Wraps an expandable button-shell. The
  *                  user taps anywhere on the card body to reveal a gallery
  *                  strip, the full amenities list, an action row (Call /
- *                  Website / Directions / Save), the full review text, and
- *                  a "View full details" link that goes to /hotels/[id].
+ *                  Website / Directions / Add to trip), the full review text,
+ *                  and a detail link that goes to /stays/[id].
  *
- *   - 'default'  : For list pages (/hotels). Whole card is a Link to the
+ *   - 'default'  : For list pages (/stays). Whole card is a Link to the
  *                  detail page. No expand state — the destination IS the
  *                  detail page.
  *
  *   - 'detail'   : For embedding inside the detail page itself. No link,
  *                  always-expanded layout. Used in trip summaries and the
- *                  /hotels/[id] header.
+ *                  /stays/[id] header.
  *
  * Decision-supporting elements (above the fold, always visible):
  *   - Hero photo with rating chip + photo count
@@ -86,8 +86,7 @@ export interface HotelCardData {
 interface Props {
   data: HotelCardData
   size?: 'compact' | 'default' | 'detail'
-  /** Called when the user taps the Save heart. Caller decides how to handle
-   *  the save (send chat message in chat surface, call API on list pages). */
+  /** Called when the user taps Add to trip. Caller owns auth/trip context. */
   onSave?: (data: HotelCardData) => void
   className?: string
 }
@@ -165,7 +164,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
     iconOnly: true,
   })
   if (onSave) actions.push({
-    label: 'Save', icon: I.heart, onClick: () => onSave(data), iconOnly: true, tone: 'coral',
+    label: 'Add to trip', icon: I.heart, onClick: () => onSave(data), iconOnly: false, tone: 'coral',
   })
 
   // ─── Card body content (shared between sizes) ──────────────────────────
@@ -177,8 +176,8 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
   ) : null
 
   const starsRow = stars && stars > 0 ? (
-    <span className="text-gold-500 text-xs leading-none" aria-label={`${stars} star hotel`}>
-      {'★'.repeat(stars)}
+    <span className="text-charcoal text-xs font-extrabold leading-none">
+      {stars}-star hotel
     </span>
   ) : null
 
@@ -238,6 +237,37 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
           />
         )}
 
+        {!expanded && size === 'compact' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
+              Tap for photos &amp; reviews {I.chevron}
+            </span>
+            <div className="flex flex-wrap justify-end gap-2">
+              {detailHref && (
+                <Link
+                  href={detailHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex h-8 items-center rounded-full border border-gray-300 bg-white px-3 text-[11px] font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                >
+                  View stay
+                </Link>
+              )}
+              {onSave && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSave(data)
+                  }}
+                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-[11px] font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+                >
+                  Add to trip
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Expanded-only block: full address + actions + detail link */}
         {expanded && (
           <div className="space-y-2.5 pt-1">
@@ -254,7 +284,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
               <Link
                 href={detailHref}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-brand-600 hover:text-brand-700"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-night hover:text-gray-700"
               >
                 View full details {I.arrowRight}
               </Link>
@@ -262,14 +292,6 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
           </div>
         )}
 
-        {/* Collapsed-state hint affordance */}
-        {!expanded && size === 'compact' && (
-          <div className="flex items-center justify-end pt-0.5">
-            <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 font-medium">
-              Tap for photos &amp; reviews {I.chevron}
-            </span>
-          </div>
-        )}
       </div>
     </>
   )

@@ -39,6 +39,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CardData } from '@/components/RichCards'
 import { resolveAirlineLogoUrl } from '@/lib/airline-logos'
 import { callTravelProvider } from '@/lib/travel-booking/provider'
+import { fetchIslandWeather, WeatherProviderError } from '@/lib/weather'
 
 // ──────────────────────────────────────────────────────────────────────────
 // TOOL DEFINITIONS (sent to Claude)
@@ -359,19 +360,6 @@ export function isQualityRestaurantCandidate(place: Record<string, unknown>): bo
   return hasRestaurantPhoto(place)
 }
 
-const ISLAND_COORDS: Record<string, { lat: number; lng: number }> = {
-  'nassau':          { lat: 25.0343, lng: -77.3963 },
-  'paradise-island': { lat: 25.0862, lng: -77.3206 },
-  'exuma':           { lat: 23.6282, lng: -75.7689 },
-  'eleuthera':       { lat: 25.1397, lng: -76.1495 },
-  'harbour-island':  { lat: 25.5014, lng: -76.6341 },
-  'andros':          { lat: 24.7083, lng: -77.7753 },
-  'grand-bahama':    { lat: 26.6287, lng: -78.3508 },
-  'bimini':          { lat: 25.7267, lng: -79.2662 },
-  'long-island':     { lat: 23.1500, lng: -75.0833 },
-  'abacos':          { lat: 26.3500, lng: -77.1500 },
-}
-
 const ISLAND_INFO: Record<string, Record<string, unknown>> = {
   'nassau': {
     name: 'Nassau (New Providence)',
@@ -512,20 +500,27 @@ const ISLAND_PHOTOS: Record<string, string> = {
 }
 
 const CITY_TO_IATA: Record<string, string> = {
-  'miami': 'MIA', 'fort lauderdale': 'FLL', 'new york': 'JFK', 'jfk': 'JFK',
+  'miami': 'MIA', 'fort lauderdale': 'FLL', 'west palm beach': 'PBI',
+  'palm beach': 'PBI', 'new york': 'JFK', 'jfk': 'JFK',
   'newark': 'EWR', 'laguardia': 'LGA', 'atlanta': 'ATL', 'charlotte': 'CLT',
-  'dallas': 'DFW', 'houston': 'IAH', 'chicago': 'ORD', 'los angeles': 'LAX',
+  'raleigh': 'RDU', 'raleigh durham': 'RDU', 'baltimore': 'BWI',
+  'nashville': 'BNA', 'dallas': 'DFW', 'houston': 'IAH',
+  'houston hobby': 'HOU', 'chicago': 'ORD', 'los angeles': 'LAX',
   'san francisco': 'SFO', 'boston': 'BOS', 'philadelphia': 'PHL',
   'washington': 'IAD', 'dc': 'IAD', 'orlando': 'MCO', 'tampa': 'TPA',
-  'detroit': 'DTW', 'denver': 'DEN', 'seattle': 'SEA', 'toronto': 'YYZ',
-  'london': 'LHR', 'nassau': 'NAS', 'freeport': 'FPO',
+  'jacksonville': 'JAX', 'fort myers': 'RSW', 'new orleans': 'MSY',
+  'detroit': 'DTW', 'denver': 'DEN', 'seattle': 'SEA',
+  'minneapolis': 'MSP', 'phoenix': 'PHX', 'las vegas': 'LAS',
+  'san diego': 'SAN', 'portland': 'PDX', 'toronto': 'YYZ',
+  'montreal': 'YUL', 'vancouver': 'YVR', 'london': 'LHR',
+  'nassau': 'NAS', 'freeport': 'FPO',
 }
 
 function resolveAirportCode(input: string): string | null {
   if (!input) return null
   const clean = input.trim()
   if (/^[A-Z]{3}$/i.test(clean)) return clean.toUpperCase()
-  const lower = clean.toLowerCase()
+  const lower = normalizeAirportLookup(clean)
   if (CITY_TO_IATA[lower]) return CITY_TO_IATA[lower]
   for (const [city, code] of Object.entries(CITY_TO_IATA)) {
     if (lower.includes(city) || city.includes(lower)) return code
@@ -533,12 +528,15 @@ function resolveAirportCode(input: string): string | null {
   return null
 }
 
-const WEATHER_CODES: Record<number, string> = {
-  0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
-  45: 'Foggy', 48: 'Foggy', 51: 'Light drizzle', 53: 'Moderate drizzle',
-  55: 'Dense drizzle', 61: 'Slight rain', 63: 'Moderate rain', 65: 'Heavy rain',
-  80: 'Slight showers', 81: 'Moderate showers', 82: 'Violent showers',
-  95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Thunderstorm with heavy hail',
+function normalizeAirportLookup(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[’']/g, '')
+    .replace(/[-/]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1026,7 +1024,7 @@ function shapeLiteApiFlightCards(response: unknown): CardData[] {
           card_type: 'flight',
           offer_id: offerId,
           provider_offer_id: offerId,
-          route: `${liteTextValue(first.originCode)} → ${liteTextValue(last.destinationCode)}`,
+          route: `${liteTextValue(first.originCode)} to ${liteTextValue(last.destinationCode)}`,
           airline: airlineName,
           airline_code: airlineCode,
           airline_logo_url: resolveAirlineLogoUrl({
@@ -1148,34 +1146,31 @@ async function createItineraryItem(
 }
 
 async function getWeather(islandId: string): Promise<ToolResult> {
-  const coords = ISLAND_COORDS[islandId]
-  if (!coords) return { data: { error: `Unknown island: ${islandId}` } }
-
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${coords.lat}&longitude=${coords.lng}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_probability_max,weather_code&timezone=America/Nassau&forecast_days=7&temperature_unit=fahrenheit`
-    const response = await fetch(url, { cache: 'no-store' })
-    if (!response.ok) return { data: { error: 'Weather service unavailable' } }
-    const data = await response.json()
+    const weather = await fetchIslandWeather(islandId, { fallbackToNassau: false })
 
     return {
       data: {
-        island: islandId,
+        island: weather.islandId,
         current: {
-          temperature_f: data.current?.temperature_2m,
-          humidity: data.current?.relative_humidity_2m,
-          wind_speed_mph: data.current?.wind_speed_10m,
-          condition: WEATHER_CODES[data.current?.weather_code as number] ?? 'Unknown',
+          temperature_f: weather.tempF,
+          humidity: weather.humidity,
+          wind_speed_mph: weather.windMph,
+          condition: weather.condition,
         },
-        forecast: (data.daily?.time as string[] | undefined)?.map((date, i) => ({
-          date,
-          high_f: data.daily.temperature_2m_max[i],
-          low_f: data.daily.temperature_2m_min[i],
-          rain_chance: data.daily.precipitation_probability_max[i],
-          condition: WEATHER_CODES[data.daily.weather_code[i] as number] ?? 'Unknown',
+        forecast: weather.forecast.map((day) => ({
+          date: day.date,
+          high_f: day.highF,
+          low_f: day.lowF,
+          rain_chance: day.rainChance,
+          condition: day.condition,
         })),
       },
     }
   } catch (err) {
+    if (err instanceof WeatherProviderError && err.status === 400) {
+      return { data: { error: err.message } }
+    }
     return { data: { error: `Weather fetch failed: ${String(err)}` } }
   }
 }

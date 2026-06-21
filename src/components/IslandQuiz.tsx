@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { BahaImages } from '@/lib/baha-images'
+import { buddyChatHref } from '@/lib/buddy-chat'
 
 // ─── Data ────────────────────────────────────────────────────────────────────
 
@@ -23,6 +24,7 @@ interface IslandResult {
   traits: string[]
   image: string
   chatPrompt: string
+  islandSlug: string
 }
 
 const QUESTIONS: QuizQuestion[] = [
@@ -81,6 +83,7 @@ const ISLAND_RESULTS: Record<string, IslandResult> = {
     traits: ['Nightlife lover', 'Foodie', 'Culture seeker', 'Social'],
     image: BahaImages.nassau,
     chatPrompt: 'Plan me a trip to Nassau in the Bahamas based on my quiz results! I love energy, nightlife, and culture.',
+    islandSlug: 'nassau-paradise-island',
   },
   Exuma: {
     personality: 'The Adventure Seeker',
@@ -89,6 +92,7 @@ const ISLAND_RESULTS: Record<string, IslandResult> = {
     traits: ['Thrill chaser', 'Photographer', 'Spontaneous', 'Nature lover'],
     image: BahaImages.exumas,
     chatPrompt: 'Plan me a trip to Exuma in the Bahamas! I love adventure, wildlife, and unique experiences.',
+    islandSlug: 'the-exumas',
   },
   'Harbour Island': {
     personality: 'The Romantic Soul',
@@ -97,6 +101,7 @@ const ISLAND_RESULTS: Record<string, IslandResult> = {
     traits: ['Romantic', 'Aesthetic', 'Relaxed', 'Luxury-minded'],
     image: BahaImages.bahamasLifestyle,
     chatPrompt: 'Plan me a romantic trip to Harbour Island in the Bahamas! I love pink sand, elegance, and peaceful vibes.',
+    islandSlug: 'harbour-island',
   },
   'Long Island': {
     personality: 'The Hidden Gem Hunter',
@@ -105,6 +110,7 @@ const ISLAND_RESULTS: Record<string, IslandResult> = {
     traits: ['Independent', 'Curious', 'Budget-savvy', 'Off the grid'],
     image: BahaImages.eleuthera,
     chatPrompt: "Plan me a trip to Long Island in the Bahamas! I love hidden gems, diving, and getting off the beaten path.",
+    islandSlug: 'long-island',
   },
   Andros: {
     personality: 'The Deep Explorer',
@@ -113,6 +119,7 @@ const ISLAND_RESULTS: Record<string, IslandResult> = {
     traits: ['Diver', 'Eco-conscious', 'Adventurous', 'Introspective'],
     image: BahaImages.nassau,
     chatPrompt: 'Plan me a trip to Andros in the Bahamas! I love diving, reefs, blue holes, and untouched nature.',
+    islandSlug: 'andros',
   },
   Bimini: {
     personality: 'The Ocean Soul',
@@ -121,6 +128,7 @@ const ISLAND_RESULTS: Record<string, IslandResult> = {
     traits: ['Angler', 'Water lover', 'Laid-back', 'Weekend warrior'],
     image: BahaImages.exumas,
     chatPrompt: 'Plan me a trip to Bimini in the Bahamas! I love fishing, the ocean, dolphins, and laid-back island life.',
+    islandSlug: 'bimini',
   },
 }
 
@@ -128,8 +136,18 @@ const OPTION_COLORS = [
   { bg: 'bg-brand-500/10 hover:bg-brand-500/20', text: 'text-brand-600', border: 'border-brand-200 hover:border-brand-400' },
   { bg: 'bg-rose-500/10 hover:bg-rose-500/20', text: 'text-rose-600', border: 'border-rose-200 hover:border-rose-400' },
   { bg: 'bg-emerald-500/10 hover:bg-emerald-500/20', text: 'text-emerald-600', border: 'border-emerald-200 hover:border-emerald-400' },
-  { bg: 'bg-gold-500/10 hover:bg-gold-500/20', text: 'text-yellow-600', border: 'border-yellow-200 hover:border-yellow-400' },
+  { bg: 'bg-gold-500/10 hover:bg-gold-500/20', text: 'text-gold-700', border: 'border-gold-200 hover:border-gold-400' },
 ]
+
+function islandQuizTripHref(result: string, data: IslandResult): string {
+  const params = new URLSearchParams()
+  params.set('returnTo', '/explore/quiz')
+  params.set('source', 'island_quiz')
+  params.set('destination', data.islandSlug)
+  params.set('seed', data.chatPrompt)
+  params.set('result', result)
+  return `/dashboard/trips/new?${params.toString()}`
+}
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -182,8 +200,9 @@ export default function IslandQuiz() {
           </p>
           <button
             onClick={() => setStep(1)}
-            className="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 px-8 rounded-2xl text-lg transition-colors shadow-lg shadow-brand-500/25"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-brand-600/25 transition-colors hover:bg-brand-700"
           >
+            <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
             Start the Quiz
           </button>
           <p className="text-sm text-gray-400 mt-4">Takes about 1 minute · Free</p>
@@ -195,7 +214,9 @@ export default function IslandQuiz() {
   // ── Result ──
   if (step === 6 && result) {
     const data = ISLAND_RESULTS[result] ?? ISLAND_RESULTS['Nassau']
-    const chatUrl = `/dashboard/chat?q=${encodeURIComponent(data.chatPrompt)}`
+    const startTripHref = islandQuizTripHref(result, data)
+    const exploreHref = `/explore/island/${data.islandSlug}`
+    const askBuddyHref = buddyChatHref(data.chatPrompt)
 
     return (
       <div className="min-h-screen bg-gray-900 relative overflow-hidden">
@@ -221,7 +242,9 @@ export default function IslandQuiz() {
               className="w-10 h-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white hover:bg-white/30 transition-colors"
               aria-label="Close"
             >
-              ✕
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m6 6 12 12M18 6 6 18" />
+              </svg>
             </Link>
             <button
               onClick={retake}
@@ -233,7 +256,7 @@ export default function IslandQuiz() {
 
           {/* Main content */}
           <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full text-center py-8">
-            <p className="text-white/70 text-base font-medium mb-2">You are…</p>
+            <p className="text-white/70 text-base font-medium mb-2">Your island match</p>
             <h2 className="text-5xl font-extrabold text-white mb-2 leading-tight">{result}</h2>
 
             {/* Info card */}
@@ -258,22 +281,29 @@ export default function IslandQuiz() {
           {/* CTAs */}
           <div className="max-w-lg mx-auto w-full space-y-3">
             <Link
-              href={chatUrl}
-              className="block w-full bg-white text-brand-600 font-bold py-4 rounded-2xl text-center text-base hover:bg-gray-100 transition-colors shadow-xl"
+              href={startTripHref}
+              className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 py-4 text-center text-base font-bold text-white shadow-xl transition-colors hover:bg-brand-700"
             >
-              Plan my {result} trip with Buddy
+              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              Start my {result} trip
             </Link>
             <Link
-              href={`/destinations/${result.toLowerCase().replace(/ /g, '-')}`}
-              className="block w-full bg-white/20 backdrop-blur-sm border border-white/30 text-white font-semibold py-3.5 rounded-2xl text-center text-base hover:bg-white/30 transition-colors"
+              href={exploreHref}
+              className="block w-full rounded-2xl border border-white/30 bg-white/20 py-3.5 text-center text-base font-semibold text-white backdrop-blur-sm transition-colors hover:bg-white/30"
             >
               Explore {result}
+            </Link>
+            <Link
+              href={askBuddyHref}
+              className="block w-full rounded-2xl border border-white/25 bg-white/10 py-3 text-center text-sm font-semibold text-white/85 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
+            >
+              Ask Buddy about this match
             </Link>
             <button
               onClick={retake}
               className="block w-full text-white/70 text-sm py-2 hover:text-white transition-colors"
             >
-              ↩ Take quiz again
+              Take quiz again
             </button>
           </div>
         </div>
@@ -295,7 +325,9 @@ export default function IslandQuiz() {
             className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
             aria-label="Back to intro"
           >
-            ✕
+            <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m6 6 12 12M18 6 6 18" />
+            </svg>
           </Link>
           <div className="flex-1">
             {/* Progress bar */}

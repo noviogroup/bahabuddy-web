@@ -1,6 +1,7 @@
 'use client'
 
 import { BahaImages } from '@/lib/baha-images'
+import { buddyChatHref } from '@/lib/buddy-chat'
 
 
 const COLLECTIONS = [
@@ -50,7 +51,7 @@ const COLLECTIONS = [
 
 export default function ExploreSection() {
   const handleCollection = (prompt: string) => {
-    window.location.href = `/dashboard?q=${encodeURIComponent(prompt)}`
+    window.location.href = buddyChatHref(prompt)
   }
 
   return (

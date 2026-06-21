@@ -17,7 +17,7 @@
  *   - From-price (when set) in the bottom-right, mirroring Hotel layout.
  *   - Top review snippet, when one exists in google_place_reviews.
  *   - On expand: gallery, full description, hours (if the attraction
- *     publishes any), and action row (Call / Website / Directions / Save).
+ *     publishes any), and action row (Call / Website / Directions / Add to trip).
  *
  * Linking: detail page lives at /activities/[id]. Once Viator goes live,
  * `data.product_code` will swap in for booking-specific routing — the
@@ -172,7 +172,7 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
     external: true, iconOnly: true,
   })
   if (onSave) actions.push({
-    label: 'Save', icon: I.heart, onClick: () => onSave(data), iconOnly: true, tone: 'coral',
+    label: 'Add to trip', icon: I.heart, onClick: () => onSave(data), iconOnly: false, tone: 'coral',
   })
 
   const chips = vibeTagsToChips(vibe_tags)
@@ -263,6 +263,37 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
           />
         )}
 
+        {!expanded && size === 'compact' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
+              Tap for photos &amp; reviews {I.chevron}
+            </span>
+            <div className="flex flex-wrap justify-end gap-2">
+              {detailHref && (
+                <Link
+                  href={detailHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex h-8 items-center rounded-full border border-brand-200 bg-white px-3 text-[11px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+                >
+                  View details
+                </Link>
+              )}
+              {onSave && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSave(data)
+                  }}
+                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-[11px] font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+                >
+                  Add to trip
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Expanded block */}
         {expanded && (
           <div className="space-y-2.5 pt-1">
@@ -291,14 +322,6 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
           </div>
         )}
 
-        {/* Affordance */}
-        {!expanded && size === 'compact' && (
-          <div className="flex items-center justify-end pt-0.5">
-            <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 font-medium">
-              Tap for photos &amp; reviews {I.chevron}
-            </span>
-          </div>
-        )}
       </div>
     </>
   )

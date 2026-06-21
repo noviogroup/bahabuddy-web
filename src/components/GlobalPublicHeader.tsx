@@ -49,5 +49,5 @@ export default function GlobalPublicHeader() {
   // Dashboard, profile, login, and API routes should not show the public marketing header.
   if (HIDDEN_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return null
 
-  return <PublicHeader userEmail={userEmail} authLoading={authLoading} />
+  return <PublicHeader userEmail={userEmail} authLoading={authLoading} activePath={pathname} />
 }

@@ -52,6 +52,10 @@ import ChatWidget from '@/components/ChatWidget'
 import PortableTextBody from '@/components/PortableTextBody'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
 import TrackView from '@/components/TrackView'
+import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
+import { dealActionLinks } from '@/lib/deal-actions'
+import { islandFoodLinks } from '@/lib/island-context-links'
 
 export const revalidate = 300
 
@@ -143,20 +147,20 @@ function formatPrice(price: number | null, unit: string | null): string {
 // ─── Visual maps ────────────────────────────────────────────────────────────
 
 const CATEGORY_COLORS: Record<string, string> = {
-  attraction: 'bg-brand-500/80 text-white',
-  beach: 'bg-gold-500/80 text-white',
-  beach_bar: 'bg-amber-500/80 text-white',
-  cultural: 'bg-purple-500/80 text-white',
-  diving: 'bg-sky-600/80 text-white',
-  event: 'bg-pink-500/80 text-white',
-  fishing: 'bg-teal-600/80 text-white',
-  food_culture: 'bg-rose-500/80 text-white',
-  landmark: 'bg-stone-600/80 text-white',
-  national_park: 'bg-emerald-600/80 text-white',
-  natural_wonder: 'bg-emerald-500/80 text-white',
-  snorkeling: 'bg-cyan-500/80 text-white',
-  wildlife: 'bg-lime-600/80 text-white',
-  other: 'bg-gray-600/80 text-white',
+  attraction: 'bg-white text-night ring-1 ring-gray-200',
+  beach: 'bg-white text-night ring-1 ring-gray-200',
+  beach_bar: 'bg-white text-night ring-1 ring-gray-200',
+  cultural: 'bg-white text-night ring-1 ring-gray-200',
+  diving: 'bg-white text-night ring-1 ring-gray-200',
+  event: 'bg-white text-night ring-1 ring-gray-200',
+  fishing: 'bg-white text-night ring-1 ring-gray-200',
+  food_culture: 'bg-white text-night ring-1 ring-gray-200',
+  landmark: 'bg-white text-night ring-1 ring-gray-200',
+  national_park: 'bg-white text-night ring-1 ring-gray-200',
+  natural_wonder: 'bg-white text-night ring-1 ring-gray-200',
+  snorkeling: 'bg-white text-night ring-1 ring-gray-200',
+  wildlife: 'bg-white text-night ring-1 ring-gray-200',
+  other: 'bg-white text-night ring-1 ring-gray-200',
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -177,10 +181,10 @@ const CATEGORY_LABELS: Record<string, string> = {
 }
 
 const DEAL_TYPE_BADGE: Record<string, string> = {
-  accommodation: 'bg-brand-600/80 text-white',
-  tour: 'bg-brand-600/80 text-white',
-  package: 'bg-purple-600/80 text-white',
-  activity: 'bg-gold-500/80 text-white',
+  accommodation: 'bg-white/95 text-night ring-1 ring-gray-200',
+  tour: 'bg-white/95 text-night ring-1 ring-gray-200',
+  package: 'bg-white/95 text-night ring-1 ring-gray-200',
+  activity: 'bg-white/95 text-night ring-1 ring-gray-200',
 }
 
 // ─── Static params + metadata ───────────────────────────────────────────────
@@ -255,54 +259,84 @@ export default async function IslandDetailPage({ params }: PageProps) {
   const highlights = sanity?.highlights ?? []
   const gallery = sanity?.gallery ?? []
   const gettingThere = sanity?.gettingThere ?? null
+  const primaryImageUrl = heroUrl || gallery[0] || null
 
   const attractionsByCategory = groupAttractionsByCategory(attractions)
 
   const planPrompt = `Plan a trip to ${name} in the Bahamas`
-  const addPrompt = `Add ${name} to my Bahamas trip plan`
+  const addPrompt = `Help me plan around ${name} and compare it with other Bahamas islands`
+  const islandPath = `/explore/island/${params.id}`
+  const foodLinks = islandFoodLinks({
+    islandName: name,
+    islandSlug: params.id,
+    returnPath: islandPath,
+  })
+  const islandPlacesHref = `/explore/places?island=${encodeURIComponent(name)}`
+  const islandStaysHref = `/stays?island=${encodeURIComponent(name)}`
 
   return (
     <div className="min-h-screen bg-white">
       <TrackView event="island_viewed" props={{ island_id: params.id, island_name: name }} />
-      {/* Hero */}
-      <div className="relative h-72 md:h-96 overflow-hidden">
-        {heroUrl ? (
-          <Image
-            src={heroUrl}
-            alt={name}
-            fill
-            className="object-cover"
-            priority
-            sizes="100vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-brand-700 to-brand-400" />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
-        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 max-w-6xl mx-auto">
-          <nav className="text-white/70 text-sm mb-2" aria-label="Breadcrumb">
-            <Link href="/" className="hover:text-white transition-colors">Home</Link>
-            <span className="mx-2" aria-hidden="true">›</span>
-            <Link href="/explore/places" className="hover:text-white transition-colors">Places</Link>
-            <span className="mx-2" aria-hidden="true">›</span>
-            <span className="text-white">{name}</span>
-          </nav>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-2">{name}</h1>
-          {tagline && (
-            <p className="text-white/90 text-lg max-w-2xl">{tagline}</p>
-          )}
+
+      <CompactPageHeader
+        eyebrow="Island guide"
+        title={name}
+        subtitle={tagline || 'Plan where to stay, what to do, and how this island fits your Bahamas trip.'}
+        crumbs={[
+          { href: '/', label: 'Home' },
+          { href: '/explore', label: 'Explore' },
+          { href: '/explore/places', label: 'Places' },
+          { label: name },
+        ]}
+        actions={
+          <>
+            <Link href={foodLinks.startTripHref} className="inline-flex items-center justify-center rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700">
+              Start island trip
+            </Link>
+            <Link href={islandStaysHref} className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-night transition hover:border-gray-300 hover:bg-gray-50">
+              Browse stays
+            </Link>
+            <Link href={islandPlacesHref} className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-night transition hover:border-gray-300 hover:bg-gray-50">
+              Things to do
+            </Link>
+          </>
+        }
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">
+            Best time: {bestTime}
+          </span>
+          <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">
+            {vibe}
+          </span>
+          <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">
+            {tripLength}
+          </span>
         </div>
-      </div>
+      </CompactPageHeader>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
+        <ImageWithSourcePolicy
+          src={primaryImageUrl}
+          alt={name}
+          title={name}
+          eyebrow="Island guide"
+          description="Island details are available. Provider or destination image is not available yet."
+          pendingLabel="Photo pending"
+          tone="island"
+          className="mb-10 aspect-[16/7] min-h-[240px] rounded-baha-xl border border-gray-200 shadow-sm"
+          imageClassName="object-cover"
+          sizes="(max-width: 768px) 100vw, 1100px"
+          priority
+        />
 
         {/* Quick stats */}
-        <div className="grid grid-cols-3 gap-4 mb-10 bg-brand-50 rounded-2xl p-6">
+        <div className="grid grid-cols-3 gap-4 mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="text-center">
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Best Time</p>
             <p className="text-sm md:text-base font-semibold text-gray-900">{bestTime}</p>
           </div>
-          <div className="text-center border-x border-brand-100">
+          <div className="text-center border-x border-gray-200">
             <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Vibe</p>
             <p className="text-sm md:text-base font-semibold text-gray-900">{vibe}</p>
           </div>
@@ -329,9 +363,8 @@ export default async function IslandDetailPage({ params }: PageProps) {
               {highlights.map((h, idx) => (
                 <span
                   key={`${h.label}-${idx}`}
-                  className="inline-flex items-center gap-2 bg-brand-50 text-brand-700 text-sm font-medium rounded-full px-4 py-2 border border-brand-100"
+                  className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-charcoal"
                 >
-                  {h.icon && <span aria-hidden="true">{h.icon}</span>}
                   {h.label}
                 </span>
               ))}
@@ -341,13 +374,72 @@ export default async function IslandDetailPage({ params }: PageProps) {
 
         {/* Getting There — Sanity-only */}
         {gettingThere && (
-          <section className="mb-12 bg-sand-50 rounded-2xl p-6 md:p-8 border border-sand-100">
+          <section className="mb-12 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
             <h2 className="text-xl font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <span aria-hidden="true">✈️</span> Getting there
+              Getting there
             </h2>
             <p className="text-gray-600 leading-relaxed">{gettingThere}</p>
           </section>
         )}
+
+        <section className="mb-12 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-200 bg-gray-50 px-5 py-4 md:px-6">
+            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-charcoal">
+              Food and culture
+            </p>
+            <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h2 className="text-2xl font-extrabold tracking-tight text-gray-900">
+                  Eat your way through {name}
+                </h2>
+                <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-gray-500">
+                  Restaurants stay contextual to island planning: browse dining, find food-culture stops, or start a trip from this island page.
+                </p>
+              </div>
+              {foodLinks.restaurantIsland && (
+                <span className="inline-flex w-fit rounded-full bg-white px-3 py-1.5 text-xs font-extrabold text-charcoal ring-1 ring-gray-200">
+                  Filtered for {foodLinks.restaurantIsland}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-3 p-5 md:grid-cols-3 md:p-6">
+            <Link
+              href={foodLinks.restaurantsHref}
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+            >
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-charcoal">Dining</p>
+              <h3 className="mt-1 text-base font-extrabold text-gray-900">Browse restaurants</h3>
+              <p className="mt-1 text-sm font-semibold leading-5 text-gray-500">Open the restaurant feed already narrowed to this island.</p>
+            </Link>
+            <Link
+              href={foodLinks.foodCultureHref}
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+            >
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-charcoal">Explore</p>
+              <h3 className="mt-1 text-base font-extrabold text-gray-900">Food and culture stops</h3>
+              <p className="mt-1 text-sm font-semibold leading-5 text-gray-500">See cultural places and local food experiences near this island.</p>
+            </Link>
+            <Link
+              href={foodLinks.startTripHref}
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition-colors hover:border-gray-300 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+            >
+              <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-charcoal">Trip action</p>
+              <h3 className="mt-1 text-base font-extrabold text-gray-900">Start an island trip</h3>
+              <p className="mt-1 text-sm font-semibold leading-5 text-gray-500">Create a trip from this island context without adding it as a fake activity.</p>
+            </Link>
+          </div>
+
+          <div className="border-t border-gray-200 bg-white px-5 py-4 md:px-6">
+            <Link
+              href={foodLinks.askBuddyHref}
+              className="inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            >
+              Ask Buddy for food picks
+            </Link>
+          </div>
+        </section>
 
         {/* Gallery — Sanity-only */}
         {gallery.length > 0 && (
@@ -422,7 +514,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {deals.map(d => (
-                <DealCard key={d.id} deal={d} />
+                <DealCard key={d.id} deal={d} returnPath={islandPath} />
               ))}
             </div>
           </section>
@@ -443,7 +535,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
               <Link
                 key={island.slug}
                 href={`/explore/island/${island.slug}`}
-                className="bg-gray-50 hover:bg-brand-50 text-gray-700 hover:text-brand-700 text-sm font-medium rounded-full px-4 py-2 transition-colors border border-gray-100 hover:border-brand-200"
+                className="rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-charcoal transition-colors hover:border-gray-300 hover:bg-gray-50 hover:text-night"
               >
                 {island.name}
               </Link>
@@ -462,36 +554,35 @@ export default async function IslandDetailPage({ params }: PageProps) {
 
 function AttractionCard({
   attraction,
+  islandName,
 }: {
   attraction: Attraction
   islandName: string
 }) {
   const detailUrl = `/explore/places/${attraction.id}`
   const isEnriched = !!attraction.enriched_at
+  const categoryLabel = CATEGORY_LABELS[attraction.category] ?? attraction.category ?? 'Island stop'
+  const previewReason = attractionPreviewReason(attraction, islandName, categoryLabel)
 
   return (
     <Link href={detailUrl} className="block">
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col border border-gray-100 h-full">
-        <div className="relative aspect-video overflow-hidden bg-stone-200">
-          {attraction.image_url ? (
-            <Image
-              src={attraction.image_url}
-              alt={attraction.name}
-              fill
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-            />
-          ) : (
-            <div className="w-full h-full bg-gradient-to-br from-brand-200 to-brand-300 flex items-center justify-center">
-            </div>
-          )}
+        <ImageWithSourcePolicy
+          src={attraction.image_url}
+          alt={attraction.name}
+          title={attraction.name}
+          eyebrow={categoryLabel}
+          description="Real island stop data is available. Photo is not available yet."
+          className="aspect-video"
+          tone="activity"
+          unoptimized={false}
+        >
           {isEnriched && attraction.rating && (
             <div className="absolute top-2.5 right-2.5 bg-white/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
-              <span className="text-amber-400 text-xs">★</span>
-              <span className="text-xs font-bold text-gray-800">{attraction.rating.toFixed(1)}</span>
+              <span className="text-xs font-bold text-gray-800">Rating {attraction.rating.toFixed(1)}</span>
             </div>
           )}
-        </div>
+        </ImageWithSourcePolicy>
         <div className="p-4 flex flex-col flex-1">
           <h4 className="text-base font-bold text-gray-900 mb-1">{attraction.name}</h4>
           {isEnriched && attraction.review_count != null && attraction.review_count > 0 && (
@@ -500,20 +591,28 @@ function AttractionCard({
           <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
             {attraction.short_description || attraction.description}
           </p>
+          <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-charcoal">
+              Why Buddy picked this
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-charcoal">
+              {previewReason}
+            </p>
+          </div>
           <div className="flex items-center justify-between mt-auto">
             {attraction.tags && attraction.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {attraction.tags.slice(0, 2).map(tag => (
                   <span
                     key={tag}
-                    className="text-xs bg-brand-50 text-brand-700 rounded-full px-2.5 py-0.5 font-medium"
+                    className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-charcoal"
                   >
                     {tag}
                   </span>
                 ))}
               </div>
             )}
-            <span className="text-xs font-semibold text-brand-600 group-hover:text-brand-700 transition-colors whitespace-nowrap ml-2">
+            <span className="ml-2 whitespace-nowrap text-xs font-semibold text-night transition-colors group-hover:text-gray-700">
               View details →
             </span>
           </div>
@@ -523,30 +622,39 @@ function AttractionCard({
   )
 }
 
-function DealCard({ deal }: { deal: Deal }) {
+function attractionPreviewReason(attraction: Attraction, islandName: string, categoryLabel: string): string {
+  if (attraction.rating && attraction.rating >= 4.5) {
+    return `Strong traveler rating for ${categoryLabel.toLowerCase()} plans on ${islandName}.`
+  }
+  if (attraction.tags && attraction.tags.length > 0) {
+    return `Good fit for ${attraction.tags.slice(0, 2).join(' and ').toLowerCase()} travelers on ${islandName}.`
+  }
+  if (attraction.short_description) return attraction.short_description
+  return `Useful ${categoryLabel.toLowerCase()} stop to compare before adding it to an island day.`
+}
+
+function DealCard({ deal, returnPath }: { deal: Deal; returnPath: string }) {
   const badge = DEAL_TYPE_BADGE[deal.deal_type] ?? 'bg-gray-600/80 text-white'
+  const action = dealActionLinks(deal, returnPath)
+  const previewReason = dealPreviewReason(deal, action.contextLabel)
   return (
     <div className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col border border-gray-100">
-      <div className="relative aspect-video overflow-hidden bg-stone-200">
-        {deal.image_url ? (
-          <Image
-            src={deal.image_url}
-            alt={deal.title}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-500"
-            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gold-200 to-gold-300 flex items-center justify-center">
-            
-          </div>
-        )}
+      <ImageWithSourcePolicy
+        src={deal.image_url}
+        alt={deal.title}
+        title={deal.title}
+        eyebrow={action.contextLabel}
+        description="Deal details are available. Provider photo is not available yet."
+        className="aspect-video"
+        tone="deal"
+        unoptimized={false}
+      >
         <div
           className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm capitalize ${badge}`}
         >
           {deal.deal_type}
         </div>
-      </div>
+      </ImageWithSourcePolicy>
       <div className="p-4 flex flex-col flex-1">
         <h3 className="text-base font-bold text-gray-900 mb-1">{deal.title}</h3>
         {deal.resort_name && (
@@ -563,13 +671,21 @@ function DealCard({ deal }: { deal: Deal }) {
             {deal.highlights.slice(0, 2).map(h => (
               <span
                 key={h}
-                className="text-xs bg-brand-50 text-brand-700 rounded-full px-2.5 py-0.5 font-medium"
+                className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-charcoal"
               >
-                ✓ {h}
+                {h}
               </span>
             ))}
           </div>
         )}
+        <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-charcoal">
+            Why Buddy picked this
+          </p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-charcoal">
+            {previewReason}
+          </p>
+        </div>
         <div className="flex items-center justify-between gap-2 mt-auto">
           {deal.valid_through && (
             <span className="text-xs text-gray-400">
@@ -582,13 +698,30 @@ function DealCard({ deal }: { deal: Deal }) {
             </span>
           )}
           <Link
-            href={`/dashboard/chat?q=${encodeURIComponent(`I'd like to book: ${deal.title}`)}`}
-            className="ml-auto text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+            href={action.primaryHref}
+            className="ml-auto whitespace-nowrap rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-extrabold text-white transition-colors hover:bg-brand-700"
           >
-            Book now →
+            <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
+            {action.primaryLabel}
+          </Link>
+          <Link
+            href={action.secondaryHref}
+            className="whitespace-nowrap rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+          >
+            Ask Buddy
           </Link>
         </div>
       </div>
     </div>
   )
+}
+
+function dealPreviewReason(deal: Deal, contextLabel: string): string {
+  if (deal.price_from_usd) {
+    return `${contextLabel} with visible starting price so travelers can compare before opening checkout paths.`
+  }
+  if (deal.highlights && deal.highlights.length > 0) {
+    return `Good fit for ${deal.highlights.slice(0, 2).join(' and ').toLowerCase()} travelers.`
+  }
+  return `${contextLabel} with a direct marketplace action and Buddy as secondary planning support.`
 }

@@ -24,6 +24,6 @@ export type { DestinationCardData } from './DestinationCard'
 export { MapCard } from './MapCard'
 export type { MapCardData, MapLocation, MapLocationType } from './MapCard'
 
-// Shared atoms — re-exported for use outside chat (e.g. on /hotels list pages,
+// Shared atoms — re-exported for use outside chat (e.g. on /stays list pages,
 // in trip summaries, in detail page headers).
 export * from './shared'

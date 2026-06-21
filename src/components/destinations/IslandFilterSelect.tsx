@@ -1,6 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
+import { TravelSearchSelect } from '@/components/marketplace/TravelSearchFields'
 
 interface IslandFilterSelectProps {
   islands: string[]
@@ -20,29 +21,35 @@ export default function IslandFilterSelect({
   const router = useRouter()
 
   return (
-    <label className="flex items-center gap-2 text-sm text-gray-600">
-      <span className="font-medium whitespace-nowrap">Island</span>
-      <select
-        value={activeIsland}
-        onChange={(e) => {
-          const island = e.target.value
-          const params = new URLSearchParams()
-          if (activeCategory && activeCategory !== 'All') {
-            params.set('category', activeCategory)
-          }
-          if (island) params.set('island', island)
-          const qs = params.toString()
-          router.push(qs ? `/destinations?${qs}` : '/destinations')
-        }}
-        className="rounded-baha-md border border-gray-300 bg-white px-3 py-2 text-sm text-night focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 min-w-[10rem]"
-      >
-        <option value="">All islands</option>
-        {islands.map((island) => (
-          <option key={island} value={island}>
-            {island}
-          </option>
-        ))}
-      </select>
-    </label>
+    <div className="flex items-center gap-2 text-sm text-gray-600">
+      <label htmlFor="destination-island-filter" className="whitespace-nowrap font-medium">
+        Island
+      </label>
+      <div className="min-w-[10rem]">
+        <TravelSearchSelect
+          id="destination-island-filter"
+          aria-label="Island"
+          value={activeIsland}
+          onChange={(e) => {
+            const island = e.target.value
+            const params = new URLSearchParams()
+            if (activeCategory && activeCategory !== 'All') {
+              params.set('category', activeCategory)
+            }
+            if (island) params.set('island', island)
+            const qs = params.toString()
+            router.push(qs ? `/destinations?${qs}` : '/destinations')
+          }}
+          className="h-10 rounded-xl border-gray-200 px-3 py-2 text-sm font-bold"
+        >
+          <option value="">All islands</option>
+          {islands.map((island) => (
+            <option key={island} value={island}>
+              {island}
+            </option>
+          ))}
+        </TravelSearchSelect>
+      </div>
+    </div>
   )
 }

@@ -22,14 +22,16 @@
  *
  * Client component because of the tab state. All Sanity fetches happen
  * server-side in the parent page — we just receive the resolved data
- * as plain props. "Plan this" CTAs are Links to /dashboard/chat?q=…
- * matching the rest of the Explore tap-to-chat pattern.
+ * as plain props. Concrete planning CTAs create a trip draft directly
+ * and keep Buddy as contextual support rather than the only path forward.
  */
 
 import { useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { SegmentedToggle } from '@/components/ui'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
+import { editorialTripHref } from '@/lib/editorial-planning-links'
 
 // ─── Public interfaces ─────────────────────────────────────────────────────
 // These are what the parent server page must pass in. The page maps
@@ -43,7 +45,7 @@ export interface DiscoverArticle {
   category: string
   /** "7 min" reading estimate. */
   readTime: string
-  imageUrl: string
+  imageUrl: string | null
   /** Pre-filled chat prompt — used on the article detail page's Plan
    *  with Buddy CTA. Kept on the card-level interface so a single
    *  source feeds both surfaces. */
@@ -60,7 +62,7 @@ export interface SocialVideo {
   viewsLabel: string
   imageUrl: string
   /** Pre-resolved Tailwind gradient class string (e.g.
-   *  "from-sky-900/30 via-sky-900/50 to-brand-900/80"). */
+   *  "from-brand-900/30 via-brand-900/55 to-cyan-700/80"). */
   overlayClass: string
   buddyPrompt: string
 }
@@ -129,45 +131,70 @@ export default function ExploreTabs({
 function DiscoverGrid({ articles }: { articles: DiscoverArticle[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {articles.map(article => (
-        <Link
-          key={article.slug}
-          href={`/explore/articles/${article.slug}`}
-          className="group block text-left bg-white rounded-baha-lg border border-gray-200 overflow-hidden shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
-        >
-          {/* Hero */}
-          <div className="relative h-44 overflow-hidden bg-brand-100">
-            <Image
-              src={article.imageUrl}
-              alt=""
-              fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className="object-cover group-hover:scale-105 transition-transform duration-500"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" aria-hidden="true" />
-            <span className="absolute top-3 left-3 z-10 bg-white/95 text-brand-700 text-[11px] font-bold uppercase tracking-wide px-2.5 py-1 rounded-full">
-              {article.category}
-            </span>
-            <span className="absolute bottom-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-full">
-              {article.readTime}
-            </span>
-          </div>
+      {articles.map(article => {
+        const articleHref = `/explore/articles/${article.slug}`
+        const startTripHref = editorialTripHref({
+          returnTo: articleHref,
+          source: 'article',
+          seed: article.buddyPrompt || `Use this Bahamas article as planning context: ${article.title}. ${article.excerpt}`,
+        })
 
-          {/* Body */}
-          <div className="p-4">
-            <h3 className="font-bold text-night text-base leading-snug group-hover:text-brand-700 transition-colors">
-              {article.title}
-            </h3>
-            <p className="text-sm text-gray-500 mt-2 line-clamp-2 leading-relaxed">
-              {article.excerpt}
-            </p>
-            <p className="text-xs text-brand-600 font-semibold mt-3 inline-flex items-center gap-1 group-hover:gap-2 transition-all">
-              Read article
-              <span aria-hidden="true">→</span>
-            </p>
-          </div>
-        </Link>
-      ))}
+        return (
+          <article
+            key={article.slug}
+            className="group block text-left bg-white rounded-baha-lg border border-gray-200 overflow-hidden shadow-soft hover:shadow-card-hover hover:-translate-y-0.5 transition-all duration-200"
+          >
+            <Link
+              href={articleHref}
+              aria-label={`Read ${article.title}`}
+              className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2"
+            >
+              <ImageWithSourcePolicy
+                src={article.imageUrl}
+                alt={article.title}
+                title={article.title}
+                eyebrow={article.category}
+                description="Article details are available. Editorial image is not available yet."
+                className="h-44"
+                imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
+                tone="island"
+              >
+                <span className="absolute top-3 left-3 z-10 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-night">
+                  {article.category}
+                </span>
+                <span className="absolute bottom-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-full">
+                  {article.readTime}
+                </span>
+              </ImageWithSourcePolicy>
+            </Link>
+
+            <div className="p-4">
+              <h3 className="font-bold text-night text-base leading-snug">
+                <Link href={articleHref} className="transition-colors hover:text-gray-700">
+                  {article.title}
+                </Link>
+              </h3>
+              <p className="text-sm text-gray-500 mt-2 line-clamp-2 leading-relaxed">
+                {article.excerpt}
+              </p>
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                <Link
+                  href={articleHref}
+                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                >
+                  Read article
+                </Link>
+                <Link
+                  href={startTripHref}
+                  className="inline-flex items-center justify-center rounded-full bg-brand-600 px-3 py-2 text-xs font-extrabold text-white transition-colors hover:bg-brand-700"
+                >
+                  Start trip
+                </Link>
+              </div>
+            </div>
+          </article>
+        )
+      })}
     </div>
   )
 }
@@ -235,10 +262,14 @@ function CommunityContent({ socialVideos, travelerStories }: CommunityContentPro
 // ─── Social Video Card ──────────────────────────────────────────────────────
 
 function SocialVideoCard({ video }: { video: SocialVideo }) {
-  const planHref = `/dashboard/chat?q=${encodeURIComponent(video.buddyPrompt)}`
+  const planHref = editorialTripHref({
+    returnTo: '/explore',
+    source: 'social_video',
+    seed: video.buddyPrompt || `Use this Bahamas video as planning context: ${video.title}.`,
+  })
 
   return (
-    <article className="group relative w-[180px] sm:w-auto aspect-[3/4] sm:aspect-[4/5] flex-shrink-0 rounded-baha-lg overflow-hidden shadow-card focus-within:ring-2 focus-within:ring-brand-400 focus-within:ring-offset-2">
+    <article className="group relative w-[180px] sm:w-auto aspect-[3/4] sm:aspect-[4/5] flex-shrink-0 rounded-baha-lg overflow-hidden shadow-card focus-within:ring-2 focus-within:ring-gray-300 focus-within:ring-offset-2">
       {/* Background image */}
       <Image
         src={video.imageUrl}
@@ -283,9 +314,9 @@ function SocialVideoCard({ video }: { video: SocialVideo }) {
         <p className="text-[11px] text-white/70 mt-0.5">{video.creator}</p>
         <Link
           href={planHref}
-          className="mt-2.5 inline-flex items-center bg-white text-brand-700 hover:bg-brand-50 text-[11px] font-semibold px-3 py-1.5 rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-900"
+          className="mt-2.5 inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-night transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
         >
-          Plan this
+          Start from video
         </Link>
       </div>
     </article>
@@ -298,11 +329,11 @@ function TravelerStoryCard({ story }: { story: TravelerStory }) {
   const initial = story.name.charAt(0).toUpperCase()
 
   return (
-    <article className="bg-white rounded-baha-lg shadow-soft p-5">
+    <article className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
       <header className="flex items-center gap-3 mb-3">
         {/* Avatar: image when provided, initial circle as fallback */}
         {story.avatarUrl ? (
-          <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-brand-50">
+          <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-gray-100">
             <Image
               src={story.avatarUrl}
               alt=""
@@ -313,7 +344,7 @@ function TravelerStoryCard({ story }: { story: TravelerStory }) {
           </div>
         ) : (
           <div
-            className="w-10 h-10 rounded-full bg-brand-50 text-brand-700 flex items-center justify-center font-bold text-sm flex-shrink-0"
+            className="w-10 h-10 rounded-full bg-gray-100 text-charcoal flex items-center justify-center font-bold text-sm flex-shrink-0"
             aria-hidden="true"
           >
             {initial}
@@ -348,13 +379,13 @@ function ShareYourTripPanel() {
   return (
     <section
       aria-labelledby="share-trip-heading"
-      className="bg-brand-50/60 border border-brand-100 rounded-baha-lg p-6 sm:p-8 text-center"
+      className="rounded-baha-lg border border-gray-200 bg-white p-6 text-center shadow-sm sm:p-8"
     >
       <div
-        className="mx-auto mb-4 w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-soft"
+        className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-gray-100"
         aria-hidden="true"
       >
-        <svg className="w-6 h-6 text-brand-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <svg className="h-6 w-6 text-charcoal" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
           <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -369,10 +400,10 @@ function ShareYourTripPanel() {
         type="button"
         disabled
         title="Upload coming soon"
-        className="inline-flex items-center gap-2 bg-brand-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full opacity-60 cursor-not-allowed"
+        className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-500 opacity-80"
       >
         Upload Content
-        <span className="text-[10px] uppercase tracking-wide bg-white/20 px-1.5 py-0.5 rounded">
+        <span className="rounded bg-white px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
           Soon
         </span>
       </button>

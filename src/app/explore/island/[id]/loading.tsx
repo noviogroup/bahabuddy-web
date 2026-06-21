@@ -1,6 +1,6 @@
 /**
  * Loading skeleton for /explore/island/[id]. Mirrors the page's
- * coarse structure: header + hero + stat row + 2 content sections.
+ * coarse structure: compact header + supporting media + content sections.
  * Keeps layout shift at zero while Sanity + Supabase fetches resolve.
  */
 
@@ -9,24 +9,33 @@ import { Skeleton } from '@/components/ui'
 export default function Loading() {
   return (
     <div className="min-h-screen bg-white">
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Skeleton className="h-6 w-32" />
-          <Skeleton className="h-4 w-16" />
+      <section className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-6">
+          <Skeleton className="mb-3 h-4 w-52" />
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="max-w-3xl">
+              <Skeleton className="mb-2 h-3 w-28" />
+              <Skeleton className="mb-3 h-10 w-72 max-w-full" />
+              <Skeleton className="h-5 w-full max-w-xl" />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-10 w-36 rounded-full" />
+              <Skeleton className="h-10 w-28 rounded-full" />
+              <Skeleton className="h-10 w-28 rounded-full" />
+            </div>
+          </div>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Skeleton className="h-7 w-32 rounded-full" />
+            <Skeleton className="h-7 w-24 rounded-full" />
+            <Skeleton className="h-7 w-28 rounded-full" />
+          </div>
         </div>
-      </header>
-
-      <div className="relative h-72 md:h-96 bg-stone-200 overflow-hidden">
-        <Skeleton className="absolute inset-0 rounded-none" />
-        <div className="absolute bottom-0 left-0 right-0 p-8 md:p-12 max-w-6xl mx-auto space-y-2">
-          <Skeleton className="h-3 w-40 bg-white/40" />
-          <Skeleton className="h-10 w-64 bg-white/60" />
-          <Skeleton className="h-5 w-96 bg-white/40 max-w-full" />
-        </div>
-      </div>
+      </section>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        <div className="grid grid-cols-3 gap-4 mb-10 bg-brand-50 rounded-2xl p-6">
+        <Skeleton className="mb-10 aspect-[16/7] min-h-[240px] w-full rounded-baha-xl" />
+
+        <div className="grid grid-cols-3 gap-4 mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           {Array.from({ length: 3 }).map((_, i) => (
             <div key={i} className="text-center space-y-2">
               <Skeleton className="h-3 w-16 mx-auto" />

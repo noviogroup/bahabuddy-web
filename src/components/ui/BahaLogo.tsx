@@ -1,6 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
-import { LOGO_INTRINSIC, LOGO_SRC } from '@/lib/brand'
+import { LOGO_MARK_INTRINSIC, LOGO_MARK_SRC } from '@/lib/brand'
 
 type Size = 'sm' | 'md' | 'lg'
 
@@ -10,18 +10,18 @@ const HEIGHT: Record<Size, number> = {
   lg: 48,
 }
 
-/** `onDark` — full-color logo on photo/dark headers (drop shadow for legibility). */
+/** `onDark` is kept for API compatibility; the logo itself never gets a plate. */
 type Variant = 'default' | 'onDark'
 
 const VARIANT_CLASS: Record<Variant, string> = {
   default: '',
-  onDark: 'drop-shadow-[0_1px_8px_rgba(0,0,0,0.45)]',
+  onDark: '',
 }
 
 export interface BahaLogoProps {
   size?: Size
   variant?: Variant
-  /** White pill with logo + blue “Baha Buddy” wordmark (marketing hero nav). */
+  /** Logo + blue “Baha Buddy” wordmark for public marketplace headers. */
   layout?: 'default' | 'pillWordmark'
   href?: string
   className?: string
@@ -49,15 +49,14 @@ export default function BahaLogo({
   const h = layout === 'pillWordmark' ? PILL_LOGO_HEIGHT[size] : HEIGHT[size]
   const img = (
     <Image
-      src={LOGO_SRC}
+      src={LOGO_MARK_SRC}
       alt={layout === 'pillWordmark' ? '' : 'Baha Buddy'}
-      width={LOGO_INTRINSIC.width}
-      height={LOGO_INTRINSIC.height}
+      width={LOGO_MARK_INTRINSIC.width}
+      height={LOGO_MARK_INTRINSIC.height}
       priority={priority}
       className={cn(
         'w-auto object-contain',
         layout === 'default' && VARIANT_CLASS[variant],
-        className,
       )}
       style={{ height: h, width: 'auto' }}
     />
@@ -65,11 +64,9 @@ export default function BahaLogo({
 
   const inner =
     layout === 'pillWordmark' ? (
-      <span className="inline-flex items-center gap-2.5 rounded-full bg-white pl-1 pr-4 py-1 shadow-md">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white overflow-hidden">
-          {img}
-        </span>
-        <span className="text-[15px] font-semibold text-brand-600 tracking-tight whitespace-nowrap">
+      <span className="inline-flex items-center gap-0.5">
+        <span className="inline-flex shrink-0 items-center justify-center">{img}</span>
+        <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-brand-600">
           Baha Buddy
         </span>
       </span>
@@ -85,8 +82,8 @@ export default function BahaLogo({
         href={href}
         aria-label={label}
         className={cn(
-          'inline-flex shrink-0 items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400',
-          layout === 'pillWordmark' ? 'rounded-full' : 'rounded-sm',
+          'inline-flex shrink-0 items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600',
+          className,
         )}
       >
         {inner}
@@ -94,5 +91,5 @@ export default function BahaLogo({
     )
   }
 
-  return <span className="inline-flex shrink-0 items-center">{inner}</span>
+  return <span className={cn('inline-flex shrink-0 items-center', className)}>{inner}</span>
 }

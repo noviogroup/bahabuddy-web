@@ -61,45 +61,41 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }))
 
+  const staticPages: MetadataRoute.Sitemap = [
+    { path: '', changeFrequency: 'weekly', priority: 1 },
+    { path: '/stays', changeFrequency: 'daily', priority: 0.9 },
+    { path: '/flights', changeFrequency: 'daily', priority: 0.9 },
+    { path: '/explore', changeFrequency: 'weekly', priority: 0.9 },
+    { path: '/explore/places', changeFrequency: 'weekly', priority: 0.85 },
+    { path: '/destinations', changeFrequency: 'weekly', priority: 0.9 },
+    { path: '/guides', changeFrequency: 'weekly', priority: 0.8 },
+    { path: '/nassau-cruise-itineraries', changeFrequency: 'weekly', priority: 0.75 },
+    { path: '/nassau-cruise-day-planner', changeFrequency: 'weekly', priority: 0.7 },
+    { path: '/build-my-cruise-day', changeFrequency: 'weekly', priority: 0.65 },
+    { path: '/deals', changeFrequency: 'daily', priority: 0.75 },
+    { path: '/restaurants', changeFrequency: 'weekly', priority: 0.65 },
+    { path: '/concierge-trip-plan', changeFrequency: 'weekly', priority: 0.7 },
+    { path: '/partners', changeFrequency: 'monthly', priority: 0.6 },
+    { path: '/list-your-property', changeFrequency: 'monthly', priority: 0.6 },
+    { path: '/about', changeFrequency: 'monthly', priority: 0.5 },
+    { path: '/how-it-works', changeFrequency: 'monthly', priority: 0.55 },
+    { path: '/help', changeFrequency: 'monthly', priority: 0.5 },
+    { path: '/contact', changeFrequency: 'monthly', priority: 0.45 },
+    { path: '/privacy', changeFrequency: 'yearly', priority: 0.4 },
+    { path: '/terms', changeFrequency: 'yearly', priority: 0.4 },
+    { path: '/accessibility', changeFrequency: 'yearly', priority: 0.35 },
+    { path: '/login', changeFrequency: 'monthly', priority: 0.5 },
+  ].map((page) => ({
+    url: `${baseUrl}${page.path}`,
+    lastModified: now,
+    changeFrequency: page.changeFrequency as MetadataRoute.Sitemap[number]['changeFrequency'],
+    priority: page.priority,
+  }))
+
   return [
-    {
-      url: baseUrl,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 1,
-    },
-    {
-      url: `${baseUrl}/destinations`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/explore/places`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.85,
-    },
+    ...staticPages,
     ...islandPages,
     ...placePages,
-    {
-      url: `${baseUrl}/guides`,
-      lastModified: now,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
     ...guidePages,
-    {
-      url: `${baseUrl}/deals`,
-      lastModified: now,
-      changeFrequency: 'daily',
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/login`,
-      lastModified: now,
-      changeFrequency: 'monthly',
-      priority: 0.5,
-    },
   ]
 }

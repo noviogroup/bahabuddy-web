@@ -36,10 +36,10 @@ interface Props {
 
 const TONE_CLASSES: Record<NonNullable<Chip['tone']>, string> = {
   neutral: 'bg-gray-100 text-gray-700',
-  brand:   'bg-brand-50 text-brand-700',
+  brand:   'bg-gray-100 text-night',
   palm:    'bg-palm-50 text-palm-700',
   coral:   'bg-coral-50 text-coral-700',
-  gold:    'bg-gold-50 text-gold-700',
+  gold:    'bg-gray-100 text-night',
 }
 
 function normalize(c: string | Chip): Chip {

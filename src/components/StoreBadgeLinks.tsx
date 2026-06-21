@@ -25,7 +25,7 @@ export default function StoreBadgeLinks({ className, height = 44 }: StoreBadgeLi
         href={APP_STORE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block shrink-0 rounded-md opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-opacity"
+        className="inline-block shrink-0 rounded-md opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-opacity"
         aria-label="Download on the App Store"
       >
         <Image
@@ -42,7 +42,7 @@ export default function StoreBadgeLinks({ className, height = 44 }: StoreBadgeLi
         href={GOOGLE_PLAY_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-block shrink-0 rounded-md opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-opacity"
+        className="inline-block shrink-0 rounded-md opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-opacity"
         aria-label="Get it on Google Play"
       >
         <Image

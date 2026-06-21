@@ -12,16 +12,16 @@ export default function CheckoutLoading() {
       <Skeleton className="h-4 w-32" />
 
       {/* Order summary card */}
-      <div className="rounded-baha-lg bg-gradient-to-br from-brand-600 to-brand-500 p-6 shadow-card">
-        <Skeleton className="h-3 w-20 mb-3 bg-white/30" />
-        <Skeleton className="h-8 w-3/4 mb-2 bg-white/30" />
-        <Skeleton className="h-4 w-1/2 bg-white/30" />
-        <div className="flex justify-between items-end mt-6 pt-4 border-t border-white/20">
+      <div className="rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <Skeleton className="h-3 w-20 mb-3" />
+        <Skeleton className="h-8 w-3/4 mb-2" />
+        <Skeleton className="h-4 w-1/2" />
+        <div className="flex justify-between items-end mt-6 pt-4 border-t border-gray-200">
           <div className="space-y-1.5">
-            <Skeleton className="h-3 w-16 bg-white/30" />
-            <Skeleton className="h-4 w-32 bg-white/30" />
+            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-4 w-32" />
           </div>
-          <Skeleton className="h-10 w-24 bg-white/30" />
+          <Skeleton className="h-10 w-24" />
         </div>
       </div>
 

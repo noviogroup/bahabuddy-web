@@ -1,13 +1,16 @@
 import type { Metadata } from 'next'
+import Image from 'next/image'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import TravelDocumentLeadForm from '@/components/revenue/TravelDocumentLeadForm'
+import { BahaImages } from '@/lib/baha-images'
 
 export const metadata: Metadata = {
-  title: 'Concierge Trip Plan',
+  title: 'Bahamas Concierge Trip Planning',
   description:
-    'Upgrade your AI-generated Bahamas itinerary into a polished Concierge Trip Plan reviewed by the Baha Buddy local travel team.',
+    'Turn a rough Bahamas trip idea into a practical, human-reviewed Concierge Trip Plan with island, stay, dining, activity, transfer, budget, and document guidance.',
 }
 
 const tiers = [
@@ -15,65 +18,104 @@ const tiers = [
     id: 'quick_review',
     name: 'Quick Review',
     price: '$49',
-    description: 'Best for travelers who already have an AI itinerary and want a fast local review.',
-    features: ['Improve an existing itinerary', 'Local practicality check', 'Dining and activity refinements', 'Delivered by email or dashboard'],
-    cta: 'Pay $49 now',
+    description: 'For travelers with a draft itinerary who want a fast local practicality pass.',
+    features: [
+      'Existing-plan review',
+      'Island and timing sanity check',
+      'Dining and activity refinements',
+      'Dashboard order tracking',
+    ],
+    cta: 'Start quick review',
   },
   {
     id: 'concierge_trip_plan',
     name: 'Concierge Trip Plan',
     price: '$149',
-    description: 'The recommended launch offer for 3-5 day Bahamas trips.',
-    features: ['Custom 3-5 day itinerary', 'Island selection guidance', 'Hotel, activity, dining, and transfer suggestions', 'Budget estimate and seasonal notes', 'Travel-document checklist where relevant'],
-    cta: 'Pay $149 now',
+    description: 'The recommended service for first-time Bahamas travelers planning 3-5 days.',
+    features: [
+      'Custom 3-5 day route',
+      'Island fit recommendation',
+      'Stay, food, beach, tour, and transfer guidance',
+      'Budget and seasonal notes',
+      'Travel-document checklist where relevant',
+    ],
+    cta: 'Choose concierge plan',
     featured: true,
   },
   {
     id: 'full_planning_support',
     name: 'Full Planning Support',
     price: '$299',
-    description: 'For travelers who want itinerary planning plus booking assistance handoff.',
-    features: ['Everything in Concierge Trip Plan', 'Booking assistance handoff', 'Transfer and tour coordination support', 'Baha Visa / document support referral', 'Priority follow-up'],
-    cta: 'Pay $299 now',
+    description: 'For travelers who need the itinerary plus guided booking and support handoffs.',
+    features: [
+      'Everything in Concierge Trip Plan',
+      'Booking assistance handoff',
+      'Transfer and tour coordination support',
+      'Baha Visa or document support referral',
+      'Priority follow-up',
+    ],
+    cta: 'Get full support',
   },
 ]
 
-const flow = [
-  'Choose your concierge planning level and pay securely with Stripe.',
-  'Receive confirmation and submit your travel details after payment.',
-  'The Baha Buddy team refines the itinerary with local context.',
-  'Receive the polished plan in your dashboard and/or by email.',
-  'Get optional booking, transfer, activity, and visa-service handoffs.',
+const painPoints = [
+  'The Bahamas has island-to-island logistics that can make a pretty itinerary impossible.',
+  'AI can suggest the right vibe but still miss ferry timing, cruise buffers, beach access, or seasonal tradeoffs.',
+  'Hotels, restaurants, transfers, and tours need to line up before money is spent.',
 ]
 
-const included = [
-  '3-5 day itinerary structure',
-  'Island fit recommendation',
-  'Hotel and stay suggestions',
-  'Dining and nightlife suggestions',
-  'Tours, beaches, cultural stops, and activities',
-  'Estimated budget range',
-  'Weather and seasonal planning notes',
-  'Airport arrival and transfer guidance',
-  'Visa/travel-document checklist where relevant',
-  'Optional handoff to booking or Baha Visa support',
+const deliverables = [
+  ['Island fit', 'Where to stay, what to skip, and why the route makes sense for your group.'],
+  ['Day-by-day plan', 'A practical rhythm for arrival, beaches, food, tours, downtime, and transfer windows.'],
+  ['Local checks', 'Seasonality, weather sensitivity, cruise timing, accessibility, and family fit notes.'],
+  ['Booking handoffs', 'Clear next steps for stays, flights, transfers, activities, restaurants, and documents.'],
 ]
 
-const bestFor = [
-  'First-time visitors',
-  'Families',
-  'Honeymooners',
-  'Group trips',
-  'Luxury travelers',
-  'Multi-island trips',
+const serviceFlow = [
+  ['Choose service', 'Select the review level that matches how much help you need.'],
+  ['Create account', 'Checkout is linked to your Baha Buddy account so the plan has a home.'],
+  ['Pay securely', 'Stripe handles payment and the order appears in your dashboard.'],
+  ['Send details', 'Share dates, group size, budget, islands, travel style, and must-dos.'],
+  ['Local review', 'The team turns the rough plan into a practical Bahamas itinerary.'],
+  ['Receive plan', 'Review the finished plan in your dashboard, with optional handoffs.'],
 ]
 
-const localReviewReasons = [
-  'Some islands require flight, ferry, or charter planning.',
-  'Weather, seasonality, and transfer timing can change the best itinerary.',
-  'Not every beach, tour, or dining option fits every traveler or group size.',
-  'Local review helps make the plan more practical before money is spent on bookings.',
+const scenarios = [
+  {
+    label: 'First trip',
+    title: 'Nassau, Exuma, or somewhere quieter?',
+    copy: 'We help pick the right island mix before you commit to hotels or flights.',
+  },
+  {
+    label: 'Family or group',
+    title: 'Enough structure without overpacking the day.',
+    copy: 'The plan accounts for group pace, kids, budget, food, and realistic travel time.',
+  },
+  {
+    label: 'Cruise day',
+    title: 'Do the most without risking the ship.',
+    copy: 'Cruise buffers, port-safe routing, and weather-sensitive alternatives stay visible.',
+  },
 ]
+
+const planPreview = [
+  ['Trip shape', '4 days, Nassau base with one Exuma day only if flight/tour timing works.'],
+  ['Stay zone', 'Beach access first, then dining and transfer convenience.'],
+  ['Food plan', 'One local dinner anchor, one casual conch stop, one flexible backup.'],
+  ['Risk notes', 'Weather backup, early airport return, and document checklist.'],
+]
+
+function checkoutHref(offerId: string, source = 'pricing_cta') {
+  return `/concierge-trip-plan/checkout?offer=${encodeURIComponent(offerId)}&source=${encodeURIComponent(source)}`
+}
+
+function createTripFirstHref(source = 'concierge_page') {
+  return `/dashboard/trips/new?${new URLSearchParams({
+    returnTo: '/concierge-trip-plan',
+    source,
+    seed: 'Create a Bahamas trip first so Concierge can review the route, stays, food, activities, transfers, and document needs.',
+  }).toString()}`
+}
 
 export default function ConciergeTripPlanPage({
   searchParams,
@@ -84,197 +126,266 @@ export default function ConciergeTripPlanPage({
   const cancelled = searchParams?.checkout === 'cancelled'
 
   return (
-    <main className="min-h-screen bg-offwhite">
-      <section className="relative overflow-hidden bg-gradient-brand text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_35%)]" />
-        <div className="relative max-w-6xl mx-auto px-4 py-20 lg:py-24">
-          <div className="max-w-3xl">
-            <p className="inline-flex rounded-full bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
-              Baha Buddy Concierge
-            </p>
-            <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight leading-tight">
-              Pay today. Get your Bahamas trip reviewed by a local team.
-            </h1>
-            <p className="mt-6 text-lg md:text-xl text-brand-50 leading-relaxed max-w-2xl">
-              Start with Buddy&apos;s AI trip planning, then upgrade to a secure paid concierge review
-              with practical recommendations for islands, hotels, activities, dining,
-              transportation, budget, and travel documents.
-            </p>
-            {cancelled && (
-              <div className="mt-6 rounded-baha-lg bg-white/15 border border-white/20 p-4 text-white text-sm font-semibold">
-                Checkout was cancelled. You can choose an offer below and try again whenever ready.
-              </div>
-            )}
-            {submitted === 'documents' && (
-              <div className="mt-6 rounded-baha-lg bg-white/15 border border-white/20 p-4 text-white text-sm font-semibold">
-                Travel-document request received. The Baha Visa team can now follow up.
-              </div>
-            )}
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <a
-                href="#pricing"
-                className="inline-flex items-center justify-center rounded-full bg-white px-7 py-3 text-brand-700 font-bold shadow-card hover:bg-brand-50 transition-colors"
-              >
-                Choose a paid plan
-              </a>
-              <Link
-                href="/dashboard/chat?intent=concierge"
-                className="inline-flex items-center justify-center rounded-full border border-white/60 px-7 py-3 text-white font-bold hover:bg-white/10 transition-colors"
-              >
-                Build my trip with Buddy first
-              </Link>
+    <main className="min-h-screen bg-white">
+      <CompactPageHeader
+        eyebrow="Human-reviewed Bahamas planning"
+        title="Turn a rough Bahamas idea into a trip you can actually book."
+        subtitle="Buddy can draft the plan. Baha Buddy Concierge turns it into a practical itinerary with island fit, stay zones, food, activities, transfer timing, budget notes, and travel-document handoffs."
+        crumbs={[
+          { href: '/', label: 'Home' },
+          { label: 'Concierge' },
+        ]}
+        actions={(
+          <>
+            <Link
+              href={checkoutHref('concierge_trip_plan', 'header_cta')}
+              className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-700"
+            >
+              Start Concierge Trip Plan
+            </Link>
+            <Link
+              href="#service-flow"
+              className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50"
+            >
+              See service flow
+            </Link>
+          </>
+        )}
+      />
+
+      <section className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          {(cancelled || submitted === 'documents') && (
+            <div className="mb-6 rounded-baha-lg border border-gray-200 bg-gray-50 p-4 text-sm font-semibold text-charcoal">
+              {cancelled
+                ? 'Checkout was cancelled. You can choose an offer below and try again whenever ready.'
+                : 'Travel-document request received. The Baha Visa team can now follow up.'}
             </div>
-            <p className="mt-4 text-sm text-brand-50/90">
-              Payments are processed securely through Stripe. No manual invoice is required.
-            </p>
+          )}
+          <div className="grid gap-3 md:grid-cols-3">
+            {[
+              ['Bahamas only', 'No generalist destination sprawl.'],
+              ['Local practicality', 'Routes, timing, budgets, and backups checked.'],
+              ['Dashboard delivery', 'Orders, receipts, details, and final plan stay linked.'],
+            ].map(([label, copy]) => (
+              <div key={label} className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
+                <p className="inline-flex items-center gap-2 text-sm font-extrabold text-night">
+                  <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+                  {label}
+                </p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal">{copy}</p>
+              </div>
+            ))}
+          </div>
+          <p className="mt-5 text-sm font-semibold text-gray-500">
+            Account-based checkout keeps payment, trip details, receipt, and delivered plan in one dashboard.
+          </p>
+        </div>
+      </section>
+
+      <section className="border-b border-gray-200 bg-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 lg:grid-cols-[0.85fr_1.15fr] lg:py-20">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Why local review matters</p>
+            <h2 className="mt-3 text-3xl font-extrabold text-night md:text-4xl">
+              People do not pay for another list. They pay for confidence.
+            </h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {painPoints.map((point) => (
+              <div key={point} className="rounded-baha-lg border border-gray-200 bg-white p-5 text-sm leading-relaxed text-charcoal shadow-sm">
+                {point}
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      <section id="pricing" className="max-w-6xl mx-auto px-4 py-14 lg:py-20">
-        <div className="text-center max-w-3xl mx-auto mb-10">
-          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Immediate checkout</p>
-          <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-            Choose your concierge planning level.
+      <section className="mx-auto grid max-w-6xl gap-10 px-4 py-14 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Before and after</p>
+          <h2 className="mt-3 text-3xl font-extrabold text-night md:text-4xl">
+            From draft itinerary to decision-ready plan.
           </h2>
-          <p className="mt-4 text-charcoal leading-relaxed">
-            Select an offer below and pay immediately with card, Apple Pay, Google Pay, Link, or other Stripe-supported methods when available.
+          <p className="mt-4 max-w-xl leading-relaxed text-charcoal">
+            Concierge is the layer that turns inspiration into something a traveler can act on
+            before booking hotels, flights, tours, and transfers.
           </p>
+          <div className="mt-7 space-y-5">
+            {deliverables.map(([title, copy]) => (
+              <div key={title} className="pl-4">
+                <h3 className="flex items-center gap-2 font-extrabold text-night">
+                  <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+                  {title}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-charcoal">{copy}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {tiers.map((tier) => (
-            <article
-              key={tier.name}
-              className={`rounded-baha-xl border p-6 shadow-card bg-white ${
-                tier.featured ? 'border-gold-300 ring-2 ring-gold-100' : 'border-sand-200'
-              }`}
-            >
-              {tier.featured && (
-                <p className="mb-4 inline-flex rounded-full bg-gold-100 px-3 py-1 text-xs font-bold text-gold-800">
-                  Recommended launch offer
-                </p>
-              )}
-              <h2 className="text-xl font-extrabold text-night">{tier.name}</h2>
-              <p className="mt-2 text-4xl font-extrabold text-brand-700">{tier.price}</p>
-              <p className="mt-3 text-sm text-charcoal leading-relaxed">{tier.description}</p>
-              <ul className="mt-5 space-y-3 text-sm text-charcoal">
-                {tier.features.map((feature) => (
-                  <li key={feature} className="flex gap-3">
-                    <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-palm-100 text-palm-700 text-xs font-bold">
-                      ✓
-                    </span>
-                    <span>{feature}</span>
-                  </li>
-                ))}
-              </ul>
-              <form method="POST" action="/api/concierge-checkout" className="mt-6">
-                <input type="hidden" name="offer_id" value={tier.id} />
-                <input type="hidden" name="source" value="concierge_page" />
-                <button
-                  type="submit"
-                  className={`inline-flex w-full items-center justify-center rounded-full px-5 py-3 font-bold transition-colors ${
-                    tier.featured
-                      ? 'bg-brand-600 text-white hover:bg-brand-700'
-                      : 'bg-brand-50 text-brand-700 hover:bg-brand-100'
-                  }`}
-                >
-                  {tier.cta}
-                </button>
-              </form>
-              <p className="mt-3 text-center text-xs text-gray-400">Secure checkout powered by Stripe.</p>
+
+        <div className="overflow-hidden rounded-baha-xl border border-gray-200 bg-white shadow-sm">
+          <div className="relative h-56">
+            <Image
+              src={BahaImages.snorkeling}
+              alt="Snorkeling and clear water in Nassau Paradise Island"
+              fill
+              sizes="(min-width: 1024px) 520px, 100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-hero-bottom" />
+            <div className="absolute bottom-0 p-5 text-white">
+              <p className="text-sm font-bold uppercase tracking-wide text-gold-200">Sample output</p>
+              <h3 className="mt-1 text-2xl font-extrabold">Concierge plan snapshot</h3>
+            </div>
+          </div>
+          <div className="divide-y divide-gray-100">
+            {planPreview.map(([label, copy]) => (
+              <div key={label} className="grid gap-2 px-5 py-4 sm:grid-cols-[130px_1fr]">
+                <p className="text-sm font-extrabold text-brand-700">{label}</p>
+                <p className="text-sm leading-relaxed text-charcoal">{copy}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section id="service-flow" className="border-y border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-14 lg:py-20">
+          <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Full service flow</p>
+          <h2 className="mt-3 max-w-3xl text-3xl font-extrabold text-night md:text-4xl">
+            A complete path from sales page to delivered itinerary.
+          </h2>
+          <p className="mt-4 max-w-2xl leading-relaxed text-charcoal">
+            You can start from a simple idea, pay securely, send the details, and return to one
+            place for order status, receipts, and the finished plan.
+          </p>
+          <ol className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {serviceFlow.map(([title, copy], index) => (
+              <li key={title} className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
+                <span className="text-xs font-extrabold uppercase tracking-wide text-brand-700">
+                  Step {index + 1}
+                </span>
+                <h3 className="mt-3 text-lg font-extrabold text-night">{title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal">{copy}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-6xl px-4 py-14 lg:py-20">
+        <div className="grid gap-6 lg:grid-cols-3">
+          {scenarios.map((scenario) => (
+            <article key={scenario.label} className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
+              <p className="text-sm font-extrabold uppercase tracking-wide text-coral-600">{scenario.label}</p>
+              <h3 className="mt-3 text-2xl font-extrabold leading-tight text-night">{scenario.title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-charcoal">{scenario.copy}</p>
             </article>
           ))}
         </div>
       </section>
 
-      <section className="bg-white border-y border-sand-200">
-        <div className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-2 gap-10">
-          <div>
-            <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">How it works</p>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-              A simple flow from payment to polished plan.
+      <section id="pricing" className="border-y border-gray-200 bg-gray-50">
+        <div className="mx-auto max-w-6xl px-4 py-14 lg:py-20">
+          <div className="mx-auto mb-10 max-w-3xl text-center">
+            <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Choose the level</p>
+            <h2 className="mt-3 text-3xl font-extrabold text-night md:text-4xl">
+              Start with the amount of human support the trip needs.
             </h2>
-            <ol className="mt-7 space-y-4">
-              {flow.map((step, index) => (
-                <li key={step} className="flex gap-4">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-brand-600 text-white text-sm font-bold">
-                    {index + 1}
-                  </span>
-                  <span className="pt-1 text-charcoal leading-relaxed">{step}</span>
-                </li>
-              ))}
-            </ol>
+            <p className="mt-4 leading-relaxed text-charcoal">
+              Selecting a service starts an account-based checkout. If you are not signed in,
+              you will create or enter your account first so delivery is not disconnected from the order.
+            </p>
           </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            {tiers.map((tier) => (
+              <article
+                key={tier.name}
+                className={`flex h-full flex-col rounded-baha-xl border bg-white p-6 shadow-sm ${
+                  tier.featured ? 'border-gray-900 ring-2 ring-gray-100' : 'border-gray-200'
+                }`}
+              >
+                {tier.featured && (
+                  <p className="mb-4 inline-flex w-fit rounded-full bg-gold-400 px-3 py-1 text-xs font-bold text-night">
+                    Recommended launch offer
+                  </p>
+                )}
+                <h3 className="text-xl font-extrabold text-night">{tier.name}</h3>
+                <p className="mt-2 text-4xl font-extrabold text-brand-700">{tier.price}</p>
+                <p className="mt-3 text-sm leading-relaxed text-charcoal">{tier.description}</p>
+                <ul className="mt-5 flex-1 space-y-3 text-sm text-charcoal">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="flex gap-3">
+                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-palm-600" aria-hidden="true" />
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href={checkoutHref(tier.id)}
+                  className={`mt-6 inline-flex w-full items-center justify-center rounded-full px-5 py-3 font-bold transition-colors ${
+                    tier.featured
+                      ? 'bg-brand-600 text-white hover:bg-brand-700'
+                      : 'border border-gray-300 bg-white text-night hover:border-gray-400 hover:bg-gray-50'
+                  }`}
+                >
+                  {tier.cta}
+                </Link>
+                <p className="mt-3 text-center text-xs text-gray-500">Secure checkout powered by Stripe.</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
-          <div className="rounded-baha-xl bg-sand-50 border border-sand-200 p-6 lg:p-8">
-            <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">What is included</p>
-            <div className="mt-5 grid sm:grid-cols-2 gap-3">
-              {included.map((item) => (
-                <div key={item} className="rounded-baha-md bg-white border border-sand-200 p-4 text-sm text-charcoal shadow-soft">
+      <section className="bg-night text-white">
+        <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 lg:grid-cols-[0.9fr_1.1fr] lg:py-20">
+          <div>
+            <p className="font-bold text-gold-300">Travel document handoff</p>
+            <h2 className="mt-3 text-3xl font-extrabold md:text-4xl">Need visa or travel-document help?</h2>
+            <p className="mt-4 max-w-2xl leading-relaxed text-white/80">
+              Concierge customers can be routed into Baha Visa and Baha Global Group for
+              Bahamas visa support, document checklists, work-permit inquiries, residence
+              support, group travel documentation, and corporate travel support.
+            </p>
+            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+              {['Document checklist', 'Group travel support', 'Corporate travel', 'Residence or permit referral'].map((item) => (
+                <div key={item} className="border-t border-white/20 pt-3 text-sm font-semibold text-white/85">
                   {item}
                 </div>
               ))}
             </div>
           </div>
+          <TravelDocumentLeadForm />
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-2 gap-8">
-        <div className="rounded-baha-xl bg-white border border-sand-200 p-6 lg:p-8 shadow-card">
-          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Why local review matters</p>
-          <h2 className="mt-3 text-3xl font-extrabold text-night">AI starts the plan. Local context protects the trip.</h2>
-          <div className="mt-6 space-y-3">
-            {localReviewReasons.map((reason) => (
-              <div key={reason} className="flex gap-3 text-sm text-charcoal leading-relaxed">
-                <span className="mt-0.5 text-palm-600 font-bold">✓</span>
-                <span>{reason}</span>
-              </div>
-            ))}
+      <section className="mx-auto max-w-6xl px-4 py-14 lg:py-20">
+        <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Ready to plan</p>
+            <h2 className="mt-3 text-3xl font-extrabold text-night md:text-4xl">
+              Start with the Concierge Trip Plan.
+            </h2>
+            <p className="mt-4 max-w-2xl leading-relaxed text-charcoal">
+              The recommended launch offer gives most travelers the right balance: a practical
+              3-5 day plan, local review, budget context, and clear next steps.
+            </p>
           </div>
-          <div className="mt-7">
-            <p className="text-sm font-bold text-night mb-3">Best for:</p>
-            <div className="flex flex-wrap gap-2">
-              {bestFor.map((item) => (
-                <span key={item} className="rounded-full bg-brand-50 text-brand-700 px-3 py-1.5 text-xs font-bold">
-                  {item}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-baha-xl bg-gradient-brand text-white p-6 lg:p-8 shadow-card">
-          <p className="text-sm font-bold text-brand-50 uppercase tracking-wide">Sample itinerary preview</p>
-          <h2 className="mt-3 text-3xl font-extrabold">Example 4-day Bahamas plan</h2>
-          <div className="mt-6 space-y-3">
-            {[
-              ['Day 1', 'Arrival in Nassau, beach reset, local dinner, optional nightlife.'],
-              ['Day 2', 'Exuma day trip, swimming pigs, sandbar stop, island lunch.'],
-              ['Day 3', 'Culture, food, shopping, beach club, or family-friendly activity.'],
-              ['Day 4', 'Slow morning, final dining recommendation, airport transfer timing.'],
-            ].map(([day, detail]) => (
-              <div key={day} className="rounded-baha-lg bg-white/10 border border-white/15 p-4">
-                <p className="font-extrabold text-gold-200">{day}</p>
-                <p className="mt-1 text-sm text-white/85 leading-relaxed">{detail}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="max-w-6xl mx-auto px-4 pb-14 lg:pb-20">
-        <div className="rounded-baha-xl bg-night text-white p-8 lg:p-10">
-          <div className="grid lg:grid-cols-[1fr_0.9fr] gap-8 items-start">
-            <div>
-              <p className="text-gold-300 font-bold mb-2">Travel document cross-sell</p>
-              <h2 className="text-3xl font-extrabold mb-3">Need visa or travel-document help?</h2>
-              <p className="text-white/80 leading-relaxed max-w-2xl">
-                Concierge Trip Plan customers can be routed into Baha Visa and Baha Global Group for
-                Bahamas visa support, travel-document checklists, work-permit inquiries, residence
-                support, group travel documentation, and corporate travel support.
-              </p>
-            </div>
-            <TravelDocumentLeadForm />
+          <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+            <Link
+              href={checkoutHref('concierge_trip_plan', 'bottom_cta')}
+              className="inline-flex items-center justify-center rounded-full bg-brand-600 px-7 py-3 font-bold text-white transition-colors hover:bg-brand-700"
+            >
+              Choose Concierge Trip Plan
+            </Link>
+            <Link
+              href={createTripFirstHref('concierge_bottom_cta')}
+              className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-7 py-3 font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            >
+              Create trip first
+            </Link>
           </div>
         </div>
       </section>

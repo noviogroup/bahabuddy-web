@@ -67,7 +67,7 @@ export default async function ProfilePage() {
       <section className="mb-8 bg-white rounded-baha-md border border-gray-200 p-5 shadow-soft">
         <div className="flex items-start sm:items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4 min-w-0">
-            <div className="shrink-0 w-12 h-12 rounded-full bg-brand-100 text-brand-700 flex items-center justify-center font-bold text-base">
+            <div className="shrink-0 w-12 h-12 rounded-full bg-gray-100 text-night flex items-center justify-center font-bold text-base">
               {(profile?.display_name || user.email || '?').slice(0, 2).toUpperCase()}
             </div>
             <div className="min-w-0">

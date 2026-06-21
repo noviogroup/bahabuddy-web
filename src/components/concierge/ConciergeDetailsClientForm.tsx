@@ -2,6 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import {
+  TravelSearchField,
+  TravelSearchInput,
+  TravelSearchTextarea,
+} from '@/components/marketplace/TravelSearchFields'
 
 export type ConciergeDetailsOrder = {
   id: string
@@ -55,18 +60,35 @@ export function ConciergeDetailsClientForm({ order }: { order: ConciergeDetailsO
   }
 
   return (
-    <form onSubmit={onSubmit} className="rounded-3xl bg-white border border-sand-200 p-6 shadow-card space-y-4">
+    <form onSubmit={onSubmit} className="space-y-4 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
       {error && <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">{error}</div>}
       <div className="grid sm:grid-cols-2 gap-4">
-        <label className="block text-sm font-bold text-night">Name<input name="traveler_name" defaultValue={order.traveler_name || ''} className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
-        <label className="block text-sm font-bold text-night">Email<input name="traveler_email" type="email" defaultValue={order.traveler_email || ''} className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
-        <label className="block text-sm font-bold text-night">Travel dates<input name="travel_dates" defaultValue={order.travel_dates || ''} placeholder="Exact or estimated" className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
-        <label className="block text-sm font-bold text-night">Group size<input name="party_size" defaultValue={order.party_size || ''} placeholder="2 adults, family of 4..." className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
-        <label className="block text-sm font-bold text-night">Budget range<input name="budget_range" defaultValue={order.budget_range || ''} placeholder="Budget range" className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
-        <label className="block text-sm font-bold text-night">Preferred island(s)<input name="destination_interests" defaultValue={order.destination_interests || ''} placeholder="Nassau, Exuma, Eleuthera..." className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
+        <TravelSearchField label="Name" htmlFor="concierge-detail-name" className="bg-white">
+          <TravelSearchInput id="concierge-detail-name" name="traveler_name" defaultValue={order.traveler_name || ''} />
+        </TravelSearchField>
+        <TravelSearchField label="Email" htmlFor="concierge-detail-email" className="bg-white">
+          <TravelSearchInput id="concierge-detail-email" name="traveler_email" type="email" defaultValue={order.traveler_email || ''} />
+        </TravelSearchField>
+        <TravelSearchField label="Travel dates" htmlFor="concierge-detail-dates" className="bg-white">
+          <TravelSearchInput id="concierge-detail-dates" name="travel_dates" defaultValue={order.travel_dates || ''} placeholder="Exact or estimated" />
+        </TravelSearchField>
+        <TravelSearchField label="Group size" htmlFor="concierge-detail-party" className="bg-white">
+          <TravelSearchInput id="concierge-detail-party" name="party_size" defaultValue={order.party_size || ''} placeholder="2 adults, family of 4" />
+        </TravelSearchField>
+        <TravelSearchField label="Budget range" htmlFor="concierge-detail-budget" className="bg-white">
+          <TravelSearchInput id="concierge-detail-budget" name="budget_range" defaultValue={order.budget_range || ''} placeholder="Budget range" />
+        </TravelSearchField>
+        <TravelSearchField label="Preferred islands" htmlFor="concierge-detail-islands" className="bg-white">
+          <TravelSearchInput id="concierge-detail-islands" name="destination_interests" defaultValue={order.destination_interests || ''} placeholder="Nassau, Exuma, Eleuthera" />
+        </TravelSearchField>
       </div>
-      <label className="block text-sm font-bold text-night">Trip style and notes<textarea name="notes" rows={5} defaultValue={order.notes || ''} className="mt-2 w-full rounded-baha-md border border-sand-300 px-4 py-3 text-sm font-normal" /></label>
-      <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-white font-bold hover:bg-brand-700 disabled:opacity-60">{saving ? 'Saving…' : 'Submit trip details'}</button>
+      <TravelSearchField label="Trip style and notes" htmlFor="concierge-detail-notes" className="bg-white">
+        <TravelSearchTextarea id="concierge-detail-notes" name="notes" rows={5} defaultValue={order.notes || ''} />
+      </TravelSearchField>
+      <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 font-bold text-white hover:bg-brand-700 disabled:opacity-60">
+        <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+        {saving ? 'Saving…' : 'Submit trip details'}
+      </button>
     </form>
   )
 }

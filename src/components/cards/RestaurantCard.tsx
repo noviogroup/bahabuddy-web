@@ -12,9 +12,8 @@
  * Decision-supporting differences vs HotelCard:
  *
  *   - Price displayed as a tier ($–$$$$), not a per-night number.
- *   - Cuisine type is the most-scanned signal — promoted to a coral-toned
- *     chip in the same row as the rating, so the eye gets cuisine in the
- *     first sweep.
+ *   - Cuisine type is the most-scanned signal, so it stays in the same row as
+ *     the rating and price without taking over the card.
  *   - Hours: today's hours show as a single line (collapsed) or full week
  *     table (expanded). Sourced from `opening_hours` array column.
  *   - Primary action when expanded is "Call" — restaurants are
@@ -102,7 +101,7 @@ const I = {
 function PriceLevelGlyph({ level }: { level: number }) {
   const clamped = Math.min(4, Math.max(1, level))
   return (
-    <span className="font-bold text-brand-600 text-sm leading-none" aria-label={`Price level ${clamped} of 4`}>
+    <span className="font-bold text-night text-sm leading-none" aria-label={`Price level ${clamped} of 4`}>
       {'$'.repeat(clamped)}
       <span className="text-gray-300">{'$'.repeat(4 - clamped)}</span>
     </span>
@@ -139,7 +138,7 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
     iconOnly: true,
   })
   if (onSave) actions.push({
-    label: 'Save', icon: I.heart, onClick: () => onSave(data), iconOnly: true, tone: 'coral',
+    label: 'Add to trip', icon: I.heart, onClick: () => onSave(data), iconOnly: false, tone: 'brand',
   })
 
   // ── Card body ────────────────────────────────────────────────────────
@@ -169,7 +168,7 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
             <p className="font-semibold text-[15px] text-gray-900 leading-tight truncate">{name}</p>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {cuisine && (
-                <span className="text-[11px] font-semibold text-coral-700 bg-coral-50 px-2 py-0.5 rounded-full">
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-charcoal">
                   {cuisine}
                 </span>
               )}
@@ -205,6 +204,37 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
           />
         )}
 
+        {!expanded && size === 'compact' && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
+            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
+              Tap for hours &amp; reviews {I.chevron}
+            </span>
+            <div className="flex flex-wrap justify-end gap-2">
+              {detailHref && (
+                <Link
+                  href={detailHref}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-flex h-8 items-center rounded-full border border-gray-300 bg-white px-3 text-[11px] font-extrabold text-night transition-colors hover:border-brand-300 hover:text-brand-700"
+                >
+                  View details
+                </Link>
+              )}
+              {onSave && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onSave(data)
+                  }}
+                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-[11px] font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+                >
+                  Add to trip
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Expanded block */}
         {expanded && (
           <div className="space-y-2.5 pt-1">
@@ -233,14 +263,6 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
           </div>
         )}
 
-        {/* Collapsed-state affordance */}
-        {!expanded && size === 'compact' && (
-          <div className="flex items-center justify-end pt-0.5">
-            <span className="inline-flex items-center gap-1 text-[11px] text-gray-400 font-medium">
-              Tap for hours &amp; reviews {I.chevron}
-            </span>
-          </div>
-        )}
       </div>
     </>
   )

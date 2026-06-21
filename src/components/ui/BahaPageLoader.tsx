@@ -49,7 +49,7 @@ export default function BahaPageLoader({ size = DEFAULT_SIZE, className }: BahaP
         style={{
           padding: RING_PX,
           background:
-            'conic-gradient(from 0deg, #2E78D2 0%, #38BDF8 20%, #F5B731 50%, #F7C238 75%, #2E78D2 100%)',
+            'conic-gradient(from 0deg, #156FD1 0%, #02ABF1 24%, #FDC736 54%, #D89B00 76%, #156FD1 100%)',
         }}
       >
         <div className="h-full w-full rounded-full bg-offwhite" />

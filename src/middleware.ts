@@ -1,6 +1,20 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+export function isGuestChatPath(pathname: string): boolean {
+  return pathname === '/dashboard/chat'
+}
+
+export function isProtectedRoutePath(pathname: string): boolean {
+  const protectedPaths = ['/dashboard', '/trip', '/profile']
+  const isFlightBookingRoute = /^\/flights\/[^/]+\/book(?:\/|$)/.test(pathname)
+
+  return (
+    (!isGuestChatPath(pathname) && protectedPaths.some(p => pathname.startsWith(p))) ||
+    isFlightBookingRoute
+  )
+}
+
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -25,12 +39,7 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  const protectedPaths = ['/dashboard', '/trip', '/profile']
-  const isFlightBookingRoute =
-    /^\/flights\/[^/]+\/book(?:\/|$)/.test(request.nextUrl.pathname)
-  const isProtected =
-    protectedPaths.some(p => request.nextUrl.pathname.startsWith(p)) ||
-    isFlightBookingRoute
+  const isProtected = isProtectedRoutePath(request.nextUrl.pathname)
 
   if (isProtected && !user) {
     const loginUrl = new URL('/login', request.url)

@@ -3,6 +3,11 @@
 import { FormEvent, type ReactNode, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { getStripe } from '@/lib/stripe/client'
+import {
+  TravelSearchField,
+  TravelSearchInput,
+  TravelSearchSelect,
+} from '@/components/marketplace/TravelSearchFields'
 
 type TripOption = { id: string; name: string }
 
@@ -13,6 +18,8 @@ interface Props {
   checkin: string
   checkout: string
   adults: number
+  childrenCount?: number
+  requestedRooms?: number
   roomName: string
   amountCents: number
   currency: string
@@ -38,6 +45,9 @@ export default function StayGuestBookingClient(props: Props) {
     style: 'currency',
     currency: props.currency,
   }).format(props.amountCents / 100)
+  const childrenCount = Math.max(0, props.childrenCount ?? 0)
+  const requestedRooms = Math.max(1, props.requestedRooms ?? 1)
+  const totalTravelers = props.adults + childrenCount
 
   async function startPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -90,12 +100,14 @@ export default function StayGuestBookingClient(props: Props) {
   const guest = { firstName, lastName, email, phone }
 
   return (
-    <main className="min-h-screen bg-sand-50 px-4 py-10 text-night-900">
+    <main className="min-h-screen bg-gray-50 px-4 py-10 text-night-900">
       <section className="mx-auto max-w-3xl">
-        <div className="mb-6 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-sand-200">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-brand-600">Secure hotel booking</p>
-          <h1 className="font-serif text-3xl font-bold text-night-950">{props.hotelName}</h1>
-          <p className="mt-2 text-sm text-night-600">{props.roomName} · {props.checkin} to {props.checkout} · {formattedAmount}</p>
+        <div className="mb-6 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-gray-200">
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-gray-500">Secure hotel booking</p>
+          <h1 className="text-3xl font-extrabold tracking-tight text-night-950">{props.hotelName}</h1>
+          <p className="mt-2 text-sm text-night-600">
+            {props.roomName} · {props.checkin} to {props.checkout} · {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'} · {requestedRooms} {requestedRooms === 1 ? 'room' : 'rooms'} · {formattedAmount}
+          </p>
         </div>
 
         {error && (
@@ -105,33 +117,34 @@ export default function StayGuestBookingClient(props: Props) {
         )}
 
         {stage !== 'payment' && (
-          <form onSubmit={startPayment} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-sand-200">
+          <form onSubmit={startPayment} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-gray-200">
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Trip">
-                <select value={tripId} onChange={(e) => setTripId(e.target.value)} className="input" required>
+              <Field label="Trip" htmlFor="stay-trip">
+                <TravelSearchSelect id="stay-trip" value={tripId} onChange={(e) => setTripId(e.target.value)} required>
                   {props.trips.length === 0 ? <option value="">No trips found</option> : null}
                   {props.trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.name}</option>)}
-                </select>
+                </TravelSearchSelect>
               </Field>
-              <Field label="Email">
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="input" required />
+              <Field label="Email" htmlFor="stay-email">
+                <TravelSearchInput id="stay-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               </Field>
-              <Field label="First name">
-                <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="input" required />
+              <Field label="First name" htmlFor="stay-first-name">
+                <TravelSearchInput id="stay-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
               </Field>
-              <Field label="Last name">
-                <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="input" required />
+              <Field label="Last name" htmlFor="stay-last-name">
+                <TravelSearchInput id="stay-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
               </Field>
-              <Field label="Phone">
-                <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
+              <Field label="Phone" htmlFor="stay-phone">
+                <TravelSearchInput id="stay-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </Field>
             </div>
 
             <button
               type="submit"
               disabled={stage === 'processing' || props.trips.length === 0}
-              className="mt-6 w-full rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-60"
+              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
             >
+              {stage !== 'processing' && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
               {stage === 'processing' ? 'Preparing secure checkout...' : `Continue to pay ${formattedAmount}`}
             </button>
           </form>
@@ -229,25 +242,25 @@ function HotelPaymentForm({
   }
 
   return (
-    <form onSubmit={submitPayment} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-sand-200">
+    <form onSubmit={submitPayment} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-gray-200">
       <PaymentElement options={{ layout: 'tabs' }} />
       <button
         type="submit"
         disabled={!stripe || !elements}
-        className="mt-6 w-full rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm hover:bg-brand-700 disabled:opacity-60"
+        className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
       >
+        <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
         Pay and confirm hotel
       </button>
     </form>
   )
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) {
+function Field({ label, htmlFor, children }: { label: string; htmlFor: string; children: ReactNode }) {
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-night-500">{label}</span>
+    <TravelSearchField label={label} htmlFor={htmlFor}>
       {children}
-    </label>
+    </TravelSearchField>
   )
 }
 
@@ -264,7 +277,12 @@ async function addStayToTrip(tripId: string, props: Props) {
     providerRateId: props.rateId,
     price: props.amountCents / 100,
     currency: props.currency,
-    guests: props.adults,
+    guests: props.adults + (props.childrenCount ?? 0),
+    metadata: {
+      adults: props.adults,
+      children: props.childrenCount ?? 0,
+      rooms: props.requestedRooms ?? 1,
+    },
   })
 }
 

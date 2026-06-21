@@ -1,11 +1,13 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import Image from 'next/image'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import TrackView from '@/components/TrackView'
-import { BahaImages, FALLBACK_IMAGE } from '@/lib/baha-images'
+import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
+import { FilterChip, FilterGroup, ResultFilterPanel } from '@/components/marketplace/ResultFilterPanel'
+import { buddyChatHref } from '@/lib/buddy-chat'
 import type { TripAdvisorLocation } from '@/lib/tripadvisor/types'
 import { ISLAND_SLUG_MAP } from '@/lib/tripadvisor/types'
 
@@ -16,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Best Restaurants in the Bahamas | Baha Buddy',
     description:
-      'Find the best Bahamas dining — browse by island, cuisine, and rating.',
+      'Find the best Bahamas dining by island, cuisine, and rating.',
   },
 }
 
@@ -88,7 +90,7 @@ function PriceLevelDisplay({ level }: { level: string }) {
     level === '$' ? 1 : level === '$$' ? 2 : level === '$$$' ? 3 : level === '$$$$' ? 4 : level.length
   return (
     <span
-      className="font-bold text-brand-600 text-sm"
+      className="font-bold text-night text-sm"
       aria-label={`Price level ${level}`}
     >
       {'$'.repeat(Math.min(count, 4))}
@@ -97,6 +99,42 @@ function PriceLevelDisplay({ level }: { level: string }) {
       </span>
     </span>
   )
+}
+
+function restaurantPreviewReason(rest: TripAdvisorLocation): string {
+  if (rest.rating && rest.rating >= 4.5) {
+    return `Strong traveler rating${rest.island_name ? ` on ${rest.island_name}` : ''}, useful for shortlisting dining plans.`
+  }
+  if (rest.cuisine_types && rest.cuisine_types.length > 0) {
+    return `Cuisine fit: ${rest.cuisine_types.slice(0, 2).join(' and ')}.`
+  }
+  if (rest.num_reviews && rest.num_reviews > 0) {
+    return `${rest.num_reviews.toLocaleString()} traveler reviews to compare before you reserve.`
+  }
+  return 'Real restaurant listing with detail page, island context, and booking-planning actions.'
+}
+
+function paramsFrom(values: Record<string, string | undefined | null>): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(values)) {
+    if (value?.trim()) params.set(key, value.trim())
+  }
+  const qs = params.toString()
+  return qs ? `?${qs}` : ''
+}
+
+function restaurantExploreFoodHref(island?: string | null, cuisine?: string | null): string {
+  const search = cuisine || 'Food'
+  return `/explore/places${paramsFrom({ island, category: 'Dining', search })}`
+}
+
+function restaurantAskBuddyHref(rest: TripAdvisorLocation): string {
+  const prompt = [
+    `Tell me about ${rest.name}`,
+    rest.island_name ? `Island: ${rest.island_name}` : '',
+    rest.cuisine_types?.[0] ? `Cuisine: ${rest.cuisine_types[0]}` : '',
+  ].filter(Boolean).join('. ')
+  return buddyChatHref(prompt)
 }
 
 export default async function RestaurantsPage({
@@ -113,6 +151,28 @@ export default async function RestaurantsPage({
   ])
 
   const islandOptions = getIslandOptions()
+
+  function buildFilterUrl(overrides: Record<string, string | undefined>) {
+    const params = new URLSearchParams()
+    const merged = {
+      island: activeIsland,
+      cuisine: activeCuisine,
+      ...overrides,
+    }
+    for (const [key, value] of Object.entries(merged)) {
+      if (value) params.set(key, value)
+    }
+    const qs = params.toString()
+    return qs ? `/restaurants?${qs}` : '/restaurants'
+  }
+
+  const activeFilters = [
+    activeIsland ? { label: 'Island', value: activeIsland, href: buildFilterUrl({ island: undefined }) } : null,
+    activeCuisine ? { label: 'Cuisine', value: activeCuisine, href: buildFilterUrl({ cuisine: undefined }) } : null,
+  ].filter((item): item is { label: string; value: string; href: string } => Boolean(item))
+  const startFoodTripHref = `/dashboard/trips/new${paramsFrom({ returnTo: '/restaurants', source: 'restaurant' })}`
+  const exploreFoodCultureHref = restaurantExploreFoodHref(activeIsland || undefined, activeCuisine || 'Food')
+  const askFoodBuddyHref = buddyChatHref(activeIsland ? `Recommend restaurants in ${activeIsland}` : 'Recommend restaurants for my Bahamas trip')
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -141,6 +201,43 @@ export default async function RestaurantsPage({
     })),
   }
 
+  const renderFilterControls = () => (
+    <>
+      <FilterGroup label="Island" description="Choose the island or settlement.">
+        <FilterChip href={buildFilterUrl({ island: undefined })} active={!activeIsland}>
+          All islands
+        </FilterChip>
+        {islandOptions.map(({ slug, name }) => (
+          <FilterChip
+            key={slug}
+            href={buildFilterUrl({ island: name })}
+            active={activeIsland === name}
+          >
+            {name}
+          </FilterChip>
+        ))}
+      </FilterGroup>
+
+      {cuisineTypes.length > 0 && (
+        <FilterGroup label="Cuisine" description="Seafood, Bahamian, fine dining, cafes, and more.">
+          <FilterChip href={buildFilterUrl({ cuisine: undefined })} active={!activeCuisine} tone="gold">
+            All cuisines
+          </FilterChip>
+          {cuisineTypes.slice(0, 18).map((cuisine) => (
+            <FilterChip
+              key={cuisine}
+              href={buildFilterUrl({ cuisine })}
+              active={activeCuisine === cuisine}
+              tone="gold"
+            >
+              {cuisine}
+            </FilterChip>
+          ))}
+        </FilterGroup>
+      )}
+    </>
+  )
+
   return (
     <div className="min-h-screen bg-white">
       <TrackView
@@ -156,128 +253,63 @@ export default async function RestaurantsPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="relative overflow-hidden text-white">
-        <Image
-          src={BahaImages.bahamasLifestyle}
-          alt="Bahamas dining and culture"
-          fill
-          priority
-          className="object-cover"
-          sizes="100vw"
-          unoptimized
-        />
-        <div className="absolute inset-0 bg-gradient-to-br from-brand-900/90 via-brand-700/75 to-brand-500/55" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_10%,rgba(245,183,49,0.32),transparent_34%)]" />
-        <div className="relative max-w-6xl mx-auto px-4 py-16 md:py-20 text-center">
-          <p className="text-gold-200 text-sm font-extrabold tracking-[0.22em] uppercase mb-3">
-            Bahamas Dining
-          </p>
-          <h1 className="text-4xl md:text-6xl font-extrabold mb-4 tracking-tight">
-            {activeIsland ? `Where to Eat in ${activeIsland}` : 'Bahamas Dining Guide'}
-          </h1>
-          <p className="text-white/85 text-lg max-w-2xl mx-auto leading-8">
-            Find island restaurants, local seafood, waterfront spots, and refined dining with real photos, ratings, and Buddy context.
-          </p>
-          <div className="mt-7 flex flex-wrap justify-center gap-3">
+      <CompactPageHeader
+        eyebrow="Bahamas dining"
+        title={activeIsland ? `Where to eat in ${activeIsland}` : 'Bahamas dining guide'}
+        subtitle="Find island restaurants, local seafood, waterfront spots, and refined dining with real photos, ratings, and Buddy context."
+        crumbs={[
+          { href: '/', label: 'Home' },
+          { label: 'Restaurants' },
+        ]}
+        actions={(
+          <>
             <Link
-              href="/dashboard?q=Recommend+restaurants+for+my+Bahamas+trip"
-              className="rounded-full bg-white px-5 py-2.5 text-sm font-extrabold text-brand-700 shadow-soft transition-colors hover:bg-brand-50"
+              href={startFoodTripHref}
+              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
             >
-              Ask Buddy for food picks
+              Start food trip
             </Link>
             <Link
-              href="/destinations"
-              className="rounded-full border border-white/40 bg-white/10 px-5 py-2.5 text-sm font-extrabold text-white backdrop-blur transition-colors hover:bg-white/20"
+              href={exploreFoodCultureHref}
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
-              Explore by island
+              Explore food culture
             </Link>
-          </div>
-        </div>
-      </div>
-
-      <main className="max-w-6xl mx-auto px-4 py-10">
-        {/* Island filter pills */}
-        <div className="mb-4">
-          <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">
-            Island
-          </p>
-          <div className="flex flex-wrap gap-2">
             <Link
-              href={activeCuisine ? `/restaurants?cuisine=${encodeURIComponent(activeCuisine)}` : '/restaurants'}
-              className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
-                !activeIsland
-                  ? 'bg-brand-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
+              href={askFoodBuddyHref}
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
             >
-              All Islands
+              Ask Buddy
             </Link>
-            {islandOptions.map(({ slug, name }) => {
-              const params = new URLSearchParams()
-              params.set('island', name)
-              if (activeCuisine) params.set('cuisine', activeCuisine)
-              return (
-                <Link
-                  key={slug}
-                  href={`/restaurants?${params.toString()}`}
-                  className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
-                    activeIsland === name
-                      ? 'bg-brand-600 text-white'
-                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {name}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Cuisine filter pills */}
-        {cuisineTypes.length > 0 && (
-          <div className="mb-8">
-            <p className="text-xs text-gray-400 font-medium uppercase tracking-wider mb-2">
-              Cuisine
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={activeIsland ? `/restaurants?island=${encodeURIComponent(activeIsland)}` : '/restaurants'}
-                className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
-                  !activeCuisine
-                    ? 'bg-gold-400 text-night'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                All Cuisines
-              </Link>
-              {cuisineTypes.slice(0, 15).map((cuisine) => {
-                const params = new URLSearchParams()
-                if (activeIsland) params.set('island', activeIsland)
-                params.set('cuisine', cuisine)
-                return (
-                  <Link
-                    key={cuisine}
-                    href={`/restaurants?${params.toString()}`}
-                    className={`text-sm rounded-full px-4 py-1.5 font-medium transition-colors ${
-                      activeCuisine === cuisine
-                        ? 'bg-gold-400 text-night'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {cuisine}
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
+          </>
         )}
+      />
+
+      <main className="max-w-6xl mx-auto px-4 py-8">
+        <ResultFilterPanel
+          ariaLabel="Filter restaurants"
+          eyebrow="Filter restaurants"
+          title={`${restaurants.length} restaurant${restaurants.length !== 1 ? 's' : ''} found`}
+          description="Narrow dining by island and cuisine without turning the page into a chat handoff."
+          activeFilters={activeFilters}
+          clearHref="/restaurants"
+          emptyLabel="Showing all restaurants"
+          desktopGridClassName="md:grid-cols-2"
+        >
+          {renderFilterControls()}
+        </ResultFilterPanel>
 
         {/* Results count */}
-        <p className="text-sm text-gray-400 mb-6">
-          {restaurants.length} restaurant{restaurants.length !== 1 ? 's' : ''}
-          {activeIsland ? ` in ${activeIsland}` : ''}
-          {activeCuisine ? ` · ${activeCuisine}` : ''}
-        </p>
+        <div className="mb-6">
+          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
+            Results
+          </p>
+          <p className="mt-1 text-sm font-semibold text-gray-500">
+            {restaurants.length} restaurant{restaurants.length !== 1 ? 's' : ''}
+            {activeIsland ? ` in ${activeIsland}` : ''}
+            {activeCuisine ? ` | ${activeCuisine}` : ''}
+          </p>
+        </div>
 
         {/* Grid */}
         {restaurants.length === 0 ? (
@@ -286,11 +318,11 @@ export default async function RestaurantsPage({
               No restaurants found
             </p>
             <p className="text-sm mt-2">
-              Restaurant data is being loaded — check back soon.
+              Restaurant data is being loaded. Check back soon.
             </p>
             <Link
               href="/restaurants"
-              className="inline-block mt-4 text-brand-600 hover:text-brand-700 text-sm font-medium"
+              className="inline-block mt-4 text-night hover:text-gray-700 text-sm font-medium"
             >
               Clear filters
             </Link>
@@ -298,28 +330,32 @@ export default async function RestaurantsPage({
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {restaurants.map((rest) => {
-              const heroPhoto = rest.photos?.[0]?.url ?? FALLBACK_IMAGE
+              const heroPhoto = rest.photos?.[0]?.url ?? null
+              const previewReason = restaurantPreviewReason(rest)
+              const detailHref = `/restaurants/${rest.location_id}`
+              const addToTripHref = `${detailHref}#trip-actions`
+              const exploreNearbyHref = restaurantExploreFoodHref(rest.island_name, rest.cuisine_types?.[0])
+              const askBuddyHref = restaurantAskBuddyHref(rest)
 
               return (
-                <Link
+                <article
                   key={rest.id}
-                  href={`/restaurants/${rest.location_id}`}
-                  className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-lg transition-all duration-300 group flex flex-col"
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                 >
-                  <div className="relative h-48 overflow-hidden bg-stone-200">
-                    <Image
+                  <div className="relative h-48 overflow-hidden bg-gray-100">
+                    <ImageWithSourcePolicy
                       src={heroPhoto}
                       alt={rest.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      unoptimized
+                      title={rest.name}
+                      eyebrow="Bahamas dining"
+                      description="Real listing available. Restaurant photo is not available yet."
+                      className="h-48"
+                      tone="neutral"
                     />
                     {rest.rating && (
-                      <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-white/95 backdrop-blur-sm rounded-md px-2 py-1 shadow-sm">
-                        <span className="text-amber-400 text-sm">★</span>
+                      <div className="absolute top-3 right-3 inline-flex items-center bg-white/95 backdrop-blur-sm rounded-md px-2 py-1 shadow-sm">
                         <span className="text-xs font-bold text-gray-700">
-                          {rest.rating.toFixed(1)}
+                          Rating {rest.rating.toFixed(1)}
                         </span>
                       </div>
                     )}
@@ -332,7 +368,7 @@ export default async function RestaurantsPage({
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {rest.cuisine_types && rest.cuisine_types.length > 0 && (
-                        <span className="text-[11px] font-semibold text-brand-700 bg-brand-50 px-2 py-0.5 rounded-full">
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-charcoal">
                           {rest.cuisine_types[0]}
                         </span>
                       )}
@@ -359,7 +395,7 @@ export default async function RestaurantsPage({
                         {rest.cuisine_types.slice(1, 4).map((c) => (
                           <span
                             key={c}
-                            className="text-xs bg-gray-50 text-gray-600 rounded-full px-3 py-0.5 font-medium border border-gray-100"
+                            className="rounded-full border border-gray-200 bg-white px-3 py-0.5 text-xs font-medium text-gray-600"
                           >
                             {c}
                           </span>
@@ -373,13 +409,48 @@ export default async function RestaurantsPage({
                       </p>
                     )}
 
+                    <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+                      <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-500">
+                        Why Buddy picked this
+                      </p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-charcoal">
+                        {previewReason}
+                      </p>
+                    </div>
+
                     <div className="mt-auto pt-4">
-                      <span className="text-sm font-semibold text-brand-600 group-hover:text-brand-700 transition-colors">
-                        View details &rarr;
+                      <div className="grid grid-cols-2 gap-2">
+                        <Link
+                          href={detailHref}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                        >
+                          View details
+                        </Link>
+                        <Link
+                          href={addToTripHref}
+                          className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-3 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-brand-700"
+                        >
+                          Add to trip
+                        </Link>
+                        <Link
+                          href={exploreNearbyHref}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                        >
+                          More food nearby
+                        </Link>
+                        <Link
+                          href={askBuddyHref}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+                        >
+                          Ask Buddy
+                        </Link>
+                      </div>
+                      <span className="sr-only">
+                        View details
                       </span>
                     </div>
                   </div>
-                </Link>
+                </article>
               )
             })}
           </div>
@@ -395,32 +466,45 @@ export default async function RestaurantsPage({
               <Link
                 key={slug}
                 href={`/restaurants/${slug}`}
-                className="bg-gray-50 hover:bg-brand-50 border border-gray-100 hover:border-brand-100 rounded-xl p-4 transition-colors group"
+                className="group rounded-xl border border-gray-200 bg-white p-4 transition-colors hover:border-gray-400 hover:bg-gray-50"
               >
-                <p className="text-sm font-semibold text-gray-900 group-hover:text-brand-700">
+                <p className="text-sm font-semibold text-gray-900 group-hover:text-night">
                   Dining in {name}
                 </p>
-                <p className="text-xs text-gray-400 mt-1">Browse &rarr;</p>
+                <p className="mt-1 text-xs text-gray-400">Browse</p>
               </Link>
             ))}
           </div>
         </section>
 
         {/* App CTA */}
-        <div className="mt-16 bg-gradient-to-r from-brand-700 via-brand-600 to-brand-500 rounded-2xl p-8 text-center text-white shadow-card">
-          <h2 className="text-2xl font-bold mb-2">
+        <div className="mt-16 rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+          <h2 className="mb-2 text-2xl font-bold text-night">
             Get personalized dining picks
           </h2>
-          <p className="text-brand-50 mb-6">
-            Tell Baha Buddy your cuisine preferences — we&apos;ll recommend the
-            best spots.
+          <p className="mb-6 text-gray-600">
+            Save restaurants into a trip, browse food culture nearby, or ask Buddy when you need planning context.
           </p>
-          <Link
-            href="/dashboard?q=Recommend+restaurants+in+the+Bahamas"
-            className="inline-flex items-center justify-center gap-2 bg-white text-brand-700 font-semibold rounded-xl px-6 py-3 hover:bg-brand-50 transition-colors text-sm"
-          >
-            Chat with Baha Buddy
-          </Link>
+          <div className="flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href={startFoodTripHref}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              Start food trip
+            </Link>
+            <Link
+              href={exploreFoodCultureHref}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            >
+              Explore food culture
+            </Link>
+            <Link
+              href={askFoodBuddyHref}
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+            >
+              Ask Buddy
+            </Link>
+          </div>
         </div>
       </main>
 

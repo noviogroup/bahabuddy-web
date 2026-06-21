@@ -26,15 +26,17 @@ export async function POST(request: Request) {
       ...(returnDate ? [{ origin: destination, destination: origin, date: returnDate, direction: 'INBOUND' }] : []),
     ]
 
+    const requestedPassengers = Math.max(1, Number(body.passengers ?? 1))
+
     const result = await callTravelProvider('/flights/rates', {
       legs,
-      adults: Math.max(1, Number(body.passengers ?? 1)),
+      adults: requestedPassengers,
       cabinClass: String(body.cabin_class ?? 'economy').toUpperCase(),
       currency: 'USD',
       country: 'US',
     })
 
-    const cards = shapeFlightCards(result.data)
+    const cards = shapeFlightCards(result.data, requestedPassengers)
     return NextResponse.json({
       results: cards,
       count: cards.length,
@@ -54,7 +56,7 @@ export async function POST(request: Request) {
   }
 }
 
-function shapeFlightCards(response: unknown): CardData[] {
+function shapeFlightCards(response: unknown, requestedPassengers = 1): CardData[] {
   const batches = Array.isArray(asRecord(response).data) ? asRecord(response).data as unknown[] : []
   const cards: CardData[] = []
 
@@ -72,7 +74,7 @@ function shapeFlightCards(response: unknown): CardData[] {
       const duration = asRecord(journey.totalDuration)
       const offers = recordList(journey.offers)
       const passengerCounts = asRecord(journey.parameters)
-      const passengerTotal = numberValue(passengerCounts.adults, 1) +
+      const passengerTotal = numberValue(passengerCounts.adults, requestedPassengers) +
         numberValue(passengerCounts.children) +
         numberValue(passengerCounts.infants)
 
@@ -87,7 +89,7 @@ function shapeFlightCards(response: unknown): CardData[] {
           card_type: 'flight',
           offer_id: stringValue(offer.offerId),
           provider_offer_id: stringValue(offer.offerId),
-          route: `${stringValue(first.originCode)} → ${stringValue(last.destinationCode)}`,
+          route: `${stringValue(first.originCode)} to ${stringValue(last.destinationCode)}`,
           airline: airlineName,
           airline_code: airlineCode,
           airline_logo_url: resolveAirlineLogoUrl({
@@ -103,10 +105,12 @@ function shapeFlightCards(response: unknown): CardData[] {
           currency: stringValue(display.currency, 'USD'),
           cabin_class: stringValue(fare.family, 'Economy'),
           fare_brand: stringValue(fare.brandName, stringValue(fare.name, stringValue(fare.family))),
-          passengers: Math.max(1, passengerTotal),
-          baggage: { checked: baggageCount(offer.baggage) },
+          passengers: Math.max(requestedPassengers, passengerTotal),
+          baggage: baggageSummary(offer.baggage),
           refundable: terms.refundable === true,
+          changeable: terms.changeable === true,
           expiration: stringValue(offer.expiresAt, stringValue(offer.expires_at, stringValue(offer.expiration))),
+          layovers: layoversFromSegments(shownSegments),
           description: terms.refundable === true ? 'Refundable fare' : undefined,
         })
       }
@@ -148,7 +152,47 @@ function formatDuration(minutes: number): string {
   return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
 }
 
-function baggageCount(value: unknown): number {
-  const included = recordList(asRecord(value).included)
-  return included.filter((bag) => /checked/i.test(stringValue(bag.description))).length
+function baggageSummary(value: unknown): { carry_on?: boolean; checked?: number } {
+  const baggage = asRecord(value)
+  const included = recordList(baggage.included)
+  const checkedPieces = included.reduce((total, bag) => {
+    const description = stringValue(bag.description)
+    const bagType = stringValue(bag.bagType)
+    const pieces = Math.max(1, numberValue(bag.pieces, 1))
+    return /checked|hold/i.test(`${description} ${bagType}`) ? total + pieces : total
+  }, 0)
+  const carryOnIncluded = baggage.hasCarryOnBag === true ||
+    included.some((bag) => /cabin|carry/i.test(`${stringValue(bag.description)} ${stringValue(bag.bagType)}`))
+  const providerChecked = baggage.hasCheckedBag === true && checkedPieces === 0 ? 1 : checkedPieces
+
+  return {
+    ...(carryOnIncluded ? { carry_on: true } : {}),
+    ...(providerChecked > 0 ? { checked: providerChecked } : {}),
+  }
+}
+
+function layoversFromSegments(segments: Record<string, unknown>[]) {
+  if (segments.length <= 1) return []
+
+  const layovers = []
+  for (let index = 0; index < segments.length - 1; index += 1) {
+    const current = segments[index]
+    const next = segments[index + 1]
+    const airport = stringValue(current.destinationCode, stringValue(current.destinationName))
+    const duration = layoverDuration(current.arrivalTime, next.departureTime)
+    if (airport && duration) {
+      layovers.push({ airport, duration })
+    }
+  }
+  return layovers
+}
+
+function layoverDuration(arrivalValue: unknown, departureValue: unknown): string {
+  if (typeof arrivalValue !== 'string' || typeof departureValue !== 'string') return ''
+  const arrival = new Date(arrivalValue)
+  const departure = new Date(departureValue)
+  if (Number.isNaN(arrival.getTime()) || Number.isNaN(departure.getTime())) return ''
+  const minutes = Math.max(0, Math.round((departure.getTime() - arrival.getTime()) / 60000))
+  if (minutes === 0) return ''
+  return formatDuration(minutes)
 }

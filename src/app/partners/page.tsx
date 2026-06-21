@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import Footer from '@/components/Footer'
+import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
 import PartnerApplicationForm from '@/components/revenue/PartnerApplicationForm'
 
 export const metadata: Metadata = {
@@ -82,6 +81,18 @@ const intakeFields = [
   'Preferred partner tier',
 ]
 
+function CardGrid({ items }: { items: string[] }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item} className="rounded-baha-lg border border-gray-200 bg-white p-4 text-sm font-semibold leading-6 text-charcoal shadow-sm">
+          {item}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function PartnersPage({
   searchParams,
 }: {
@@ -90,158 +101,97 @@ export default function PartnersPage({
   const submitted = searchParams?.submitted === 'partner'
 
   return (
-    <main className="min-h-screen bg-offwhite">
-      <section className="bg-white border-b border-sand-200">
-        <div className="max-w-6xl mx-auto px-4 py-20 lg:py-24 grid lg:grid-cols-[1fr_0.9fr] gap-12 items-center">
-          <div>
-            <p className="inline-flex rounded-full bg-brand-50 px-4 py-2 text-sm font-bold text-brand-700">
-              Founding Partner Opportunity
-            </p>
-            <h1 className="mt-6 text-4xl md:text-6xl font-extrabold tracking-tight text-night leading-tight">
-              Be discovered by travelers planning The Bahamas with Buddy.
-            </h1>
-            <p className="mt-6 text-lg text-charcoal leading-relaxed max-w-2xl">
-              Baha Buddy connects visitors with hotels, tours, restaurants, transportation,
-              activities, local guides, island experiences, and trusted travel services before and
-              during their trip.
-            </p>
-            {submitted && (
-              <div className="mt-6 rounded-baha-lg bg-palm-50 border border-palm-100 p-4 text-palm-800 text-sm font-semibold">
-                Partner application received. The Baha Buddy team can now review and follow up.
-              </div>
-            )}
-            <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <a
-                href="#partner-application"
-                className="inline-flex items-center justify-center rounded-full bg-brand-600 px-7 py-3 text-white font-bold shadow-card hover:bg-brand-700 transition-colors"
-              >
-                Apply to become a partner
-              </a>
-              <Link
-                href="/concierge-trip-plan"
-                className="inline-flex items-center justify-center rounded-full bg-sand-100 px-7 py-3 text-brand-800 font-bold border border-sand-200 hover:bg-sand-200 transition-colors"
-              >
-                See traveler offer
-              </Link>
-            </div>
-          </div>
+    <UtilityContentLayout
+      activePath="/partners"
+      title="Partner with Baha Buddy"
+      subtitle="Hotels, tours, restaurants, transportation providers, and island stakeholders can apply for Baha Buddy placement, referrals, and future marketplace opportunities."
+    >
+      {submitted && (
+        <section className="rounded-baha-lg border border-palm-100 bg-palm-50 p-4">
+          <h2>Application received</h2>
+          <p>
+            Partner application received. The Baha Buddy team can now review
+            the submission and follow up.
+          </p>
+        </section>
+      )}
 
-          <div className="rounded-baha-xl bg-gradient-brand text-white p-6 lg:p-8 shadow-card">
-            <p className="text-brand-50 text-sm font-bold uppercase tracking-wide">Why join early</p>
-            <div className="mt-5 space-y-4">
-              {[
-                'Get listed while Baha Buddy is building destination coverage.',
-                'Become eligible for AI-assisted recommendations and Explore placements.',
-                'Create deal and campaign opportunities before the full marketplace launches.',
-                'Help shape the partner model with the Baha Buddy team.',
-              ].map((item) => (
-                <div key={item} className="rounded-baha-lg bg-white/10 border border-white/15 p-4 text-sm leading-relaxed">
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+      <section>
+        <h2>Founding partner opportunity</h2>
+        <p>
+          Baha Buddy connects visitors with hotels, tours, restaurants,
+          transportation, activities, local guides, island experiences, and
+          trusted travel services before and during their trip.
+        </p>
+        <p>
+          Apply below if your business should be considered for marketplace
+          listings, Explore placement, concierge referrals, campaigns, or
+          future booking integrations. Travelers can review the current
+          <a href="/concierge-trip-plan"> concierge trip planning offer</a>.
+        </p>
+        <p>
+          <a href="#partner-application">Apply to become a partner</a>
+        </p>
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-2 gap-10">
-        <div>
-          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">What partners get</p>
-          <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-            Visibility, recommendations, leads, and campaign opportunities.
-          </h2>
-          <div className="mt-7 grid sm:grid-cols-2 gap-3">
-            {partnerBenefits.map((benefit) => (
-              <div key={benefit} className="rounded-baha-lg bg-white border border-sand-200 p-4 shadow-soft text-sm text-charcoal leading-relaxed">
-                {benefit}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-baha-xl bg-night text-white p-6 lg:p-8 shadow-card">
-          <p className="text-gold-300 text-sm font-bold uppercase tracking-wide">Placement examples</p>
-          <h3 className="mt-3 text-3xl font-extrabold">Where your business can appear</h3>
-          <div className="mt-6 space-y-3">
-            {placementExamples.map((example) => (
-              <div key={example} className="rounded-baha-lg bg-white/10 border border-white/15 p-4 text-sm text-white/85">
-                {example}
-              </div>
-            ))}
-          </div>
-        </div>
+      <section>
+        <h2>Who should apply</h2>
+        <CardGrid items={partnerCategories} />
       </section>
 
-      <section className="max-w-6xl mx-auto px-4 pb-14 lg:pb-20">
-        <div className="max-w-3xl mb-8">
-          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Partner categories</p>
-          <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-            Building the supply side of the Bahamas travel ecosystem.
-          </h2>
-        </div>
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {partnerCategories.map((category) => (
-            <div key={category} className="rounded-baha-lg bg-white border border-sand-200 p-4 shadow-soft text-charcoal font-medium">
-              {category}
-            </div>
+      <section>
+        <h2>What partners get</h2>
+        <p>
+          The first version is managed onboarding, not a full self-service
+          partner portal. The goal is to qualify supply, keep listing quality
+          high, and learn which partner offers drive real traveler value.
+        </p>
+        <CardGrid items={partnerBenefits} />
+      </section>
+
+      <section>
+        <h2>Where your business can appear</h2>
+        <CardGrid items={placementExamples} />
+      </section>
+
+      <section>
+        <h2>Early partner tiers</h2>
+        <p>
+          Tiers are intake categories for the beta marketplace. Final pricing,
+          reporting, and placement rules should be managed through admin once
+          demand and booking volume justify a full partner portal.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          {tiers.map((tier) => (
+            <article key={tier.name} className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3>{tier.name}</h3>
+              <p className="text-2xl font-extrabold text-brand-700">{tier.price}</p>
+              <p>{tier.description}</p>
+              <div className="mt-4 space-y-2">
+                {tier.features.map((feature) => (
+                  <div key={feature} className="flex gap-2 text-sm leading-6 text-charcoal">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-gold-400" aria-hidden="true" />
+                    <span>{feature}</span>
+                  </div>
+                ))}
+              </div>
+            </article>
           ))}
         </div>
       </section>
 
-      <section className="bg-white border-y border-sand-200">
-        <div className="max-w-6xl mx-auto px-4 py-14 lg:py-20">
-          <div className="max-w-3xl mb-8">
-            <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Early partner tiers</p>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-              Start simple: managed onboarding before a full partner portal.
-            </h2>
-            <p className="mt-4 text-charcoal leading-relaxed">
-              This page supports partner recruitment and lead capture only. Partner records should
-              still be managed in the admin portal until paid demand and booking volume justify a
-              full self-service partner portal.
-            </p>
-          </div>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
-            {tiers.map((tier) => (
-              <article key={tier.name} className="rounded-baha-xl bg-offwhite border border-sand-200 p-5 shadow-soft">
-                <h3 className="text-lg font-extrabold text-night">{tier.name}</h3>
-                <p className="mt-2 text-2xl font-extrabold text-brand-700">{tier.price}</p>
-                <p className="mt-3 text-sm text-charcoal leading-relaxed">{tier.description}</p>
-                <ul className="mt-5 space-y-2 text-sm text-charcoal">
-                  {tier.features.map((feature) => (
-                    <li key={feature} className="flex gap-2">
-                      <span className="text-palm-600 font-bold">✓</span>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-              </article>
-            ))}
-          </div>
+      <section id="partner-application">
+        <h2>Partner intake</h2>
+        <p>
+          The first partner form collects what is needed to create
+          admin-managed partner records, build Explore listings, track lead
+          source, and prepare future featured placement reporting.
+        </p>
+        <CardGrid items={intakeFields} />
+        <div className="mt-8">
+          <PartnerApplicationForm />
         </div>
       </section>
-
-      <section id="partner-application" className="max-w-6xl mx-auto px-4 py-14 lg:py-20 grid lg:grid-cols-[0.85fr_1.15fr] gap-10">
-        <div>
-          <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Partner intake</p>
-          <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-night">
-            Minimum data needed for the first 90 days.
-          </h2>
-          <p className="mt-4 text-charcoal leading-relaxed">
-            The first partner form collects what is needed to create admin-managed partner records,
-            build Explore listings, track lead source, and prepare future featured placement reporting.
-          </p>
-          <div className="mt-6 grid sm:grid-cols-2 gap-3">
-            {intakeFields.map((field) => (
-              <div key={field} className="rounded-baha-lg bg-white border border-sand-200 p-4 shadow-soft text-charcoal">
-                {field}
-              </div>
-            ))}
-          </div>
-        </div>
-        <PartnerApplicationForm />
-      </section>
-
-      <Footer />
-    </main>
+    </UtilityContentLayout>
   )
 }

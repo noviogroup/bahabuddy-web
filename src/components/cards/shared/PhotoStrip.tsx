@@ -17,10 +17,11 @@
  *
  * The `photos` prop is the canonical source of truth. `hero` is optional
  * — when absent the first photo doubles as hero. Both are gracefully
- * absent: when no images exist we render a brand gradient placeholder.
+ * absent: when no images exist we render an honest branded pending state.
  */
 
 import type { ReactNode } from 'react'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 
 interface Props {
   photos?: string[]
@@ -43,11 +44,25 @@ interface Props {
   className?: string
 }
 
-const PLACEHOLDER_GRADIENT: Record<NonNullable<Props['variant']>, string> = {
-  hotel:       'from-brand-700 to-brand-400',
-  restaurant:  'from-coral-600 to-coral-400',
-  activity:    'from-palm-600 to-palm-400',
-  destination: 'from-brand-600 to-gold-400',
+const IMAGE_TONE: Record<NonNullable<Props['variant']>, 'stay' | 'restaurant' | 'activity' | 'island'> = {
+  hotel: 'stay',
+  restaurant: 'restaurant',
+  activity: 'activity',
+  destination: 'island',
+}
+
+function pendingTitle(alt: string): string {
+  return alt
+    .replace(/^photo of\s+/i, '')
+    .replace(/^photo for\s+/i, '')
+    .trim() || 'Travel item'
+}
+
+const PENDING_EYEBROW: Record<NonNullable<Props['variant']>, string> = {
+  hotel: 'Stay',
+  restaurant: 'Restaurant',
+  activity: 'Experience',
+  destination: 'Destination',
 }
 
 export function PhotoStrip({
@@ -71,18 +86,25 @@ export function PhotoStrip({
         className="relative w-full overflow-hidden"
         style={{ height: heroHeight }}
       >
-        {heroSrc ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={heroSrc} alt={alt} className="w-full h-full object-cover" />
-        ) : (
-          <div className={`w-full h-full bg-gradient-to-br ${PLACEHOLDER_GRADIENT[variant]}`} aria-hidden />
-        )}
+        <ImageWithSourcePolicy
+          src={heroSrc}
+          alt={alt}
+          title={pendingTitle(alt)}
+          eyebrow={PENDING_EYEBROW[variant]}
+          description="Card details are available. Provider photo is not available yet."
+          pendingLabel="Photo pending"
+          className="h-full w-full"
+          imageClassName="object-cover"
+          sizes="(max-width: 640px) 100vw, 420px"
+          tone={IMAGE_TONE[variant]}
+          style={{ height: heroHeight }}
+        />
 
         {overlay?.topLeft && (
           <div className="absolute top-2 left-2">{overlay.topLeft}</div>
         )}
         {overlay?.topRight && (
-          <div className="absolute top-2 right-2">{overlay.topRight}</div>
+          <div className={`absolute ${heroSrc ? 'top-2' : 'bottom-2'} right-2`}>{overlay.topRight}</div>
         )}
         {overlay?.bottomLeft && (
           <div className="absolute bottom-2 left-2">{overlay.bottomLeft}</div>

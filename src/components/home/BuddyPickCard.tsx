@@ -16,9 +16,9 @@
  *     the Explore surface (chat is the action layer, articles are the
  *     content layer — decision #26).
  *
- * Fallback behavior unchanged: when Sanity has nothing, we use the
- * hardcoded pool of 4 picks and the click still goes to chat with a
- * pre-filled prompt, since there's no article page to send them to.
+ * Fallback behavior: when Sanity has nothing, we use the hardcoded pool
+ * of 4 picks and route each pick to the best direct product surface.
+ * Concrete marketplace actions should not default back into chat.
  *
  * Rotation: deterministic ISO-week — every user sees the same pick
  * during the same calendar week regardless of source.
@@ -34,39 +34,76 @@ interface Pick {
   imageUrl: string
   headline: string
   hook: string
-  /** Where to send the user on tap. Articles → reader; fallback picks
-   *  → chat with a pre-filled prompt. */
+  /** Where to send the user on tap. Articles go to the reader; fallback
+   *  picks go to direct marketplace, Explore, or trip creation surfaces. */
   href: string
+  ctaLabel: string
 }
 
-const FALLBACK_PICKS: Array<Omit<Pick, 'href'> & { imageKey?: BahaImageKey; chatPrompt: string }> = [
+function withParams(path: string, params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) {
+    if (value) query.set(key, value)
+  }
+  const qs = query.toString()
+  return qs ? `${path}?${qs}` : path
+}
+
+function newTripHref(input: { destination: string; seed: string }): string {
+  return withParams('/dashboard/trips/new', {
+    source: 'buddy_pick',
+    destination: input.destination,
+    seed: input.seed,
+  })
+}
+
+export const BUDDY_PICK_FALLBACKS: Array<Pick & { imageKey?: BahaImageKey }> = [
   {
     imageKey: 'sunsetSailing',
     imageUrl: BahaImages.sunsetSailing,
     headline: 'Sunset sailing from Nassau Harbor',
     hook: 'Two hours, a cold drink, and the best view in the country.',
-    chatPrompt: 'Tell me about sunset sailing from Nassau Harbor',
+    href: withParams('/explore/places', {
+      island: 'nassau-paradise-island',
+      search: 'sunset sailing Nassau Harbor',
+      category: 'Water Activity',
+    }),
+    ctaLabel: 'View sailing options',
   },
   {
     imageKey: 'swimmingPigs',
     imageUrl: BahaImages.swimmingPigs,
     headline: 'Swim with the pigs in Exuma',
     hook: "The bucket-list experience that's somehow even better than the photos.",
-    chatPrompt: 'Plan a day trip to swim with the pigs at Big Major Cay',
+    href: withParams('/explore/places', {
+      island: 'the-exumas',
+      search: 'swimming pigs Big Major Cay',
+      category: 'Activity',
+    }),
+    ctaLabel: 'View tours',
   },
   {
     imageKey: 'eleuthera',
     imageUrl: BahaImages.eleuthera,
     headline: "Eleuthera's pink sand beaches",
     hook: 'Quietly stunning — the kind of place you keep to yourself.',
-    chatPrompt: 'Tell me about the pink sand beaches in Eleuthera',
+    href: withParams('/explore/places', {
+      island: 'eleuthera-harbour-island',
+      search: 'pink sand beach',
+      category: 'Beach',
+    }),
+    ctaLabel: 'Explore beaches',
   },
   {
     imageKey: 'bimini',
     imageUrl: BahaImages.bimini,
     headline: 'Bimini for the day from Miami',
     hook: 'Closer than you think. Fast ferry, white sand, dinner back home.',
-    chatPrompt: 'Plan a day trip from Miami to Bimini',
+    href: newTripHref({
+      destination: 'bimini',
+      seed: 'Bimini day trip from Miami with transportation, beach time, food, and a realistic return plan.',
+    }),
+    ctaLabel: 'Start this trip',
   },
 ]
 
@@ -90,15 +127,10 @@ export default async function BuddyPickCard() {
       headline: a.title,
       hook: a.excerpt,
       href: `/explore/articles/${a.slug}`,
+      ctaLabel: 'Read guide',
     }))
   } else {
-    picks = FALLBACK_PICKS.map(p => ({
-      imageUrl: p.imageUrl,
-      headline: p.headline,
-      hook: p.hook,
-      // Fallback picks have no article — drop into chat.
-      href: `/dashboard/chat?q=${encodeURIComponent(p.chatPrompt)}`,
-    }))
+    picks = BUDDY_PICK_FALLBACKS
   }
 
   const week = isoWeek(new Date())
@@ -122,6 +154,7 @@ export default async function BuddyPickCard() {
           title={pick.headline}
           subtitle={pick.hook}
           href={pick.href}
+          ctaLabel={pick.ctaLabel}
           overlay="left"
         />
       </div>

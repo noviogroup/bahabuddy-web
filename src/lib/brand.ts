@@ -4,6 +4,9 @@ export const BUDDY_AVATAR_SRC = '/brand/buddy-avatar.png'
 export const LOGO_SRC = '/brand/logo.png'
 /** Native pixel dimensions of logo.png — keep in sync if the asset is replaced. */
 export const LOGO_INTRINSIC = { width: 1354, height: 1398 } as const
+/** Transparent logo mark for UI chrome — no backing square, border, or gradient plate. */
+export const LOGO_MARK_SRC = '/brand/baha-logo-mark.svg'
+export const LOGO_MARK_INTRINSIC = { width: 64, height: 64 } as const
 
 /** App store listing URLs */
 export const APP_STORE_URL = 'https://apps.apple.com/app/baha-buddy'

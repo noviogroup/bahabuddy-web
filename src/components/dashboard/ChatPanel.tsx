@@ -89,6 +89,7 @@ export type ChatPanelMode = 'docked' | 'standalone'
 export interface ChatPanelProps {
   mode?: ChatPanelMode
   userEmail?: string
+  guestMode?: boolean
   onCollapse?: () => void
 }
 
@@ -123,7 +124,7 @@ function buildTripItemPayload(card: CardData): Record<string, unknown> | null {
   }
 
   if (card.card_type === 'flight') {
-    const routeParts = (card.route ?? '').split(/[→>-]/).map(part => part.trim()).filter(Boolean)
+    const routeParts = (card.route ?? '').split(/\s+to\s+|[→>-]/i).map(part => part.trim()).filter(Boolean)
     return {
       itemType: 'flight',
       sourceId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
@@ -173,10 +174,11 @@ function buildTripItemPayload(card: CardData): Record<string, unknown> | null {
 export default function ChatPanel({
   mode = 'standalone',
   userEmail,
+  guestMode = false,
   onCollapse,
 }: ChatPanelProps) {
   const searchParams = useSearchParams()
-  const supabase = createClient()
+  const supabase = useMemo(() => createClient(), [])
   const isDocked = mode === 'docked'
 
   // Stable IDs for label/control associations.
@@ -184,7 +186,7 @@ export default function ChatPanel({
   const textareaIdDocked = useId()
 
   const [threads, setThreads] = useState<Conversation[]>([])
-  const [threadsLoading, setThreadsLoading] = useState(true)
+  const [threadsLoading, setThreadsLoading] = useState(!guestMode)
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [input, setInput] = useState('')
@@ -219,7 +221,7 @@ export default function ChatPanel({
   } | null>(null)
 
   useEffect(() => {
-    if (!tripIdParam) {
+    if (!tripIdParam || guestMode) {
       setTripContext(null)
       return
     }
@@ -239,7 +241,7 @@ export default function ChatPanel({
           })
         }
       })
-  }, [tripIdParam, supabase])
+  }, [tripIdParam, supabase, guestMode])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -268,6 +270,13 @@ export default function ChatPanel({
   }, [])
 
   const loadThreads = useCallback(async () => {
+    if (guestMode) {
+      setThreads([])
+      setActiveThreadId(null)
+      setThreadsLoading(false)
+      return
+    }
+
     const { data } = await supabase
       .from('chat_threads')
       .select('id, title, last_message_preview, updated_at')
@@ -275,7 +284,7 @@ export default function ChatPanel({
       .limit(50)
     if (data) setThreads(data as Conversation[])
     setThreadsLoading(false)
-  }, [supabase])
+  }, [supabase, guestMode])
 
   useEffect(() => {
     loadThreads()
@@ -293,6 +302,8 @@ export default function ChatPanel({
   }, [])
 
   const selectConversation = useCallback(async (conv: Conversation) => {
+    if (guestMode) return
+
     setActiveThreadId(conv.id)
     setThreadMenuOpen(false)
     setMessages([GREETING])
@@ -316,7 +327,7 @@ export default function ChatPanel({
       setMessages([GREETING])
     }
     setInput('')
-  }, [supabase])
+  }, [supabase, guestMode])
 
   const sendQuery = useCallback(async (text: string) => {
     if (!text.trim() || loading) return
@@ -492,6 +503,17 @@ export default function ChatPanel({
   const sendMessage = useCallback(() => sendQuery(input), [input, sendQuery])
 
   const addCardToTrip = useCallback(async (card: CardData, tripId: string) => {
+    if (guestMode) {
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: 'Sign in to save this to a trip. You can keep browsing and chatting as a guest.',
+        },
+      ])
+      return
+    }
+
     const payload = buildTripItemPayload(card)
     if (!payload) return
 
@@ -528,7 +550,7 @@ export default function ChatPanel({
         },
       ])
     }
-  }, [])
+  }, [guestMode])
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -566,6 +588,7 @@ export default function ChatPanel({
             activeId={activeThreadId}
             onSelect={selectConversation}
             onNew={startNewConversation}
+            guestMode={guestMode}
           />
         )}
 
@@ -595,22 +618,31 @@ export default function ChatPanel({
               {userEmail && (
                 <span className="text-gray-500 text-xs hidden md:block">{userEmail}</span>
               )}
-              <Link
-                href="/dashboard"
-                className="text-gray-500 hover:text-night text-xs transition-colors flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 px-1"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                </svg>
-                <span className="hidden sm:block">Dashboard</span>
-              </Link>
+              {guestMode ? (
+                <Link
+                  href="/login?redirect=%2Fdashboard%2Fchat"
+                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-1.5 text-xs font-semibold text-night transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+                >
+                  Sign in to save
+                </Link>
+              ) : (
+                <Link
+                  href="/dashboard"
+                  className="text-gray-500 hover:text-night text-xs transition-colors flex items-center gap-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 px-1"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                  </svg>
+                  <span className="hidden sm:block">Dashboard</span>
+                </Link>
+              )}
             </div>
           </header>
 
           {/* Trip context chips — only when ?trip=<id> is in the URL.
               Sits between the header and the message log so trip params
               stay editable while chatting. */}
-          {tripIdParam && <TripContextChips tripId={tripIdParam} />}
+          {tripIdParam && !guestMode && <TripContextChips tripId={tripIdParam} />}
 
           <div className="flex-1 overflow-y-auto bg-offwhite">
             {isNewChat ? (
@@ -650,7 +682,7 @@ export default function ChatPanel({
                     isLast={i === messages.length - 1}
                     activeTool={activeTool}
                     onSendMessage={sendQuery}
-                    activeTripId={tripContext?.id ?? tripIdParam ?? undefined}
+                    activeTripId={guestMode ? undefined : tripContext?.id ?? tripIdParam ?? undefined}
                     onAddCardToTrip={addCardToTrip}
                   />
                 ))}
@@ -817,7 +849,7 @@ export default function ChatPanel({
 
       {/* Trip context chips (docked mode) — same trip-scoped affordance
           as the standalone surface, just at the docked indent depth. */}
-      {tripIdParam && <TripContextChips tripId={tripIdParam} />}
+      {tripIdParam && !guestMode && <TripContextChips tripId={tripIdParam} />}
 
       <div className="flex-1 overflow-y-auto bg-offwhite">
         {isNewChat ? (
@@ -857,7 +889,7 @@ export default function ChatPanel({
                 activeTool={activeTool}
                 onSendMessage={sendQuery}
                 compact
-                activeTripId={tripContext?.id ?? tripIdParam ?? undefined}
+                activeTripId={guestMode ? undefined : tripContext?.id ?? tripIdParam ?? undefined}
                 onAddCardToTrip={addCardToTrip}
               />
             ))}

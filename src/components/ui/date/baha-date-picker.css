@@ -1,25 +1,25 @@
 /**
- * Baha Buddy — react-day-picker theme (Airbnb-style range highlight).
- * Uses brand ocean tokens from tailwind.config.ts.
+ * Baha Buddy — react-day-picker theme.
+ * Uses mobile BahaColors + Figtree typography.
  */
 .baha-date-picker.rdp-root {
-  --rdp-accent-color: #2e78d2;
-  --rdp-accent-background-color: #ebf3fc;
+  --rdp-accent-color: #156fd1;
+  --rdp-accent-background-color: #eaf8ff;
   --rdp-day-height: 40px;
   --rdp-day-width: 40px;
   --rdp-day_button-height: 38px;
   --rdp-day_button-width: 38px;
   --rdp-day_button-border-radius: 9999px;
-  --rdp-today-color: #1a2332;
+  --rdp-today-color: #0b2545;
   --rdp-months-gap: 1.25rem;
-  font-family: var(--font-plus-jakarta), system-ui, sans-serif;
+  font-family: var(--font-figtree), system-ui, sans-serif;
   font-size: 0.875rem;
-  color: #1a2332;
+  color: #0b2545;
 }
 
 .baha-date-picker .rdp-month_caption {
   font-weight: 700;
-  color: #1a2332;
+  color: #0b2545;
 }
 
 .baha-date-picker .rdp-weekday {
@@ -31,7 +31,7 @@
 }
 
 .baha-date-picker .rdp-chevron {
-  fill: #1a2332;
+  fill: #0b2545;
 }
 
 .baha-date-picker .rdp-button_previous,
@@ -43,11 +43,11 @@
 
 .baha-date-picker .rdp-button_previous:hover,
 .baha-date-picker .rdp-button_next:hover {
-  background: #f8fafb;
+  background: #f4f8fb;
 }
 
 .baha-date-picker .rdp-day_button:hover:not([disabled]) {
-  background: #ebf3fc;
+  background: #eaf8ff;
 }
 
 .baha-date-picker .rdp-outside .rdp-day_button {

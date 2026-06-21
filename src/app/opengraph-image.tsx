@@ -18,7 +18,7 @@ export default async function Image() {
           alignItems: 'flex-start',
           justifyContent: 'center',
           padding: '80px',
-          fontFamily: 'system-ui, sans-serif',
+          fontFamily: 'Figtree, system-ui, sans-serif',
         }}
       >
         <div

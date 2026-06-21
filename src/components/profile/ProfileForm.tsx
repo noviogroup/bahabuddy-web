@@ -211,9 +211,9 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
                   onKeyDown={(e) => onPartyKeyDown(e, idx)}
                   className={cn(
                     'px-3 py-3 rounded-baha-md border-2 text-sm font-semibold transition-all duration-200',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2',
                     selected
-                      ? 'border-brand-500 bg-brand-50 text-brand-700'
+                      ? 'border-night bg-gray-50 text-night'
                       : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300',
                   )}
                 >
@@ -274,9 +274,9 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
                   aria-label={`${label}${selected ? ', selected' : ''}`}
                   className={cn(
                     'flex items-center justify-center py-3 px-2 rounded-baha-md border-2 transition-all duration-200 text-center min-h-[3.25rem]',
-                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
+                    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2',
                     selected
-                      ? 'border-brand-500 bg-brand-50 text-brand-700'
+                      ? 'border-night bg-gray-50 text-night'
                       : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300',
                   )}
                 >
@@ -314,12 +314,13 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
           disabled={!isDirty || isPending}
           aria-disabled={!isDirty || isPending}
           className={cn(
-            'inline-flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold px-5 py-2.5 rounded-full transition-colors shadow-card',
-            'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-brand-500',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
+            'inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700',
+            'disabled:cursor-not-allowed disabled:bg-brand-600 disabled:opacity-40',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2',
           )}
         >
-          {isPending ? 'Saving…' : 'Save changes'}
+          {!isPending && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
+          {isPending ? 'Saving...' : 'Save changes'}
         </button>
       </div>
     </form>
@@ -329,7 +330,7 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
 // ── Sub-components ─────────────────────────────────────────────────
 
 const INPUT_CLS =
-  'w-full rounded-baha-md border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-night placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-brand-400 focus:border-brand-500 transition-colors'
+  'w-full rounded-baha-md border border-gray-300 bg-white px-3.5 py-2.5 text-sm text-night placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-night transition-colors'
 
 function Section({
   title,

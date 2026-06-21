@@ -4,8 +4,20 @@ export const dynamic = 'force-dynamic'
 
 export default function LegacyHotelDetailPage({
   params,
+  searchParams = {},
 }: {
   params: { hotelId: string }
+  searchParams?: Record<string, string | string[] | undefined>
 }) {
-  redirect(`/stays/${encodeURIComponent(params.hotelId)}`)
+  redirect(toStaysUrl(`/stays/${encodeURIComponent(params.hotelId)}`, searchParams))
+}
+
+function toStaysUrl(path: string, searchParams: Record<string, string | string[] | undefined>): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(searchParams)) {
+    const first = Array.isArray(value) ? value[0] : value
+    if (first) params.set(key, first)
+  }
+  const query = params.toString()
+  return query ? `${path}?${query}` : path
 }

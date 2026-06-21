@@ -17,7 +17,7 @@
 
 import type { ReactNode } from 'react'
 
-export type TripStatus = 'draft' | 'planned' | 'booked' | 'active' | 'completed'
+export type TripStatus = 'draft' | 'planned' | 'booked' | 'active' | 'completed' | 'cancelled'
 
 interface TripStatusBadgeProps {
   status: TripStatus | string | null | undefined
@@ -63,6 +63,13 @@ const STATUS_STYLES: Record<TripStatus, { bg: string; text: string; ring: string
     ring: 'ring-gold-200',
     dot: 'bg-gold-500',
     label: 'Completed',
+  },
+  cancelled: {
+    bg: 'bg-coral-50',
+    text: 'text-coral-800',
+    ring: 'ring-coral-200',
+    dot: 'bg-coral-500',
+    label: 'Cancelled',
   },
 }
 

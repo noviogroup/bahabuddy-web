@@ -22,15 +22,15 @@ interface Props {
 }
 
 const TYPE_COLORS = {
-  activity: '#22c55e', // green-500
-  hotel: '#3b82f6',   // blue-500
-  airport: '#ef4444', // red-500
+  activity: '#2D8B56',
+  hotel: '#0679DA',
+  airport: '#FDC736',
 }
 
-const TYPE_ICONS = {
-  activity: '🏝️',
-  hotel: '🏨',
-  airport: '✈️',
+const TYPE_LABELS = {
+  activity: 'Activity',
+  hotel: 'Hotel',
+  airport: 'Airport',
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +116,7 @@ export default function TripMap({ markers }: Props) {
 
       for (const m of markers) {
         const color = TYPE_COLORS[m.type]
-        const icon = TYPE_ICONS[m.type]
+        const typeLabel = TYPE_LABELS[m.type]
 
         const marker = new gmaps.Marker({
           position: { lat: m.lat, lng: m.lng },
@@ -134,8 +134,9 @@ export default function TripMap({ markers }: Props) {
 
         marker.addListener('click', () => {
           infoWindow.setContent(`
-            <div style="font-family:system-ui;padding:4px 2px;max-width:200px">
-              <div style="font-size:14px;font-weight:700;margin-bottom:2px">${icon} ${m.label}</div>
+            <div style="font-family:Figtree, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;padding:4px 2px;max-width:200px">
+              <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${color};margin-bottom:2px">${typeLabel}</div>
+              <div style="font-size:14px;font-weight:700;margin-bottom:2px">${m.label}</div>
               ${m.detail ? `<div style="font-size:12px;color:#555">${m.detail}</div>` : ''}
             </div>
           `)
@@ -196,7 +197,9 @@ export default function TripMap({ markers }: Props) {
         {status === 'error' && (
           <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
             <div className="text-center p-6">
-              <div className="text-4xl mb-3">⚠️</div>
+              <svg className="mx-auto mb-3 h-9 w-9 text-coral-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v4m0 4h.01M10.3 4.3 2.7 18a2 2 0 0 0 1.7 3h15.2a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" />
+              </svg>
               <p className="text-sm text-gray-500">Map failed to load. Check your API key and network.</p>
             </div>
           </div>
@@ -207,7 +210,7 @@ export default function TripMap({ markers }: Props) {
       {activeMarker && (
         <div className="mt-3 p-3 bg-white rounded-xl border border-gray-200 flex items-start justify-between gap-3">
           <div>
-            <span className="text-base mr-1.5">{TYPE_ICONS[activeMarker.type]}</span>
+            <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COLORS[activeMarker.type] }} aria-hidden="true" />
             <span className="font-semibold text-sm text-gray-900">{activeMarker.label}</span>
             {activeMarker.detail && (
               <p className="text-xs text-gray-500 mt-0.5 ml-6">{activeMarker.detail}</p>
@@ -215,9 +218,12 @@ export default function TripMap({ markers }: Props) {
           </div>
           <button
             onClick={() => setActiveMarker(null)}
+            aria-label="Close marker details"
             className="text-gray-300 hover:text-gray-500 transition-colors shrink-0 text-lg leading-none"
           >
-            ✕
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m6 6 12 12M18 6 6 18" />
+            </svg>
           </button>
         </div>
       )}

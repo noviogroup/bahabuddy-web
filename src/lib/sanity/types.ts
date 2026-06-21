@@ -326,7 +326,7 @@ export type SanityVideoAccent = 'sky' | 'coral' | 'amber' | 'brand'
  * accentTone option list in `studio/schemas/socialVideo.ts`.
  */
 export const VIDEO_ACCENT_GRADIENT: Record<SanityVideoAccent, string> = {
-  sky: 'from-sky-900/30 via-sky-900/50 to-brand-900/80',
+  sky: 'from-brand-900/30 via-brand-900/55 to-cyan-700/80',
   coral: 'from-coral-900/30 via-coral-900/50 to-coral-900/80',
   amber: 'from-amber-900/30 via-amber-900/50 to-orange-900/80',
   brand: 'from-brand-900/40 via-brand-900/60 to-brand-900/85',

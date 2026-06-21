@@ -13,7 +13,8 @@
  *
  * Each slide has:
  *   - A Buddy-voiced question (e.g. "Let's get you set for Andros…")
- *   - 3 quick-reply chips that deep-link to /dashboard/chat?trip=<id>&q=<prompt>
+ *   - 3 quick-reply chips that prefer direct trip/marketplace pages
+ *     and use Buddy only for advice-style questions.
  *
  * Imagery: subtle island texture watermark in the corner (a real
  * Bahamas photo at 8% opacity) — gives the card warmth without
@@ -36,7 +37,119 @@ interface TripSuggestionRotatorProps {
 
 interface Slide {
   question: string
-  chips: { label: string; prompt: string }[]
+  chips: SuggestionChip[]
+}
+
+interface SuggestionChip {
+  label: string
+  prompt?: string
+  href?: string
+}
+
+const ISLAND_AIRPORTS: Record<string, string> = {
+  nassau: 'NAS',
+  'new providence': 'NAS',
+  'paradise island': 'NAS',
+  exuma: 'EXU',
+  exumas: 'EXU',
+  'the exumas': 'EXU',
+  eleuthera: 'ELH',
+  'harbour island': 'ELH',
+  'harbor island': 'ELH',
+  'grand bahama': 'FPO',
+  freeport: 'FPO',
+  bimini: 'BIM',
+  andros: 'ASD',
+  abaco: 'MHH',
+  abacos: 'MHH',
+  'the abacos': 'MHH',
+}
+
+const ISLAND_SLUGS: Record<string, string> = {
+  nassau: 'nassau-paradise-island',
+  'new providence': 'nassau-paradise-island',
+  'paradise island': 'paradise-island',
+  exuma: 'the-exumas',
+  exumas: 'the-exumas',
+  'the exumas': 'the-exumas',
+  eleuthera: 'eleuthera-harbour-island',
+  'harbour island': 'harbour-island',
+  'harbor island': 'harbour-island',
+  'grand bahama': 'grand-bahama',
+  freeport: 'grand-bahama',
+  bimini: 'bimini',
+  andros: 'andros',
+  abaco: 'abacos',
+  abacos: 'abacos',
+  'the abacos': 'abacos',
+  'long island': 'long-island',
+}
+
+function normalizedIslandKey(value: string): string {
+  return value.toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim()
+}
+
+function islandSlug(value: string): string {
+  return ISLAND_SLUGS[normalizedIslandKey(value)] ?? 'nassau-paradise-island'
+}
+
+function islandAirport(value: string): string {
+  return ISLAND_AIRPORTS[normalizedIslandKey(value)] ?? 'NAS'
+}
+
+function withParams(path: string, params: Record<string, string | undefined>): string {
+  const query = new URLSearchParams()
+  Object.entries(params).forEach(([key, value]) => {
+    if (value) query.set(key, value)
+  })
+  const qs = query.toString()
+  return qs ? `${path}?${qs}` : path
+}
+
+function tripDateParams(trip: Trip): { checkin?: string; checkout?: string; depart?: string; returnDate?: string } {
+  return {
+    checkin: trip.date_start ?? undefined,
+    checkout: trip.date_end ?? undefined,
+    depart: trip.date_start ?? undefined,
+    returnDate: trip.date_end ?? undefined,
+  }
+}
+
+function staysHref(trip: Trip, island: string, overrides: Record<string, string | undefined> = {}): string {
+  const dates = tripDateParams(trip)
+  return withParams('/stays', {
+    island,
+    sort: 'stars',
+    checkin: dates.checkin,
+    checkout: dates.checkout,
+    adults: trip.party_size > 0 ? String(Math.min(trip.party_size, 9)) : undefined,
+    rooms: '1',
+    ...overrides,
+  })
+}
+
+function flightsHref(trip: Trip, island: string): string {
+  const dates = tripDateParams(trip)
+  return withParams('/flights', {
+    destination: islandAirport(island),
+    tripType: dates.returnDate ? 'round_trip' : 'one_way',
+    depart: dates.depart,
+    return: dates.returnDate,
+    passengers: trip.party_size > 0 ? String(Math.min(trip.party_size, 9)) : undefined,
+    cabin: 'economy',
+  })
+}
+
+function exploreHref(island: string, input: { search?: string; category?: string } = {}): string {
+  return withParams('/explore/places', {
+    island: islandSlug(island),
+    search: input.search,
+    category: input.category,
+  })
+}
+
+function restaurantsHref(island: string): string {
+  return withParams('/restaurants', { island })
 }
 
 /** Maps a trip's primary island display name to a BahaImages key for
@@ -75,7 +188,7 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
       {
         question: `Let's get you set for ${island}. Where would you like to begin?`,
         chips: [
-          { label: 'Check weather', prompt: `What's the weather like in ${island} during my trip?` },
+          { label: 'Check weather', href: '/dashboard#weather' },
           { label: 'Help me pack', prompt: `What should I pack for ${island}?` },
           { label: 'Payments & cash', prompt: `Do I need cash in the Bahamas, or are cards fine in ${island}?` },
         ],
@@ -83,8 +196,8 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
       {
         question: `${island} should be a great escape. Want help getting your first few plans in place?`,
         chips: [
-          { label: 'Things to do', prompt: `What are the best things to do in ${island}?` },
-          { label: 'Hidden gems', prompt: `What are some hidden gems in ${island} most tourists miss?` },
+          { label: 'Things to do', href: exploreHref(island, { category: 'Activity' }) },
+          { label: 'Hidden gems', href: exploreHref(island, { search: 'hidden gems local favorites' }) },
           { label: 'Plan first days', prompt: `Help me plan the first 2 days of my trip to ${island}.` },
         ],
       },
@@ -93,9 +206,9 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
           ? `${capitalize(daysWord)} days on ${island} gives you room to settle in. Should we sort out where to stay next?`
           : `Want me to help sort out where to stay in ${island}?`,
         chips: [
-          { label: 'Find places to stay', prompt: `Show me good hotels in ${island}.` },
+          { label: 'Find places to stay', href: staysHref(trip, island) },
           { label: 'Best areas', prompt: `What are the best areas to stay in ${island}?` },
-          { label: 'Stay by the beach', prompt: `Find me a beachfront hotel in ${island}.` },
+          { label: 'Stay by the beach', href: staysHref(trip, island, { amenities: 'Beachfront' }) },
         ],
       },
     ]
@@ -107,15 +220,15 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
       {
         question: `Your ${island} plan is shaping up. Anything you want to fine-tune?`,
         chips: [
-          { label: 'Swap a hotel', prompt: `Show me alternative hotels in ${island}.` },
-          { label: 'Add activities', prompt: `What activities should I add to my trip?` },
+          { label: 'Swap a hotel', href: staysHref(trip, island) },
+          { label: 'Add activities', href: exploreHref(island, { category: 'Activity' }) },
           { label: 'Tighten the schedule', prompt: `Review my itinerary and suggest improvements.` },
         ],
       },
       {
         question: `Want me to dig into flights or transportation around ${island}?`,
         chips: [
-          { label: 'Find flights', prompt: `Help me find flights to ${island}.` },
+          { label: 'Find flights', href: flightsHref(trip, island) },
           { label: 'Getting around', prompt: `How do I get around ${island}?` },
           { label: 'Ferry options', prompt: `Are there ferries to ${island}?` },
         ],
@@ -123,8 +236,8 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
       {
         question: `Ready to lock things in, or want one more look at the budget?`,
         chips: [
-          { label: 'Review budget', prompt: `Walk me through what this trip will cost.` },
-          { label: 'Save on activities', prompt: `What activities are best value in ${island}?` },
+          { label: 'Review budget', href: `/trip/${encodeURIComponent(trip.id)}#budget` },
+          { label: 'Save on activities', href: exploreHref(island, { search: 'best value activities' }) },
           { label: 'Book this trip', prompt: `I want to book this trip — what do I need to confirm?` },
         ],
       },
@@ -136,7 +249,7 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
     {
       question: `${island} is on the calendar. What can I help you prep?`,
       chips: [
-        { label: 'Check weather', prompt: `What's the weather forecast for ${island} during my trip?` },
+        { label: 'Check weather', href: '/dashboard#weather' },
         { label: 'Help me pack', prompt: `Build me a packing list for ${island}.` },
         { label: 'Travel checklist', prompt: `What do I need to take care of before leaving for the Bahamas?` },
       ],
@@ -144,9 +257,9 @@ function buildSlides(trip: Trip, hasItinerary: boolean): Slide[] {
     {
       question: `Want a few standout ideas for things to do once you're there?`,
       chips: [
-        { label: 'Day trips', prompt: `What are the best day trips from ${island}?` },
-        { label: 'Dinner picks', prompt: `Where should I eat dinner in ${island}?` },
-        { label: 'Beach picks', prompt: `What are the best beaches in ${island}?` },
+        { label: 'Day trips', href: exploreHref(island, { search: 'day trips', category: 'Activity' }) },
+        { label: 'Dinner picks', href: restaurantsHref(island) },
+        { label: 'Beach picks', href: exploreHref(island, { search: 'best beaches', category: 'Beach' }) },
       ],
     },
     {
@@ -180,6 +293,11 @@ function buildChatHref(tripId: string, prompt: string): string {
   params.set('trip', tripId)
   params.set('q', prompt)
   return `/dashboard/chat?${params.toString()}`
+}
+
+function chipHref(tripId: string, chip: SuggestionChip): string {
+  if (chip.href) return chip.href
+  return buildChatHref(tripId, chip.prompt ?? chip.label)
 }
 
 export default function TripSuggestionRotator({ trip, hasItinerary }: TripSuggestionRotatorProps) {
@@ -253,7 +371,7 @@ export default function TripSuggestionRotator({ trip, hasItinerary }: TripSugges
           {slide.chips.map((chip) => (
             <Link
               key={chip.label}
-              href={buildChatHref(trip.id, chip.prompt)}
+              href={chipHref(trip.id, chip)}
               className="inline-flex items-center bg-white hover:bg-night hover:text-white text-night text-sm font-semibold px-4 py-2 rounded-full border border-gray-200 hover:border-night transition-colors shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
             >
               {chip.label}

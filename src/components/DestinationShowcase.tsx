@@ -1,7 +1,8 @@
 'use client'
 
-import Image from 'next/image'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import { BahaImages } from '@/lib/baha-images'
+import { buddyChatHref } from '@/lib/buddy-chat'
 
 interface Attraction {
   id: string
@@ -71,12 +72,12 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
 ]
 
 const CATEGORY_COLORS: Record<string, string> = {
-  Island: 'bg-brand-500/80 text-white',
-  Beach: 'bg-gold-500/80 text-white',
-  'Water Activity': 'bg-sky-500/80 text-white',
-  Culture: 'bg-purple-500/80 text-white',
-  Nature: 'bg-emerald-500/80 text-white',
-  Dining: 'bg-rose-500/80 text-white',
+  Island: 'bg-brand-600/90 text-white',
+  Beach: 'bg-gold-400 text-night',
+  'Water Activity': 'bg-brand-600/90 text-white',
+  Culture: 'bg-gold-400 text-night',
+  Nature: 'bg-palm-500 text-white',
+  Dining: 'bg-coral-500 text-white',
 }
 
 const TRUST_LABELS = [
@@ -129,10 +130,11 @@ interface Props {
 }
 
 export default function DestinationShowcase({ attractions }: Props) {
-  const items = attractions.length > 0 ? attractions : FALLBACK_ATTRACTIONS
+  const usingFallbackAttractions = attractions.length === 0
+  const items = usingFallbackAttractions ? FALLBACK_ATTRACTIONS : attractions
 
   const handlePlan = (name: string) => {
-    window.location.href = `/dashboard?q=${encodeURIComponent(`Plan a trip to ${name} in the Bahamas`)}`
+    window.location.href = buddyChatHref(`Plan a trip to ${name} in the Bahamas`)
   }
 
   return (
@@ -155,35 +157,32 @@ export default function DestinationShowcase({ attractions }: Props) {
           {items.map((attraction, index) => {
             const categoryColor = CATEGORY_COLORS[attraction.category] ?? 'bg-gray-600/80 text-white'
             const trustLabel = TRUST_LABELS[index % TRUST_LABELS.length]
-            const imageUrl = attractionImageUrl(attraction, index)
+            const imageUrl = usingFallbackAttractions ? attractionImageUrl(attraction, index) : attraction.image_url
 
             return (
               <div
                 key={attraction.id}
                 className="bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col"
               >
-                {/* Image — 16:9 */}
-                <div className="relative aspect-video overflow-hidden bg-stone-200">
-                  <Image
-                    src={imageUrl}
-                    alt={attraction.image_url ? attraction.name : `${attraction.name} Bahamas travel image`}
-                    fill
-                    loading="eager"
-                    unoptimized
-                    className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                  />
-
-                  {/* Category badge */}
+                <ImageWithSourcePolicy
+                  src={imageUrl}
+                  alt={attraction.name}
+                  title={attraction.name}
+                  eyebrow={attraction.category}
+                  description="Destination details are available. Place image is not available yet."
+                  className="aspect-video"
+                  imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
+                  priority={usingFallbackAttractions}
+                  tone="island"
+                >
                   <div className={`absolute top-3 left-3 text-xs font-semibold rounded-full px-3 py-1 backdrop-blur-sm ${categoryColor}`}>
                     {attraction.category}
                   </div>
 
-                  {/* Trust label — avoids fake-looking static ratings */}
-                  <div className="absolute top-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs rounded-full px-2.5 py-1 font-semibold">
+                  <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-xs rounded-full px-2.5 py-1 font-semibold">
                     {trustLabel}
                   </div>
-                </div>
+                </ImageWithSourcePolicy>
 
                 <div className="p-5 flex flex-col flex-1">
                   {/* Island meta */}

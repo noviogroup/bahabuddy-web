@@ -131,7 +131,11 @@ export default function TripReceipts({ tripId }: Props) {
       {error && (
         <div className="mb-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
           {error}
-          <button onClick={() => setError(null)} className="ml-2 text-red-400 hover:text-red-600">✕</button>
+          <button onClick={() => setError(null)} aria-label="Dismiss error" className="ml-2 text-red-400 hover:text-red-600">
+            <svg className="inline h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m6 6 12 12M18 6 6 18" />
+            </svg>
+          </button>
         </div>
       )}
 

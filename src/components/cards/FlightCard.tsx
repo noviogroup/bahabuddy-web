@@ -10,8 +10,8 @@
  *     showing the duration. This is the airline-app pattern users
  *     already recognize.
  *
- *   - Stops indicator is color-coded. "Direct" gets palm-green; 1+ stops
- *     gets amber. Saves the user a re-read.
+ *   - Stops indicator is language-led. "Non-stop" is marked as positive;
+ *     connecting fares stay neutral so the card does not overuse color.
  *
  *   - Cabin class chip alongside the airline when set. Helps clarify
  *     whether the price tag is economy or business.
@@ -36,7 +36,7 @@
 
 import { CardShell } from './shared'
 import Image from 'next/image'
-import type { MouseEvent } from 'react'
+import type { MouseEvent, ReactNode } from 'react'
 
 // \u2500\u2500\u2500 Types \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
@@ -48,7 +48,7 @@ export interface FlightLayover {
 }
 
 export interface FlightCardData {
-  /** Pretty route like "MIA \u2192 NAS". */
+  /** Pretty route like "MIA to NAS". */
   route?: string
   airline?: string
   airline_code?: string
@@ -69,6 +69,7 @@ export interface FlightCardData {
   cabin_class?: string
   fare_brand?: string
   refundable?: boolean
+  changeable?: boolean
   expiration?: string
   /** Optional ordered list of layovers. */
   layovers?: FlightLayover[]
@@ -77,7 +78,7 @@ export interface FlightCardData {
     carry_on?: boolean
     checked?: number
   }
-  /** Duffel offer ID \u2014 carried for future "Book this fare" wiring. */
+  /** Provider offer ID carried for "Book this fare" wiring. */
   duffel_offer_id?: string
 }
 
@@ -85,31 +86,17 @@ interface Props {
   data: FlightCardData
   /** When set, a "Save flight" pill appears below the times. */
   onSendMessage?: (msg: string) => void
+  /** Direct actions supplied by the parent surface: add to trip, book, verify, etc. */
+  actions?: ReactNode
   className?: string
 }
 
 // \u2500\u2500\u2500 Helpers \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-function stopsToTone(stops: string | undefined): { text: string; classes: string } {
-  if (!stops) return { text: '', classes: 'text-gray-500' }
-  const isDirect = /direct|nonstop/i.test(stops)
-  return {
-    text: stops,
-    classes: isDirect
-      ? 'text-palm-700 bg-palm-50'
-      : 'text-gold-700 bg-gold-50',
-  }
-}
-
 const I = {
   plane: (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
       <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
-    </svg>
-  ),
-  bag: (
-    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
     </svg>
   ),
 }
@@ -126,13 +113,13 @@ function DecisionFact({
   const toneClass = tone === 'good'
     ? 'text-palm-700'
     : tone === 'warn'
-      ? 'text-gold-700'
+      ? 'text-charcoal'
       : 'text-gray-900'
 
   return (
-    <div className="min-w-0 rounded-xl bg-white px-2.5 py-2">
-      <p className="text-[10px] font-bold uppercase tracking-wide text-gray-400">{label}</p>
-      <p className={`mt-0.5 truncate text-[12px] font-extrabold ${toneClass}`}>{value}</p>
+    <div className="min-w-0 rounded-xl border border-gray-100 bg-white px-3 py-2">
+      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-gray-400">{label}</p>
+      <p className={`mt-1 truncate text-xs font-extrabold leading-tight ${toneClass}`} title={value}>{value}</p>
     </div>
   )
 }
@@ -155,50 +142,74 @@ function formatExpiration(value: string) {
   })
 }
 
+function routeParts(route: string | undefined): [string | undefined, string | undefined] {
+  if (!route) return [undefined, undefined]
+  const parts = route
+    .split(/\s+to\s+|[\u2192>]/i)
+    .map((part) => part.trim())
+    .filter(Boolean)
+  return [parts[0], parts[1]]
+}
+
 // \u2500\u2500\u2500 Component \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
 
-export function FlightCard({ data, onSendMessage, className }: Props) {
+export function FlightCard({ data, onSendMessage, actions, className }: Props) {
   const {
     route, airline, departure, arrival, duration, stops,
     price = 0, currency = 'USD', passengers = 1, cabin_class, fare_brand,
-    refundable, expiration, layovers = [], baggage, airline_code, airline_logo_url,
+    refundable, changeable, expiration, layovers = [], baggage, airline_code, airline_logo_url,
   } = data
 
-  const stopsTone = stopsToTone(stops)
   const stop = (e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()
   const isDirect = /direct|nonstop|non-stop|^0$/i.test(stops ?? '')
   const priceEach = passengers > 1 && price > 0 ? price / passengers : null
   const formattedPrice = formatMoney(price, currency)
+  const travelerLabel = `${passengers} traveler${passengers === 1 ? '' : 's'}`
   const baggageLabel = baggage?.carry_on
-    ? 'Carry-on included'
+    ? baggage?.checked && baggage.checked > 0
+      ? `Carry-on + ${baggage.checked} checked`
+      : 'Carry-on included'
     : baggage?.checked && baggage.checked > 0
       ? `${baggage.checked} checked`
       : 'Check fare rules'
+  const fareRulesLabel = typeof refundable === 'boolean'
+    ? refundable
+      ? changeable ? 'Refundable · changes' : 'Refundable'
+      : changeable ? 'No refund · changes' : 'No refund'
+    : 'Confirm rules'
+  const verificationLabel = expiration
+    ? `Verify by ${formatExpiration(expiration)}`
+    : 'Verify before payment'
+  const [originCode, destinationCode] = routeParts(route)
 
   return (
-    <CardShell mode="plain" className={className}>
-      <div className="p-4 space-y-3">
+    <CardShell mode="plain" ariaLabel="Flight booking preview" className={className}>
+      <div className="space-y-4 p-4 sm:p-5">
         {/* Airline + cabin chip + price \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-2 min-w-0">
+        <div className="flex items-start justify-between gap-2.5">
+          <div className="flex min-w-0 items-center gap-3">
             {airline_logo_url ? (
               <Image
                 src={airline_logo_url}
                 alt={`${airline ?? 'Airline'} logo`}
-                width={36}
-                height={36}
+                width={48}
+                height={32}
                 unoptimized
-                className="w-9 h-9 object-contain shrink-0"
+                className="shrink-0 object-contain"
+                style={{ width: '44px', height: 'auto' }}
               />
             ) : (
-              <span className="w-8 h-8 text-brand-700 flex items-center justify-center shrink-0">
+              <span className="flex h-8 w-11 shrink-0 items-center justify-center text-charcoal">
                 {I.plane}
               </span>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{airline ?? 'Flight'}</p>
+              <p className="truncate text-sm font-extrabold text-gray-900">{airline ?? 'Flight'}</p>
+              {route && (
+                <p className="mt-0.5 truncate text-[11px] font-semibold text-gray-500">{route}</p>
+              )}
               {(airline_code || cabin_class) && (
-                <span className="text-[10px] font-semibold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded mt-0.5 inline-block uppercase tracking-wide">
+                <span className="mt-1 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-charcoal">
                   {[airline_code, cabin_class].filter(Boolean).join(' · ')}
                 </span>
               )}
@@ -206,94 +217,79 @@ export function FlightCard({ data, onSendMessage, className }: Props) {
           </div>
           {price > 0 && (
             <div className="text-right shrink-0">
-              <p className="text-xl font-extrabold text-brand-600 leading-none">{formattedPrice}</p>
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold mt-0.5">
-                {priceEach ? `${formatMoney(priceEach, currency)} each` : 'Total'}
+              <p className="text-xl font-extrabold leading-none text-night">{formattedPrice}</p>
+              <p className="mt-0.5 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+                {passengers > 1 ? `Total for ${passengers}` : 'Total fare'}
               </p>
+              {priceEach && (
+                <p className="mt-0.5 text-[11px] font-semibold text-gray-500">
+                  {formatMoney(priceEach, currency)} each
+                </p>
+              )}
             </div>
           )}
         </div>
 
         {/* Time-to-time visual \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
         {(departure || arrival) && (
-          <div className="flex items-center gap-3">
-            <div className="text-center min-w-[3.5rem]">
-              <p className="text-base font-bold text-gray-900 leading-none">{departure ?? '\u2014'}</p>
-              {route && (
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 mt-1 font-semibold">
-                  {route.split(/[\u2192>]/)[0]?.trim()}
+          <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3.5">
+            <div className="min-w-[4.25rem] text-center">
+              <p className="text-base font-extrabold leading-none text-gray-900 sm:text-lg">{departure ?? '\u2014'}</p>
+              {originCode && (
+                <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+                  {originCode}
                 </p>
               )}
             </div>
 
-            <div className="flex-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400" aria-hidden="true" />
-              <div className="flex-1 h-px bg-gradient-to-r from-brand-200 via-brand-400 to-brand-200 relative">
+            <div className="flex flex-1 items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-gray-400" aria-hidden="true" />
+              <div className="relative h-px flex-1 bg-gray-300">
                 {duration && (
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 text-[10px] text-gray-500 bg-white px-1.5 font-semibold whitespace-nowrap">
+                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gray-50 px-2 text-[10px] font-extrabold text-gray-500 ring-4 ring-gray-50">
                     {duration}
                   </span>
                 )}
               </div>
-              <span className="w-1.5 h-1.5 rounded-full bg-brand-400" aria-hidden="true" />
+              <span className="h-1.5 w-1.5 rounded-full bg-gray-400" aria-hidden="true" />
             </div>
 
-            <div className="text-center min-w-[3.5rem]">
-              <p className="text-base font-bold text-gray-900 leading-none">{arrival ?? '\u2014'}</p>
-              {route && (
-                <p className="text-[10px] uppercase tracking-wide text-gray-400 mt-1 font-semibold">
-                  {route.split(/[\u2192>]/)[1]?.trim()}
+            <div className="min-w-[4.25rem] text-center">
+              <p className="text-base font-extrabold leading-none text-gray-900 sm:text-lg">{arrival ?? '\u2014'}</p>
+              {destinationCode && (
+                <p className="mt-1 text-[10px] font-extrabold uppercase tracking-wide text-gray-400">
+                  {destinationCode}
                 </p>
               )}
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-2 rounded-2xl border border-gray-100 bg-sky-50/50 p-2.5">
-          <DecisionFact label="Cabin" value={fare_brand ?? cabin_class ?? 'Confirm'} />
-          <DecisionFact label="Travelers" value={`${passengers} traveler${passengers === 1 ? '' : 's'}`} />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           <DecisionFact
-            label="Route"
+            label="Stops"
             value={isDirect ? 'Non-stop' : stops ?? 'Confirm'}
             tone={isDirect ? 'good' : 'warn'}
           />
           <DecisionFact label="Baggage" value={baggageLabel} />
+          <DecisionFact label="Fare" value={fare_brand ?? cabin_class ?? 'Confirm'} />
+          <DecisionFact
+            label="Rules"
+            value={fareRulesLabel}
+            tone={refundable ? 'good' : typeof refundable === 'boolean' ? 'warn' : 'default'}
+          />
         </div>
 
-        {/* Stops + baggage row \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {stops && (
-            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${stopsTone.classes}`}>
-              {stopsTone.text}
-            </span>
-          )}
-          {baggage?.carry_on && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-palm-700 bg-palm-50 px-2 py-0.5 rounded-full">
-              {I.bag}
-              Carry-on
-            </span>
-          )}
-          {baggage?.checked && baggage.checked > 0 && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-palm-700 bg-palm-50 px-2 py-0.5 rounded-full">
-              {I.bag}
-              {baggage.checked} checked
-            </span>
-          )}
-          {typeof refundable === 'boolean' && (
-            <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full ${refundable ? 'text-palm-700 bg-palm-50' : 'text-rose-700 bg-rose-50'}`}>
-              {refundable ? 'Refundable' : 'Non-refundable'}
-            </span>
-          )}
-          {expiration && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-gold-700 bg-gold-50 px-2 py-0.5 rounded-full">
-              Expires {formatExpiration(expiration)}
-            </span>
-          )}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-500">
+          <span>{travelerLabel}</span>
+          <span className={expiration ? 'text-charcoal' : 'text-gray-400'}>
+            {verificationLabel}
+          </span>
         </div>
 
         {/* Layovers when present \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
         {layovers.length > 0 && (
-          <ul className="text-[11px] text-gray-500 space-y-0.5 border-t border-gray-100 pt-2">
+          <ul className="space-y-1 rounded-2xl border border-gray-100 bg-gray-50 px-3 py-2 text-xs font-semibold text-gray-600">
             {layovers.map((l, i) => (
               <li key={i}>
                 Layover {l.airport} \u00b7 {l.duration}
@@ -302,19 +298,22 @@ export function FlightCard({ data, onSendMessage, className }: Props) {
           </ul>
         )}
 
-        {/* Save affordance \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
-        {onSendMessage && (
-          <div className="flex justify-end">
+        {/* Direct actions \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
+        {(actions || onSendMessage) && (
+          <div className="grid grid-cols-1 gap-2 border-t border-gray-100 pt-3 sm:flex sm:items-center sm:justify-end">
+            {actions}
+            {onSendMessage && (
             <button
               type="button"
               onClick={(e) => {
                 stop(e)
                 onSendMessage(`Help me decide on the ${airline ?? 'flight'} flight at ${departure ?? ''} for ${formattedPrice}`)
               }}
-              className="text-[11px] font-semibold text-brand-600 hover:text-brand-700 px-3 py-1 rounded-full border border-brand-200 hover:bg-brand-50 transition-colors"
+              className="inline-flex h-9 items-center justify-center rounded-full border border-gray-200 bg-white px-4 text-xs font-extrabold text-charcoal transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
             >
               Ask Buddy
             </button>
+            )}
           </div>
         )}
       </div>

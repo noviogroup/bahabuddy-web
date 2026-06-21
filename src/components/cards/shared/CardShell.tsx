@@ -63,14 +63,14 @@ const baseClasses =
 
 function accentClasses(accent: BaseProps['accent']): string {
   switch (accent) {
-    case 'brand': return 'border-brand-200 shadow-card'
-    case 'gold':  return 'border-gold-300 shadow-card'
-    default:      return 'border-gray-100 shadow-card'
+    case 'brand': return 'border-gray-200 shadow-sm'
+    case 'gold':  return 'border-gray-200 shadow-sm'
+    default:      return 'border-gray-200 shadow-sm'
   }
 }
 
 const interactiveClasses =
-  'hover:shadow-card-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2 cursor-pointer'
+  'hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 cursor-pointer'
 
 export function CardShell(props: Props) {
   const cn = `${baseClasses} ${accentClasses(props.accent)} ${props.className ?? ''}`

@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import type { CardData } from '@/components/RichCards'
 
 export type HotelViewMode = 'list' | 'grid'
@@ -13,10 +14,79 @@ interface HotelDisplay {
   reviews: number
   chain?: string
   photoUrl?: string
+  previewReason: string
   pricePerNight: number | null
   priceIsEstimate: boolean
   amenities: string[]
   href: string | null
+}
+
+function imageUrlFromValue(value: unknown): string | undefined {
+  if (!value) return undefined
+  if (typeof value === 'object' && !Array.isArray(value)) {
+    const record = value as Record<string, unknown>
+    for (const key of ['url', 'photo_url', 'photoUrl', 'image_url', 'imageUrl', 'storage_url', 'storageUrl', 'src']) {
+      const url = imageUrlFromValue(record[key])
+      if (url) return url
+    }
+    return undefined
+  }
+  if (typeof value !== 'string') return undefined
+  const url = value.trim()
+  return /^https?:\/\//i.test(url) ? url : undefined
+}
+
+function hotelImageUrl(data: CardData): string | undefined {
+  for (const key of [
+    'primary_image_url',
+    'photo_url',
+    'image_url',
+    'hero_image_url',
+    'photo',
+    'thumbnail',
+  ] as const) {
+    const url = imageUrlFromValue(data[key])
+    if (url) return url
+  }
+
+  for (const key of ['image_urls', 'gallery_images', 'photos'] as const) {
+    const values = data[key]
+    if (Array.isArray(values)) {
+      for (const value of values) {
+        const url = imageUrlFromValue(value)
+        if (url) return url
+      }
+    } else {
+      const url = imageUrlFromValue(values)
+      if (url) return url
+    }
+  }
+
+  return undefined
+}
+
+function hotelPreviewReason(data: CardData): string {
+  const name = typeof data.name === 'string' && data.name.trim() ? data.name.trim() : 'This stay'
+  const island = data.island ?? data.city ?? 'The Bahamas'
+  const amenities = (data.amenities ?? []).filter(Boolean)
+
+  if ((data.stars ?? 0) >= 4 && (data.rating ?? 0) >= 4.4) {
+    return `${name} pairs a ${data.stars}-star stay profile with strong traveler ratings on ${island}.`
+  }
+
+  if ((data.rating ?? 0) >= 4.5) {
+    return `Strong guest rating for travelers comparing stays on ${island}.`
+  }
+
+  if (amenities.length > 0) {
+    return `Good fit for ${amenities.slice(0, 2).join(' and ').toLowerCase()} stay plans.`
+  }
+
+  if (data.chain) {
+    return `${data.chain} option to compare against independent Bahamas stays.`
+  }
+
+  return `Useful stay preview to compare location, rating, and nightly price before opening details.`
 }
 
 function getHotelDisplay(data: CardData): HotelDisplay {
@@ -32,42 +102,46 @@ function getHotelDisplay(data: CardData): HotelDisplay {
     stars: data.stars ?? 0,
     reviews: data.review_count ?? 0,
     chain: data.chain,
-    photoUrl: data.photo ?? data.thumbnail ?? data.photo_url,
+    photoUrl: hotelImageUrl(data),
+    previewReason: hotelPreviewReason(data),
     pricePerNight,
     priceIsEstimate: data.price_is_estimate ?? false,
     amenities: data.amenities ?? [],
-    href: data.place_id ? `/hotels/${encodeURIComponent(data.place_id)}` : null,
+    href: data.place_id ? `/stays/${encodeURIComponent(data.place_id)}` : null,
   }
 }
 
 function Stars({ count }: { count: number }) {
   const filled = Math.min(5, Math.max(0, count))
   return (
-    <span className="text-amber-400 text-xs leading-none" aria-hidden="true">
-      {'★'.repeat(filled)}
-      {'☆'.repeat(5 - filled)}
+    <span className="text-charcoal text-xs font-semibold leading-none">
+      {filled}-star
     </span>
   )
 }
 
 function HotelPhoto({
   photoUrl,
+  title,
   className,
 }: {
   photoUrl?: string
+  title: string
   className?: string
 }) {
-  if (photoUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={photoUrl} alt="" className={className} />
-    )
-  }
   return (
-    <div
-      className={`bg-gradient-to-br from-amber-700 to-amber-400 flex items-center justify-center ${className ?? ''}`}
-      aria-hidden="true"
-    >    </div>
+    <ImageWithSourcePolicy
+      src={photoUrl}
+      alt={title}
+      title={title}
+      eyebrow="Stay"
+      description="Stay details are available. Provider photo is not available yet."
+      pendingLabel="Photo pending"
+      className={className}
+      imageClassName="object-cover transition-transform duration-500 group-hover:scale-105"
+      sizes="(max-width: 640px) 100vw, 320px"
+      tone="stay"
+    />
   )
 }
 
@@ -98,7 +172,7 @@ function HotelInfoBlock({
         {hotel.stars > 0 && <Stars count={hotel.stars} />}
         {hotel.rating > 0 && (
           <span className={ratingClass}>
-            <span aria-hidden="true">⭐</span> {hotel.rating}
+            Rating {hotel.rating}
             {hotel.reviews > 0 ? ` (${hotel.reviews.toLocaleString()})` : ''}
           </span>
         )}
@@ -108,7 +182,7 @@ function HotelInfoBlock({
           {hotel.amenities.slice(0, 3).map(a => (
             <span
               key={a}
-              className="text-[11px] bg-brand-50 text-brand-700 rounded-full px-2 py-0.5"
+              className="text-[11px] bg-gray-100 text-charcoal rounded-full px-2 py-0.5"
             >
               {a}
             </span>
@@ -160,20 +234,28 @@ function PriceTag({
 function HotelListCard({ data }: { data: CardData }) {
   const hotel = getHotelDisplay(data)
   const shellClass =
-    'group flex flex-col sm:flex-row sm:h-36 rounded-2xl bg-white border border-gray-100 shadow-md overflow-hidden transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2'
+    'group flex flex-col sm:flex-row rounded-2xl bg-white border border-gray-100 shadow-md overflow-hidden transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2'
 
   const inner = (
     <>
-      <div className="relative w-full h-36 sm:w-44 sm:h-auto sm:shrink-0">
-        <HotelPhoto photoUrl={hotel.photoUrl} className="w-full h-full object-cover" />
+      <div className="relative w-full h-36 sm:w-44 sm:min-h-44 sm:shrink-0">
+        <HotelPhoto photoUrl={hotel.photoUrl} title={hotel.name} className="h-full w-full" />
         <div
           className="absolute inset-0 bg-gradient-to-t sm:bg-gradient-to-r from-black/20 via-transparent to-transparent sm:from-black/10 sm:via-white/40 sm:to-white pointer-events-none"
           aria-hidden="true"
         />
       </div>
-      <div className="relative flex flex-1 min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 px-4 py-3 bg-white">
-        <div className="flex-1 min-w-0">
+      <div className="relative flex flex-1 min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:gap-3 px-4 py-3 bg-white">
+        <div className="flex-1 min-w-0 space-y-2">
           <HotelInfoBlock hotel={hotel} variant="list" />
+          <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-500">
+              Why Buddy picked this
+            </p>
+            <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-charcoal">
+              {hotel.previewReason}
+            </p>
+          </div>
         </div>
         <PriceTag hotel={hotel} variant="list" />
       </div>
@@ -193,13 +275,14 @@ function HotelListCard({ data }: { data: CardData }) {
 function HotelGridCard({ data }: { data: CardData }) {
   const hotel = getHotelDisplay(data)
   const shellClass =
-    'group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-md border border-gray-100 transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2'
+    'group relative block aspect-[4/5] rounded-2xl overflow-hidden shadow-md border border-gray-100 transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2'
 
   const inner = (
     <>
       <HotelPhoto
         photoUrl={hotel.photoUrl}
-        className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+        title={hotel.name}
+        className="absolute inset-0 h-full w-full"
       />
       <div
         className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none"
