@@ -4,6 +4,7 @@ import TripIndexPage from '@/app/(dashboard)/trip/page'
 
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
+  fetchVisibleTrips: vi.fn(),
   redirect: vi.fn((path: string) => {
     throw new Error(`redirect:${path}`)
   }),
@@ -17,6 +18,10 @@ vi.mock('next/navigation', () => ({
   redirect: mocks.redirect,
 }))
 
+vi.mock('@/lib/trips/visible-trips', () => ({
+  fetchVisibleTrips: mocks.fetchVisibleTrips,
+}))
+
 vi.mock('@/components/TripCard', () => ({
   default: ({ trip }: { trip: { name?: string } }) => (
     <article>{trip.name ?? 'Trip card'}</article>
@@ -24,22 +29,20 @@ vi.mock('@/components/TripCard', () => ({
 }))
 
 function mockSupabase(trips: unknown[] = []) {
+  mocks.fetchVisibleTrips.mockResolvedValue(trips)
   mocks.createClient.mockResolvedValue({
     auth: {
       getUser: vi.fn().mockResolvedValue({
         data: { user: { id: 'user-123', email: 'traveler@example.com' } },
       }),
     },
-    from: vi.fn(() => ({
-      select() { return this },
-      eq: vi.fn().mockResolvedValue({ data: trips }),
-    })),
   })
 }
 
 describe('TripIndexPage direct trip actions', () => {
   beforeEach(() => {
     mocks.createClient.mockReset()
+    mocks.fetchVisibleTrips.mockReset()
     mocks.redirect.mockClear()
   })
 
@@ -47,6 +50,11 @@ describe('TripIndexPage direct trip actions', () => {
     mockSupabase([])
 
     render(await TripIndexPage())
+
+    expect(mocks.fetchVisibleTrips).toHaveBeenCalledWith(
+      expect.objectContaining({ auth: expect.any(Object) }),
+      'user-123',
+    )
 
     const newTrip = screen.getByRole('link', { name: 'New trip' })
     expect(newTrip).toHaveAttribute(

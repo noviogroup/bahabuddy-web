@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import type { Trip } from '@/types/database'
 import TripCard from '@/components/TripCard'
+import { fetchVisibleTrips } from '@/lib/trips/visible-trips'
 
 export const dynamic = 'force-dynamic'
 
@@ -60,12 +61,7 @@ export default async function TripIndexPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: trips } = await supabase
-    .from('trips')
-    .select('*')
-    .eq('user_id', user.id)
-
-  const tripList = sortTrips((trips ?? []) as Trip[])
+  const tripList = sortTrips(await fetchVisibleTrips(supabase, user.id))
 
   return (
     <main className="max-w-6xl mx-auto px-4 py-8">

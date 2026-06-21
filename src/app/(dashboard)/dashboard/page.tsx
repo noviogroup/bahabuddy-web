@@ -13,7 +13,7 @@ import {
 } from '@/components/home'
 import CreateTripCTA from '@/components/trip/CreateTripCTA'
 import { deriveUserState } from '@/lib/derive-user-state'
-import type { Trip } from '@/types/database'
+import { fetchVisibleTrips, sortTripsByUpdatedDesc } from '@/lib/trips/visible-trips'
 
 export const dynamic = 'force-dynamic'
 
@@ -63,13 +63,7 @@ export default async function DashboardPage() {
     .eq('id', user.id)
     .single()
 
-  const { data: trips } = await supabase
-    .from('trips')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('updated_at', { ascending: false })
-
-  const tripList = (trips ?? []) as Trip[]
+  const tripList = sortTripsByUpdatedDesc(await fetchVisibleTrips(supabase, user.id))
   const { state, primaryTrip } = deriveUserState(tripList)
 
   const displayName = profile?.display_name ?? null

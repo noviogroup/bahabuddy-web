@@ -28,7 +28,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 | Suite | Tests | Passed | Failed | Skipped | Ready? |
 |-------|-------|--------|--------|---------|--------|
 | 1. Auth + profile | 2 | 2 | 0 | 0 | ✅ |
-| 2. Saved trips | 4 | 2 | 1 | 1 | ❌ |
+| 2. Saved trips | 8 | 6 | 1 | 1 | ⏳ |
 | 3. Trip items | 3 | 3 | 0 | 0 | ✅ |
 | 4. Saved conversations | 2 | 1 | 1 | 0 | ❌ |
 | 5. Sharing + collaboration | 3 | 3 | 0 | 0 | ✅ |
@@ -38,11 +38,11 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 9. Admin | 3 | 3 | 0 | 0 | ✅ |
 | 10. Edge Functions | 5 | 3 | 0 | 2 | ⏳ |
 
-**Foundation gate status:** ⏳ Partially unblocked — Test 2.4 previously failed because RLS was disabled on `public.trips`. The trips RLS launch gate has now been applied to the shared Supabase project and live catalog checks pass. Owner, non-owner, collaborator, service-role, and share/invite behavior now pass live remote verification. The remaining trips/security gate is web/mobile trip-list validation through actual app sessions. See BAH-107.
+**Foundation gate status:** ⏳ Partially unblocked — Test 2.4 previously failed because RLS was disabled on `public.trips`. The trips RLS launch gate has now been applied to the shared Supabase project and live catalog checks pass. Owner, non-owner, collaborator, service-role, share/invite behavior, and web trip-list app-session behavior now pass live verification. The remaining trips/security gate is mobile trip-list validation through an actual app session. See BAH-107.
 
 > Mobile unit test suite: **95/95 passing** as of 2026-06-07 (flutter test, code review methodology).
 >
-> Web unit test suite: **63/63 passing** as of 2026-06-07 (vitest run — chat-utils, island-config, adaptive-chips, derive-user-state).
+> Web test suite: **337/337 passing across 83 files** as of 2026-06-21 (`npm test`).
 >
 > Admin unit test suite: **32/32 passing** as of 2026-06-07 (vitest run — admin-allowlist, ugc, auth-gate).
 
@@ -68,8 +68,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 2.4a Trips RLS migration source gate | Codex | Local source | 2026-06-21 | Pass | Added web migration `20260621120000_trips_rls_launch_gate.sql` and unit coverage. The migration enables `public.trips` RLS, keeps force-RLS disabled for the controlled validation window, grants helper execution to app roles, and raises if required policies or helper functions are missing. The source gate also handles PostgreSQL's 63-byte policy-name truncation. | BAH-107 |
 | 2.4b Trips RLS live catalog gate | Codex | Production Supabase | 2026-06-21 | Pass | Applied `trips_rls_launch_gate` to project `cxcfymhoncysyloutvkh`; Supabase recorded migration `20260621114605`. Live SQL verified `public.trips.relrowsecurity = true`, `public.trips.relforcerowsecurity = false`, `public.trip_collaborators.relrowsecurity = true`, required owner/collaborator policies present, and `is_trip_owner`, `is_trip_collaborator`, `is_trip_editor` are `SECURITY DEFINER`. | BAH-107 |
 | 2.4c Trips RLS live behavior gate | Codex | Production Supabase | 2026-06-21 | Pass | `npm run verify:trips-rls-remote` creates temporary authenticated users and proves owner create/read/update/delete, non-owner direct-ID read/update denial, accepted collaborator read, editor collaborator trip-activity write, and service-role read. Temporary verifier rows/users are cleaned up after the run. | BAH-107 |
+| 2.4d Web trip-list app session gate | Codex | Local web + production Supabase | 2026-06-21 | Pass | `npm run verify:web-trip-list-session` creates temporary authenticated users, owned/shared/hidden trips, accepted collaborator state, signs in through the real web login page, opens `/trip`, and proves the rendered web app shows owned and accepted shared trips while hiding an unrelated trip. `/dashboard` and `/trip` now both use `fetchVisibleTrips()`. | BAH-107 |
 
-> ⚠️ Test 2.4 is remediated at the database, core behavior, and share/invite behavior level. The remaining trips/security launch work is app-level web/mobile trip-list loading with real sessions.
+> ⚠️ Test 2.4 is remediated at the database, core behavior, share/invite behavior, and web app-session level. The remaining trips/security launch work is mobile trip-list loading with a real simulator/device session.
 
 ---
 

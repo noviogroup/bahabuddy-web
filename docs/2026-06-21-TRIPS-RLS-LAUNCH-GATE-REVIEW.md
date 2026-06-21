@@ -1,7 +1,7 @@
 # Trips RLS Launch Gate Review - June 21, 2026
 
 Review time: June 21, 2026, 07:47 EDT
-Updated: June 21, 2026, 10:44 EDT
+Updated: June 21, 2026, 11:10 EDT
 Scope: web Supabase migration set and launch-readiness blocker for `public.trips`
 
 ## Executive Status
@@ -16,6 +16,8 @@ The core live behavior is now also verified with temporary authenticated users: 
 
 Share and invite behavior is now also live-verified. `npm run verify:share-invite-remote` proves owner share-link creation, public sanitized share resolution, no-email invitation setup, invite preview, invite acceptance, accepted collaborator reconciliation, invitation accepted state, and `trips.collaborator_ids` synchronization. The verification caught and fixed a deployed `resolve-share-link` issue where activity rows were silently dropped by a schema-drifted select list.
 
+Web app-session trip-list behavior is now live-verified through the actual local web app and production Supabase data. `npm run verify:web-trip-list-session` creates temporary authenticated users, owned/shared/hidden trips, accepted collaborator state, signs in through `/login`, opens `/trip`, and proves the rendered page shows owned and accepted shared trips while hiding unrelated trips.
+
 The first live apply attempt exposed a PostgreSQL identifier detail: long policy names are stored in `pg_policies.policyname` as truncated identifiers. The source migration now validates policy table/name pairs and accepts both the source name and the 63-byte stored identifier form.
 
 ## Files Added
@@ -26,6 +28,10 @@ The first live apply attempt exposed a PostgreSQL identifier detail: long policy
 - `tests/unit/trips-rls-launch-gate.test.ts`
 - `tests/unit/trips-rls-remote-verifier.test.ts`
 - `tests/unit/share-invite-remote-verifier.test.ts`
+- `src/lib/trips/visible-trips.ts`
+- `scripts/verify-web-trip-list-session.mjs`
+- `tests/unit/visible-trips.test.ts`
+- `tests/unit/web-trip-list-session-verifier.test.ts`
 
 ## Local Validation
 
@@ -36,8 +42,9 @@ Completed on June 21, 2026:
 - `npm test -- tests/unit/trips-rls-remote-verifier.test.ts tests/unit/trips-rls-launch-gate.test.ts` passed with 7 tests.
 - `npm test -- --run tests/unit/middleware-auth.test.ts tests/unit/share-invite-remote-verifier.test.ts` passed with 8 tests.
 - `npm run lint` passed with the existing image-optimization warnings.
-- `npm test` passed with 81 test files and 329 tests.
+- `npm test` passed with 83 test files and 337 tests.
 - `npm run build` passed with existing image-optimization, Sanity API-version, and localstorage-file warnings.
+- `npm run verify:web-trip-list-session` passed against local web on `http://localhost:3011` and the linked Supabase project.
 - `curl -I http://localhost:3011/` returned `200 OK` after restarting the dev server following the production build.
 - `curl -I http://localhost:3011/trip/share123` returned `307 Temporary Redirect` to `/share/share123`.
 
@@ -93,13 +100,29 @@ Completed with `npm run verify:share-invite-remote` on June 21, 2026:
 
 The pass required redeploying `resolve-share-link` after fixing activity snapshot schema drift. The deployed function now selects stable activity columns and returns explicit errors for itinerary item lookup failures instead of returning incomplete arrays.
 
+Completed with `npm run verify:web-trip-list-session` on June 21, 2026:
+
+- temporary owner and traveler users were created with completed profiles
+- traveler-owned, owner-shared, and owner-hidden trips were created
+- accepted collaborator state was inserted for the shared trip
+- traveler RLS client could read both the shared trip and accepted collaborator row
+- browser signed in through `/login?redirect=%2Ftrip`
+- rendered `/trip` showed the traveler-owned trip
+- rendered `/trip` showed the accepted shared trip
+- rendered `/trip` did not show the unrelated owner trip
+- rendered trip count showed owned plus shared trips
+
+The verifier found and fixed two verifier-side issues while being built: unconfigured `example.invalid` image host test data and a strict Playwright `main` locator conflict caused by nested dashboard/page mains.
+
 ## Remaining App-Level Validation
 
-The catalog state, core RLS behavior, and share/invite behavior are now proven. The remaining trips/security checks are app-level flows:
+The catalog state, core RLS behavior, share/invite behavior, and web trip-list app-session behavior are now proven. The remaining trips/security checks are mobile app-level flows:
 
-- web and mobile trip lists still load for the same account
-- collaborator-owned trip visibility through the actual web/mobile UI, not only direct Supabase verifier scripts
+- owned trip list loading in the mobile app
+- accepted collaborator trip visibility in the mobile app
+- unrelated trip non-visibility in the mobile app
+- invite acceptance returning to the correct mobile trip surface
 
 ## Decision
 
-The table-level trips RLS launch gate, core owner/collaborator behavior, and share/invite behavior are now live-verified. Do not mark the broader trips/security launch gate complete until web/mobile trip-list behavior is exercised through the actual app surfaces.
+The table-level trips RLS launch gate, core owner/collaborator behavior, share/invite behavior, and web trip-list app-session behavior are now live-verified. Do not mark the broader trips/security launch gate complete until mobile trip-list behavior is exercised through the actual app surface.
