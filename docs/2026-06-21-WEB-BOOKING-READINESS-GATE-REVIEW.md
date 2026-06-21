@@ -1,7 +1,7 @@
 # Web Booking Readiness Gate Review - June 21, 2026
 
 Review time: June 21, 2026, 16:43 EDT
-Updated: June 21, 2026, 18:25 EDT
+Updated: June 21, 2026, 19:33 EDT
 Scope: non-destructive hotel/flight booking readiness before live LiteAPI/Stripe lifecycle QA
 
 ## Executive Status
@@ -13,6 +13,8 @@ This gate does not create payment intents, prebooks, provider bookings, or canon
 June 21 follow-up: the local web runtime now has `SUPABASE_SERVICE_ROLE_KEY` configured in ignored `.env.local`, and the full non-destructive readiness gate passes without dummy values.
 
 June 21 deployed-runtime follow-up: web now exposes a protected `GET /api/internal/booking-readiness` endpoint and the verifier can call it with `--runtime-url` or `BOOKING_READINESS_RUNTIME_URL` to prove deployed web env/schema readiness without creating payments, prebooks, provider bookings, canonical booking rows, trip items, or audit rows.
+
+June 21 Netlify follow-up: the current Netlify production deploy is still `6a288d99219f21a5f0d52a51` from June 9, 2026, which predates commit `232425d`. Two Netlify MCP upload attempts reached the upload step but failed with `502 Bad Gateway`, so deployed runtime proof remains open.
 
 ## What Changed
 
@@ -34,15 +36,19 @@ June 21 deployed-runtime follow-up: web now exposes a protected `GET /api/intern
   - authentication via server-side `BOOKING_READINESS_TOKEN` or `INTERNAL_API_SECRET`
   - redacted response; no secret values are returned
   - canonical source model reports `bookings`, `trip_accommodations`, and `trip_flights` as operational, with `travel_booking_records` as audit-only
+- Added `.env.example` entries for `BOOKING_READINESS_TOKEN` and `BOOKING_READINESS_RUNTIME_URL`.
+- Improved the deployed runtime verifier message when Netlify returns an HTML `401`, which can happen when visitor password protection or an old deploy blocks the readiness route.
 
 ## Current Findings
 
 - Source contract checks pass.
 - Local web env now has active `SUPABASE_SERVICE_ROLE_KEY`, and `.env.local` is ignored by git.
 - Protected deployed-runtime readiness endpoint source and tests pass locally.
+- `.env.example` now documents the readiness token/runtime URL contract.
 - LiteAPI non-booking rate smoke passes with network access.
 - Supabase Edge Function URLs respond with protected `401` responses, proving the functions are deployed and not public.
 - Local key-mode check shows Stripe keys are test-mode, while LiteAPI keys are production-mode.
+- Hosted Netlify runtime proof is still pending because production is on an older deploy and the connector upload failed with `502 Bad Gateway`.
 
 The previous missing web service-role key blocker is closed locally. The remaining risk is not configuration for this local gate; it is operational safety. Because the LiteAPI key is production-mode, provider-book endpoints must only be exercised in a controlled QA run with cancellation/refund handling confirmed.
 
@@ -116,6 +122,15 @@ Result:
 - `npm run lint`: no ESLint warnings or errors
 - `npm run build`: production build passed and included `/api/internal/booking-readiness`
 
+Netlify deployment status check:
+
+- Project: `bahabuddy-web`
+- Primary URL: `https://bahabuddy.com`
+- Current production deploy: `6a288d99219f21a5f0d52a51`
+- Current production deploy published: June 9, 2026
+- Deploy attempt for current code: failed twice during upload with `502 Bad Gateway`
+- Site-level visitor password protection is enabled, so `curl -I https://bahabuddy.com/api/internal/booking-readiness` currently returns a Netlify HTML `401` before it can prove the Next.js readiness route.
+
 Live non-booking LiteAPI rate smoke with network access:
 
 ```bash
@@ -145,7 +160,7 @@ Result:
 
 ## Required Next Step
 
-Before live lifecycle QA, deploy this endpoint and confirm the deployed web runtime also has server-only `SUPABASE_SERVICE_ROLE_KEY` plus `BOOKING_READINESS_TOKEN` or `INTERNAL_API_SECRET` configured. Local QA is now configured, but deployment config still needs proof from the hosting environment.
+Before live lifecycle QA, deploy this endpoint and confirm the deployed web runtime also has server-only `SUPABASE_SERVICE_ROLE_KEY` plus `BOOKING_READINESS_TOKEN` or `INTERNAL_API_SECRET` configured. Local QA is now configured, but deployment config still needs proof from the hosting environment. If Netlify visitor password protection remains enabled, provide an access path that lets the verifier reach the Next.js route instead of the Netlify password gate.
 
 Then keep this preflight green:
 

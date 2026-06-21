@@ -217,7 +217,7 @@ async function checkDeployedRuntime(url) {
         Authorization: `Bearer ${token}`,
       },
     })
-    const body = await response.json().catch(() => ({}))
+    const { body, contentType } = await readJsonResponse(response)
     const serialized = JSON.stringify(body)
     const leakedValues = [
       token,
@@ -231,7 +231,7 @@ async function checkDeployedRuntime(url) {
       response.ok && body.ready === true && leakedValues.length === 0,
       response.ok
         ? `HTTP ${response.status}; ready=${body.ready === true}; checkedAt=${body.checkedAt || 'unknown'}`
-        : `HTTP ${response.status}; ready=${body.ready === true}; endpoint must return ready=true.`,
+        : runtimeFailureDetail(response, body, contentType),
     )
 
     addCheck(
@@ -251,6 +251,21 @@ async function checkDeployedRuntime(url) {
       error instanceof Error ? error.message : 'Runtime readiness check failed.',
     )
   }
+}
+
+async function readJsonResponse(response) {
+  const contentType = response.headers.get('content-type') || ''
+  if (contentType.includes('application/json')) {
+    return { body: await response.json().catch(() => ({})), contentType }
+  }
+  return { body: {}, contentType }
+}
+
+function runtimeFailureDetail(response, body, contentType) {
+  if (response.status === 401 && contentType.includes('text/html')) {
+    return 'HTTP 401 non-JSON response; Netlify visitor password protection or an old deploy may be blocking the readiness route.'
+  }
+  return `HTTP ${response.status}; ready=${body.ready === true}; endpoint must return ready=true.`
 }
 
 function checkBookRoute(label, content, requiredSnippets) {
