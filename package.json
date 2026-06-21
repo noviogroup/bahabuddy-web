@@ -19,6 +19,7 @@
     "verify:trips-rls-remote": "node scripts/verify-trips-rls-remote.mjs",
     "verify:share-invite-remote": "node scripts/verify-share-invite-remote.mjs",
     "verify:web-trip-list-session": "node scripts/verify-web-trip-list-session.mjs",
+    "verify:booking-readiness": "node scripts/verify-booking-readiness.mjs",
     "sync": "bash scripts/git-sync.sh",
     "screenshots:web": "node scripts/capture-web-screenshots.mjs",
     "screenshots:web:auth": "node scripts/capture-auth-web-screenshots.mjs"

@@ -1,0 +1,236 @@
+#!/usr/bin/env node
+
+import { existsSync, readFileSync } from 'node:fs'
+
+const args = new Set(process.argv.slice(2))
+const shouldCheckRemote = args.has('--remote-edge')
+
+loadEnvFile('.env.local')
+
+const checks = []
+
+checkEnv()
+checkPublicSecretExposure()
+checkSourceContracts()
+
+if (shouldCheckRemote) {
+  await checkRemoteEdgeFunctions()
+}
+
+const failed = checks.filter((check) => check.status === 'FAIL')
+for (const check of checks) {
+  const suffix = check.detail ? ` - ${check.detail}` : ''
+  console.log(`${check.status} ${check.label}${suffix}`)
+}
+
+if (failed.length > 0) {
+  console.error(`Booking readiness failed: ${failed.length} check(s) failed.`)
+  process.exit(1)
+}
+
+console.log('Booking readiness verified without creating payments or provider bookings.')
+
+function checkEnv() {
+  const required = [
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+  ]
+
+  for (const key of required) {
+    addCheck(`env ${key}`, Boolean(value(key)), 'Required for web booking/auth/payment readiness.')
+  }
+
+  addCheck(
+    'env LiteAPI private key',
+    Boolean(value('TRAVEL_BOOKING_API_KEY') || value('LITEAPI_API_KEY')),
+    'Set TRAVEL_BOOKING_API_KEY or LITEAPI_API_KEY on the server only.',
+  )
+
+  addCheck(
+    'env booking API base URL',
+    /^https:\/\/api\.liteapi\.travel\/v3\.0$/.test(stripTrailingSlash(value('TRAVEL_BOOKING_API_BASE_URL') || 'https://api.liteapi.travel/v3.0')),
+    'Expected LiteAPI v3 rate/search base URL.',
+  )
+
+  addCheck(
+    'env booking book base URL',
+    /^https:\/\/book\.liteapi\.travel\/v3\.0$/.test(stripTrailingSlash(value('TRAVEL_BOOKING_BOOK_BASE_URL') || 'https://book.liteapi.travel/v3.0')),
+    'Expected LiteAPI v3 prebook/book base URL.',
+  )
+}
+
+function checkPublicSecretExposure() {
+  const publicAllowlist = new Set([
+    'NEXT_PUBLIC_SUPABASE_URL',
+    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',
+    'NEXT_PUBLIC_SANITY_PROJECT_ID',
+    'NEXT_PUBLIC_SANITY_DATASET',
+    'NEXT_PUBLIC_SANITY_API_VERSION',
+    'NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY',
+  ])
+  const envLines = readEnvLines('.env.local')
+  const publicKeys = envLines
+    .map((line) => line.key)
+    .filter((key) => key.startsWith('NEXT_PUBLIC_'))
+
+  const suspicious = publicKeys.filter((key) => {
+    if (publicAllowlist.has(key)) return false
+    return /(SECRET|PRIVATE|SERVICE|TOKEN|API_KEY|KEY)$/i.test(key)
+  })
+
+  addCheck(
+    'public env secret exposure',
+    suspicious.length === 0,
+    suspicious.length > 0
+      ? `Unexpected public secret-like keys: ${suspicious.join(', ')}`
+      : 'No unexpected NEXT_PUBLIC secret-like keys found.',
+  )
+}
+
+function checkSourceContracts() {
+  const provider = source('src/lib/travel-booking/provider.ts')
+  const paymentIntent = source('src/app/api/booking/payments/intent/route.ts')
+  const stripeHelper = source('src/lib/stripe/edge-function.ts')
+  const hotelBook = source('src/app/api/booking/hotels/book/route.ts')
+  const flightBook = source('src/app/api/booking/flights/book/route.ts')
+  const hotelPrebook = source('src/app/api/booking/hotels/prebook/route.ts')
+  const flightPrebook = source('src/app/api/booking/flights/prebook/route.ts')
+
+  addCheck(
+    'LiteAPI server-side provider',
+    provider.includes('TRAVEL_BOOKING_API_KEY') &&
+      provider.includes('LITEAPI_API_KEY') &&
+      provider.includes('https://api.liteapi.travel/v3.0') &&
+      provider.includes('https://book.liteapi.travel/v3.0'),
+    'Provider must keep LiteAPI calls server-side and default to LiteAPI v3 endpoints.',
+  )
+
+  addCheck(
+    'Stripe PaymentIntent handoff',
+    paymentIntent.includes('createPaymentIntent') &&
+      stripeHelper.includes('/functions/v1/stripe-payment') &&
+      stripeHelper.includes('Authorization: `Bearer ${input.accessToken}`'),
+    'Web booking payment route must use the Supabase stripe-payment Edge Function with the user token.',
+  )
+
+  addCheck(
+    'hotel prebook uses booking base',
+    hotelPrebook.includes("callTravelProvider('/rates/prebook'") && hotelPrebook.includes('useBookBase: true'),
+    'Hotel prebook must call LiteAPI booking base, not client code.',
+  )
+
+  addCheck(
+    'flight prebook uses LiteAPI prebooks',
+    flightPrebook.includes("callTravelProvider('/flights/prebooks'"),
+    'Flight prebook must call LiteAPI server-side prebook endpoint.',
+  )
+
+  checkBookRoute('hotel booking persistence', hotelBook, [
+    'createAdminClient',
+    "from('bookings')",
+    "from('trip_accommodations')",
+    "from('travel_booking_records')",
+    'localStatus',
+    'supportRequired',
+    'sourceSurface',
+  ])
+
+  checkBookRoute('flight booking persistence', flightBook, [
+    'createAdminClient',
+    "from('bookings')",
+    "from('trip_flights')",
+    "from('travel_booking_records')",
+    'localStatus',
+    'supportRequired',
+    'sourceSurface',
+  ])
+}
+
+async function checkRemoteEdgeFunctions() {
+  const supabaseUrl = stripTrailingSlash(value('NEXT_PUBLIC_SUPABASE_URL'))
+  if (!supabaseUrl) {
+    addCheck('remote stripe-payment function', false, 'NEXT_PUBLIC_SUPABASE_URL is missing.')
+    return
+  }
+
+  const functions = [
+    { name: 'stripe-payment', path: '/functions/v1/stripe-payment' },
+    { name: 'liteapi-proxy', path: '/functions/v1/liteapi-proxy' },
+  ]
+
+  for (const fn of functions) {
+    try {
+      const response = await fetch(`${supabaseUrl}${fn.path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      })
+      addCheck(
+        `remote ${fn.name} function deployed`,
+        response.status !== 404,
+        `HTTP ${response.status}; expected any deployed-function response except 404.`,
+      )
+    } catch (error) {
+      addCheck(
+        `remote ${fn.name} function deployed`,
+        false,
+        error instanceof Error ? error.message : 'Remote function check failed.',
+      )
+    }
+  }
+}
+
+function checkBookRoute(label, content, requiredSnippets) {
+  const missing = requiredSnippets.filter((snippet) => !content.includes(snippet))
+  addCheck(
+    label,
+    missing.length === 0,
+    missing.length > 0 ? `Missing source markers: ${missing.join(', ')}` : 'Canonical booking, trip item, audit, and support state markers found.',
+  )
+}
+
+function addCheck(label, passed, detail = '') {
+  checks.push({ label, status: passed ? 'PASS' : 'FAIL', detail })
+}
+
+function source(path) {
+  if (!existsSync(path)) {
+    addCheck(`source ${path}`, false, 'File missing.')
+    return ''
+  }
+  return readFileSync(path, 'utf8')
+}
+
+function value(key) {
+  return process.env[key]?.trim() ?? ''
+}
+
+function stripTrailingSlash(input) {
+  return String(input ?? '').replace(/\/$/, '')
+}
+
+function loadEnvFile(path) {
+  for (const { key, value: rawValue } of readEnvLines(path)) {
+    if (!process.env[key]) process.env[key] = rawValue
+  }
+}
+
+function readEnvLines(path) {
+  if (!existsSync(path)) return []
+
+  const lines = []
+  for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
+    const trimmed = line.trim()
+    if (!trimmed || trimmed.startsWith('#')) continue
+    const index = trimmed.indexOf('=')
+    if (index === -1) continue
+
+    const key = trimmed.slice(0, index).trim()
+    const rawValue = trimmed.slice(index + 1).trim().replace(/^['"]|['"]$/g, '')
+    if (key) lines.push({ key, value: rawValue })
+  }
+  return lines
+}
