@@ -60,8 +60,8 @@ describe('public marketplace shell brand layout', () => {
     expect(explore).toHaveAttribute('aria-haspopup', 'menu')
     expect(within(nav).getByRole('menuitem', { name: /Things to do/i })).toHaveAttribute('href', '/explore/places?category=Activity')
     expect(within(nav).getByRole('menuitem', { name: /Landmarks/i })).toHaveAttribute('href', '/explore/places?search=landmark+historic+site')
-    expect(within(nav).getByRole('menuitem', { name: /Food and restaurants/i })).toHaveAttribute('href', '/explore/places?category=Dining')
-    expect(within(nav).getByRole('menuitem', { name: /^Tours\b/i })).toHaveAttribute('href', '/explore/places?category=Activity&search=tour')
+    expect(within(nav).getByRole('menuitem', { name: /Restaurants and food/i })).toHaveAttribute('href', '/explore/places?category=Dining')
+    expect(within(nav).getByRole('menuitem', { name: /Tours and activities/i })).toHaveAttribute('href', '/explore/places?category=Activity&search=tour')
 
     const destinations = within(nav).getByRole('link', { name: 'Destinations' })
     expect(destinations).toHaveAttribute('aria-current', 'page')

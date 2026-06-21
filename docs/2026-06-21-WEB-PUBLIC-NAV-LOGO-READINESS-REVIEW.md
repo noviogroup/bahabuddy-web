@@ -19,7 +19,7 @@ Scope: public marketplace header, footer navigation, logo treatment, and launch-
   - Explore home
   - Things to do
   - Landmarks
-  - Food and restaurants
+  - Restaurants and food
   - Beaches
   - Tours
   - Culture
@@ -69,4 +69,4 @@ npm run build
 
 The focused public shell test should verify that the top nav includes `Guides`, excludes `Restaurants` as a primary tab, exposes Explore and Destinations dropdown ownership, and keeps the logo free of plate-style classes.
 
-Current follow-up validation on June 21, 2026 at 12:05 EDT passed with `npm run lint`, full `npm test`, `npm run build`, focused public-shell assertions, and a rendered Playwright hover check on `http://localhost:3011/`. Lint/build still report the existing image-optimization warnings in archived/share routes and existing Sanity/localstorage warnings, but no new blocking nav/logo issues were found.
+Current follow-up validation on June 21, 2026 at 18:25 EDT passed with focused public-shell assertions, full `npm run test` with 85 files and 350 tests, `npm run lint`, and `npm run build`. The public shell test now asserts the current dropdown copy, including `Restaurants and food` and `Tours and activities`.

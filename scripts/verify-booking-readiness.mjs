@@ -7,6 +7,8 @@ const shouldCheckRemote = args.has('--remote-edge')
 
 loadEnvFile('.env.local')
 
+const runtimeUrl = argValue('--runtime-url') || process.env.BOOKING_READINESS_RUNTIME_URL
+
 const checks = []
 
 checkEnv()
@@ -15,6 +17,10 @@ checkSourceContracts()
 
 if (shouldCheckRemote) {
   await checkRemoteEdgeFunctions()
+}
+
+if (runtimeUrl) {
+  await checkDeployedRuntime(runtimeUrl)
 }
 
 const failed = checks.filter((check) => check.status === 'FAIL')
@@ -98,6 +104,7 @@ function checkSourceContracts() {
   const flightBook = source('src/app/api/booking/flights/book/route.ts')
   const hotelPrebook = source('src/app/api/booking/hotels/prebook/route.ts')
   const flightPrebook = source('src/app/api/booking/flights/prebook/route.ts')
+  const runtimeReadiness = source('src/app/api/internal/booking-readiness/route.ts')
 
   addCheck(
     'LiteAPI server-side provider',
@@ -147,6 +154,16 @@ function checkSourceContracts() {
     'supportRequired',
     'sourceSurface',
   ])
+
+  addCheck(
+    'deployed runtime readiness endpoint',
+    runtimeReadiness.includes('BOOKING_READINESS_TOKEN') &&
+      runtimeReadiness.includes('SUPABASE_SERVICE_ROLE_KEY') &&
+      runtimeReadiness.includes('travel_booking_records') &&
+      runtimeReadiness.includes('sourceModel') &&
+      runtimeReadiness.includes('no-store'),
+    'Protected endpoint must prove deployed web runtime env/schema without creating payments or provider bookings.',
+  )
 }
 
 async function checkRemoteEdgeFunctions() {
@@ -180,6 +197,59 @@ async function checkRemoteEdgeFunctions() {
         error instanceof Error ? error.message : 'Remote function check failed.',
       )
     }
+  }
+}
+
+async function checkDeployedRuntime(url) {
+  const token = value('BOOKING_READINESS_TOKEN') || value('INTERNAL_API_SECRET')
+  if (!token) {
+    addCheck(
+      'deployed web booking runtime',
+      false,
+      'Set BOOKING_READINESS_TOKEN or INTERNAL_API_SECRET locally before using --runtime-url.',
+    )
+    return
+  }
+
+  try {
+    const response = await fetch(`${stripTrailingSlash(url)}/api/internal/booking-readiness`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+    const body = await response.json().catch(() => ({}))
+    const serialized = JSON.stringify(body)
+    const leakedValues = [
+      token,
+      value('SUPABASE_SERVICE_ROLE_KEY'),
+      value('TRAVEL_BOOKING_API_KEY'),
+      value('LITEAPI_API_KEY'),
+    ].filter((secret) => secret && secret.length > 12 && serialized.includes(secret))
+
+    addCheck(
+      'deployed web booking runtime',
+      response.ok && body.ready === true && leakedValues.length === 0,
+      response.ok
+        ? `HTTP ${response.status}; ready=${body.ready === true}; checkedAt=${body.checkedAt || 'unknown'}`
+        : `HTTP ${response.status}; ready=${body.ready === true}; endpoint must return ready=true.`,
+    )
+
+    addCheck(
+      'deployed runtime source model',
+      Array.isArray(body.sourceModel?.operational) &&
+        body.sourceModel.operational.includes('bookings') &&
+        body.sourceModel.operational.includes('trip_accommodations') &&
+        body.sourceModel.operational.includes('trip_flights') &&
+        Array.isArray(body.sourceModel?.auditOnly) &&
+        body.sourceModel.auditOnly.includes('travel_booking_records'),
+      'Runtime response must identify canonical operational tables separately from audit-only provider records.',
+    )
+  } catch (error) {
+    addCheck(
+      'deployed web booking runtime',
+      false,
+      error instanceof Error ? error.message : 'Runtime readiness check failed.',
+    )
   }
 }
 
@@ -233,4 +303,14 @@ function readEnvLines(path) {
     if (key) lines.push({ key, value: rawValue })
   }
   return lines
+}
+
+function argValue(name) {
+  const argv = process.argv.slice(2)
+  for (let i = 0; i < argv.length; i += 1) {
+    const value = argv[i]
+    if (value === name) return argv[i + 1] ?? ''
+    if (value.startsWith(`${name}=`)) return value.slice(name.length + 1)
+  }
+  return ''
 }
