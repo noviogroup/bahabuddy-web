@@ -164,6 +164,49 @@ describe('StayGuestBookingClient', () => {
       },
     })
   })
+
+  test('does not redirect hotel checkout when provider booking succeeds but local save fails', async () => {
+    const restoreLocation = mockWindowLocation()
+    stripeMocks.confirmPayment.mockResolvedValue({
+      paymentIntent: { id: 'pi_hotel_1', status: 'succeeded' },
+    })
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/trips/trip-1/items') return mockJsonResponse({ tripItemId: 'stay-item-1' })
+      if (url === '/api/booking/hotels/prebook') return mockJsonResponse({ prebookId: 'prebook-1' })
+      if (url === '/api/booking/payments/intent') return mockJsonResponse({ paymentIntentId: 'pi_hotel_1', clientSecret: 'cs_hotel_1' })
+      if (url === '/api/booking/hotels/book') {
+        return mockJsonResponse({
+          bookingRecordId: 'booking-1',
+          bookingId: 'provider-booking-1',
+          tripItemId: null,
+          providerStatus: 'confirmed',
+          localStatus: 'failed',
+          supportRequired: true,
+        }, { status: 202 })
+      }
+      return mockJsonResponse({ error: `Unhandled ${url}` }, { status: 500 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      render(<StayGuestBookingClient {...stayProps} />)
+
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'traveler@example.com' } })
+      fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Valdez' } })
+      fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: 'Williams' } })
+      fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: '+12425551212' } })
+      fireEvent.click(screen.getByRole('button', { name: /continue to pay/i }))
+
+      const payButton = await screen.findByRole('button', { name: 'Pay and confirm hotel' })
+      fireEvent.click(payButton)
+
+      expect(await screen.findByText(/Payment and provider booking succeeded, but Baha Buddy could not save the local booking record/i)).toBeInTheDocument()
+      expect(window.location.href).toBe('')
+      expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/booking/hotels/book')
+    } finally {
+      restoreLocation()
+    }
+  })
 })
 
 describe('FlightOfferBookingClient', () => {
@@ -474,6 +517,8 @@ describe('FlightOfferBookingClient', () => {
         return mockJsonResponse({
           bookingRecordId: 'booking-1',
           bookingId: 'provider-booking-1',
+          tripItemId: 'flight-item-1',
+          localStatus: 'saved',
         })
       }
       return mockJsonResponse({ error: `Unhandled ${url}` }, { status: 500 })
@@ -510,6 +555,66 @@ describe('FlightOfferBookingClient', () => {
         tripId: 'trip-1',
         paymentIntentId: 'pi_flight_1',
       })
+    } finally {
+      restoreLocation()
+    }
+  })
+
+  test('does not redirect flight checkout when provider booking succeeds but local save fails', async () => {
+    const restoreLocation = mockWindowLocation()
+    stripeMocks.confirmPayment.mockResolvedValue({
+      paymentIntent: { id: 'pi_flight_1', status: 'succeeded' },
+    })
+    const fetchMock = vi.fn((url: string) => {
+      if (url === '/api/booking/flights/prebook') {
+        return mockJsonResponse({
+          prebook_id: 'flight-prebook-1',
+          transaction_id: 'txn-1',
+          client_secret: 'cs_flight_1',
+          publishable_key: 'pk_test_1',
+          price: 345,
+          currency: 'USD',
+        })
+      }
+      if (url === '/api/trips/trip-1/items') return mockJsonResponse({ tripItemId: 'flight-item-1' })
+      if (url === '/api/booking/flights/book') {
+        return mockJsonResponse({
+          bookingRecordId: 'booking-1',
+          bookingId: 'provider-booking-1',
+          tripItemId: null,
+          providerStatus: 'confirmed',
+          localStatus: 'failed',
+          supportRequired: true,
+        }, { status: 202 })
+      }
+      return mockJsonResponse({ error: `Unhandled ${url}` }, { status: 500 })
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    try {
+      render(
+        <FlightOfferBookingClient
+          offerId="offer-123"
+          trips={[{ id: 'trip-1', name: 'Summer Bahamas' }]}
+          summary={basicFlightSummary}
+        />,
+      )
+
+      fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'traveler@example.com' } })
+      fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Valdez' } })
+      fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: 'Williams' } })
+      fireEvent.change(screen.getByLabelText(/phone number/i), { target: { value: '2425551212' } })
+      fireEvent.change(screen.getByLabelText(/date of birth/i), { target: { value: '1988-02-02' } })
+      fireEvent.change(screen.getByLabelText(/passport number/i), { target: { value: 'A1234567' } })
+      fireEvent.change(screen.getByLabelText(/passport expiry/i), { target: { value: '2031-01-01' } })
+      fireEvent.click(screen.getByRole('button', { name: /verify fare and continue/i }))
+
+      const payButton = await screen.findByRole('button', { name: 'Pay and confirm flight' })
+      fireEvent.click(payButton)
+
+      expect(await screen.findByText(/Payment and provider booking succeeded, but Baha Buddy could not save the local booking record/i)).toBeInTheDocument()
+      expect(window.location.href).toBe('')
+      expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/booking/flights/book')
     } finally {
       restoreLocation()
     }

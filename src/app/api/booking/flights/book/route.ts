@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     })
 
     const bookingReference = bookingRef(providerBooking)
+    const responseStatus = persisted.localStatus === 'failed' ? 202 : result.status
 
     return NextResponse.json({
       bookingId: bookingReference || persisted.bookingId,
@@ -64,6 +65,9 @@ export async function POST(request: Request) {
       providerReference: bookingReference || null,
       paymentStatus: 'paid',
       providerStatus: normalizedStatus(providerBooking),
+      localStatus: persisted.localStatus,
+      localError: persisted.localError,
+      supportRequired: persisted.localStatus === 'failed',
       amount: persisted.amount,
       sourceSurface: 'web',
       bookingReference,
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
       price: persisted.amount,
       currency: persisted.currency.toUpperCase(),
       raw: result.data,
-    }, { status: result.status })
+    }, { status: responseStatus })
   } catch (error) {
     const response = getProviderErrorResponse(error)
     return NextResponse.json(
@@ -92,11 +96,28 @@ async function persistFlightBooking(input: {
   providerPayload: unknown
   providerBooking: JsonRecord
   requestBody: JsonRecord
-}): Promise<{ bookingId: string | null; tripItemId: string | null; amount: number; currency: string }> {
+}): Promise<{
+  bookingId: string | null
+  tripItemId: string | null
+  localStatus: 'saved' | 'failed'
+  localError: string | null
+  amount: number
+  currency: string
+}> {
   const admin = createAdminClient()
   const amount = moneyAmount(input.providerBooking, input.requestBody)
   const currency = moneyCurrency(input.providerBooking, input.requestBody).toLowerCase()
-  if (!admin) return { bookingId: null, tripItemId: null, amount, currency }
+  if (!admin) {
+    return {
+      bookingId: null,
+      tripItemId: null,
+      localStatus: 'failed',
+      localError: 'Admin database client is unavailable.',
+      amount,
+      currency,
+    }
+  }
+  const localErrors: string[] = []
 
   const reference = bookingRef(input.providerBooking)
   const status = normalizedStatus(input.providerBooking)
@@ -140,13 +161,15 @@ async function persistFlightBooking(input: {
   }
 
   if (bookingId) {
-    await admin.from('bookings').update(bookingRecord).eq('id', bookingId)
+    const { error } = await admin.from('bookings').update(bookingRecord).eq('id', bookingId)
+    if (error) localErrors.push(`bookings update failed: ${errorMessage(error)}`)
   } else {
-    const { data: bookingData } = await admin
+    const { data: bookingData, error } = await admin
       .from('bookings')
       .insert(bookingRecord)
       .select('id')
       .single()
+    if (error) localErrors.push(`bookings insert failed: ${errorMessage(error)}`)
     bookingId = (bookingData as { id?: string } | null)?.id ?? null
   }
 
@@ -165,22 +188,24 @@ async function persistFlightBooking(input: {
 
   let tripItemId: string | null = null
   if (input.offerId) {
-    const { data: updated } = await admin
+    const { data: updated, error } = await admin
       .from('trip_flights')
       .update(flightRow)
       .eq('trip_id', input.tripId)
       .eq('duffel_offer_id', input.offerId)
       .select('id')
       .maybeSingle()
+    if (error) localErrors.push(`trip_flights update failed: ${errorMessage(error)}`)
     tripItemId = (updated as { id?: string } | null)?.id ?? null
   }
 
   if (!tripItemId) {
-    const { data: inserted } = await admin
+    const { data: inserted, error } = await admin
       .from('trip_flights')
       .insert(flightRow)
       .select('id')
       .single()
+    if (error) localErrors.push(`trip_flights insert failed: ${errorMessage(error)}`)
     tripItemId = (inserted as { id?: string } | null)?.id ?? null
   }
 
@@ -202,7 +227,22 @@ async function persistFlightBooking(input: {
     // Audit visibility is useful for support, but canonical booking success is controlled above.
   }
 
-  return { bookingId, tripItemId, amount, currency }
+  return {
+    bookingId,
+    tripItemId,
+    localStatus: bookingId && tripItemId && localErrors.length === 0 ? 'saved' : 'failed',
+    localError: localErrors.length > 0 ? localErrors.join('; ') : null,
+    amount,
+    currency,
+  }
+}
+
+function errorMessage(error: unknown): string {
+  if (!error) return 'Unknown database error'
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  const message = asRecord(error).message
+  return typeof message === 'string' && message.trim() ? message : 'Unknown database error'
 }
 
 function firstRecord(value: unknown): JsonRecord {

@@ -60,6 +60,8 @@ export async function POST(request: Request) {
       prebookId,
     })
 
+    const responseStatus = persisted.localStatus === 'failed' ? 202 : result.status
+
     return NextResponse.json({
       bookingId: booking.bookingId ?? persisted.bookingId,
       tripId,
@@ -68,6 +70,9 @@ export async function POST(request: Request) {
       providerReference: booking.hotelConfirmationCode ?? booking.bookingId ?? null,
       paymentStatus: 'paid',
       providerStatus: persisted.providerStatus,
+      localStatus: persisted.localStatus,
+      localError: persisted.localError,
+      supportRequired: persisted.localStatus === 'failed',
       amount: persisted.amount,
       currency: persisted.currency,
       sourceSurface: 'web',
@@ -77,7 +82,7 @@ export async function POST(request: Request) {
       checkout: booking.checkout ?? body.checkout ?? null,
       bookingRecordId: persisted.bookingId,
       raw: result.data,
-    }, { status: result.status })
+    }, { status: responseStatus })
   } catch (error) {
     const response = getProviderErrorResponse(error)
     return NextResponse.json({ error: response.error, details: response.details }, { status: response.status })
@@ -97,6 +102,8 @@ async function persistHotelBooking(input: {
   bookingId: string | null
   tripItemId: string | null
   providerStatus: 'confirmed' | 'pending' | 'failed' | 'cancelled'
+  localStatus: 'saved' | 'failed'
+  localError: string | null
   amount: number
   currency: string
 }> {
@@ -108,7 +115,18 @@ async function persistHotelBooking(input: {
   const currency = stringValue(input.providerBooking.currency ?? input.requestBody.currency, 'USD').toLowerCase()
   const providerStatus = String(input.providerBooking.status ?? '').toUpperCase()
   const status = normalizedProviderStatus(providerStatus)
-  if (!admin) return { bookingId: null, tripItemId: null, providerStatus: status, amount, currency }
+  if (!admin) {
+    return {
+      bookingId: null,
+      tripItemId: null,
+      providerStatus: status,
+      localStatus: 'failed',
+      localError: 'Admin database client is unavailable.',
+      amount,
+      currency,
+    }
+  }
+  const localErrors: string[] = []
 
   const bookingRecord = {
     user_id: input.userId,
@@ -147,9 +165,11 @@ async function persistHotelBooking(input: {
 
   let bookingId = (existing as { id?: string } | null)?.id ?? null
   if (bookingId) {
-    await admin.from('bookings').update(bookingRecord).eq('id', bookingId)
+    const { error } = await admin.from('bookings').update(bookingRecord).eq('id', bookingId)
+    if (error) localErrors.push(`bookings update failed: ${errorMessage(error)}`)
   } else {
-    const { data } = await admin.from('bookings').insert(bookingRecord).select('id').single()
+    const { data, error } = await admin.from('bookings').insert(bookingRecord).select('id').single()
+    if (error) localErrors.push(`bookings insert failed: ${errorMessage(error)}`)
     bookingId = (data as { id?: string } | null)?.id ?? null
   }
 
@@ -178,22 +198,24 @@ async function persistHotelBooking(input: {
   let tripItemId: string | null = null
 
   if (requestedTripItemId) {
-    const { data: updated } = await admin
+    const { data: updated, error } = await admin
       .from('trip_accommodations')
       .update(accommodation)
       .eq('id', requestedTripItemId)
       .eq('trip_id', input.tripId)
       .select('id')
       .maybeSingle()
+    if (error) localErrors.push(`trip_accommodations update failed: ${errorMessage(error)}`)
     tripItemId = (updated as { id?: string } | null)?.id ?? null
   }
 
   if (!tripItemId) {
-    const { data: tripItem } = await admin
+    const { data: tripItem, error } = await admin
       .from('trip_accommodations')
       .insert(accommodation)
       .select('id')
       .single()
+    if (error) localErrors.push(`trip_accommodations insert failed: ${errorMessage(error)}`)
     tripItemId = (tripItem as { id?: string } | null)?.id ?? null
   }
 
@@ -219,9 +241,19 @@ async function persistHotelBooking(input: {
     bookingId,
     tripItemId,
     providerStatus: status,
+    localStatus: bookingId && tripItemId && localErrors.length === 0 ? 'saved' : 'failed',
+    localError: localErrors.length > 0 ? localErrors.join('; ') : null,
     amount,
     currency: currency.toUpperCase(),
   }
+}
+
+function errorMessage(error: unknown): string {
+  if (!error) return 'Unknown database error'
+  if (typeof error === 'string') return error
+  if (error instanceof Error) return error.message
+  const message = asRecord(error).message
+  return typeof message === 'string' && message.trim() ? message : 'Unknown database error'
 }
 
 function normalizeGuest(value: unknown): Required<Pick<Guest, 'firstName' | 'lastName' | 'email'>> & Pick<Guest, 'phone'> | null {

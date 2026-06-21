@@ -605,6 +605,7 @@ function FlightPaymentForm({
         tripId,
         paymentIntentId: paymentIntent.id,
       })
+      ensureLocalBookingSaved(result)
       const bookingId = result.bookingRecordId ?? result.bookingId ?? result.booking_reference ?? prebookId
       const params = new URLSearchParams({
         tripId,
@@ -735,4 +736,14 @@ async function postJson(url: string, body: unknown) {
   const data = await res.json().catch(() => ({}))
   if (!res.ok) throw new Error(data.error ?? 'Request failed.')
   return data
+}
+
+function ensureLocalBookingSaved(result: Record<string, unknown>) {
+  if (
+    result.localStatus === 'failed'
+    || !result.bookingRecordId
+    || !result.tripItemId
+  ) {
+    throw new Error('Payment and provider booking succeeded, but Baha Buddy could not save the local booking record. Contact support with your payment reference.')
+  }
 }

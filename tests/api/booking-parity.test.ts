@@ -74,6 +74,10 @@ function adminPersistenceMock(options: {
   insertedBookingId?: string
   insertedTripItemId?: string
   updatedTripItemId?: string | null
+  bookingInsertError?: string
+  bookingUpdateError?: string
+  tripItemInsertError?: string
+  tripItemUpdateError?: string
 }) {
   const inserted: Array<{ table: string; row: JsonRecord }> = []
   const updated: Array<{ table: string; row: JsonRecord; filters: Array<[string, unknown]> }> = []
@@ -88,15 +92,18 @@ function adminPersistenceMock(options: {
           error: null,
         }),
         update: vi.fn((row: JsonRecord) => ({
-          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+          eq: vi.fn().mockResolvedValue({
+            data: null,
+            error: options.bookingUpdateError ? { message: options.bookingUpdateError } : null,
+          }),
         })),
         insert: vi.fn((row: JsonRecord) => {
           inserted.push({ table, row })
           return {
             select: vi.fn(() => ({
               single: vi.fn().mockResolvedValue({
-                data: { id: options.insertedBookingId ?? 'booking-row-1' },
-                error: null,
+                data: options.bookingInsertError ? null : { id: options.insertedBookingId ?? 'booking-row-1' },
+                error: options.bookingInsertError ? { message: options.bookingInsertError } : null,
               }),
             })),
           }
@@ -118,16 +125,16 @@ function adminPersistenceMock(options: {
                   return {
                     select: vi.fn(() => ({
                       maybeSingle: vi.fn().mockResolvedValue({
-                        data: options.updatedTripItemId ? { id: options.updatedTripItemId } : null,
-                        error: null,
+                        data: options.updatedTripItemId && !options.tripItemUpdateError ? { id: options.updatedTripItemId } : null,
+                        error: options.tripItemUpdateError ? { message: options.tripItemUpdateError } : null,
                       }),
                     })),
                   }
                 }),
                 select: vi.fn(() => ({
                   maybeSingle: vi.fn().mockResolvedValue({
-                    data: options.updatedTripItemId ? { id: options.updatedTripItemId } : null,
-                    error: null,
+                    data: options.updatedTripItemId && !options.tripItemUpdateError ? { id: options.updatedTripItemId } : null,
+                    error: options.tripItemUpdateError ? { message: options.tripItemUpdateError } : null,
                   }),
                 })),
               }
@@ -139,8 +146,8 @@ function adminPersistenceMock(options: {
           return {
             select: vi.fn(() => ({
               single: vi.fn().mockResolvedValue({
-                data: { id: options.insertedTripItemId ?? `${table}-row-1` },
-                error: null,
+                data: options.tripItemInsertError ? null : { id: options.insertedTripItemId ?? `${table}-row-1` },
+                error: options.tripItemInsertError ? { message: options.tripItemInsertError } : null,
               }),
             })),
           }
@@ -419,6 +426,8 @@ describe('hotel booking APIs', () => {
       providerReference: 'hotel-confirmation-1',
       paymentStatus: 'paid',
       providerStatus: 'confirmed',
+      localStatus: 'saved',
+      supportRequired: false,
       amount: 1260,
       currency: 'USD',
       sourceSurface: 'web',
@@ -479,6 +488,71 @@ describe('hotel booking APIs', () => {
         }),
       }),
     ]))
+  })
+
+  test('surfaces hotel local-save failure after provider booking succeeds', async () => {
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      throw new Error(`Unexpected user table: ${table}`)
+    })
+    const persistence = adminPersistenceMock({
+      insertedBookingId: 'booking-row-1',
+      tripItemInsertError: 'trip accommodation insert failed',
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+    mocks.createAdminClient.mockReturnValue(persistence.admin)
+    mocks.callTravelProvider.mockResolvedValue({
+      status: 200,
+      data: {
+        data: {
+          bookingId: 'lite-booking-1',
+          hotelConfirmationCode: 'hotel-confirmation-1',
+          status: 'CONFIRMED',
+          currency: 'USD',
+          invoice: { totalAmount: 1260 },
+          hotelId: 'hotel-123',
+          checkin: '2026-08-01',
+          checkout: '2026-08-04',
+        },
+      },
+    })
+
+    const response = await hotelBook(jsonRequest({
+      tripId: 'trip-1',
+      prebookId: 'prebook-1',
+      paymentIntentId: 'pi_hotel_local_failed',
+      hotelId: 'hotel-123',
+      rateId: 'rate-1',
+      hotelName: 'Goldwynn Resort',
+      checkin: '2026-08-01',
+      checkout: '2026-08-04',
+      amount: 1260,
+      currency: 'USD',
+      holder: {
+        firstName: 'Valdez',
+        lastName: 'Williams',
+        email: 'traveler@example.com',
+      },
+      guests: [{
+        firstName: 'Valdez',
+        lastName: 'Williams',
+        email: 'traveler@example.com',
+      }],
+    }))
+    const body = await response.json()
+
+    expect(response.status).toBe(202)
+    expect(body).toMatchObject({
+      bookingId: 'lite-booking-1',
+      bookingRecordId: 'booking-row-1',
+      tripItemId: null,
+      providerStatus: 'confirmed',
+      paymentStatus: 'paid',
+      localStatus: 'failed',
+      supportRequired: true,
+    })
+    expect(body.localError).toContain('trip_accommodations insert failed')
+    expect(body.localError).toContain('trip accommodation insert failed')
   })
 })
 
@@ -600,6 +674,8 @@ describe('flight booking APIs', () => {
       providerReference: 'flight-booking-1',
       paymentStatus: 'paid',
       providerStatus: 'confirmed',
+      localStatus: 'saved',
+      supportRequired: false,
       amount: 540,
       currency: 'USD',
       sourceSurface: 'web',
@@ -662,6 +738,62 @@ describe('flight booking APIs', () => {
         }),
       }),
     ]))
+  })
+
+  test('surfaces flight local-save failure after provider booking succeeds', async () => {
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      throw new Error(`Unexpected user table: ${table}`)
+    })
+    const persistence = adminPersistenceMock({
+      insertedBookingId: 'flight-booking-row-1',
+      tripItemInsertError: 'trip flight insert failed',
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+    mocks.createAdminClient.mockReturnValue(persistence.admin)
+    mocks.callTravelProvider.mockResolvedValue({
+      status: 200,
+      data: {
+        data: [{
+          id: 'flight-booking-1',
+          status: 'TICKETED',
+          price: { amount: 540, currency: 'USD' },
+          segments: [{
+            departure: { iataCode: 'MIA' },
+            arrival: { iataCode: 'NAS' },
+            departureTime: '2026-08-01T13:00:00Z',
+            arrivalTime: '2026-08-01T14:10:00Z',
+            airlineName: 'Bahamasair',
+          }],
+        }],
+      },
+    })
+
+    const response = await flightBook(jsonRequest({
+      tripId: 'trip-1',
+      offerId: 'offer-123',
+      prebookId: 'flight-prebook-1',
+      transactionId: 'txn-1',
+      paymentIntentId: 'pi_flight_local_failed',
+      amount: 540,
+      currency: 'USD',
+      origin: 'MIA',
+      destination: 'NAS',
+    }))
+    const body = await response.json()
+
+    expect(response.status).toBe(202)
+    expect(body).toMatchObject({
+      bookingId: 'flight-booking-1',
+      bookingRecordId: 'flight-booking-row-1',
+      tripItemId: null,
+      providerStatus: 'confirmed',
+      paymentStatus: 'paid',
+      localStatus: 'failed',
+      supportRequired: true,
+    })
+    expect(body.localError).toContain('trip_flights insert failed')
+    expect(body.localError).toContain('trip flight insert failed')
   })
 })
 

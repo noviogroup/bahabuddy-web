@@ -1,7 +1,7 @@
 # Web Public Booking UI Dated Review - June 20, 2026
 
 Review time: June 20, 2026, 21:35 EDT
-Updated: June 21, 2026, 16:09 EDT
+Updated: June 21, 2026, 16:21 EDT
 Scope: Public web marketplace UI, booking parity surfaces, and validation status
 
 ## Executive Status
@@ -12,12 +12,15 @@ The current web worktree includes the marketplace-style public UI, compact inner
 
 June 21 follow-up: booking parity tests now also prove that successful hotel and flight provider booking responses persist into canonical `bookings`, the related trip item table, and `travel_booking_records` audit rows.
 
+June 21 local-save follow-up: hotel and flight booking routes now return explicit `localStatus`, `localError`, and `supportRequired` fields. If the provider booking succeeds but the canonical booking row or trip item cannot be saved, the route returns HTTP 202 and the checkout client stops before confirmation with a support-required message instead of redirecting as if the booking were reconciled.
+
 This does not prove live provider checkout is complete. The new coverage uses mocked provider responses to validate server persistence contracts. Live LiteAPI/Stripe hotel and flight transactions still need to be run against production-like data and verified in Supabase/Admin.
 
 ## What Was Verified
 
 - Public web UI tests pass.
-- Booking parity API tests pass for hotel and flight route contracts, including successful canonical persistence for provider booking responses.
+- Booking parity API tests pass for hotel and flight route contracts, including successful canonical persistence for provider booking responses and local-save-failed response states.
+- Checkout client tests prove hotel and flight payment flows do not redirect to confirmation when provider booking succeeds but local booking persistence fails.
 - Direct card action tests pass.
 - Public Explore, Stays, Flights, utility pages, sitemap, and no-emoji tests pass.
 - Production build passes after replacing the emoji sanitizer with a TypeScript-target-safe regex.
@@ -35,7 +38,7 @@ Results:
 
 - `npm run lint` passed with existing image optimization warnings.
 - June 20 result: `npm test` passed with 78 test files and 317 tests.
-- June 21 follow-up result: `npm run test` passed with 83 test files and 340 tests, including the new provider-booking persistence assertions.
+- June 21 follow-up result: `npm run test` passed with 83 test files and 344 tests, including the provider-booking persistence assertions and local-save-failed checkout guards.
 - `npm run build` passed and generated 96 static pages.
 - `npm run smoke:liteapi` passed against live, non-booking LiteAPI rate endpoints:
   - `/flights/rates` for MIA to NAS returned HTTP 200.
