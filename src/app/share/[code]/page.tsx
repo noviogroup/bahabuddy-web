@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { BahaLogo } from '@/components/ui'
 import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/database'
 import type { Metadata } from 'next'
@@ -100,8 +101,15 @@ export default async function SharePage({ params }: { params: { code: string } }
 
         <div className="bg-white rounded-2xl shadow-sm border border-brand-100 overflow-hidden">
           {trip.hero_image_url && (
-            <div className="h-48">
-              <img src={trip.hero_image_url} alt={trip.name} className="w-full h-full object-cover" />
+            <div className="relative h-48">
+              <Image
+                src={trip.hero_image_url}
+                alt={trip.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 42rem"
+                unoptimized
+              />
             </div>
           )}
           <div className="p-6">

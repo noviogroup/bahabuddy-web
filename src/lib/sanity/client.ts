@@ -49,6 +49,12 @@ export const isSanityConfigured: boolean = projectId.trim().length > 0
 // avoids version-skew issues where the type re-export shifts between
 // `@sanity/client` major versions.
 type Client = ReturnType<typeof createClient>
+type ErrorLike = {
+  message?: unknown
+  code?: unknown
+  hostname?: unknown
+  cause?: unknown
+}
 
 let client: Client | null = null
 if (isSanityConfigured) {
@@ -79,7 +85,42 @@ export async function safeFetch<T>(query: string, params?: Record<string, unknow
     const result = await client.fetch<T>(query, params ?? {})
     return result ?? null
   } catch (err) {
-    console.error('[sanity safeFetch]', err)
+    warnSanityFallback(err)
     return null
   }
+}
+
+const loggedSanityFallbacks = new Set<string>()
+
+function warnSanityFallback(err: unknown) {
+  const detail = summarizeSanityError(err)
+  const key = `${detail.code ?? 'unknown'}:${detail.hostname ?? detail.message}`
+
+  if (loggedSanityFallbacks.has(key)) return
+  loggedSanityFallbacks.add(key)
+
+  const context = [
+    detail.code ? `code=${detail.code}` : null,
+    detail.hostname ? `host=${detail.hostname}` : null,
+  ].filter(Boolean).join(' ')
+
+  console.warn(`[sanity safeFetch] Sanity content unavailable; using fallback.${context ? ` ${context}` : ''}`)
+}
+
+function summarizeSanityError(err: unknown): { message: string; code?: string; hostname?: string } {
+  const root = toErrorLike(err)
+  const cause = toErrorLike(root.cause)
+  const message = stringValue(cause.message) ?? stringValue(root.message) ?? 'Unknown Sanity fetch error'
+  const code = stringValue(cause.code) ?? stringValue(root.code)
+  const hostname = stringValue(cause.hostname) ?? stringValue(root.hostname)
+
+  return { message, code, hostname }
+}
+
+function toErrorLike(value: unknown): ErrorLike {
+  return value && typeof value === 'object' ? value as ErrorLike : {}
+}
+
+function stringValue(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim().length > 0 ? value : undefined
 }
