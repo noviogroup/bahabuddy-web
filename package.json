@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
+    "smoke:liteapi": "node scripts/smoke-liteapi-rates.mjs",
     "sync": "bash scripts/git-sync.sh",
     "screenshots:web": "node scripts/capture-web-screenshots.mjs",
     "screenshots:web:auth": "node scripts/capture-auth-web-screenshots.mjs"

@@ -25,6 +25,7 @@ This does not prove live provider checkout is complete. Live LiteAPI/Stripe hote
 npm run lint
 npm test
 npm run build
+npm run smoke:liteapi
 ```
 
 Results:
@@ -32,6 +33,9 @@ Results:
 - `npm run lint` passed with existing image optimization warnings.
 - `npm test` passed: 78 test files, 317 tests.
 - `npm run build` passed and generated 96 static pages.
+- `npm run smoke:liteapi` passed against live, non-booking LiteAPI rate endpoints:
+  - `/flights/rates` for MIA to NAS returned HTTP 200.
+  - `/hotels/rates` for known Bahamas hotel IDs returned HTTP 200.
 
 ## Build Notes
 
@@ -43,12 +47,12 @@ Warnings remain but are not blocking:
 
 ## Still Open
 
-- Run live LiteAPI hotel checkout with Stripe and verify:
+- Run live LiteAPI hotel prebook/book checkout with Stripe and verify:
   - `bookings`
   - `trip_accommodations`
   - `travel_booking_records`
   - Admin Revenue, Payments, Billing, Support, Trips, and Travelers
-- Run live LiteAPI flight checkout with Stripe and verify:
+- Run live LiteAPI flight prebook/book checkout with Stripe and verify:
   - `bookings`
   - `trip_flights`
   - `travel_booking_records`
@@ -58,4 +62,4 @@ Warnings remain but are not blocking:
 
 ## Decision
 
-The web implementation is validation-ready for the current plan slice, but the broader booking parity plan remains open until real provider/payment lifecycle checks prove the end-to-end flow.
+The web implementation is validation-ready for the current plan slice, and live LiteAPI rate connectivity is confirmed. The broader booking parity plan remains open until real provider/payment lifecycle checks prove prebook, payment, provider booking, local booking rows, and Admin reconciliation end to end.

@@ -1,6 +1,6 @@
 # Baha Buddy Feature Parity Matrix
 
-Last reviewed: June 20, 2026, 21:35 EDT
+Last reviewed: June 20, 2026, 21:45 EDT
 
 ## Purpose
 
@@ -76,10 +76,10 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 
 | Feature | Web | Mobile | Admin | Supabase | Edge Functions | Status | Required Action |
 |---|---|---|---|---|---|---|---|
-| Flight search | Web direct search/chat support | Mobile service helpers exist | Billing/service dashboard | `airports`, `cities`, `airlines` populated | `flights-proxy`, `airport-autocomplete` | ✅ Current | Run E2E flight search test |
+| Flight search | Web direct search/chat support; live LiteAPI `/flights/rates` smoke passed | Mobile service helpers exist | Billing/service dashboard | `airports`, `cities`, `airlines` populated | `flights-proxy`, `airport-autocomplete` | ✅ Current | Run flight prebook/payment/provider booking lifecycle |
 | Duffel catalog | Web/mobile can use airport data | Mobile has Duffel integration path | Admin service status | airports 9,030; cities 255; airlines 777 | `duffel-catalog-sync` | ✅ Current | Confirm scheduled/triggered sync process |
 | Duffel order creation | Web/mobile booking path likely exists | Mobile addFlight/update booking refs | Admin bookings view | `trip_flights` has 11; `bookings` has 0 | `duffel-create-order`, `duffel-order-management`, `duffel-webhook` | 🧪 Needs Test | Confirm paid/order lifecycle writes expected rows |
-| Hotel booking/order | Web has hotel surfaces | Mobile accommodation helpers include LiteAPI fields | Admin billing/services | `trip_accommodations` has 6; `bookings` has 0 | `hotels-proxy`, `hotel-order-management` | 🟡 Partial | Clarify LiteAPI/hotel provider lifecycle |
+| Hotel booking/order | Web has hotel surfaces; live LiteAPI `/hotels/rates` smoke passed | Mobile accommodation helpers include LiteAPI fields | Admin billing/services | `trip_accommodations` has 6; `bookings` has 0 | `hotels-proxy`, `hotel-order-management` | 🟡 Partial | Run hotel prebook/payment/provider booking lifecycle |
 | Restaurant order flow | Web restaurants exist | Mobile restaurants exist | No obvious order ops | `bookings` has 0 | `restaurant-order-management` | 🟡 Partial | Define if restaurants are reservations, referrals, or orders |
 | Stripe checkout | Web checkout exists | Mobile Stripe dependency exists | Admin billing summarizes revenue | `bookings` has 0 | Stripe Edge Functions expected from code/docs | 🧪 Needs Test | Run full payment/booking test before launch |
 | Booking records | Web/mobile add booking helpers | Mobile `addBooking`, `getBookings` active | Admin bookings APIs exist | `bookings` has 0 | order functions | 🧪 Needs Test | Confirm actual flows populate bookings |
