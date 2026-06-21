@@ -13,6 +13,49 @@ type DropdownLink = {
   description: string
 }
 
+type ProductLink = {
+  href: string
+  label: string
+  icon: () => JSX.Element
+  dropdown?: DropdownLink[]
+  activePrefixes?: string[]
+  excludeActivePrefixes?: string[]
+}
+
+const exploreLinks = [
+  { href: '/explore', label: 'Explore home', description: 'Mobile-style discovery, community, and trip ideas.' },
+  { href: '/explore/places?category=Activity', label: 'Things to do', description: 'Tours, water days, wildlife, beaches, and island experiences.' },
+  { href: '/explore/places?search=landmark+historic+site', label: 'Landmarks', description: 'Historic sites, natural landmarks, and must-see stops.' },
+  { href: '/explore/places?category=Dining', label: 'Food and restaurants', description: 'Local dining, fish fry stops, cafés, and food culture.' },
+  { href: '/explore/places?category=Beach', label: 'Beaches', description: 'Pink sand, quiet coves, family beaches, and swim spots.' },
+  { href: '/explore/places?category=Activity&search=tour', label: 'Tours', description: 'Guided days, boat trips, snorkeling, and curated activities.' },
+  { href: '/explore/places?search=culture+history+museum', label: 'Culture', description: 'Museums, markets, art, Junkanoo, and local history.' },
+  { href: '/stays?sort=stars', label: 'Hotels and stays', description: 'Use Explore context, then compare hotels, resorts, villas, and homes.' },
+  { href: '/flights', label: 'Island access', description: 'Flights, ferries, airports, and route planning across the Bahamas.' },
+] satisfies DropdownLink[]
+
+const destinationLinks = [
+  { href: '/destinations', label: 'All destinations', description: 'Browse the Bahamas island finder.' },
+  { href: '/explore/island/nassau-paradise-island', label: 'Nassau', description: 'Dining, culture, easy arrival, and resort access.' },
+  { href: '/explore/island/paradise-island', label: 'Paradise Island', description: 'Resorts, beaches, Atlantis, and family trips.' },
+  { href: '/explore/island/the-exumas', label: 'The Exumas', description: 'Cays, sandbars, boat days, and blue-water escapes.' },
+  { href: '/explore/island/eleuthera-harbour-island', label: 'Eleuthera', description: 'Pink sand, coves, slower roads, and quiet stays.' },
+  { href: '/explore/island/harbour-island', label: 'Harbour Island', description: 'Boutique stays, pink sand, and golf-cart pace.' },
+  { href: '/explore/island/grand-bahama', label: 'Grand Bahama', description: 'Freeport, diving, beaches, and nature parks.' },
+  { href: '/explore/island/bimini', label: 'Bimini', description: 'Short hops, fishing, diving, and beach clubs.' },
+  { href: '/explore/island/abacos', label: 'The Abacos', description: 'Sailing, marinas, cays, and island hopping.' },
+  { href: '/explore/island/andros', label: 'Andros', description: 'Diving, blue holes, bonefishing, and nature.' },
+  { href: '/explore/island/long-island', label: 'Long Island', description: "Dean's Blue Hole, cliffs, and quiet beaches." },
+  { href: '/destinations?island=Cat+Island', label: 'Cat Island', description: 'Quiet beaches, rake-and-scrape, and Mount Alvernia.' },
+  { href: '/destinations?island=San+Salvador', label: 'San Salvador', description: 'Diving, history, and uncrowded island days.' },
+  { href: '/destinations?island=Berry+Islands', label: 'Berry Islands', description: 'Cays, boating, fishing, and private-island energy.' },
+  { href: '/destinations?island=Inagua', label: 'Inagua', description: 'Flamingos, national parks, and remote nature.' },
+  { href: '/destinations?island=Acklins+and+Crooked+Island', label: 'Acklins and Crooked Island', description: 'Bonefishing, solitude, and long quiet shorelines.' },
+  { href: '/destinations?island=Rum+Cay', label: 'Rum Cay', description: 'Small-island diving, beaches, and low-key stays.' },
+  { href: '/destinations?island=Mayaguana', label: 'Mayaguana', description: 'Remote beaches and true out-island pace.' },
+  { href: '/destinations?island=Ragged+Island', label: 'Ragged Island', description: 'Far-south cays, fishing, and off-grid exploration.' },
+] satisfies DropdownLink[]
+
 const productLinks = [
   { href: '/stays', label: 'Stays', icon: BedIcon },
   { href: '/flights', label: 'Flights', icon: PlaneIcon },
@@ -20,37 +63,21 @@ const productLinks = [
     href: '/explore',
     label: 'Explore',
     icon: CompassIcon,
-    dropdown: [
-      { href: '/explore', label: 'Explore home', description: 'Mobile-style discovery, community, and trip ideas.' },
-      { href: '/explore/places?category=Activity', label: 'Things to do', description: 'Tours, beaches, water days, and island experiences.' },
-      { href: '/explore/places?search=landmark', label: 'Landmarks', description: 'Historic sites, natural landmarks, and must-see stops.' },
-      { href: '/restaurants', label: 'Restaurants', description: 'Food, local dining, fish fry stops, and culture.' },
-      { href: '/explore/places?category=Beach', label: 'Beaches', description: 'Pink sand, quiet coves, family beaches, and swim spots.' },
-      { href: '/explore/places?search=transport+ferry+airport', label: 'Transport', description: 'Airport, ferry, transfer, and island access planning.' },
-    ] satisfies DropdownLink[],
+    dropdown: exploreLinks,
+    activePrefixes: ['/explore', '/restaurants'],
+    excludeActivePrefixes: ['/explore/island'],
   },
   {
     href: '/destinations',
     label: 'Destinations',
     icon: PinIcon,
-    dropdown: [
-      { href: '/destinations', label: 'All destinations', description: 'Browse the Bahamas island finder.' },
-      { href: '/explore/island/nassau-paradise-island', label: 'Nassau', description: 'Dining, culture, easy arrival, and resort access.' },
-      { href: '/explore/island/paradise-island', label: 'Paradise Island', description: 'Resorts, beaches, Atlantis, and family trips.' },
-      { href: '/explore/island/the-exumas', label: 'The Exumas', description: 'Cays, sandbars, boat days, and blue-water escapes.' },
-      { href: '/explore/island/eleuthera-harbour-island', label: 'Eleuthera', description: 'Pink sand, coves, slower roads, and quiet stays.' },
-      { href: '/explore/island/harbour-island', label: 'Harbour Island', description: 'Boutique stays, pink sand, and golf-cart pace.' },
-      { href: '/explore/island/grand-bahama', label: 'Grand Bahama', description: 'Freeport, diving, beaches, and nature parks.' },
-      { href: '/explore/island/bimini', label: 'Bimini', description: 'Short hops, fishing, diving, and beach clubs.' },
-      { href: '/explore/island/abacos', label: 'The Abacos', description: 'Sailing, marinas, cays, and island hopping.' },
-      { href: '/explore/island/andros', label: 'Andros', description: 'Diving, blue holes, bonefishing, and nature.' },
-      { href: '/explore/island/long-island', label: 'Long Island', description: "Dean's Blue Hole, cliffs, and quiet beaches." },
-    ] satisfies DropdownLink[],
+    dropdown: destinationLinks,
+    activePrefixes: ['/destinations', '/explore/island'],
   },
   { href: '/guides', label: 'Guides', icon: GuideIcon },
   { href: '/deals', label: 'Deals', icon: TagIcon },
   { href: '/concierge-trip-plan', label: 'Concierge', icon: SparkIcon },
-]
+] satisfies ProductLink[]
 
 export default function MarketplacePublicHeader({
   userEmail,
@@ -104,8 +131,9 @@ export default function MarketplacePublicHeader({
 
       <nav aria-label="Travel products" className="bg-brand-600 text-white">
         <div className="mx-auto flex max-w-6xl gap-2 overflow-x-auto px-4 py-2 [scrollbar-width:none] md:overflow-visible [&::-webkit-scrollbar]:hidden">
-          {productLinks.map(({ href, label, icon: Icon, dropdown }) => {
-            const active = activePath === href || Boolean(activePath?.startsWith(`${href}/`))
+          {productLinks.map((link) => {
+            const { href, label, icon: Icon, dropdown } = link
+            const active = isActiveProductLink(activePath, link)
 
             return (
               <div key={href} className="group relative shrink-0">
@@ -133,14 +161,14 @@ export default function MarketplacePublicHeader({
 
                 {dropdown && (
                   <div
-                    className={`pointer-events-none absolute top-full z-50 mt-2 hidden w-[22rem] rounded-3xl border border-gray-200 bg-white p-3 text-night opacity-0 shadow-2xl shadow-night/20 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block ${
+                    className={`pointer-events-none absolute top-full z-50 mt-2 hidden rounded-3xl border border-gray-200 bg-white p-3 text-night opacity-0 shadow-2xl shadow-night/20 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block ${
                       label === 'Destinations'
-                        ? 'left-1/2 -translate-x-1/2'
-                        : 'left-0 translate-y-1'
+                        ? 'left-1/2 max-h-[70vh] w-[56rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-y-auto'
+                        : 'left-0 w-[24rem] translate-y-1'
                     }`}
                     role="menu"
                   >
-                    <div className={`${label === 'Destinations' ? 'grid gap-1 sm:grid-cols-2' : 'grid gap-1'}`}>
+                    <div className={`${label === 'Destinations' ? 'grid gap-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid gap-1'}`}>
                       {dropdown.map((item) => (
                         <Link
                           key={item.href}
@@ -168,6 +196,16 @@ export default function MarketplacePublicHeader({
       </nav>
     </header>
   )
+}
+
+function isActiveProductLink(activePath: string | undefined, link: ProductLink): boolean {
+  if (!activePath) return false
+  if (link.excludeActivePrefixes?.some((prefix) => activePath === prefix || activePath.startsWith(`${prefix}/`))) {
+    return false
+  }
+
+  const prefixes = link.activePrefixes ?? [link.href]
+  return prefixes.some((prefix) => activePath === prefix || activePath.startsWith(`${prefix}/`))
 }
 
 function BedIcon() {

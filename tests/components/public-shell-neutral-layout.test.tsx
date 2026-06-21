@@ -59,8 +59,9 @@ describe('public marketplace shell brand layout', () => {
     const explore = within(nav).getByRole('link', { name: 'Explore' })
     expect(explore).toHaveAttribute('aria-haspopup', 'menu')
     expect(within(nav).getByRole('menuitem', { name: /Things to do/i })).toHaveAttribute('href', '/explore/places?category=Activity')
-    expect(within(nav).getByRole('menuitem', { name: /Landmarks/i })).toHaveAttribute('href', '/explore/places?search=landmark')
-    expect(within(nav).getByRole('menuitem', { name: /Restaurants/i })).toHaveAttribute('href', '/restaurants')
+    expect(within(nav).getByRole('menuitem', { name: /Landmarks/i })).toHaveAttribute('href', '/explore/places?search=landmark+historic+site')
+    expect(within(nav).getByRole('menuitem', { name: /Food and restaurants/i })).toHaveAttribute('href', '/explore/places?category=Dining')
+    expect(within(nav).getByRole('menuitem', { name: /^Tours\b/i })).toHaveAttribute('href', '/explore/places?category=Activity&search=tour')
 
     const destinations = within(nav).getByRole('link', { name: 'Destinations' })
     expect(destinations).toHaveAttribute('aria-current', 'page')
@@ -70,6 +71,20 @@ describe('public marketplace shell brand layout', () => {
     expect(within(nav).getByRole('menuitem', { name: /Nassau/i })).toHaveAttribute('href', '/explore/island/nassau-paradise-island')
     expect(within(nav).getByRole('menuitem', { name: /The Exumas/i })).toHaveAttribute('href', '/explore/island/the-exumas')
     expect(within(nav).getByRole('menuitem', { name: /Long Island/i })).toHaveAttribute('href', '/explore/island/long-island')
+    expect(within(nav).getByRole('menuitem', { name: /Cat Island/i })).toHaveAttribute('href', '/destinations?island=Cat+Island')
+    expect(within(nav).getByRole('menuitem', { name: /Ragged Island/i })).toHaveAttribute('href', '/destinations?island=Ragged+Island')
+  })
+
+  test('public header active states follow traveler intent groups', () => {
+    const { rerender } = render(<MarketplacePublicHeader activePath="/restaurants" />)
+    let nav = screen.getByRole('navigation', { name: 'Travel products' })
+    expect(within(nav).getByRole('link', { name: 'Explore' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: 'Destinations' })).not.toHaveAttribute('aria-current')
+
+    rerender(<MarketplacePublicHeader activePath="/explore/island/the-exumas" />)
+    nav = screen.getByRole('navigation', { name: 'Travel products' })
+    expect(within(nav).getByRole('link', { name: 'Destinations' })).toHaveAttribute('aria-current', 'page')
+    expect(within(nav).getByRole('link', { name: 'Explore' })).not.toHaveAttribute('aria-current')
   })
 
   test('authenticated header keeps account actions on the white account row', () => {
