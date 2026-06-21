@@ -1,6 +1,7 @@
 # Trips RLS Launch Gate Review - June 21, 2026
 
 Review time: June 21, 2026, 07:47 EDT
+Updated: June 21, 2026, 10:00 EDT
 Scope: web Supabase migration set and launch-readiness blocker for `public.trips`
 
 ## Executive Status
@@ -11,18 +12,24 @@ This closes a source-control gap: mobile already had a migration that re-enabled
 
 Live Supabase validation on project `cxcfymhoncysyloutvkh` now confirms the table-level RLS gate is active: `public.trips` and `public.trip_collaborators` have RLS enabled, `public.trips` does not force RLS yet, the expected policies exist, and the helper functions are `SECURITY DEFINER`.
 
+The core live behavior is now also verified with temporary authenticated users: owner create/read/update/delete, non-owner direct-ID read/update denial, accepted collaborator read, editor collaborator child-item write, and service-role read for admin/support paths all pass against the linked Supabase project.
+
 The first live apply attempt exposed a PostgreSQL identifier detail: long policy names are stored in `pg_policies.policyname` as truncated identifiers. The source migration now validates policy table/name pairs and accepts both the source name and the 63-byte stored identifier form.
 
 ## Files Added
 
 - `supabase/migrations/20260621120000_trips_rls_launch_gate.sql`
+- `scripts/verify-trips-rls-remote.mjs`
 - `tests/unit/trips-rls-launch-gate.test.ts`
+- `tests/unit/trips-rls-remote-verifier.test.ts`
 
 ## Local Validation
 
 Completed on June 21, 2026:
 
 - `npm test -- tests/unit/trips-rls-launch-gate.test.ts` passed with 4 tests.
+- `node --check scripts/verify-trips-rls-remote.mjs` passed.
+- `npm test -- tests/unit/trips-rls-remote-verifier.test.ts tests/unit/trips-rls-launch-gate.test.ts` passed with 7 tests.
 - `npm run lint` passed with the existing image-optimization warnings.
 - `npm test` passed with 79 test files and 321 tests.
 - `npm run build` passed with existing image-optimization, Sanity API-version, and localstorage-file warnings.
@@ -54,18 +61,25 @@ Applied to Supabase on June 21, 2026:
 - `is_trip_owner(uuid)`, `is_trip_collaborator(uuid)`, and `is_trip_editor(uuid)` are `SECURITY DEFINER`
 - Required owner/collaborator policies are present. The collaborator read policy is stored by PostgreSQL as the truncated identifier `Users can read collaborators for own trips or where they are co`.
 
-## Remaining Behavioral Validation
+## Live Behavioral Validation
 
-The catalog state is now proven. The remaining launch checks are behavioral:
+Completed with `npm run verify:trips-rls-remote` on June 21, 2026:
 
 - owner can create, read, update, and delete their trips
 - non-owner cannot read a trip by direct ID
 - accepted collaborator can read shared trip
 - editor collaborator can write supported child trip items
 - admin/service-role routes still work
+
+The verifier creates temporary `bb-rls-*@example.invalid` auth users and matching `public.users` profiles, performs the checks through anon-key authenticated sessions, and cleans up temporary trip/user rows and auth users after the run.
+
+## Remaining App-Level Validation
+
+The catalog state and core RLS behavior are now proven. The remaining trips/security checks are app-level flows:
+
 - share and invite flows still resolve
 - web and mobile trip lists still load for the same account
 
 ## Decision
 
-The table-level trips RLS launch gate is now applied and live-verified. Do not mark the broader trips/security launch gate complete until owner, non-owner, collaborator, service-role, share/invite, and web/mobile trip-list behavior is exercised with real sessions.
+The table-level trips RLS launch gate and core owner/collaborator behavior are now live-verified. Do not mark the broader trips/security launch gate complete until share/invite resolution and web/mobile trip-list behavior are exercised through the actual app surfaces.

@@ -67,8 +67,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 2.4 Unauthorized trip access ⚠️ | Flutter Engineer | Code review | 2026-06-07 | **Fail** | Client-side: `getTrips()` always filters `user_id = currentUserId` — correct. **Server-side: RLS is DISABLED on `public.trips`.** Any user with a direct Supabase query (anon key + manual `.from('trips').select()` without the user_id filter) can read all trips in the database. The mobile app itself enforces the filter, but the DB does not. This test FAILS the security requirement. RLS must be enabled before this can pass. | BAH-107 |
 | 2.4a Trips RLS migration source gate | Codex | Local source | 2026-06-21 | Pass | Added web migration `20260621120000_trips_rls_launch_gate.sql` and unit coverage. The migration enables `public.trips` RLS, keeps force-RLS disabled for the controlled validation window, grants helper execution to app roles, and raises if required policies or helper functions are missing. The source gate also handles PostgreSQL's 63-byte policy-name truncation. | BAH-107 |
 | 2.4b Trips RLS live catalog gate | Codex | Production Supabase | 2026-06-21 | Pass | Applied `trips_rls_launch_gate` to project `cxcfymhoncysyloutvkh`; Supabase recorded migration `20260621114605`. Live SQL verified `public.trips.relrowsecurity = true`, `public.trips.relforcerowsecurity = false`, `public.trip_collaborators.relrowsecurity = true`, required owner/collaborator policies present, and `is_trip_owner`, `is_trip_collaborator`, `is_trip_editor` are `SECURITY DEFINER`. | BAH-107 |
+| 2.4c Trips RLS live behavior gate | Codex | Production Supabase | 2026-06-21 | Pass | `npm run verify:trips-rls-remote` creates temporary authenticated users and proves owner create/read/update/delete, non-owner direct-ID read/update denial, accepted collaborator read, editor collaborator trip-activity write, and service-role read. Temporary verifier rows/users are cleaned up after the run. | BAH-107 |
 
-> ⚠️ Test 2.4 remains a behavioral gate. The table-level RLS issue is remediated, but the launch gate is not complete until live/staging RLS behavior is proven across web, mobile, collaboration, share/invite, and service-role admin paths.
+> ⚠️ Test 2.4 is remediated at the database and core behavior level. The remaining trips/security launch work is app-level validation for share/invite resolution and web/mobile trip-list loading with real sessions.
 
 ---
 
@@ -97,7 +98,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 |---------|--------|-------------|------|--------|-------|-----------------|
 | 5.1 Trip share link (web) | Web Developer | Local + Supabase | 2026-06-07 | Skip | `ShareButton` component + `/share/[code]` page exist. Page queries `share_links` by `short_code`, loads trip data, renders read-only view with flights/accommodations/activities. OG metadata generated dynamically. **0 share_links in production** — feature never used by any user. Cannot test without first creating a share link. | |
 | 5.2 Trip invite (create + accept) | Flutter Engineer | Code review | 2026-06-07 | Pass | `TripInviteScreen` accepts a `shortCode` via deep link (`/invite/:shortCode`). Calls `previewInvite(shortCode)` to load invite details, then `acceptInvite(shortCode)` on confirmation. Friendly error handling for 410 Expired and 404 Not Found. On success, navigates to `/my-trip`. Deep link route registered in GoRouter. | |
-| 5.3 Collaborator read access | | | | Skip | Requires live RLS + `trip_collaborators` policies to be verified — skipped until RLS enabled | |
+| 5.3 Collaborator read access | Codex | Production Supabase | 2026-06-21 | Pass | `npm run verify:trips-rls-remote` proves an accepted editor collaborator can read the shared trip and write a supported `trip_activities` row through an anon-key authenticated session. | BAH-107 |
 
 ---
 
@@ -108,11 +109,11 @@ When you run a test, add a row to the relevant table below. Use this format:
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
 | 6.0 Table-level RLS launch gate | Codex | Production Supabase | 2026-06-21 | Pass | `public.trips` and `public.trip_collaborators` have RLS enabled, `public.trips` keeps force-RLS disabled for the current validation window, required policies exist, helper functions are `SECURITY DEFINER`, and migration `20260621114605 trips_rls_launch_gate` is recorded. | BAH-107 |
-| 6.1 Owner read/write/delete | | | | | | |
-| 6.2 Non-owner restriction | | | | | | |
-| 6.3 Collaborator access | | | | | | |
-| 6.4 Admin/service-role access | | | | | | |
-| 6.5 Rollback readiness | | | | | | |
+| 6.1 Owner read/write/delete | Codex | Production Supabase | 2026-06-21 | Pass | Temporary authenticated owner created, read, updated, and deleted own trip through anon-key session. | BAH-107 |
+| 6.2 Non-owner restriction | Codex | Production Supabase | 2026-06-21 | Pass | Temporary non-owner could not read or update the owner's trip by direct ID before collaborator access was granted. | BAH-107 |
+| 6.3 Collaborator access | Codex | Production Supabase | 2026-06-21 | Pass | Owner added accepted editor collaborator; collaborator could read shared trip and insert a supported `trip_activities` row. | BAH-107 |
+| 6.4 Admin/service-role access | Codex | Production Supabase | 2026-06-21 | Pass | Service-role client could still read the verifier trip for admin/support paths while RLS remained enabled and not forced. | BAH-107 |
+| 6.5 Rollback readiness | Codex | Source review | 2026-06-21 | Partial | `TRIPS_RLS_ENABLEMENT_PLAN.md` documents a rollback command. No live rollback was executed because the live behavioral verifier passed. | BAH-107 |
 
 ---
 

@@ -16,6 +16,7 @@
     "test:coverage": "vitest run --coverage",
     "test:ui": "vitest --ui",
     "smoke:liteapi": "node scripts/smoke-liteapi-rates.mjs",
+    "verify:trips-rls-remote": "node scripts/verify-trips-rls-remote.mjs",
     "sync": "bash scripts/git-sync.sh",
     "screenshots:web": "node scripts/capture-web-screenshots.mjs",
     "screenshots:web:auth": "node scripts/capture-auth-web-screenshots.mjs"
