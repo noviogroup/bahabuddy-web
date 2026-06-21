@@ -1,6 +1,6 @@
 # Web Booking Readiness Gate Review - June 21, 2026
 
-Review time: June 21, 2026, 16:42 EDT
+Review time: June 21, 2026, 16:43 EDT
 Scope: non-destructive hotel/flight booking readiness before live LiteAPI/Stripe lifecycle QA
 
 ## Executive Status
@@ -8,6 +8,8 @@ Scope: non-destructive hotel/flight booking readiness before live LiteAPI/Stripe
 Added a web booking-readiness verifier that checks the source and environment contracts required before running real hotel or flight booking lifecycle tests.
 
 This gate does not create payment intents, prebooks, provider bookings, or canonical booking rows. It is a preflight check for the real live-booking QA pass.
+
+June 21 follow-up: the local web runtime now has `SUPABASE_SERVICE_ROLE_KEY` configured in ignored `.env.local`, and the full non-destructive readiness gate passes without dummy values.
 
 ## What Changed
 
@@ -26,11 +28,12 @@ This gate does not create payment intents, prebooks, provider bookings, or canon
 ## Current Findings
 
 - Source contract checks pass.
+- Local web env now has active `SUPABASE_SERVICE_ROLE_KEY`, and `.env.local` is ignored by git.
 - LiteAPI non-booking rate smoke passes with network access.
 - Supabase Edge Function URLs respond with protected `401` responses, proving the functions are deployed and not public.
-- Local `bahabuddy-web/.env.local` is missing `SUPABASE_SERVICE_ROLE_KEY`; the line exists but is commented out.
+- Local key-mode check shows Stripe keys are test-mode, while LiteAPI keys are production-mode.
 
-The missing web service-role key is a real blocker for local full booking QA. After payment and provider booking succeed, the web provider-book routes call `createAdminClient()` to save canonical `bookings`, `trip_accommodations` or `trip_flights`, and `travel_booking_records`. Without `SUPABASE_SERVICE_ROLE_KEY`, the route correctly returns `localStatus: failed` and `supportRequired: true`, but it cannot prove a successful reconciled booking.
+The previous missing web service-role key blocker is closed locally. The remaining risk is not configuration for this local gate; it is operational safety. Because the LiteAPI key is production-mode, provider-book endpoints must only be exercised in a controlled QA run with cancellation/refund handling confirmed.
 
 ## Validation Evidence
 
@@ -40,7 +43,7 @@ Passed script syntax:
 node --check scripts/verify-booking-readiness.mjs
 ```
 
-Expected local failure because web service-role env is not configured:
+Initial local failure before configuring the ignored web service-role env:
 
 ```bash
 npm run verify:booking-readiness
@@ -51,10 +54,10 @@ Result:
 - `SUPABASE_SERVICE_ROLE_KEY` failed.
 - All other env, source, and public-secret exposure checks passed.
 
-Verifier behavior with a dummy service-role value:
+After configuring local ignored `.env.local`, the normal readiness gate passed without dummy values:
 
 ```bash
-SUPABASE_SERVICE_ROLE_KEY=dummy npm run verify:booking-readiness
+npm run verify:booking-readiness
 ```
 
 Result:
@@ -62,17 +65,18 @@ Result:
 - All non-remote readiness checks passed.
 - No payments or provider bookings were created.
 
-Remote Edge Function deployment check using unauthenticated `curl`:
+Remote Edge Function deployment check:
 
 ```bash
-curl -s -o /private/tmp/baha-stripe-payment-edge.txt -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "{}" https://cxcfymhoncysyloutvkh.supabase.co/functions/v1/stripe-payment
-curl -s -o /private/tmp/baha-liteapi-proxy-edge.txt -w "%{http_code}" -X POST -H "Content-Type: application/json" -d "{}" https://cxcfymhoncysyloutvkh.supabase.co/functions/v1/liteapi-proxy
+npm run verify:booking-readiness -- --remote-edge
 ```
 
 Result:
 
 - `stripe-payment`: `401`
 - `liteapi-proxy`: `401`
+
+Meaning: both functions are deployed and protected. The check did not authenticate or mutate data.
 
 Live non-booking LiteAPI rate smoke with network access:
 
@@ -91,6 +95,7 @@ Result:
 - LiteAPI search/rate connectivity is working.
 - Supabase booking/payment Edge Functions are deployed and protected.
 - Public env exposure does not show unexpected secret-like keys.
+- Local web runtime can create the server-side admin client needed for canonical booking persistence.
 
 ## What This Does Not Prove
 
@@ -102,13 +107,14 @@ Result:
 
 ## Required Next Step
 
-Before live lifecycle QA, set `SUPABASE_SERVICE_ROLE_KEY` in the web runtime environment, including local `bahabuddy-web/.env.local` for local QA and the deployed web environment for production-like QA.
+Before live lifecycle QA, confirm the deployed web runtime also has server-only `SUPABASE_SERVICE_ROLE_KEY` configured. Local QA is now configured, but deployment config still needs proof from the hosting environment.
 
-Then run:
+Then keep this preflight green:
 
 ```bash
 npm run verify:booking-readiness
+npm run verify:booking-readiness -- --remote-edge
 npm run smoke:liteapi
 ```
 
-After both pass without dummy values, proceed to controlled Stripe/LiteAPI hotel and flight lifecycle tests with test travelers and confirmed cancellation/refund handling.
+After these pass without dummy values, proceed to controlled Stripe/LiteAPI hotel and flight lifecycle tests with test travelers and confirmed cancellation/refund handling. Do not run provider-book endpoints casually: the LiteAPI key is production-mode.
