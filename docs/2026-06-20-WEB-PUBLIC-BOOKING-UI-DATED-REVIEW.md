@@ -40,6 +40,9 @@ Results:
 - `npm run smoke:liteapi` passed against live, non-booking LiteAPI rate endpoints:
   - `/flights/rates` for MIA to NAS returned HTTP 200.
   - `/hotels/rates` for known Bahamas hotel IDs returned HTTP 200.
+- June 21 follow-up result: `npm run smoke:liteapi` passed against live, non-booking LiteAPI rate endpoints:
+  - `/flights/rates` for MIA to NAS returned HTTP 200 with one result.
+  - `/hotels/rates` for `lp22731` and `lp383da` returned HTTP 200 with one result.
 
 ## Build Notes
 
