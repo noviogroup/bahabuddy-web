@@ -69,6 +69,108 @@ function insertSingle(table: string, inserted: Array<{ table: string; row: JsonR
   }
 }
 
+function adminPersistenceMock(options: {
+  existingBookingId?: string | null
+  insertedBookingId?: string
+  insertedTripItemId?: string
+  updatedTripItemId?: string | null
+}) {
+  const inserted: Array<{ table: string; row: JsonRecord }> = []
+  const updated: Array<{ table: string; row: JsonRecord; filters: Array<[string, unknown]> }> = []
+
+  const from = vi.fn((table: string) => {
+    if (table === 'bookings') {
+      const bookingQuery = {
+        select: vi.fn(() => bookingQuery),
+        eq: vi.fn(() => bookingQuery),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data: options.existingBookingId ? { id: options.existingBookingId } : null,
+          error: null,
+        }),
+        update: vi.fn((row: JsonRecord) => ({
+          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+        })),
+        insert: vi.fn((row: JsonRecord) => {
+          inserted.push({ table, row })
+          return {
+            select: vi.fn(() => ({
+              single: vi.fn().mockResolvedValue({
+                data: { id: options.insertedBookingId ?? 'booking-row-1' },
+                error: null,
+              }),
+            })),
+          }
+        }),
+      }
+      return bookingQuery
+    }
+
+    if (table === 'trip_accommodations' || table === 'trip_flights') {
+      const filters: Array<[string, unknown]> = []
+      const tripItemQuery = {
+        update: vi.fn((row: JsonRecord) => {
+          return {
+            eq: vi.fn((column: string, value: unknown) => {
+              filters.push([column, value])
+              return {
+                eq: vi.fn((nextColumn: string, nextValue: unknown) => {
+                  filters.push([nextColumn, nextValue])
+                  return {
+                    select: vi.fn(() => ({
+                      maybeSingle: vi.fn().mockResolvedValue({
+                        data: options.updatedTripItemId ? { id: options.updatedTripItemId } : null,
+                        error: null,
+                      }),
+                    })),
+                  }
+                }),
+                select: vi.fn(() => ({
+                  maybeSingle: vi.fn().mockResolvedValue({
+                    data: options.updatedTripItemId ? { id: options.updatedTripItemId } : null,
+                    error: null,
+                  }),
+                })),
+              }
+            }),
+          }
+        }),
+        insert: vi.fn((row: JsonRecord) => {
+          inserted.push({ table, row })
+          return {
+            select: vi.fn(() => ({
+              single: vi.fn().mockResolvedValue({
+                data: { id: options.insertedTripItemId ?? `${table}-row-1` },
+                error: null,
+              }),
+            })),
+          }
+        }),
+      }
+
+      const originalUpdate = tripItemQuery.update
+      tripItemQuery.update = vi.fn((row: JsonRecord) => {
+        updated.push({ table, row, filters })
+        return originalUpdate(row)
+      }) as typeof tripItemQuery.update
+
+      return tripItemQuery
+    }
+
+    if (table === 'travel_booking_records') {
+      return {
+        insert: vi.fn((row: JsonRecord) => {
+          inserted.push({ table, row })
+          return Promise.resolve({ data: null, error: null })
+        }),
+      }
+    }
+
+    throw new Error(`Unexpected admin table: ${table}`)
+  })
+
+  return { admin: { from }, inserted, updated, from }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.createAdminClient.mockReturnValue(null)
@@ -233,6 +335,151 @@ describe('hotel booking APIs', () => {
     expect(response.status).toBe(401)
     expect(mocks.callTravelProvider).not.toHaveBeenCalled()
   })
+
+  test('persists hotel provider booking into canonical booking, accommodation, and audit rows', async () => {
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      throw new Error(`Unexpected user table: ${table}`)
+    })
+    const persistence = adminPersistenceMock({
+      insertedBookingId: 'booking-row-1',
+      insertedTripItemId: 'stay-row-1',
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+    mocks.createAdminClient.mockReturnValue(persistence.admin)
+    mocks.callTravelProvider.mockResolvedValue({
+      status: 200,
+      data: {
+        data: {
+          bookingId: 'lite-booking-1',
+          hotelConfirmationCode: 'hotel-confirmation-1',
+          status: 'CONFIRMED',
+          currency: 'USD',
+          invoice: { totalAmount: 1260 },
+          hotelId: 'hotel-123',
+          hotel: { name: 'Goldwynn Resort' },
+          checkin: '2026-08-01',
+          checkout: '2026-08-04',
+        },
+      },
+    })
+
+    const response = await hotelBook(jsonRequest({
+      tripId: 'trip-1',
+      prebookId: 'prebook-1',
+      paymentIntentId: 'pi_hotel_1',
+      hotelId: 'hotel-123',
+      rateId: 'rate-1',
+      sourceId: 'place-123',
+      hotelName: 'Goldwynn Resort',
+      island: 'New Providence',
+      checkin: '2026-08-01',
+      checkout: '2026-08-04',
+      amount: 1260,
+      currency: 'USD',
+      pricePerNight: 420,
+      imageUrl: 'https://images.example/goldwynn.jpg',
+      holder: {
+        firstName: 'Valdez',
+        lastName: 'Williams',
+        email: 'traveler@example.com',
+      },
+      guests: [{
+        firstName: 'Valdez',
+        lastName: 'Williams',
+        email: 'traveler@example.com',
+      }],
+    }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(mocks.callTravelProvider).toHaveBeenCalledWith('/rates/book', {
+      prebookId: 'prebook-1',
+      holder: {
+        firstName: 'Valdez',
+        lastName: 'Williams',
+        email: 'traveler@example.com',
+        phone: undefined,
+      },
+      guests: [{
+        firstName: 'Valdez',
+        lastName: 'Williams',
+        email: 'traveler@example.com',
+        phone: undefined,
+        occupancyNumber: 1,
+      }],
+      payment: { method: 'ACC_CREDIT_CARD' },
+    }, { useBookBase: true })
+    expect(body).toMatchObject({
+      bookingId: 'lite-booking-1',
+      bookingRecordId: 'booking-row-1',
+      tripId: 'trip-1',
+      tripItemId: 'stay-row-1',
+      provider: 'hotel_liteapi',
+      providerReference: 'hotel-confirmation-1',
+      paymentStatus: 'paid',
+      providerStatus: 'confirmed',
+      amount: 1260,
+      currency: 'USD',
+      sourceSurface: 'web',
+    })
+
+    expect(persistence.inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        table: 'bookings',
+        row: expect.objectContaining({
+          user_id: 'user-1',
+          trip_id: 'trip-1',
+          booking_type: 'accommodation',
+          provider: 'liteapi',
+          booking_ref: 'lite-booking-1',
+          booking_reference: 'hotel-confirmation-1',
+          status: 'confirmed',
+          amount: 1260,
+          amount_cents: 126000,
+          currency: 'usd',
+          stripe_payment_intent_id: 'pi_hotel_1',
+          financial_metadata: expect.objectContaining({
+            source_surface: 'web',
+            provider_status: 'CONFIRMED',
+            prebook_id: 'prebook-1',
+            hotel_id: 'hotel-123',
+            guest_count: 1,
+          }),
+        }),
+      }),
+      expect.objectContaining({
+        table: 'trip_accommodations',
+        row: expect.objectContaining({
+          trip_id: 'trip-1',
+          place_id: 'place-123',
+          name: 'Goldwynn Resort',
+          booking_reference: 'hotel-confirmation-1',
+          liteapi_hotel_id: 'hotel-123',
+          liteapi_rate_id: 'rate-1',
+          liteapi_prebook_id: 'prebook-1',
+          stripe_payment_intent_id: 'pi_hotel_1',
+          status: 'booked',
+          total_price: 1260,
+          currency: 'USD',
+          nights: 3,
+        }),
+      }),
+      expect.objectContaining({
+        table: 'travel_booking_records',
+        row: expect.objectContaining({
+          user_id: 'user-1',
+          product_type: 'hotel',
+          status: 'confirmed',
+          provider_booking_id: 'lite-booking-1',
+          provider_booking_ref: 'hotel-confirmation-1',
+          source: 'web',
+          amount: 1260,
+          currency: 'USD',
+        }),
+      }),
+    ]))
+  })
 })
 
 describe('flight booking APIs', () => {
@@ -291,6 +538,130 @@ describe('flight booking APIs', () => {
 
     expect(response.status).toBe(401)
     expect(mocks.callTravelProvider).not.toHaveBeenCalled()
+  })
+
+  test('persists flight provider booking into canonical booking, flight, and audit rows', async () => {
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      throw new Error(`Unexpected user table: ${table}`)
+    })
+    const persistence = adminPersistenceMock({
+      insertedBookingId: 'flight-booking-row-1',
+      insertedTripItemId: 'flight-row-1',
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+    mocks.createAdminClient.mockReturnValue(persistence.admin)
+    mocks.callTravelProvider.mockResolvedValue({
+      status: 200,
+      data: {
+        data: [{
+          id: 'flight-booking-1',
+          status: 'TICKETED',
+          price: { amount: 540, currency: 'USD' },
+          segments: [{
+            departure: { iataCode: 'MIA' },
+            arrival: { iataCode: 'NAS' },
+            departureTime: '2026-08-01T13:00:00Z',
+            arrivalTime: '2026-08-01T14:10:00Z',
+            airlineName: 'Bahamasair',
+          }],
+        }],
+      },
+    })
+
+    const response = await flightBook(jsonRequest({
+      tripId: 'trip-1',
+      offerId: 'offer-123',
+      prebookId: 'flight-prebook-1',
+      transactionId: 'txn-1',
+      paymentIntentId: 'pi_flight_1',
+      amount: 540,
+      currency: 'USD',
+      origin: 'MIA',
+      destination: 'NAS',
+    }))
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(mocks.callTravelProvider).toHaveBeenCalledWith('/flights/bookings', {
+      prebookId: 'flight-prebook-1',
+      transactionId: 'txn-1',
+      payment: {
+        method: 'TRANSACTION_ID',
+        transactionId: 'txn-1',
+      },
+    })
+    expect(body).toMatchObject({
+      bookingId: 'flight-booking-1',
+      bookingRecordId: 'flight-booking-row-1',
+      tripId: 'trip-1',
+      tripItemId: 'flight-row-1',
+      provider: 'flight_liteapi',
+      providerReference: 'flight-booking-1',
+      paymentStatus: 'paid',
+      providerStatus: 'confirmed',
+      amount: 540,
+      currency: 'USD',
+      sourceSurface: 'web',
+    })
+
+    expect(persistence.inserted).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        table: 'bookings',
+        row: expect.objectContaining({
+          user_id: 'user-1',
+          trip_id: 'trip-1',
+          booking_type: 'flight',
+          provider: 'liteapi',
+          booking_ref: 'flight-booking-1',
+          booking_reference: 'flight-booking-1',
+          status: 'confirmed',
+          amount: 540,
+          amount_cents: 54000,
+          currency: 'usd',
+          supplier_ref: 'flight-booking-1',
+          stripe_payment_intent_id: 'pi_flight_1',
+          financial_metadata: expect.objectContaining({
+            source_surface: 'web',
+            provider_status: 'TICKETED',
+            prebook_id: 'flight-prebook-1',
+            transaction_id: 'txn-1',
+            payment_intent_id: 'pi_flight_1',
+            offer_id: 'offer-123',
+          }),
+        }),
+      }),
+      expect.objectContaining({
+        table: 'trip_flights',
+        row: expect.objectContaining({
+          trip_id: 'trip-1',
+          origin: 'MIA',
+          destination: 'NAS',
+          departure_at: '2026-08-01T13:00:00.000Z',
+          arrival_at: '2026-08-01T14:10:00.000Z',
+          airline: 'Bahamasair',
+          booking_reference: 'flight-booking-1',
+          price: 540,
+          duffel_offer_id: 'offer-123',
+          stripe_payment_intent_id: 'pi_flight_1',
+        }),
+      }),
+      expect.objectContaining({
+        table: 'travel_booking_records',
+        row: expect.objectContaining({
+          user_id: 'user-1',
+          product_type: 'flight',
+          status: 'confirmed',
+          provider_booking_id: 'flight-booking-1',
+          provider_booking_ref: 'flight-booking-1',
+          source: 'web',
+          origin: 'MIA',
+          destination: 'NAS',
+          amount: 540,
+          currency: 'USD',
+        }),
+      }),
+    ]))
   })
 })
 
