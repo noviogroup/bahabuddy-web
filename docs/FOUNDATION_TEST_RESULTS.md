@@ -38,7 +38,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 9. Admin | 3 | 3 | 0 | 0 | ✅ |
 | 10. Edge Functions | 4 | 1 | 0 | 3 | ⏳ |
 
-**Foundation gate status:** ❌ Blocked — Test 2.4 (unauthorized trip access) FAILS because RLS is disabled on `public.trips`. Trips RLS cannot be enabled until this is fixed. See BAH-107.
+**Foundation gate status:** ❌ Blocked — Test 2.4 (unauthorized trip access) previously failed because RLS was disabled on `public.trips`. A web migration launch gate now exists at `supabase/migrations/20260621120000_trips_rls_launch_gate.sql`, but this gate remains blocked until the migration is applied to the shared Supabase project and Suite 6 is validated with live/staging evidence. See BAH-107.
 
 > Mobile unit test suite: **95/95 passing** as of 2026-06-07 (flutter test, code review methodology).
 >
@@ -65,8 +65,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 2.2 Mobile create trip | Flutter Engineer | Code review | 2026-06-07 | Pass | `createTrip()` in `trip_service.dart` assigns `user_id = currentUserId` to all new trips. Writes to Supabase `trips` table; falls back to local-only if remote fails. Trip appears in My Trips via `getTrips()` which filters by `user_id`. Unit test: `Trip.fromJson` / `toJson` round-trip passes. | |
 | 2.3 Cross-platform trip visibility | Flutter Engineer | Code review | 2026-06-07 | Pass | `getTrips()` queries `trips.eq('user_id', uid)` — same Supabase user ID means same data on both platforms. Collaborator trips (shared trips) also loaded via `trip_collaborators` join, with try/catch fallback if RLS not yet ready. Collab path should be re-verified after RLS is enabled. | |
 | 2.4 Unauthorized trip access ⚠️ | Flutter Engineer | Code review | 2026-06-07 | **Fail** | Client-side: `getTrips()` always filters `user_id = currentUserId` — correct. **Server-side: RLS is DISABLED on `public.trips`.** Any user with a direct Supabase query (anon key + manual `.from('trips').select()` without the user_id filter) can read all trips in the database. The mobile app itself enforces the filter, but the DB does not. This test FAILS the security requirement. RLS must be enabled before this can pass. | BAH-107 |
+| 2.4a Trips RLS migration source gate | Codex | Local source | 2026-06-21 | Pass | Added web migration `20260621120000_trips_rls_launch_gate.sql` and unit coverage. The migration enables `public.trips` RLS, keeps force-RLS disabled for the controlled validation window, grants helper execution to app roles, and raises if required policies or helper functions are missing. This is source readiness only; live Supabase validation is still required. | BAH-107 |
 
-> ⚠️ Test 2.4 is a gate — trips RLS cannot be enabled until this passes on both web and mobile.
+> ⚠️ Test 2.4 remains a gate. The source migration exists, but the gate is not passed until live/staging RLS behavior is proven across web, mobile, collaboration, share/invite, and service-role admin paths.
 
 ---
 

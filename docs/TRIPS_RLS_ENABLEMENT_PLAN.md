@@ -6,7 +6,11 @@ This document defines the safe path to enable Row Level Security on `public.trip
 
 Live Supabase inventory showed that `public.trips` is the only core user-facing table with RLS disabled. The table already has owner and collaborator policies defined, but the table-level RLS switch is currently off.
 
-This plan is intentionally not an applied migration. It should be reviewed and tested before any database change is run.
+This plan now has a web migration counterpart:
+
+- `supabase/migrations/20260621120000_trips_rls_launch_gate.sql`
+
+That migration enables the table-level RLS switch and asserts the expected policy/helper surface. It still must be applied and validated in the shared Supabase project before the gate can be marked complete.
 
 ---
 
@@ -98,6 +102,8 @@ ALTER TABLE public.trips ENABLE ROW LEVEL SECURITY;
 ```
 
 Do not force RLS yet. `FORCE ROW LEVEL SECURITY` should only be considered after web, mobile, admin, and Edge Function code paths are fully validated.
+
+The current launch-gate migration also runs policy/function checks so migration application fails if the expected owner/collaborator policy surface is missing.
 
 ---
 

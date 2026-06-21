@@ -38,7 +38,7 @@ Public web is validation-ready for the current UI/booking slice, not fully launc
 - visual QA across public web, authenticated web, admin, and mobile
 - production secrets and provider configuration review
 
-## Verification Target
+## Verification
 
 Run from `bahabuddy-web`:
 
@@ -49,3 +49,5 @@ npm run build
 ```
 
 The focused public shell test should verify that the top nav excludes `Guides`, the footer still includes it, and the logo has no plate-style classes.
+
+Current follow-up validation on June 21, 2026 passed with `npm run lint`, `npm test`, and `npm run build`. Lint still reports the existing image-optimization warnings, but no new blocking nav/logo issues were found.

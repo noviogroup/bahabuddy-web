@@ -31,9 +31,9 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 |---|---|---|---|---|---|---|---|
 | User profile | Profile/onboarding surfaces exist | `upsertUserFromOnboarding`, `getCurrentUser` active | User list/detail exists | `users` has 19 rows, RLS enabled | N/A | ✅ Current | Confirm profile fields match across web/mobile |
 | Anonymous/user auth | Supabase auth in web | `signInAnonymously` in mobile | Admin auth wrapper | `auth.users` + `users` | N/A | 🟡 Partial | Confirm web/mobile auth modes and upgrade path from anonymous to email |
-| Saved trips | Trip index/detail exists | `createTrip`, `getTrips` active | Trip list/detail exists | `trips` has 25 rows | AI/chat functions create trips | ⚠️ Risk | Fix `trips` RLS before broad beta |
+| Saved trips | Trip index/detail exists | `createTrip`, `getTrips` active | Trip list/detail exists | `trips` has 25 rows; web source migration `20260621120000_trips_rls_launch_gate.sql` added | AI/chat functions create trips | ⚠️ Risk | Apply and validate `trips` RLS before broad beta |
 | Trip detail | `/trip/[id]` web page exists | My Trip flow exists | Trip detail API exists | `trip_accommodations`, `trip_flights`, `trip_activities` | N/A | 🟡 Partial | Test same trip across web/mobile |
-| Trip ownership | Web trip page checks `trip.user_id === user.id` | Mobile queries `.eq('user_id', uid)` | Admin uses service role | `trips` RLS disabled | N/A | ⚠️ Risk | Add owner/collaborator RLS policies to `trips` |
+| Trip ownership | Web trip page checks `trip.user_id === user.id` | Mobile queries `.eq('user_id', uid)` | Admin uses service role | Source migration now enables `trips` RLS and audits owner/collaborator policies; live state still needs verification | N/A | ⚠️ Risk | Apply migration and prove owner/collaborator/service-role behavior |
 | Trip collaborators | Web invite component/API exists | Mobile collaborator helpers exist | No ops surface | `trip_collaborators` has 0 rows | `accept-invite` expected | 🧪 Needs Test | Deploy/verify functions and test collaborator access |
 | Trip sharing | Web share page/button exists | Mobile share helpers/screens exist | No ops view | `share_links` has 0 rows | `create-share-link`, `resolve-share-link` expected | 🧪 Needs Test | Confirm functions deployed and PUBLIC_APP_URL/deep links aligned |
 | Trip invitations | Web `/api/trips/invite` exists | Mobile `sendTripInvite`, `previewInvite`, `acceptInvite` exist | No ops view | `trip_invitations` has 0 rows | `send-trip-invite`, `accept-invite` expected | 🧪 Needs Test | Test invite email/link flow and admin visibility |
@@ -144,12 +144,13 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 
 ### Gap 1: Trips security foundation
 
-`trips` has RLS disabled. This must be fixed before broad beta or before building more trip-based product lines.
+`trips` was documented as having RLS disabled in live inventory. A source-control launch-gate migration now exists in the web repo, but live application and validation are still required before broad beta or before building more trip-based product lines.
 
 Required:
 
-- Owner policies
-- Collaborator policies
+- Apply `20260621120000_trips_rls_launch_gate.sql` to the shared Supabase project
+- Verify owner policies
+- Verify collaborator policies
 - Test web/mobile saved trips
 - Test chat auto-save
 - Test sharing/invite flows
