@@ -11,6 +11,7 @@ type DropdownLink = {
   href: string
   label: string
   description: string
+  section: string
 }
 
 type ProductLink = {
@@ -23,37 +24,37 @@ type ProductLink = {
 }
 
 const exploreLinks = [
-  { href: '/explore', label: 'Explore home', description: 'Mobile-style discovery, community, and trip ideas.' },
-  { href: '/explore/places?category=Activity', label: 'Things to do', description: 'Tours, water days, wildlife, beaches, and island experiences.' },
-  { href: '/explore/places?search=landmark+historic+site', label: 'Landmarks', description: 'Historic sites, natural landmarks, and must-see stops.' },
-  { href: '/explore/places?category=Dining', label: 'Food and restaurants', description: 'Local dining, fish fry stops, cafés, and food culture.' },
-  { href: '/explore/places?category=Beach', label: 'Beaches', description: 'Pink sand, quiet coves, family beaches, and swim spots.' },
-  { href: '/explore/places?category=Activity&search=tour', label: 'Tours', description: 'Guided days, boat trips, snorkeling, and curated activities.' },
-  { href: '/explore/places?search=culture+history+museum', label: 'Culture', description: 'Museums, markets, art, Junkanoo, and local history.' },
-  { href: '/stays?sort=stars', label: 'Hotels and stays', description: 'Use Explore context, then compare hotels, resorts, villas, and homes.' },
-  { href: '/flights', label: 'Island access', description: 'Flights, ferries, airports, and route planning across the Bahamas.' },
+  { section: 'Start here', href: '/explore', label: 'Explore home', description: 'Mobile-style discovery, community, and trip ideas.' },
+  { section: 'Start here', href: '/explore/places?category=Activity', label: 'Things to do', description: 'Tours, water days, wildlife, beaches, and island experiences.' },
+  { section: 'Start here', href: '/explore/places?search=landmark+historic+site', label: 'Landmarks', description: 'Historic sites, natural landmarks, and must-see stops.' },
+  { section: 'Browse by interest', href: '/explore/places?category=Dining', label: 'Restaurants and food', description: 'Local dining, fish fry stops, cafes, and food culture.' },
+  { section: 'Browse by interest', href: '/explore/places?category=Beach', label: 'Beaches', description: 'Pink sand, quiet coves, family beaches, and swim spots.' },
+  { section: 'Browse by interest', href: '/explore/places?category=Activity&search=tour', label: 'Tours and activities', description: 'Guided days, boat trips, snorkeling, and curated activities.' },
+  { section: 'Browse by interest', href: '/explore/places?search=culture+history+museum', label: 'Culture and history', description: 'Museums, markets, art, Junkanoo, and local history.' },
+  { section: 'Plan the trip', href: '/stays?sort=stars', label: 'Hotels and stays', description: 'Compare hotels, resorts, villas, apartments, homes, and condos.' },
+  { section: 'Plan the trip', href: '/flights', label: 'Island access', description: 'Flights, ferries, airports, and route planning across the Bahamas.' },
 ] satisfies DropdownLink[]
 
 const destinationLinks = [
-  { href: '/destinations', label: 'All destinations', description: 'Browse the Bahamas island finder.' },
-  { href: '/explore/island/nassau-paradise-island', label: 'Nassau', description: 'Dining, culture, easy arrival, and resort access.' },
-  { href: '/explore/island/paradise-island', label: 'Paradise Island', description: 'Resorts, beaches, Atlantis, and family trips.' },
-  { href: '/explore/island/the-exumas', label: 'The Exumas', description: 'Cays, sandbars, boat days, and blue-water escapes.' },
-  { href: '/explore/island/eleuthera-harbour-island', label: 'Eleuthera', description: 'Pink sand, coves, slower roads, and quiet stays.' },
-  { href: '/explore/island/harbour-island', label: 'Harbour Island', description: 'Boutique stays, pink sand, and golf-cart pace.' },
-  { href: '/explore/island/grand-bahama', label: 'Grand Bahama', description: 'Freeport, diving, beaches, and nature parks.' },
-  { href: '/explore/island/bimini', label: 'Bimini', description: 'Short hops, fishing, diving, and beach clubs.' },
-  { href: '/explore/island/abacos', label: 'The Abacos', description: 'Sailing, marinas, cays, and island hopping.' },
-  { href: '/explore/island/andros', label: 'Andros', description: 'Diving, blue holes, bonefishing, and nature.' },
-  { href: '/explore/island/long-island', label: 'Long Island', description: "Dean's Blue Hole, cliffs, and quiet beaches." },
-  { href: '/destinations?island=Cat+Island', label: 'Cat Island', description: 'Quiet beaches, rake-and-scrape, and Mount Alvernia.' },
-  { href: '/destinations?island=San+Salvador', label: 'San Salvador', description: 'Diving, history, and uncrowded island days.' },
-  { href: '/destinations?island=Berry+Islands', label: 'Berry Islands', description: 'Cays, boating, fishing, and private-island energy.' },
-  { href: '/destinations?island=Inagua', label: 'Inagua', description: 'Flamingos, national parks, and remote nature.' },
-  { href: '/destinations?island=Acklins+and+Crooked+Island', label: 'Acklins and Crooked Island', description: 'Bonefishing, solitude, and long quiet shorelines.' },
-  { href: '/destinations?island=Rum+Cay', label: 'Rum Cay', description: 'Small-island diving, beaches, and low-key stays.' },
-  { href: '/destinations?island=Mayaguana', label: 'Mayaguana', description: 'Remote beaches and true out-island pace.' },
-  { href: '/destinations?island=Ragged+Island', label: 'Ragged Island', description: 'Far-south cays, fishing, and off-grid exploration.' },
+  { section: 'Island finder', href: '/destinations', label: 'All destinations', description: 'Browse the full Bahamas island finder.' },
+  { section: 'Most planned', href: '/explore/island/nassau-paradise-island', label: 'Nassau', description: 'Dining, culture, easy arrival, and resort access.' },
+  { section: 'Most planned', href: '/explore/island/paradise-island', label: 'Paradise Island', description: 'Resorts, beaches, Atlantis, and family trips.' },
+  { section: 'Most planned', href: '/explore/island/the-exumas', label: 'The Exumas', description: 'Cays, sandbars, boat days, and blue-water escapes.' },
+  { section: 'Most planned', href: '/explore/island/eleuthera-harbour-island', label: 'Eleuthera', description: 'Pink sand, coves, slower roads, and quiet stays.' },
+  { section: 'Most planned', href: '/explore/island/harbour-island', label: 'Harbour Island', description: 'Boutique stays, pink sand, and golf-cart pace.' },
+  { section: 'Island hopping', href: '/explore/island/grand-bahama', label: 'Grand Bahama', description: 'Freeport, diving, beaches, and nature parks.' },
+  { section: 'Island hopping', href: '/explore/island/bimini', label: 'Bimini', description: 'Short hops, fishing, diving, and beach clubs.' },
+  { section: 'Island hopping', href: '/explore/island/abacos', label: 'The Abacos', description: 'Sailing, marinas, cays, and island hopping.' },
+  { section: 'Island hopping', href: '/explore/island/andros', label: 'Andros', description: 'Diving, blue holes, bonefishing, and nature.' },
+  { section: 'Island hopping', href: '/explore/island/long-island', label: 'Long Island', description: "Dean's Blue Hole, cliffs, and quiet beaches." },
+  { section: 'Out islands', href: '/destinations?island=Cat+Island', label: 'Cat Island', description: 'Quiet beaches, rake-and-scrape, and Mount Alvernia.' },
+  { section: 'Out islands', href: '/destinations?island=San+Salvador', label: 'San Salvador', description: 'Diving, history, and uncrowded island days.' },
+  { section: 'Out islands', href: '/destinations?island=Berry+Islands', label: 'Berry Islands', description: 'Cays, boating, fishing, and private-island energy.' },
+  { section: 'Out islands', href: '/destinations?island=Inagua', label: 'Inagua', description: 'Flamingos, national parks, and remote nature.' },
+  { section: 'Out islands', href: '/destinations?island=Acklins+and+Crooked+Island', label: 'Acklins and Crooked Island', description: 'Bonefishing, solitude, and long quiet shorelines.' },
+  { section: 'Out islands', href: '/destinations?island=Rum+Cay', label: 'Rum Cay', description: 'Small-island diving, beaches, and low-key stays.' },
+  { section: 'Out islands', href: '/destinations?island=Mayaguana', label: 'Mayaguana', description: 'Remote beaches and true out-island pace.' },
+  { section: 'Out islands', href: '/destinations?island=Ragged+Island', label: 'Ragged Island', description: 'Far-south cays, fishing, and off-grid exploration.' },
 ] satisfies DropdownLink[]
 
 const productLinks = [
@@ -161,32 +162,14 @@ export default function MarketplacePublicHeader({
 
                 {dropdown && (
                   <div
-                    className={`pointer-events-none absolute top-full z-50 mt-2 hidden rounded-3xl border border-gray-200 bg-white p-3 text-night opacity-0 shadow-2xl shadow-night/20 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block ${
+                    className={`pointer-events-none absolute top-full z-50 mt-2 hidden rounded-3xl border border-gray-200 bg-white p-4 text-night opacity-0 shadow-2xl shadow-night/20 transition-all duration-150 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:translate-y-0 group-focus-within:opacity-100 md:block ${
                       label === 'Destinations'
-                        ? 'left-1/2 max-h-[70vh] w-[56rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-y-auto'
-                        : 'left-0 w-[24rem] translate-y-1'
+                        ? 'left-1/2 max-h-[70vh] w-[60rem] max-w-[calc(100vw-2rem)] -translate-x-1/2 overflow-y-auto'
+                        : 'left-0 w-[42rem] max-w-[calc(100vw-2rem)] translate-y-1'
                     }`}
                     role="menu"
                   >
-                    <div className={`${label === 'Destinations' ? 'grid gap-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid gap-1'}`}>
-                      {dropdown.map((item) => (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          role="menuitem"
-                          data-nav-level="dropdown"
-                          className="rounded-2xl px-3 py-2.5 transition-colors hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
-                        >
-                          <span className="flex items-center gap-2 text-sm font-extrabold text-night">
-                            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
-                            {item.label}
-                          </span>
-                          <span className="mt-1 block text-xs font-semibold leading-5 text-charcoal">
-                            {item.description}
-                          </span>
-                        </Link>
-                      ))}
-                    </div>
+                    <DropdownMenuContent items={dropdown} isDestinations={label === 'Destinations'} />
                   </div>
                 )}
               </div>
@@ -196,6 +179,55 @@ export default function MarketplacePublicHeader({
       </nav>
     </header>
   )
+}
+
+function DropdownMenuContent({
+  items,
+  isDestinations,
+}: {
+  items: DropdownLink[]
+  isDestinations: boolean
+}) {
+  const groupedItems = groupDropdownLinks(items)
+
+  return (
+    <div className={isDestinations ? 'grid gap-4 lg:grid-cols-[0.8fr_1.15fr_1.15fr_1.15fr]' : 'grid gap-4 sm:grid-cols-3'}>
+      {groupedItems.map(([section, links]) => (
+        <section key={section} aria-label={section} className="min-w-0">
+          <p className="mb-2 border-b border-gray-100 pb-2 text-[0.68rem] font-extrabold uppercase tracking-[0.18em] text-brand-700">
+            {section}
+          </p>
+          <div className="grid gap-1">
+            {links.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                role="menuitem"
+                data-nav-level="dropdown"
+                className="rounded-2xl px-3 py-2.5 transition-colors hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
+              >
+                <span className="flex items-center gap-2 text-sm font-extrabold text-night">
+                  <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-gold-400" aria-hidden="true" />
+                  {item.label}
+                </span>
+                <span className="mt-1 block text-xs font-semibold leading-5 text-charcoal">
+                  {item.description}
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  )
+}
+
+function groupDropdownLinks(items: DropdownLink[]): Array<[string, DropdownLink[]]> {
+  const groups = new Map<string, DropdownLink[]>()
+  for (const item of items) {
+    groups.set(item.section, [...(groups.get(item.section) ?? []), item])
+  }
+  return Array.from(groups.entries())
 }
 
 function isActiveProductLink(activePath: string | undefined, link: ProductLink): boolean {
