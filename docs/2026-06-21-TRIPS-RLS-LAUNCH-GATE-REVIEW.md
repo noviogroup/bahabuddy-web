@@ -1,7 +1,7 @@
 # Trips RLS Launch Gate Review - June 21, 2026
 
 Review time: June 21, 2026, 07:47 EDT
-Updated: June 21, 2026, 10:00 EDT
+Updated: June 21, 2026, 10:44 EDT
 Scope: web Supabase migration set and launch-readiness blocker for `public.trips`
 
 ## Executive Status
@@ -14,14 +14,18 @@ Live Supabase validation on project `cxcfymhoncysyloutvkh` now confirms the tabl
 
 The core live behavior is now also verified with temporary authenticated users: owner create/read/update/delete, non-owner direct-ID read/update denial, accepted collaborator read, editor collaborator child-item write, and service-role read for admin/support paths all pass against the linked Supabase project.
 
+Share and invite behavior is now also live-verified. `npm run verify:share-invite-remote` proves owner share-link creation, public sanitized share resolution, no-email invitation setup, invite preview, invite acceptance, accepted collaborator reconciliation, invitation accepted state, and `trips.collaborator_ids` synchronization. The verification caught and fixed a deployed `resolve-share-link` issue where activity rows were silently dropped by a schema-drifted select list.
+
 The first live apply attempt exposed a PostgreSQL identifier detail: long policy names are stored in `pg_policies.policyname` as truncated identifiers. The source migration now validates policy table/name pairs and accepts both the source name and the 63-byte stored identifier form.
 
 ## Files Added
 
 - `supabase/migrations/20260621120000_trips_rls_launch_gate.sql`
 - `scripts/verify-trips-rls-remote.mjs`
+- `scripts/verify-share-invite-remote.mjs`
 - `tests/unit/trips-rls-launch-gate.test.ts`
 - `tests/unit/trips-rls-remote-verifier.test.ts`
+- `tests/unit/share-invite-remote-verifier.test.ts`
 
 ## Local Validation
 
@@ -30,10 +34,12 @@ Completed on June 21, 2026:
 - `npm test -- tests/unit/trips-rls-launch-gate.test.ts` passed with 4 tests.
 - `node --check scripts/verify-trips-rls-remote.mjs` passed.
 - `npm test -- tests/unit/trips-rls-remote-verifier.test.ts tests/unit/trips-rls-launch-gate.test.ts` passed with 7 tests.
+- `npm test -- --run tests/unit/middleware-auth.test.ts tests/unit/share-invite-remote-verifier.test.ts` passed with 8 tests.
 - `npm run lint` passed with the existing image-optimization warnings.
-- `npm test` passed with 79 test files and 321 tests.
+- `npm test` passed with 81 test files and 329 tests.
 - `npm run build` passed with existing image-optimization, Sanity API-version, and localstorage-file warnings.
 - `curl -I http://localhost:3011/` returned `200 OK` after restarting the dev server following the production build.
+- `curl -I http://localhost:3011/trip/share123` returned `307 Temporary Redirect` to `/share/share123`.
 
 ## Migration Contract
 
@@ -73,13 +79,27 @@ Completed with `npm run verify:trips-rls-remote` on June 21, 2026:
 
 The verifier creates temporary `bb-rls-*@example.invalid` auth users and matching `public.users` profiles, performs the checks through anon-key authenticated sessions, and cleans up temporary trip/user rows and auth users after the run.
 
+Completed with `npm run verify:share-invite-remote` on June 21, 2026:
+
+- owner can create a tracked share link through `create-share-link`
+- public users can resolve the shared trip through `resolve-share-link`
+- public share payload includes trip, stay, flight, and activity data
+- public share payload does not leak owner email, `user_id`, booking references, or payment/customer identifiers
+- verifier creates a pending invitation directly with the service role and does not call `send-trip-invite`
+- invitee can preview and accept through `accept-invite`
+- accepted collaborator row is created
+- invitation status, `invitee_user_id`, and `accepted_at` reconcile
+- trip `collaborator_ids` includes the invitee
+
+The pass required redeploying `resolve-share-link` after fixing activity snapshot schema drift. The deployed function now selects stable activity columns and returns explicit errors for itinerary item lookup failures instead of returning incomplete arrays.
+
 ## Remaining App-Level Validation
 
-The catalog state and core RLS behavior are now proven. The remaining trips/security checks are app-level flows:
+The catalog state, core RLS behavior, and share/invite behavior are now proven. The remaining trips/security checks are app-level flows:
 
-- share and invite flows still resolve
 - web and mobile trip lists still load for the same account
+- collaborator-owned trip visibility through the actual web/mobile UI, not only direct Supabase verifier scripts
 
 ## Decision
 
-The table-level trips RLS launch gate and core owner/collaborator behavior are now live-verified. Do not mark the broader trips/security launch gate complete until share/invite resolution and web/mobile trip-list behavior are exercised through the actual app surfaces.
+The table-level trips RLS launch gate, core owner/collaborator behavior, and share/invite behavior are now live-verified. Do not mark the broader trips/security launch gate complete until web/mobile trip-list behavior is exercised through the actual app surfaces.

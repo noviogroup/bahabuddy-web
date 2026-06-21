@@ -31,14 +31,14 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 2. Saved trips | 4 | 2 | 1 | 1 | ❌ |
 | 3. Trip items | 3 | 3 | 0 | 0 | ✅ |
 | 4. Saved conversations | 2 | 1 | 1 | 0 | ❌ |
-| 5. Sharing + collaboration | 3 | 1 | 0 | 2 | ⏳ |
+| 5. Sharing + collaboration | 3 | 3 | 0 | 0 | ✅ |
 | 6. Trips RLS | 6 | 1 | 0 | 5 | ⏳ |
 | 7. Places data | 5 | 4 | 0 | 1 | ⏳ |
 | 8. Booking + revenue | 4 | — | — | — | ⏳ |
 | 9. Admin | 3 | 3 | 0 | 0 | ✅ |
-| 10. Edge Functions | 4 | 1 | 0 | 3 | ⏳ |
+| 10. Edge Functions | 5 | 3 | 0 | 2 | ⏳ |
 
-**Foundation gate status:** ⏳ Partially unblocked — Test 2.4 previously failed because RLS was disabled on `public.trips`. The trips RLS launch gate has now been applied to the shared Supabase project and live catalog checks pass. The remaining gate is behavioral validation for owner, non-owner, collaborator, service-role, share/invite, and web/mobile trip-list flows. See BAH-107.
+**Foundation gate status:** ⏳ Partially unblocked — Test 2.4 previously failed because RLS was disabled on `public.trips`. The trips RLS launch gate has now been applied to the shared Supabase project and live catalog checks pass. Owner, non-owner, collaborator, service-role, and share/invite behavior now pass live remote verification. The remaining trips/security gate is web/mobile trip-list validation through actual app sessions. See BAH-107.
 
 > Mobile unit test suite: **95/95 passing** as of 2026-06-07 (flutter test, code review methodology).
 >
@@ -69,7 +69,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 2.4b Trips RLS live catalog gate | Codex | Production Supabase | 2026-06-21 | Pass | Applied `trips_rls_launch_gate` to project `cxcfymhoncysyloutvkh`; Supabase recorded migration `20260621114605`. Live SQL verified `public.trips.relrowsecurity = true`, `public.trips.relforcerowsecurity = false`, `public.trip_collaborators.relrowsecurity = true`, required owner/collaborator policies present, and `is_trip_owner`, `is_trip_collaborator`, `is_trip_editor` are `SECURITY DEFINER`. | BAH-107 |
 | 2.4c Trips RLS live behavior gate | Codex | Production Supabase | 2026-06-21 | Pass | `npm run verify:trips-rls-remote` creates temporary authenticated users and proves owner create/read/update/delete, non-owner direct-ID read/update denial, accepted collaborator read, editor collaborator trip-activity write, and service-role read. Temporary verifier rows/users are cleaned up after the run. | BAH-107 |
 
-> ⚠️ Test 2.4 is remediated at the database and core behavior level. The remaining trips/security launch work is app-level validation for share/invite resolution and web/mobile trip-list loading with real sessions.
+> ⚠️ Test 2.4 is remediated at the database, core behavior, and share/invite behavior level. The remaining trips/security launch work is app-level web/mobile trip-list loading with real sessions.
 
 ---
 
@@ -96,8 +96,8 @@ When you run a test, add a row to the relevant table below. Use this format:
 
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
-| 5.1 Trip share link (web) | Web Developer | Local + Supabase | 2026-06-07 | Skip | `ShareButton` component + `/share/[code]` page exist. Page queries `share_links` by `short_code`, loads trip data, renders read-only view with flights/accommodations/activities. OG metadata generated dynamically. **0 share_links in production** — feature never used by any user. Cannot test without first creating a share link. | |
-| 5.2 Trip invite (create + accept) | Flutter Engineer | Code review | 2026-06-07 | Pass | `TripInviteScreen` accepts a `shortCode` via deep link (`/invite/:shortCode`). Calls `previewInvite(shortCode)` to load invite details, then `acceptInvite(shortCode)` on confirmation. Friendly error handling for 410 Expired and 404 Not Found. On success, navigates to `/my-trip`. Deep link route registered in GoRouter. | |
+| 5.1 Trip share link (web) | Codex | Local + production Supabase | 2026-06-21 | Pass | `npm run verify:share-invite-remote` creates a temporary trip, calls `create-share-link`, calls public `resolve-share-link`, verifies trip/stay/flight/activity data returns, and verifies the public payload does not leak owner email, `user_id`, booking references, or payment/customer identifiers. Web middleware also redirects mobile-style `/trip/<short-code>` links to public `/share/<short-code>`; `curl -I http://localhost:3011/trip/share123` returned `307 location: /share/share123`. | BAH-107 |
+| 5.2 Trip invite (create + accept) | Flutter Engineer + Codex | Code review + production Supabase | 2026-06-21 | Pass | Mobile `TripInviteScreen` accepts a `shortCode` via deep link (`/invite/:shortCode`), previews, accepts, and routes to `/my-trip`. `npm run verify:share-invite-remote` adds a pending invitation directly with the service role so no email is sent, then calls `accept-invite` preview and accept as the invitee. It verifies accepted collaborator row, invitation accepted status, `invitee_user_id`, `accepted_at`, and trip `collaborator_ids`. | BAH-107 |
 | 5.3 Collaborator read access | Codex | Production Supabase | 2026-06-21 | Pass | `npm run verify:trips-rls-remote` proves an accepted editor collaborator can read the shared trip and write a supported `trip_activities` row through an anon-key authenticated session. | BAH-107 |
 
 ---
@@ -157,7 +157,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 10.1 AI/chat function | Flutter Engineer | Code review | 2026-06-07 | Pass | `ai_service.dart` checks `currentSession?.accessToken` before every call — null token yields `AIStreamEvent.error('Not signed in')`. Each request includes `thread_id` (user-scoped) and optional `trip_id`. SSE streaming implemented via Dio `ResponseBody`. Messages saved via `claude-chat-proxy` Edge Function with auth enforcement. Model: `claude-opus-4-7` (upgraded BAH-93). No evidence of cross-user thread leakage in client code. | |
 | 10.1 AI/chat function (web) | Web Developer | Code review + Supabase | 2026-06-07 | Pass | Web `/api/chat` route uses Anthropic SDK with `claude-opus-4-7`. 9 tools in `src/lib/chat-tools.ts`. SSE streaming. System prompt cached. 19 threads / 346 messages in DB. Blocked on Netlify deployment only (ANTHROPIC_API_KEY not set). | BAH-20 |
 | 10.2 Google Places sync/photo | | | | Skip | DB Engineer / Edge Function scope — not in Flutter mobile surface | |
-| 10.3 Share/invite functions (web) | Web Developer | Code review | 2026-06-07 | Skip | `/share/[code]` page queries `share_links` + `trips` tables. `/api/trips/invite` endpoint exists. 0 share_links / 0 invitations in production — never used. Cannot test without creating test data. | |
+| 10.3 Share/invite functions (web) | Codex | Production Supabase | 2026-06-21 | Pass | `create-share-link`, `resolve-share-link`, and `accept-invite` are live-verified by `npm run verify:share-invite-remote`. The pass also caught and fixed `resolve-share-link` activity snapshot drift; the function now selects stable activity columns and fails loudly on item lookup errors. `resolve-share-link` was redeployed to project `cxcfymhoncysyloutvkh`. | BAH-107 |
 | 10.4 Booking functions | | | | Skip | Booking Expert agent scope — Duffel/LiteAPI/Stripe flows not covered by this pass | |
 
 ---
