@@ -312,96 +312,95 @@ function MarketplaceLanes() {
 
 function BuddyNotebook() {
   return (
-    <section className="bg-white py-14 md:py-20">
+    <section className="bg-white py-12 md:py-16">
       <div className="mx-auto max-w-6xl px-4">
-        <div className="overflow-hidden rounded-[1.75rem] border border-brand-100 bg-brand-50/70 shadow-card">
-          <div className="grid gap-0 lg:grid-cols-[0.86fr_1.14fr]">
-            <div className="flex flex-col justify-between gap-8 p-6 md:p-10">
-              <div>
-                <SectionLabel>Buddy field notes</SectionLabel>
-                <h2 className="mt-3 max-w-xl text-4xl font-extrabold leading-tight text-night md:text-5xl">
-                  The point is not more search. It is better trip judgment.
-                </h2>
-                <p className="mt-5 max-w-xl text-lg leading-8 text-charcoal">
-                  Baha Buddy listens for the real shape of the trip: who is going, how fast the days should move, which island fits, and what details will matter once you land.
-                </p>
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <PrimaryLink
-                    href={homepageTripHref('Five days in Exuma with great food, one boat day, beaches, and a relaxed pace.')}
-                  >
-                    Start this trip
-                  </PrimaryLink>
-                  <PrimaryLink href="/destinations" variant="outline">Compare islands</PrimaryLink>
-                </div>
-              </div>
+        <div className="overflow-hidden rounded-[1.75rem] border border-gray-200 bg-white shadow-card">
+          <div className="grid gap-0 lg:grid-cols-[0.82fr_1.18fr]">
+            <div className="bg-offwhite p-6 md:p-8 lg:p-10">
+              <SectionLabel>Buddy field notes</SectionLabel>
+              <h2 className="mt-3 max-w-xl text-3xl font-extrabold leading-tight text-night md:text-5xl">
+                Better Bahamas trips come from better decisions.
+              </h2>
+              <p className="mt-5 max-w-xl text-base font-semibold leading-7 text-charcoal md:text-lg md:leading-8">
+                Baha Buddy turns a plain request into island fit, trip pace, day order, backup timing, and practical next steps.
+              </p>
 
-              <div className="rounded-2xl border border-gold-200 bg-white p-5 shadow-soft">
-                <p className="text-xs font-black uppercase text-gold-800">
+              <div className="mt-6 rounded-3xl border border-gold-200 bg-white p-5 shadow-soft">
+                <p className="text-xs font-black uppercase tracking-[0.14em] text-gold-800">
                   Traveler said
                 </p>
                 <p className="mt-2 text-2xl font-extrabold leading-tight text-night">
                   Five days in Exuma. Great food. One boat day. Not rushed.
                 </p>
+                <div className="mt-4 grid gap-2 text-sm font-bold text-charcoal sm:grid-cols-2">
+                  <span className="rounded-full bg-offwhite px-3 py-2">Exuma fits the brief</span>
+                  <span className="rounded-full bg-offwhite px-3 py-2">Boat day goes early</span>
+                  <span className="rounded-full bg-offwhite px-3 py-2">Dinner stays close</span>
+                  <span className="rounded-full bg-offwhite px-3 py-2">Backup beach stays ready</span>
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                <PrimaryLink
+                  href={homepageTripHref('Five days in Exuma with great food, one boat day, beaches, and a relaxed pace.')}
+                >
+                  Start this trip
+                </PrimaryLink>
+                <PrimaryLink href="/destinations" variant="outline">Compare islands</PrimaryLink>
               </div>
             </div>
 
-            <div className="bg-white p-4 md:p-6">
-              <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr]">
-                <div className="relative min-h-[26rem] overflow-hidden rounded-3xl">
-                  <Image
-                    src={BahaImages.exumas}
-                    alt="Exuma turquoise water in The Bahamas"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 520px"
-                    unoptimized
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-night/75 via-night/15 to-transparent" />
-                  <div className="absolute bottom-5 left-5 right-5 text-white">
-                    <p className="text-xs font-black uppercase text-white/75">
-                      Buddy reads this as
+            <div className="grid gap-4 p-4 md:p-6 lg:grid-cols-[0.9fr_1.1fr]">
+              <div className="relative min-h-[20rem] overflow-hidden rounded-3xl lg:min-h-full">
+                <Image
+                  src={BahaImages.exumas}
+                  alt="Exuma turquoise water in The Bahamas"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 100vw, 420px"
+                  unoptimized
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-night/80 via-night/20 to-transparent" />
+                <div className="absolute bottom-5 left-5 right-5 text-white">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-white/75">
+                    Buddy reads this as
+                  </p>
+                  <p className="mt-2 text-2xl font-extrabold leading-tight">
+                    Water-led, mid-pace, food-forward
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-soft">
+                <div className="mb-4 flex items-center gap-3 rounded-2xl border border-gray-100 bg-offwhite px-4 py-3">
+                  <BuddyAvatar size="sm" state="thinking" />
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-brand-700">
+                      Route logic
                     </p>
-                    <p className="mt-2 text-2xl font-extrabold leading-tight">
-                      Water-led, mid-pace, food-forward
-                    </p>
+                    <p className="text-sm font-extrabold text-night">Built around weather and pace</p>
                   </div>
                 </div>
 
-                <div
-                  className="rounded-3xl border border-brand-100 bg-offwhite p-4"
-                  style={{
-                    backgroundImage:
-                      'linear-gradient(rgba(6,121,218,0.08) 1px, transparent 1px)',
-                    backgroundSize: '100% 3rem',
-                  }}
-                >
-                  <div className="mb-4 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-soft">
-                    <BuddyAvatar size="sm" state="thinking" />
-                    <div>
-                      <p className="text-xs font-black uppercase text-brand-700">
-                        Route logic
-                      </p>
-                      <p className="text-sm font-extrabold text-night">Built around weather and pace</p>
-                    </div>
-                  </div>
-
-                  <div className="grid gap-3">
-                    {ROUTE_DAYS.map((item) => (
-                      <div key={item.day} className="grid grid-cols-[5.75rem_1fr] gap-3 rounded-2xl bg-white p-3 shadow-soft">
-                        <p className="pt-1 text-xs font-black uppercase leading-5 text-brand-700">{item.day}</p>
-                        <div>
-                          <h3 className="font-extrabold text-night">{item.title}</h3>
-                          <p className="mt-1 text-sm leading-6 text-charcoal">{item.note}</p>
-                        </div>
+                <div className="grid gap-3">
+                  {ROUTE_DAYS.map((item, index) => (
+                    <div key={item.day} className="grid grid-cols-[2.25rem_1fr] gap-3 rounded-2xl border border-gray-100 bg-white p-3">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-50 text-sm font-black text-brand-700">
+                        {index + 1}
+                      </span>
+                      <div>
+                        <p className="text-[11px] font-black uppercase tracking-[0.14em] text-brand-700">{item.day}</p>
+                        <h3 className="mt-1 font-extrabold text-night">{item.title}</h3>
+                        <p className="mt-1 text-sm leading-6 text-charcoal">{item.note}</p>
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
+                </div>
 
-                  <div className="mt-4 rounded-2xl border border-palm-100 bg-palm-50 px-4 py-3">
-                    <p className="text-sm font-extrabold leading-6 text-palm-800">
-                      Buddy keeps one backup route instead of pretending every island day is predictable.
-                    </p>
-                  </div>
+                <div className="mt-4 rounded-2xl border border-palm-100 bg-palm-50 px-4 py-3">
+                  <p className="text-sm font-extrabold leading-6 text-palm-800">
+                    The value is not more options. It is knowing which option belongs in the trip.
+                  </p>
                 </div>
               </div>
             </div>

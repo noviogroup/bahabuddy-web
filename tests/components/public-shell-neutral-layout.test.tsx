@@ -39,26 +39,37 @@ describe('public marketplace shell brand layout', () => {
 
     const nav = screen.getByRole('navigation', { name: 'Travel products' })
     expect(nav).toHaveClass('bg-brand-600')
-    const productLabels = within(nav).getAllByRole('link').map((link) => link.textContent)
+    const primaryLinks = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[data-nav-level="primary"]'))
+    const productLabels = primaryLinks.map((link) => link.textContent?.trim())
     expect(productLabels).toEqual([
       'Stays',
       'Flights',
       'Explore',
       'Destinations',
+      'Guides',
       'Deals',
       'Concierge',
     ])
-    expect(within(nav).queryByRole('link', { name: 'Guides' })).not.toBeInTheDocument()
-    expect(within(nav).queryByRole('link', { name: /restaurants/i })).not.toBeInTheDocument()
+    expect(primaryLinks.map((link) => link.textContent)).not.toContain('Restaurants')
 
     const stays = within(nav).getByRole('link', { name: 'Stays' })
     expect(stays).toHaveClass('text-white/90')
     expect(stays.querySelector('.text-gold-400')).toBeInTheDocument()
 
+    const explore = within(nav).getByRole('link', { name: 'Explore' })
+    expect(explore).toHaveAttribute('aria-haspopup', 'menu')
+    expect(within(nav).getByRole('menuitem', { name: /Things to do/i })).toHaveAttribute('href', '/explore/places?category=Activity')
+    expect(within(nav).getByRole('menuitem', { name: /Landmarks/i })).toHaveAttribute('href', '/explore/places?search=landmark')
+    expect(within(nav).getByRole('menuitem', { name: /Restaurants/i })).toHaveAttribute('href', '/restaurants')
+
     const destinations = within(nav).getByRole('link', { name: 'Destinations' })
     expect(destinations).toHaveAttribute('aria-current', 'page')
+    expect(destinations).toHaveAttribute('aria-haspopup', 'menu')
     expect(destinations).toHaveClass('bg-white/12')
     expect(destinations).toHaveClass('after:bg-gold-400')
+    expect(within(nav).getByRole('menuitem', { name: /Nassau/i })).toHaveAttribute('href', '/explore/island/nassau-paradise-island')
+    expect(within(nav).getByRole('menuitem', { name: /The Exumas/i })).toHaveAttribute('href', '/explore/island/the-exumas')
+    expect(within(nav).getByRole('menuitem', { name: /Long Island/i })).toHaveAttribute('href', '/explore/island/long-island')
   })
 
   test('authenticated header keeps account actions on the white account row', () => {
