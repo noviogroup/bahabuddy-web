@@ -1,7 +1,7 @@
 # Web Deployed Booking Runtime Readiness Review - June 21, 2026
 
 Review time: June 21, 2026, 18:25 EDT
-Updated: June 21, 2026, 19:33 EDT
+Updated: June 21, 2026, 19:58 EDT
 Scope: protected deployed-runtime readiness proof for web hotel and flight booking
 
 ## Executive Status
@@ -10,7 +10,7 @@ Web now has a non-destructive internal runtime endpoint that can prove whether a
 
 This does not create Stripe PaymentIntents, LiteAPI prebooks, LiteAPI bookings, canonical booking rows, trip items, or audit rows. It is a deployment safety gate.
 
-Current deployment status: local/source readiness is complete, but deployed runtime proof is not complete. Netlify project `bahabuddy-web` currently reports production deploy `6a288d99219f21a5f0d52a51` as ready from June 9, 2026, which predates commit `232425d`. Two Netlify MCP upload attempts on June 21, 2026 failed with `502 Bad Gateway`, so the protected readiness endpoint has not yet been proven on the hosted runtime.
+Current deployment status: local/source readiness is complete and the current code has been deployed to Netlify production. Netlify project `bahabuddy-web` now reports production deploy `6a3879a3d33124694477b840` as ready. The deployed readiness endpoint still has not been proven because site-level visitor password protection returns Netlify HTML `401` before requests reach `/api/internal/booking-readiness`.
 
 ## What Changed
 
@@ -67,17 +67,18 @@ Current Netlify project evidence:
 
 - site name: `bahabuddy-web`
 - primary URL: `https://bahabuddy.com`
-- current production deploy: `6a288d99219f21a5f0d52a51`
+- current production deploy: `6a3879a3d33124694477b840`
 - current production deploy state: `ready`
-- current production deploy published: June 9, 2026
-- current production deploy source: CLI/manual, no commit ref reported
+- current production deploy published: June 21, 2026
+- current production deploy source: Netlify CLI production deploy from the local web repo at `f7347c4`
+- unique deploy URL: `https://6a3879a3d33124694477b840--bahabuddy-web.netlify.app`
 - project access controls: visitor password required for all projects
 
 Operational implications:
 
-- The June 9 production deploy cannot prove commit `232425d` because it predates that commit.
+- The protected readiness route is present in the deployed build output.
 - Site-level visitor password protection can return a Netlify HTML `401` before the request reaches `/api/internal/booking-readiness`.
-- Runtime proof should be run only after a new deploy containing `232425d` or later is published and the readiness token/service-role env keys are configured in the deployed runtime.
+- Runtime proof still requires the readiness token/service-role env keys to be configured in the deployed runtime.
 - If visitor password remains enabled, the runtime check needs a deploy target or access path that allows the readiness request to reach the Next.js route.
 
 ## Validation Evidence
@@ -130,7 +131,34 @@ Result:
 
 - Attempt 1 reached Netlify upload, then failed with `502 Bad Gateway`.
 - Attempt 2 reached Netlify upload, then failed with `502 Bad Gateway`.
-- No new production deploy was published by these attempts.
+- No new production deploy was published by these MCP attempts.
+
+Netlify CLI deploy on June 21, 2026:
+
+```bash
+npx -y netlify-cli@latest deploy --build --prod
+```
+
+Result:
+
+- Build completed successfully.
+- Production deploy went live.
+- Production URL: `https://bahabuddy.com`
+- Unique deploy URL: `https://6a3879a3d33124694477b840--bahabuddy-web.netlify.app`
+- Build output included `/api/internal/booking-readiness`.
+
+Post-deploy access check:
+
+```bash
+curl -I https://bahabuddy.com/api/internal/booking-readiness
+curl -I https://6a3879a3d33124694477b840--bahabuddy-web.netlify.app/api/internal/booking-readiness
+```
+
+Result:
+
+- Both requests returned Netlify HTML `401`.
+- This proves the project access-control layer is still in front of the app route.
+- It does not prove the Next.js readiness route or runtime env yet.
 
 ## What This Proves
 
@@ -159,4 +187,4 @@ BOOKING_READINESS_TOKEN=<server-side-token> npm run verify:booking-readiness -- 
 
 Only after the deployed runtime gate passes should the team run controlled LiteAPI/Stripe hotel and flight lifecycle QA.
 
-Immediate next action: publish a new Netlify deploy from `main` at `232425d` or later, configure server-only `BOOKING_READINESS_TOKEN` plus `SUPABASE_SERVICE_ROLE_KEY` on the hosted runtime, then run the deployed verifier against the deploy URL.
+Immediate next action: configure server-only `BOOKING_READINESS_TOKEN` plus `SUPABASE_SERVICE_ROLE_KEY` on the hosted runtime, then provide a readiness access path past Netlify visitor password protection and run the deployed verifier against the deploy URL.
