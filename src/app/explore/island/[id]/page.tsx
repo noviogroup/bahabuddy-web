@@ -36,7 +36,6 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -56,6 +55,8 @@ import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import { dealActionLinks } from '@/lib/deal-actions'
 import { islandFoodLinks } from '@/lib/island-context-links'
+import FaqAccordion, { type FaqItem } from '@/components/island/FaqAccordion'
+import ImageGallery from '@/components/island/ImageGallery'
 
 export const revalidate = 300
 
@@ -91,7 +92,93 @@ interface Deal {
   valid_through: string | null
 }
 
+interface Landmark {
+  id: string
+  name: string
+  landmark_type: string | null
+  location_area: string | null
+  short_description: string | null
+  why_it_matters: string | null
+  visitor_tips: string | null
+  opening_hours: string | null
+  entry_fee: string | null
+}
+
+interface SelfTour {
+  id: string
+  title: string
+  island: string
+  theme: string | null
+  estimated_duration: number | null
+  difficulty: string | null
+  cover_image_url: string | null
+  cruise_friendly: boolean
+  featured: boolean
+}
+
 // ─── Supabase fetchers ──────────────────────────────────────────────────────
+
+async function getIslandGalleryImages(slug: string): Promise<string[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('islands')
+      .select('gallery_images')
+      .eq('slug', slug)
+      .single()
+    if (!data?.gallery_images) return []
+    const imgs = data.gallery_images as unknown
+    return Array.isArray(imgs) ? (imgs as string[]).filter(Boolean) : []
+  } catch {
+    return []
+  }
+}
+
+async function getIslandLandmarks(slug: string): Promise<Landmark[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('historic_landmarks')
+      .select('id, name, landmark_type, location_area, short_description, why_it_matters, visitor_tips, opening_hours, entry_fee')
+      .eq('island_slug', slug)
+      .eq('status', 'active')
+      .limit(20)
+    return (data as Landmark[]) ?? []
+  } catch {
+    return []
+  }
+}
+
+async function getIslandTours(island: string): Promise<SelfTour[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('self_tours')
+      .select('id, title, island, theme, estimated_duration, difficulty, cover_image_url, cruise_friendly, featured')
+      .eq('island', island)
+      .eq('is_active', true)
+      .order('featured', { ascending: false })
+      .limit(8)
+    return (data as SelfTour[]) ?? []
+  } catch {
+    return []
+  }
+}
+
+async function getIslandFaqs(slug: string): Promise<FaqItem[]> {
+  try {
+    const supabase = await createClient()
+    const { data } = await supabase
+      .from('island_faq')
+      .select('id, category, question, answer, traveller_type')
+      .eq('island_slug', slug)
+      .eq('status', 'active')
+      .order('category')
+    return (data as FaqItem[]) ?? []
+  } catch {
+    return []
+  }
+}
 
 async function getIslandAttractions(dbSlug: string): Promise<Attraction[]> {
   try {
@@ -236,11 +323,15 @@ export default async function IslandDetailPage({ params }: PageProps) {
   const dbSlug = config ? getIslandDbSlug(config) : params.id
 
   // Sanity + Supabase fetches in parallel.
-  const [sanity, attractions, deals, dbHero] = await Promise.all([
+  const [sanity, attractions, deals, dbHero, galleryImages, landmarks, tours, faqs] = await Promise.all([
     fetchDestinationByIsland(params.id),
     getIslandAttractions(dbSlug),
     getIslandDeals(dbSlug),
     config ? getIslandHero(config.slug) : Promise.resolve(''),
+    getIslandGalleryImages(dbSlug),
+    getIslandLandmarks(dbSlug),
+    getIslandTours(dbSlug),
+    getIslandFaqs(dbSlug),
   ])
 
   // Neither hardcoded nor Sanity knows this slug → 404
@@ -257,7 +348,8 @@ export default async function IslandDetailPage({ params }: PageProps) {
   const overviewPortable = sanity?.overview
   const overviewProse = config?.description ?? ''
   const highlights = sanity?.highlights ?? []
-  const gallery = sanity?.gallery ?? []
+  const sanityGallery = sanity?.gallery ?? []
+  const gallery = Array.from(new Set([...sanityGallery, ...galleryImages]))
   const gettingThere = sanity?.gettingThere ?? null
   const primaryImageUrl = heroUrl || gallery[0] || null
 
@@ -324,7 +416,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
           description="Island details are available. Provider or destination image is not available yet."
           pendingLabel="Photo pending"
           tone="island"
-          className="mb-10 aspect-[16/7] min-h-[240px] rounded-baha-xl border border-gray-200 shadow-sm"
+          className="mb-10 h-64 rounded-baha-xl border border-gray-200 shadow-sm sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 1100px"
           priority
@@ -379,6 +471,36 @@ export default async function IslandDetailPage({ params }: PageProps) {
               Getting there
             </h2>
             <p className="text-gray-600 leading-relaxed">{gettingThere}</p>
+          </section>
+        )}
+
+        {/* Historic Landmarks */}
+        {landmarks.length > 0 && (
+          <section className="mb-14">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Historic landmarks</h2>
+              <span className="text-sm text-gray-400">{landmarks.length} {landmarks.length === 1 ? 'site' : 'sites'}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {landmarks.map(lm => (
+                <LandmarkCard key={lm.id} landmark={lm} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Self-Guided Tours */}
+        {tours.length > 0 && (
+          <section className="mb-14">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-900">Self-guided tours</h2>
+              <span className="text-sm text-gray-400">{tours.length} {tours.length === 1 ? 'tour' : 'tours'}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {tours.map(tour => (
+                <TourCard key={tour.id} tour={tour} />
+              ))}
+            </div>
           </section>
         )}
 
@@ -441,26 +563,11 @@ export default async function IslandDetailPage({ params }: PageProps) {
           </div>
         </section>
 
-        {/* Gallery — Sanity-only */}
+        {/* Gallery — Sanity + Supabase gallery_images */}
         {gallery.length > 0 && (
           <section className="mb-14">
             <h2 className="text-xl font-bold text-gray-900 mb-5">Gallery</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {gallery.slice(0, 6).map((url, idx) => (
-                <div
-                  key={url}
-                  className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100"
-                >
-                  <Image
-                    src={url}
-                    alt={`${name} — gallery image ${idx + 1}`}
-                    fill
-                    className="object-cover hover:scale-105 transition-transform duration-500"
-                    sizes="(max-width: 768px) 50vw, 33vw"
-                  />
-                </div>
-              ))}
-            </div>
+            <ImageGallery images={gallery} alt={name} />
           </section>
         )}
 
@@ -517,6 +624,16 @@ export default async function IslandDetailPage({ params }: PageProps) {
                 <DealCard key={d.id} deal={d} returnPath={islandPath} />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* Island FAQ */}
+        {faqs.length > 0 && (
+          <section className="mb-14">
+            <h2 className="text-2xl font-bold text-gray-900 mb-6">
+              Traveler FAQ — {name}
+            </h2>
+            <FaqAccordion faqs={faqs} />
           </section>
         )}
 
@@ -724,4 +841,110 @@ function dealPreviewReason(deal: Deal, contextLabel: string): string {
     return `Good fit for ${deal.highlights.slice(0, 2).join(' and ').toLowerCase()} travelers.`
   }
   return `${contextLabel} with a direct marketplace action and Buddy as secondary planning support.`
+}
+
+const LANDMARK_TYPE_ICONS: Record<string, string> = {
+  fort: '🏰',
+  church: '⛪',
+  monument: '🗿',
+  museum: '🏛️',
+  lighthouse: '🗼',
+  plantation: '🏡',
+  cemetery: '🪦',
+  government: '🏛️',
+}
+
+function LandmarkCard({ landmark }: { landmark: Landmark }) {
+  const icon = LANDMARK_TYPE_ICONS[landmark.landmark_type ?? ''] ?? '📍'
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-start gap-3 mb-3">
+        <span className="text-2xl flex-shrink-0" role="img" aria-label={landmark.landmark_type ?? 'landmark'}>
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <h4 className="text-base font-bold text-gray-900 leading-tight">{landmark.name}</h4>
+          <div className="flex flex-wrap gap-1.5 mt-1">
+            {landmark.landmark_type && (
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-charcoal capitalize">
+                {landmark.landmark_type.replace(/_/g, ' ')}
+              </span>
+            )}
+            {landmark.location_area && (
+              <span className="text-xs text-gray-400">{landmark.location_area}</span>
+            )}
+          </div>
+        </div>
+      </div>
+      {landmark.short_description && (
+        <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-3">{landmark.short_description}</p>
+      )}
+      {landmark.why_it_matters && (
+        <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 mb-3">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-charcoal">Why it matters</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-charcoal line-clamp-2">{landmark.why_it_matters}</p>
+        </div>
+      )}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+        {landmark.opening_hours && <span>{landmark.opening_hours}</span>}
+        {landmark.entry_fee && <span>{landmark.entry_fee}</span>}
+      </div>
+    </div>
+  )
+}
+
+function TourCard({ tour }: { tour: SelfTour }) {
+  const difficultyColor: Record<string, string> = {
+    easy: 'bg-green-100 text-green-800',
+    moderate: 'bg-yellow-100 text-yellow-800',
+    challenging: 'bg-orange-100 text-orange-800',
+  }
+
+  return (
+    <Link href={`/tours/${tour.id}`} className="block">
+      <div className="rounded-2xl border border-gray-100 bg-white overflow-hidden shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all duration-300 group flex flex-col h-full">
+        <ImageWithSourcePolicy
+          src={tour.cover_image_url}
+          alt={tour.title}
+          title={tour.title}
+          eyebrow={tour.theme ?? 'Walking tour'}
+          description="Tour photo is not available yet."
+          className="aspect-video"
+          tone="activity"
+          unoptimized={false}
+        >
+          {tour.cruise_friendly && (
+            <div className="absolute top-2.5 right-2.5 bg-blue-500/90 backdrop-blur-sm rounded-full px-2 py-1 flex items-center gap-1">
+              <span className="text-xs font-bold text-white">Cruise-friendly</span>
+            </div>
+          )}
+        </ImageWithSourcePolicy>
+        <div className="p-4 flex flex-col flex-1">
+          <h4 className="text-base font-bold text-gray-900 mb-1">{tour.title}</h4>
+          <div className="flex flex-wrap gap-1.5 mb-3 mt-auto">
+            {tour.estimated_duration && (
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-charcoal">
+                {tour.estimated_duration < 60
+                  ? `${tour.estimated_duration} min`
+                  : `${Math.floor(tour.estimated_duration / 60)}h${tour.estimated_duration % 60 > 0 ? ` ${tour.estimated_duration % 60}m` : ''}`}
+              </span>
+            )}
+            {tour.difficulty && (
+              <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${difficultyColor[tour.difficulty] ?? 'bg-gray-100 text-gray-800'}`}>
+                {tour.difficulty}
+              </span>
+            )}
+            {tour.theme && (
+              <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-charcoal">
+                {tour.theme}
+              </span>
+            )}
+          </div>
+          <span className="text-xs font-semibold text-night transition-colors group-hover:text-gray-700">
+            View tour →
+          </span>
+        </div>
+      </div>
+    </Link>
+  )
 }
