@@ -623,10 +623,10 @@ describe('FlightOfferBookingClient', () => {
 
 describe('FlightBookingConfirmationClient', () => {
   test.each([
-    ['confirmed' as const, 'Flight booking confirmed', 'DEMO123'],
-    ['pending' as const, 'Payment received, booking pending', 'Pending'],
-    ['provider_failed' as const, 'Payment received, provider booking failed', 'Pending'],
-  ])('renders demo %s booking state without loading the booking API', async (demoState, heading, providerReference) => {
+    ['confirmed' as const, 'Flight booking confirmed', 'DEMO123', true],
+    ['pending' as const, 'Payment received, booking pending', 'Pending', false],
+    ['provider_failed' as const, 'Payment received, provider booking failed', 'Pending', false],
+  ])('renders demo %s booking state without loading the booking API', async (demoState, heading, providerReference, expectsReceiptEmail) => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
 
@@ -643,6 +643,12 @@ describe('FlightBookingConfirmationClient', () => {
     expect(screen.getByText('Non-payment fixture')).toBeInTheDocument()
     expect(screen.getAllByText(providerReference).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard')
+    const receiptEmailNotice = screen.queryByText('We sent your receipt, itinerary, and booking reference to your email.')
+    if (expectsReceiptEmail) {
+      expect(receiptEmailNotice).toBeInTheDocument()
+    } else {
+      expect(receiptEmailNotice).not.toBeInTheDocument()
+    }
     expect(fetchMock).not.toHaveBeenCalled()
   })
 

@@ -172,6 +172,12 @@ export default function FlightBookingConfirmationClient({
 
           {booking && (
             <div className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
+              {booking.reconciled && (
+                <p className="mb-5 rounded-baha-xl border border-palm-200 bg-palm-50 p-4 text-sm font-semibold leading-6 text-palm-800">
+                  We sent your receipt, itinerary, and booking reference to your email.
+                </p>
+              )}
+
               <div className="mb-5 grid gap-3 rounded-baha-xl border border-gray-200 bg-gray-50 p-4 sm:grid-cols-3">
                 <StatusField label="Provider" value={providerLabel(booking.provider)} />
                 <StatusField label="Amount" value={amountLabel ?? 'Pending'} />
