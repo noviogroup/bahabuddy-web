@@ -223,7 +223,7 @@ function TravelersPopover({ value, onChange, mode, triggerLabel }: TravelersPopo
         aria-expanded={open}
         className="w-full text-left rounded-baha-md border border-gray-300 bg-white px-3 py-2.5 hover:border-brand-300 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 transition-colors"
       >
-        <span className="block text-[10px] font-semibold uppercase tracking-wide text-gray-500">
+        <span className="block text-xs font-semibold uppercase text-gray-500">
           {triggerLabel}
         </span>
         <span className="block text-sm font-medium text-night truncate">
@@ -235,7 +235,7 @@ function TravelersPopover({ value, onChange, mode, triggerLabel }: TravelersPopo
         <div
           role="dialog"
           aria-label="Choose travelers"
-          className="absolute z-30 left-0 right-0 sm:left-auto sm:right-0 sm:w-72 mt-2 bg-white rounded-baha-lg border border-gray-200 shadow-card-hover p-4 animate-fade-in"
+          className="absolute left-0 right-0 z-[90] mt-2 rounded-baha-lg border border-gray-200 bg-white p-4 shadow-card-hover animate-fade-in sm:left-auto sm:right-0 sm:w-72"
         >
           <CounterRow
             label="Adults"
@@ -455,10 +455,10 @@ export default function HeroSearchPanel() {
   return (
     <section
       aria-label="Plan or search"
-      className="bg-white rounded-baha-xl border border-gray-100 shadow-card overflow-hidden"
+      className="relative z-10 overflow-visible rounded-baha-xl border border-gray-100 bg-white shadow-card"
     >
       {/* Tab strip */}
-      <div role="tablist" aria-label="Search category" className="flex items-stretch gap-1 px-2 pt-2 sm:px-4 sm:pt-3 overflow-x-auto">
+      <div role="tablist" aria-label="Search category" className="grid grid-cols-2 items-stretch gap-1 overflow-hidden px-2 pt-2 min-[360px]:grid-cols-3 sm:flex sm:px-4 sm:pt-3">
         {TABS.map(tab => {
           const active = activeTab === tab.key
           return (
@@ -467,7 +467,7 @@ export default function HeroSearchPanel() {
               role="tab"
               aria-selected={active}
               onClick={() => setActiveTab(tab.key)}
-              className={`group relative flex items-center gap-2 px-3 sm:px-4 py-3 text-sm font-semibold whitespace-nowrap transition-colors ${
+              className={`group relative flex min-h-14 w-full items-center justify-center gap-2 px-2 py-3 text-xs font-semibold whitespace-nowrap transition-colors min-[360px]:text-sm sm:min-h-0 sm:w-auto sm:px-4 ${
                 active ? 'text-brand-700' : 'text-gray-500 hover:text-night'
               }`}
             >
@@ -579,7 +579,7 @@ function PlanForm({ value, onChange, onSubmit }: PlanFormProps) {
   return (
     <form onSubmit={onSubmit} aria-label="Create a trip" className="space-y-4">
       <div>
-        <label htmlFor="plan-prompt" className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">
+        <label htmlFor="plan-prompt" className="block text-xs font-semibold text-gray-600 uppercase mb-1.5">
           Trip idea
         </label>
         <textarea
@@ -722,7 +722,7 @@ function FlightsForm(p: FlightsFormProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
-          <label htmlFor="flight-origin" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          <label htmlFor="flight-origin" className="block text-xs font-semibold text-gray-500 uppercase mb-1">
             From
           </label>
           <TravelSearchCombobox
@@ -742,7 +742,7 @@ function FlightsForm(p: FlightsFormProps) {
         </div>
 
         <div>
-          <label htmlFor="flight-dest" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          <label htmlFor="flight-dest" className="block text-xs font-semibold text-gray-500 uppercase mb-1">
             To
           </label>
           <TravelSearchCombobox
@@ -794,7 +794,7 @@ function FlightsForm(p: FlightsFormProps) {
           onChange={p.onTravelersChange}
         />
         <div>
-          <label htmlFor="flight-cabin" className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+          <label htmlFor="flight-cabin" className="block text-xs font-semibold text-gray-500 uppercase mb-1">
             Cabin
           </label>
           <TravelSearchSelect
@@ -868,7 +868,7 @@ function ThingsForm(p: ThingsFormProps) {
       </div>
 
       <div>
-        <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-2">
+        <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
           Optional &mdash; what are you into?
         </p>
         <div className="flex flex-wrap gap-2">
@@ -910,7 +910,7 @@ interface IslandSelectProps {
 function IslandSelect({ id, label, value, onChange }: IslandSelectProps) {
   return (
     <div>
-      <label htmlFor={id} className="block text-[10px] font-semibold text-gray-500 uppercase tracking-wide mb-1">
+      <label htmlFor={id} className="block text-xs font-semibold text-gray-500 uppercase mb-1">
         {label}
       </label>
       <TravelSearchSelect

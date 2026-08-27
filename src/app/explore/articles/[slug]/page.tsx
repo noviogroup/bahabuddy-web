@@ -139,13 +139,13 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       startTripHref={startTripHref}
       buddyHref={buddyHref}
     >
-      <ArticleProse text={article.intro} className="text-base sm:text-lg" />
+      <ArticleProse text={article.intro} className="text-base" />
 
       {/* Sections */}
       <div className="mt-8 space-y-8">
         {article.sections.map((section, idx) => (
           <section key={idx}>
-            <h2 className="text-xl sm:text-2xl font-bold text-night mb-3">
+            <h2 className="text-xl font-bold text-night mb-3">
               {section.heading}
             </h2>
             <ArticleProse text={section.body} />
@@ -156,7 +156,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       {/* Callout */}
       {article.callout && (
         <aside className="mt-10 rounded-r-xl border-l-4 border-gray-300 bg-gray-50 p-5">
-          <p className="mb-2 text-xs font-bold uppercase tracking-widest text-charcoal">
+          <p className="mb-2 text-xs font-bold uppercasest text-charcoal">
             {article.callout.title}
           </p>
           <ArticleProse text={article.callout.body} className="text-gray-700" />
@@ -202,14 +202,14 @@ function ArticleReaderLayout({
           <>
             <Link
               href={startTripHref}
-              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
             >
               <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
               Start trip from article
             </Link>
             <Link
               href={buddyHref}
-              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
               Ask Buddy
             </Link>
@@ -217,10 +217,10 @@ function ArticleReaderLayout({
         )}
       >
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-charcoal ring-1 ring-gray-200">
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-charcoal ring-1 ring-gray-200">
             {categoryLabel}
           </span>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-charcoal ring-1 ring-gray-200">
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-charcoal ring-1 ring-gray-200">
             {readTime} read
           </span>
         </div>
@@ -232,13 +232,11 @@ function ArticleReaderLayout({
           alt={title}
           title={title}
           eyebrow={categoryLabel}
-          description="Article content is available. Article image is not available yet."
           className="mb-8 aspect-[16/7] min-h-[220px] rounded-baha-xl border border-gray-200 shadow-sm"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 896px"
           priority
           tone="island"
-          pendingLabel="Photo pending"
         />
 
         <article className="mx-auto max-w-3xl">
@@ -277,10 +275,10 @@ function ArticlePlanningPanel({
 }) {
   return (
     <div className="mt-12 rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-      <p className="mb-2 text-xs font-bold uppercase tracking-widest text-charcoal">
+      <p className="mb-2 text-xs font-bold uppercasest text-charcoal">
         Ready to make it real?
       </p>
-      <h3 className="mb-3 text-xl font-bold text-night sm:text-2xl">
+      <h3 className="mb-3 text-xl font-bold text-night">
         Start a trip from this article
       </h3>
       <p className="mb-5 max-w-lg text-sm leading-relaxed text-gray-600">

@@ -11,6 +11,7 @@ import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import { BahaImages } from '@/lib/baha-images'
 import { buddyChatHref } from '@/lib/buddy-chat'
 import { ISLAND_CONFIGS, getIslandHeroImage } from '@/lib/island-config'
+import { stayIslandFilterLabel } from '@/lib/stay-island-filters'
 import {
   fetchArticles,
   fetchSocialVideos,
@@ -407,10 +408,10 @@ export default async function ExplorePage() {
         ]}
         actions={
           <>
-            <Link href="/explore/places" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-700">
+            <Link href="/explore/places" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">
               Browse places
             </Link>
-            <Link href={exploreBuddyHref('Help me explore the Bahamas')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+            <Link href={exploreBuddyHref('Help me explore the Bahamas')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night hover:border-gray-400 hover:bg-gray-50">
               Ask Buddy
             </Link>
           </>
@@ -425,27 +426,28 @@ export default async function ExplorePage() {
             placeholder="Search islands, beaches, food, tours, hotels, or transport"
             className="min-h-11 rounded-baha-md border border-gray-200 bg-white px-4 text-sm font-semibold text-night placeholder:text-gray-500 focus:border-gray-500 focus:outline-none focus:ring-2 focus:ring-gray-100"
           />
-          <button className="min-h-11 rounded-baha-md bg-brand-600 px-5 text-sm font-extrabold text-white hover:bg-brand-700">
+          <button className="min-h-11 rounded-baha-md bg-brand-600 px-5 text-sm font-bold text-white hover:bg-brand-700">
             Search
           </button>
         </form>
-        <div className="mt-4 flex gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="relative mt-4 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-10 after:bg-gradient-to-l after:from-white after:to-transparent lg:after:hidden">
+        <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pr-10 [scrollbar-width:none] lg:flex-wrap lg:pr-0 [&::-webkit-scrollbar]:hidden">
           {CATEGORIES.map((category) => (
             <Link
               key={category.label}
               href={category.href}
-              className="shrink-0 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-extrabold text-charcoal hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+              className="inline-flex min-h-11 shrink-0 snap-start items-center rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-bold text-charcoal hover:border-gray-400 hover:bg-gray-50 hover:text-night"
             >
               {category.label}
             </Link>
           ))}
         </div>
+        </div>
       </CompactPageHeader>
 
-      <main className="mx-auto max-w-6xl space-y-10 px-4 py-8">
+      <main className="mx-auto max-w-6xl space-y-8 px-4 py-6 sm:space-y-10 sm:py-8">
         <SectionHeader
           title="Explore Islands"
-          copy="Start with the island, then drill into stays, food, activities, and transport."
           actionHref="/destinations"
           actionLabel="See all islands"
         />
@@ -453,6 +455,7 @@ export default async function ExplorePage() {
           {ISLAND_CONFIGS.slice(0, 8).map((island) => {
             const islandHref = `/explore/island/${island.slug}`
             const islandSeed = `Start a Bahamas trip around ${island.name}. Use this island context: ${island.tagline}`
+            const stayIsland = stayIslandFilterLabel(island.name) || island.name
             return (
               <article
                 key={island.slug}
@@ -470,7 +473,7 @@ export default async function ExplorePage() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-night/70 via-night/10 to-transparent" />
                     <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                      <h2 className="text-lg font-extrabold">{island.name}</h2>
+                      <h2 className="text-lg font-bold">{island.name}</h2>
                       <p className="mt-1 line-clamp-1 text-xs font-semibold text-white/85">{island.vibe}</p>
                     </div>
                   </div>
@@ -478,16 +481,16 @@ export default async function ExplorePage() {
                 <div className="p-4">
                   <p className="line-clamp-2 text-sm leading-6 text-charcoal">{island.tagline}</p>
                   <div className="mt-4 grid grid-cols-2 gap-2">
-                    <Link href={islandHref} className="inline-flex items-center justify-center rounded-full bg-brand-600 px-3 py-2 text-xs font-extrabold text-white hover:bg-brand-700">
+                    <Link href={islandHref} className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-600 px-3 py-2 text-xs font-bold text-white hover:bg-brand-700">
                       View details
                     </Link>
-                    <Link href={`/stays?island=${encodeURIComponent(island.name)}&sort=stars`} className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+                    <Link href={`/stays?island=${encodeURIComponent(stayIsland)}&sort=stars`} className="inline-flex min-h-11 items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">
                       Check availability
                     </Link>
-                    <Link href={exploreTripHref(islandHref, islandSeed)} className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+                    <Link href={exploreTripHref(islandHref, islandSeed)} className="inline-flex min-h-11 items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">
                       Add to trip
                     </Link>
-                    <Link href={exploreBuddyHref(`Help me plan around ${island.name}`)} className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+                    <Link href={exploreBuddyHref(`Help me plan around ${island.name}`)} className="inline-flex min-h-11 items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">
                       Ask Buddy
                     </Link>
                   </div>
@@ -497,46 +500,43 @@ export default async function ExplorePage() {
           })}
         </div>
 
-        <SectionHeader title="Self-Guided Tours" copy="Use guided routes when you want stops, timing, map context, and Buddy support." actionHref="/nassau-cruise-itineraries" actionLabel="View tours" />
+        <SectionHeader title="Self-Guided Tours" actionHref="/nassau-cruise-itineraries" actionLabel="View tours" />
         <div className="grid gap-4 md:grid-cols-3">
           {EXPERIENCE_CARDS.map((card) => (
             <ExploreActionCard key={card.title} card={card} />
           ))}
         </div>
 
-        <SectionHeader title="Nearby Experiences" copy="Start with the island base, then choose beaches, food, tours, and timing that fit the day." actionHref="/explore/places" actionLabel="Browse places" />
+        <SectionHeader title="Nearby Experiences" actionHref="/explore/places" actionLabel="Browse places" />
         <div className="grid gap-4 md:grid-cols-3">
           {NEARBY_EXPERIENCE_CARDS.map((card) => (
             <SimpleActionCard key={card.title} {...card} />
           ))}
         </div>
 
-        <SectionHeader title="Where to Stay" copy="Filter by hotels, homes, villas, apartments, and condos, then check availability." actionHref="/stays" actionLabel="Search stays" />
+        <SectionHeader title="Where to Stay" actionHref="/stays" actionLabel="Search stays" />
         <div className="grid gap-4 md:grid-cols-3">
           {STAY_CARDS.map((card) => (
             <SimpleActionCard key={card.title} {...card} primaryLabel="Check availability" />
           ))}
         </div>
 
-        <SectionHeader title="Food and Culture" copy="Restaurants are a discovery category in Explore, island pages, guides, and Buddy recommendations." actionHref="/restaurants" actionLabel="Browse restaurants" />
+        <SectionHeader title="Food and Culture" actionHref="/restaurants" actionLabel="Browse restaurants" />
         <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm md:flex md:items-center md:justify-between md:gap-6">
           <div>
-            <h2 className="text-xl font-extrabold text-night">Build a food day around the island you choose</h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-charcoal">
-              Start with island context, then compare local food, waterfront dining, cultural stops, and transport timing.
-            </p>
+            <h2 className="text-xl font-bold text-night">Build a food day around the island you choose</h2>
           </div>
           <div className="mt-4 flex flex-wrap gap-2 md:mt-0">
-            <Link href="/restaurants" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-700">
+            <Link href="/restaurants" className="inline-flex min-h-11 items-center rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">
               View details
             </Link>
             <Link
               href={exploreTripHref('/restaurants', 'Plan a Bahamas food and culture day around restaurants, local food, island context, and nearby cultural stops.')}
-              className="rounded-full border border-gray-300 px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50"
+              className="inline-flex min-h-11 items-center rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-night hover:border-gray-400 hover:bg-gray-50"
             >
               Start food trip
             </Link>
-            <Link href={exploreBuddyHref('Plan a Bahamas food and culture day')} className="rounded-full border border-gray-300 px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+            <Link href={exploreBuddyHref('Plan a Bahamas food and culture day')} className="inline-flex min-h-11 items-center rounded-full border border-gray-300 px-4 py-2 text-sm font-bold text-night hover:border-gray-400 hover:bg-gray-50">
               Ask Buddy
             </Link>
           </div>
@@ -551,21 +551,21 @@ export default async function ExplorePage() {
 
         <section className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="max-w-3xl">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Build from Explore</p>
-            <h2 className="mt-2 text-2xl font-extrabold text-night">Save the ideas into a trip first</h2>
+            <p className="text-xs font-bold uppercase text-gray-500">Build from Explore</p>
+            <h2 className="mt-2 text-2xl font-bold text-night">Save the ideas into a trip first</h2>
             <p className="mt-2 text-sm leading-6 text-charcoal">
               Create the trip record, then add stays, flights, restaurants, tours, and places directly. Buddy can help refine the plan after the structure exists.
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
                 href={exploreTripHref('/explore', 'Help me turn Bahamas Explore ideas into a trip with islands, stays, flights, food, and tours.')}
-                className="inline-flex rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white hover:bg-brand-700"
+                className="inline-flex min-h-11 items-center rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-brand-700"
               >
                 Create trip from Explore
               </Link>
               <Link
                 href={exploreBuddyHref('Help me choose what to do in the Bahamas')}
-                className="inline-flex rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50"
+                className="inline-flex min-h-11 items-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night hover:border-gray-400 hover:bg-gray-50"
               >
                 Ask Buddy
               </Link>
@@ -599,18 +599,18 @@ function SectionHeader({
   actionLabel,
 }: {
   title: string
-  copy: string
+  copy?: string
   actionHref?: string
   actionLabel?: string
 }) {
   return (
     <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
       <div>
-        <h2 className="text-2xl font-extrabold text-night">{title}</h2>
-        <p className="mt-1 max-w-2xl text-sm leading-6 text-charcoal">{copy}</p>
+        <h2 className="text-2xl font-bold text-night">{title}</h2>
+        {copy && <p className="mt-1 max-w-2xl text-sm leading-6 text-charcoal">{copy}</p>}
       </div>
       {actionHref && actionLabel && (
-        <Link href={actionHref} className="text-sm font-extrabold text-night hover:text-gray-700">
+        <Link href={actionHref} className="inline-flex min-h-11 items-center rounded-full px-1 text-sm font-bold text-night hover:text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300">
           {actionLabel}
         </Link>
       )}
@@ -636,17 +636,17 @@ function ExploreActionCard({
         <Image src={card.image} alt={card.title} fill sizes="(max-width: 768px) 100vw, 33vw" className="object-cover" unoptimized />
       </div>
       <div className="p-5">
-        <p className="text-xs font-extrabold uppercase tracking-wide text-gray-500">{card.eyebrow}</p>
-        <h3 className="mt-2 text-lg font-extrabold text-night">{card.title}</h3>
+        <p className="text-xs font-bold uppercase text-gray-500">{card.eyebrow}</p>
+        <h3 className="mt-2 text-lg font-bold text-night">{card.title}</h3>
         <p className="mt-2 text-sm leading-6 text-charcoal">{card.copy}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Link href={card.href} className="rounded-full bg-brand-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-brand-700">
+          <Link href={card.href} className="inline-flex min-h-11 items-center rounded-full bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700">
             View details
           </Link>
-          <Link href={exploreTripHref(card.href, card.prompt)} className="rounded-full border border-gray-300 px-4 py-2 text-xs font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+          <Link href={exploreTripHref(card.href, card.prompt)} className="inline-flex min-h-11 items-center rounded-full border border-gray-300 px-4 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">
             Start trip
           </Link>
-          <Link href={exploreBuddyHref(card.prompt)} className="rounded-full border border-gray-300 px-4 py-2 text-xs font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+          <Link href={exploreBuddyHref(card.prompt)} className="inline-flex min-h-11 items-center rounded-full border border-gray-300 px-4 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">
             Ask Buddy
           </Link>
         </div>
@@ -670,16 +670,16 @@ function SimpleActionCard({
 }) {
   return (
     <article className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-extrabold text-night">{title}</h3>
+      <h3 className="text-lg font-bold text-night">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-charcoal">{copy}</p>
       <div className="mt-5 flex flex-wrap gap-2">
-        <Link href={href} className="inline-flex rounded-full bg-brand-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-brand-700">
+        <Link href={href} className="inline-flex min-h-11 items-center rounded-full bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700">
           {primaryLabel}
         </Link>
         {tripSeed && (
           <Link
             href={exploreTripHref(href, tripSeed)}
-            className="inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-xs font-extrabold text-night hover:border-gray-400 hover:bg-gray-50"
+            className="inline-flex min-h-11 items-center rounded-full border border-gray-300 bg-white px-4 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50"
           >
             Start trip
           </Link>

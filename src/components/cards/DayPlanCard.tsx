@@ -135,7 +135,7 @@ export function DayPlanCard({ data, onSendMessage, className }: Props) {
             </>
           )}
         </div>
-        <span className={`inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${paceStyle.bg} ${paceStyle.text}`}>
+        <span className={`inline-flex items-center gap-1 text-xs font-semibold uppercase px-2 py-0.5 rounded-full ${paceStyle.bg} ${paceStyle.text}`}>
           {pace}
         </span>
       </div>
@@ -148,7 +148,7 @@ export function DayPlanCard({ data, onSendMessage, className }: Props) {
               {ICONS[s.key]}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{s.label}</p>
+              <p className="text-xs font-semibold uppercase text-gray-500">{s.label}</p>
               {s.activity ? (
                 <p className="text-sm text-gray-800 leading-snug mt-0.5">{s.activity}</p>
               ) : (
@@ -162,7 +162,7 @@ export function DayPlanCard({ data, onSendMessage, className }: Props) {
                   stop(e)
                   onSendMessage(`Swap the ${s.label.toLowerCase()} activity on Day ${day_number}`)
                 }}
-                className="text-[10px] font-semibold text-brand-600 hover:text-brand-700 px-2 py-1 rounded-full hover:bg-brand-50 transition-colors shrink-0"
+                className="text-xs font-semibold text-brand-600 hover:text-brand-700 px-2 py-1 rounded-full hover:bg-brand-50 transition-colors shrink-0"
                 aria-label={`Swap ${s.label.toLowerCase()} activity on day ${day_number}`}
               >
                 Swap
@@ -175,7 +175,7 @@ export function DayPlanCard({ data, onSendMessage, className }: Props) {
                   stop(e)
                   onSendMessage(`Suggest something for ${s.label.toLowerCase()} on Day ${day_number}`)
                 }}
-                className="text-[10px] font-semibold text-gray-500 hover:text-brand-600 px-2 py-1 rounded-full hover:bg-brand-50 transition-colors shrink-0"
+                className="text-xs font-semibold text-gray-500 hover:text-brand-600 px-2 py-1 rounded-full hover:bg-brand-50 transition-colors shrink-0"
               >
                 Add
               </button>
@@ -187,7 +187,7 @@ export function DayPlanCard({ data, onSendMessage, className }: Props) {
       {/* Day total footer (when known) \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500 */}
       {day_total_cost && day_total_cost > 0 && (
         <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between">
-          <span className="text-[11px] uppercase tracking-wide font-semibold text-gray-500">Day total</span>
+          <span className="text-xs uppercase font-semibold text-gray-500">Day total</span>
           <span className="text-base font-bold text-brand-600">${Math.round(day_total_cost).toLocaleString()}</span>
         </div>
       )}

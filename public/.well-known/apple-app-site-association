@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["892E645PUM.com.novio.bahabuddy.bahaBuddyV2"],
+        "components": [
+          {
+            "/": "/trip/*",
+            "comment": "Universal link into a shared trip"
+          },
+          {
+            "/": "/invite/*",
+            "comment": "Universal link into a trip invitation"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["892E645PUM.com.novio.bahabuddy.bahaBuddyV2"]
+  }
+}

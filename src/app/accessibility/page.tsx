@@ -1,12 +1,17 @@
 import type { Metadata } from 'next'
 import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
+import SanityManagedContentPage from '@/components/marketplace/SanityManagedContentPage'
+import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'Accessibility',
   description: 'Baha Buddy accessibility statement and support contact.',
 }
 
-export default function AccessibilityPage() {
+export default async function AccessibilityPage() {
+  const managedPage = await fetchContentPageByRoute('/accessibility')
+  if (managedPage) return <SanityManagedContentPage page={managedPage} />
+
   return (
     <UtilityContentLayout
       activePath="/accessibility"

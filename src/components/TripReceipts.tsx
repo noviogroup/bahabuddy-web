@@ -172,7 +172,7 @@ export default function TripReceipts({ tripId }: Props) {
                     unoptimized
                   />
                 ) : isPdf(receipt.mimeType) ? (
-                  <span className="text-[10px] font-bold text-red-500 tracking-wider">PDF</span>
+                  <span className="text-xs font-bold text-red-500r">PDF</span>
                 ) : (
                   <svg
                     className="w-5 h-5 text-gray-400"

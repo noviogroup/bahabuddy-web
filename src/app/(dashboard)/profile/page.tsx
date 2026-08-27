@@ -57,7 +57,7 @@ export default async function ProfilePage() {
     <main className="max-w-3xl mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-night">Profile</h1>
+        <h1 className="text-2xl font-bold text-night">Profile</h1>
         <p className="text-sm text-gray-500 mt-1">
           The more Buddy knows, the better the recommendations.
         </p>

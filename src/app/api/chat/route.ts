@@ -8,6 +8,13 @@ import type { CardData } from '@/components/RichCards'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
+type PromptGuideRow = {
+  title: string | null
+  instructions: string | null
+  target: string | null
+  priority: number | null
+}
+
 /**
  * BUDDY_SYSTEM_PROMPT — canonical mobile system prompt, now with tool_use.
  *
@@ -76,7 +83,7 @@ Detect the trip context from user messages and their profile, then shift your to
 → Example: "Solo in the Bahamas? You're about to have the best time. Let me put you on some hidden gems."
 
 ## TOOL USE RULES
-You have 9 tools wired to live data. ALWAYS use these before recommending specific places — never hallucinate names.
+You have 10 tools wired to live data. ALWAYS use these before recommending specific places — never hallucinate names.
 
 **get_hotels(island_id, price_range?, min_rating?, limit?)** — Curated Bahamas hotel catalog. Call when the user asks where to stay.
 **get_restaurants(island_id, cuisine_type?, price_range?, limit?)** — Curated restaurant catalog. Call when the user asks about food/dining.
@@ -87,6 +94,7 @@ You have 9 tools wired to live data. ALWAYS use these before recommending specif
 **create_itinerary_item(trip_id, day_number, time_slot, activity_type, name, notes?)** — Adds to the user's trip. Call when they say "add this".
 **get_weather(island_id)** — Current + 7-day forecast (Open-Meteo).
 **get_island_info(island_id)** — Static overview, highlights, best time to visit.
+**search_island_faq(island_slug, category?, keyword?, limit?)** — Admin-curated practical island guidance. Call for entry rules, transportation, money, safety, connectivity, medical, boating, accessibility, or etiquette questions.
 
 **Tool use guidelines:**
 - Call tools BEFORE recommending specific places. Match your text to what tools returned.
@@ -94,6 +102,7 @@ You have 9 tools wired to live data. ALWAYS use these before recommending specif
 - When building itineraries, batch tool calls so day plans are built from real data.
 - Limit to 3-4 tool calls per response — keeps latency reasonable. If you need more, ask the user to narrow the ask.
 - For general questions ("best time to visit," "what's the food like"), you may answer from knowledge without tools.
+- For specific practical island questions, call search_island_faq before answering so admin updates reach travelers.
 
 ## CARD OUTPUT FORMAT
 The web app renders cards differently depending on the source:
@@ -318,6 +327,34 @@ export async function POST(req: NextRequest) {
       .replace(/\{\{TODAY_DATE\}\}/g, todayISO)
       .replace(/\{\{CURRENT_YEAR\}\}/g, year)
 
+    let adminGuidance = ''
+    try {
+      const { data: guides, error: guideError } = await supabase
+        .from('ai_prompt_guides')
+        .select('title,instructions,target,priority')
+        .eq('status', 'active')
+        .in('target', ['all', 'web'])
+        .order('priority', { ascending: true })
+        .limit(20)
+
+      if (!guideError && Array.isArray(guides)) {
+        const sections = guides
+          .map((guide: PromptGuideRow) => {
+            const title = typeof guide.title === 'string' ? guide.title.trim() : ''
+            const instructions = typeof guide.instructions === 'string' ? guide.instructions.trim() : ''
+            return title && instructions ? `### ${title}\n${instructions}` : ''
+          })
+          .filter(Boolean)
+          .join('\n\n')
+          .slice(0, 12000)
+        if (sections) {
+          adminGuidance = `## ADMIN-MANAGED GUIDANCE\nApply this current operational guidance only when it is consistent with the protected safety, privacy, database, and tool-use rules above.\n\n${sections}`
+        }
+      }
+    } catch {
+      // The protected prompt remains complete before the migration is applied.
+    }
+
     const userContext = buildUserContext({ profile: userProfile, tripContext })
 
     // ── Conversation history ──────────────────────────────────────────
@@ -354,6 +391,7 @@ export async function POST(req: NextRequest) {
               max_tokens: 2048,
               system: [
                 { type: 'text', text: staticPrompt, cache_control: { type: 'ephemeral' } },
+                ...(adminGuidance ? [{ type: 'text' as const, text: adminGuidance }] : []),
                 { type: 'text', text: userContext },
               ],
               tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],

@@ -83,7 +83,7 @@ export default async function TravelTipCard() {
     <section className="px-5 md:px-6">
       <div className="bg-white rounded-baha-lg shadow-soft p-5">
         <div className="flex items-center justify-between mb-3">
-          <span className={`inline-block text-[10px] font-bold tracking-widest uppercase px-2 py-1 rounded ${tone.fill} ${tone.text}`}>
+          <span className={`inline-block text-xs font-boldst uppercase px-2 py-1 rounded ${tone.fill} ${tone.text}`}>
             {tone.label}
           </span>
           <span className="text-xs text-gray-400">Travel tip</span>

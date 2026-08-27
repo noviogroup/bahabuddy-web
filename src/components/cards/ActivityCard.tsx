@@ -15,7 +15,7 @@
  *     #1 question families ask, surfaced as a single glanceable signal.
  *   - Description as supporting copy (line-clamped to 2 in collapsed).
  *   - From-price (when set) in the bottom-right, mirroring Hotel layout.
- *   - Top review snippet, when one exists in google_place_reviews.
+ *   - Top review snippet, when one exists in cached place reviews.
  *   - On expand: gallery, full description, hours (if the attraction
  *     publishes any), and action row (Call / Website / Directions / Add to trip).
  *
@@ -44,7 +44,7 @@ export interface ActivityCardData {
   description?: string
   rating?: number
   review_count?: number
-  /** Vibe tags from google_places.vibe_tags — also used to color the lead chip. */
+  /** Vibe tags from cached place inventory — also used to color the lead chip. */
   vibe_tags?: string[]
   kid_friendly?: boolean
   /** Activity duration string, e.g. "2-3 hours". */
@@ -186,7 +186,7 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
   ) : null
 
   const kidBadge = kid_friendly ? (
-    <span className="inline-flex items-center gap-1 bg-palm-500/95 text-white text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded-md shadow-sm">
+    <span className="inline-flex items-center gap-1 bg-palm-500/95 text-white text-xs font-semibold uppercase px-1.5 py-0.5 rounded-md shadow-sm">
       {I.kid}
       <span>Kid-friendly</span>
     </span>
@@ -211,7 +211,7 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
         {/* Identity */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[15px] text-gray-900 leading-tight line-clamp-2">{name}</p>
+            <p className="font-semibold text-sm text-gray-900 leading-tight line-clamp-2">{name}</p>
             {(supplier || island) && (
               <p className="text-xs text-gray-500 mt-1 inline-flex items-center gap-1.5">
                 <span className="text-gray-400">{I.mapPin}</span>
@@ -231,14 +231,14 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
 
         {/* Description */}
         {description && (
-          <p className={`text-[13px] text-gray-600 leading-snug ${expanded ? '' : 'line-clamp-2'}`}>
+          <p className={`text-sm text-gray-600 leading-snug ${expanded ? '' : 'line-clamp-2'}`}>
             {description}
           </p>
         )}
 
         {/* Duration + hours (today) — quick scan row */}
         {(duration || (opening_hours && opening_hours.length > 0)) && !expanded && (
-          <div className="flex items-center gap-3 flex-wrap text-[11px]">
+          <div className="flex items-center gap-3 flex-wrap text-xs">
             {duration && (
               <span className="inline-flex items-center gap-1 text-gray-600">
                 <span className="text-gray-400">{I.clock}</span>
@@ -265,7 +265,7 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
 
         {!expanded && size === 'compact' && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
               Tap for photos &amp; reviews {I.chevron}
             </span>
             <div className="flex flex-wrap justify-end gap-2">
@@ -273,7 +273,7 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
                 <Link
                   href={detailHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex h-8 items-center rounded-full border border-brand-200 bg-white px-3 text-[11px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+                  className="inline-flex h-8 items-center rounded-full border border-brand-200 bg-white px-3 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-50"
                 >
                   View details
                 </Link>
@@ -285,7 +285,7 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
                     e.stopPropagation()
                     onSave(data)
                   }}
-                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-[11px] font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
                 >
                   Add to trip
                 </button>

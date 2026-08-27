@@ -109,7 +109,7 @@ export async function POST(
       arrival_at: dateTimeOrNull(body.arrivalAt),
       airline: clean(body.airline ?? name),
       price: numberOrNull(body.price),
-      duffel_offer_id: clean(body.providerOfferId ?? body.sourceId),
+      provider_offer_id: clean(body.providerOfferId ?? body.sourceId),
     }
 
     const { data, error } = await supabase

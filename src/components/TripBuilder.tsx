@@ -379,7 +379,7 @@ export default function TripBuilder() {
                   return (
                     <div key={slot} className="px-5 py-3">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        <p className="text-xs font-medium text-gray-400 uppercase">
                           {label}
                         </p>
                         <button

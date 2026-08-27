@@ -9,9 +9,18 @@ import TrackView from '@/components/TrackView'
 import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
 import DirectTripItemActions from '@/components/trip/DirectTripItemActions'
 import type { TripAdvisorLocation } from '@/lib/tripadvisor/types'
-import { isIslandSlug, getIslandDisplayName, formatAddress, ISLAND_SLUG_MAP } from '@/lib/tripadvisor/types'
+import {
+  formatAddress,
+  formatCuisineLabel,
+  formatPriceLevelLabel,
+  getIslandDisplayName,
+  getRestaurantIslandQueryNames,
+  isIslandSlug,
+  ISLAND_SLUG_MAP,
+} from '@/lib/tripadvisor/types'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
+import { buddyChatHref } from '@/lib/buddy-chat'
 
 export const revalidate = 86400
 
@@ -38,11 +47,17 @@ async function getRestaurantByLocationId(locationId: string): Promise<TripAdviso
 async function getRestaurantsByIsland(islandName: string): Promise<TripAdvisorLocation[]> {
   try {
     const supabase = await createClient()
-    const { data, error } = await supabase
+    const islandNames = getRestaurantIslandQueryNames(islandName)
+    let query = supabase
       .from('tripadvisor_locations')
       .select('*')
       .eq('category', 'restaurants')
-      .ilike('island_name', islandName)
+
+    query = typeof (query as { in?: unknown }).in === 'function'
+      ? (query as typeof query & { in: (column: string, values: string[]) => typeof query }).in('island_name', islandNames)
+      : query.eq('island_name', islandName)
+
+    const { data, error } = await query
       .order('rating', { ascending: false, nullsFirst: false })
       .limit(50)
     if (error || !data) return []
@@ -89,8 +104,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!restaurant) return {}
   const cuisine = restaurant.cuisine_types?.[0]
   return {
-    title: `${restaurant.name}${cuisine ? ` — ${cuisine}` : ''} in ${restaurant.island_name ?? 'Bahamas'} | Baha Buddy`,
-    description: `${restaurant.name}${cuisine ? ` (${cuisine})` : ''} in ${restaurant.island_name ?? 'the Bahamas'}. ${restaurant.rating ? `Rated ${restaurant.rating}/5` : ''} ${restaurant.num_reviews ? `(${restaurant.num_reviews} reviews)` : ''}`.trim(),
+    title: `${restaurant.name}${cuisine ? ` — ${formatCuisineLabel(cuisine)}` : ''} in ${restaurant.island_name ?? 'Bahamas'} | Baha Buddy`,
+    description: `${restaurant.name}${cuisine ? ` (${formatCuisineLabel(cuisine)})` : ''} in ${restaurant.island_name ?? 'the Bahamas'}. ${restaurant.rating ? `Rated ${restaurant.rating}/5` : ''} ${restaurant.num_reviews ? `(${restaurant.num_reviews} reviews)` : ''}`.trim(),
     alternates: { canonical: `/restaurants/${slug}` },
     openGraph: {
       title: `${restaurant.name} | Baha Buddy`,
@@ -101,11 +116,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 function PriceLevelDisplay({ level }: { level: string }) {
-  const count = level === '$' ? 1 : level === '$$' ? 2 : level === '$$$' ? 3 : level === '$$$$' ? 4 : level.length
   return (
-    <span className="font-bold text-brand-600 text-lg" aria-label={`Price level ${level}`}>
-      {'$'.repeat(Math.min(count, 4))}
-      <span className="text-gray-300">{'$'.repeat(Math.max(0, 4 - count))}</span>
+    <span className="font-bold text-night text-sm" aria-label={`Price level ${level}`}>
+      {formatPriceLevelLabel(level)}
     </span>
   )
 }
@@ -117,6 +130,37 @@ function paramsFrom(values: Record<string, string | undefined | null>): string {
   }
   const qs = params.toString()
   return qs ? `?${qs}` : ''
+}
+
+function restaurantPreviewReason(rest: TripAdvisorLocation): string {
+  if (rest.rating && rest.rating >= 4.5) {
+    return `Strong traveler rating${rest.island_name ? ` on ${rest.island_name}` : ''}, useful for shortlisting dining plans.`
+  }
+  if (rest.cuisine_types && rest.cuisine_types.length > 0) {
+    return `Cuisine fit: ${rest.cuisine_types.slice(0, 2).map(formatCuisineLabel).join(' and ')}.`
+  }
+  if (rest.num_reviews && rest.num_reviews > 0) {
+    return `${rest.num_reviews.toLocaleString()} traveler reviews to compare before you reserve.`
+  }
+  return 'Real restaurant listing with detail page, island context, and planning actions.'
+}
+
+function restaurantExploreFoodHref(island?: string | null, cuisine?: string | null): string {
+  return `/explore/places${paramsFrom({
+    island,
+    category: 'Dining',
+    search: cuisine || 'Food',
+  })}`
+}
+
+function restaurantAskBuddyHref(rest: TripAdvisorLocation): string {
+  const prompt = [
+    `Tell me about ${rest.name}`,
+    rest.island_name ? `Island: ${rest.island_name}` : '',
+    rest.cuisine_types?.[0] ? `Cuisine: ${formatCuisineLabel(rest.cuisine_types[0])}` : '',
+  ].filter(Boolean).join('. ')
+
+  return buddyChatHref(prompt)
 }
 
 function IslandListingPage({ slug, islandName, restaurants }: { slug: string; islandName: string; restaurants: TripAdvisorLocation[] }) {
@@ -138,7 +182,7 @@ function IslandListingPage({ slug, islandName, restaurants }: { slug: string; is
       item: {
         '@type': 'Restaurant',
         name: r.name,
-        ...(r.cuisine_types && { servesCuisine: r.cuisine_types.join(', ') }),
+        ...(r.cuisine_types && { servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(', ') }),
         ...(r.rating && {
           aggregateRating: {
             '@type': 'AggregateRating',
@@ -213,15 +257,22 @@ function IslandListingPage({ slug, islandName, restaurants }: { slug: string; is
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {restaurants.map((rest) => {
+              const detailHref = `/restaurants/${rest.location_id}`
+              const addToTripHref = `${detailHref}#trip-actions`
+              const exploreNearbyHref = restaurantExploreFoodHref(rest.island_name ?? islandName, rest.cuisine_types?.[0])
+              const askBuddyHref = restaurantAskBuddyHref(rest)
+              const previewReason = restaurantPreviewReason(rest)
+
               return (
-                <Link key={rest.id} href={`/restaurants/${rest.location_id}`} className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md">
+                <article
+                  key={rest.id}
+                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                >
                   <ImageWithSourcePolicy
                     src={rest.photos?.[0]?.url ?? null}
                     alt={rest.name}
                     title={rest.name}
-                    eyebrow={rest.cuisine_types?.[0] ?? 'Restaurant'}
-                    description="Restaurant details are available. Provider photo is not available yet."
-                    pendingLabel="Photo pending"
+                    eyebrow={rest.cuisine_types?.[0] ? formatCuisineLabel(rest.cuisine_types[0]) : 'Restaurant'}
                     tone="restaurant"
                     className="h-48"
                   >
@@ -231,16 +282,69 @@ function IslandListingPage({ slug, islandName, restaurants }: { slug: string; is
                       </div>
                     )}
                   </ImageWithSourcePolicy>
+
                   <div className="p-5 flex flex-col flex-1">
                     <h2 className="text-base font-bold text-gray-900 leading-snug line-clamp-1">{rest.name}</h2>
+
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {rest.cuisine_types?.[0] && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-charcoal">{rest.cuisine_types[0]}</span>}
-                      {rest.price_level && <span className="text-xs text-gray-400">{rest.price_level}</span>}
+                      {rest.cuisine_types?.[0] && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-charcoal">{formatCuisineLabel(rest.cuisine_types[0])}</span>}
+                      {rest.price_level && <span className="text-xs text-gray-400">{formatPriceLevelLabel(rest.price_level)}</span>}
                     </div>
+
                     {rest.num_reviews != null && rest.num_reviews > 0 && <p className="text-xs text-gray-400 mt-1">{rest.num_reviews.toLocaleString()} reviews</p>}
-                    <div className="mt-auto pt-4"><span className="text-sm font-semibold text-brand-600 transition-colors group-hover:text-brand-700">View details</span></div>
+
+                    {rest.cuisine_types && rest.cuisine_types.length > 1 && (
+                      <div className="flex flex-wrap gap-1.5 mt-3">
+                        {rest.cuisine_types.slice(1, 4).map((c) => (
+                          <span
+                            key={c}
+                            className="rounded-full border border-gray-200 bg-white px-3 py-0.5 text-xs font-medium text-gray-600"
+                          >
+                            {formatCuisineLabel(c)}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
+                      <p className="text-xs font-bold uppercase text-gray-500">
+                        Why Buddy picked this
+                      </p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-charcoal">
+                        {previewReason}
+                      </p>
+                    </div>
+
+                    <div className="mt-auto pt-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <Link
+                          href={detailHref}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                        >
+                          View details
+                        </Link>
+                        <Link
+                          href={addToTripHref}
+                          className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-3 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-brand-700"
+                        >
+                          Add to trip
+                        </Link>
+                        <Link
+                          href={exploreNearbyHref}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                        >
+                          More food nearby
+                        </Link>
+                        <Link
+                          href={askBuddyHref}
+                          className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+                        >
+                          Ask Buddy
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                </Link>
+                </article>
               )
             })}
           </div>
@@ -265,7 +369,7 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
     name: restaurant.name,
-    ...(cuisines.length > 0 && { servesCuisine: cuisines.join(', ') }),
+    ...(cuisines.length > 0 && { servesCuisine: cuisines.map(formatCuisineLabel).join(', ') }),
     ...(addr && { address: { '@type': 'PostalAddress', streetAddress: restaurant.address?.street1, addressLocality: restaurant.address?.city, addressRegion: restaurant.address?.state, addressCountry: restaurant.address?.country ?? 'BS' } }),
     ...(restaurant.rating && { aggregateRating: { '@type': 'AggregateRating', ratingValue: restaurant.rating, bestRating: 5, reviewCount: restaurant.num_reviews ?? 0 } }),
     ...(restaurant.website && { url: restaurant.website }),
@@ -308,8 +412,8 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
         }
       >
         <div className="flex flex-wrap items-center gap-2">
-          {cuisines.length > 0 && <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">{cuisines[0]}</span>}
-          {restaurant.price_level && <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">{restaurant.price_level}</span>}
+          {cuisines.length > 0 && <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">{formatCuisineLabel(cuisines[0])}</span>}
+          {restaurant.price_level && <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">{formatPriceLevelLabel(restaurant.price_level)}</span>}
           {restaurant.rating && <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">Rating {restaurant.rating.toFixed(1)}{restaurant.num_reviews != null && restaurant.num_reviews > 0 ? ` (${restaurant.num_reviews.toLocaleString()} reviews)` : ''}</span>}
         </div>
       </CompactPageHeader>
@@ -319,11 +423,9 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
           src={photos[0]?.url ?? null}
           alt={restaurant.name}
           title={restaurant.name}
-          eyebrow={cuisines[0] ?? 'Restaurant'}
-          description="Restaurant details are available. Provider photo is not available yet."
-          pendingLabel="Photo pending"
+          eyebrow={cuisines[0] ? formatCuisineLabel(cuisines[0]) : 'Restaurant'}
           tone="restaurant"
-          className="mb-10 aspect-[16/7] min-h-[240px] rounded-baha-xl border border-gray-200 shadow-sm"
+          className="mb-10 h-64 rounded-baha-xl border border-gray-200 shadow-sm sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 1100px"
           priority
@@ -331,7 +433,7 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-10">
-            {cuisines.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Cuisine</h2><div className="flex flex-wrap gap-2">{cuisines.map((c) => <span key={c} className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-charcoal">{c}</span>)}</div></section>}
+            {cuisines.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Cuisine</h2><div className="flex flex-wrap gap-2">{cuisines.map((c) => <span key={c} className="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-sm font-medium text-charcoal">{formatCuisineLabel(c)}</span>)}</div></section>}
 
             {photos.length > 1 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{photos.slice(0, 9).map((photo, idx) => <div key={idx} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100"><Image src={photo.url} alt={photo.caption || `${restaurant.name} — photo ${idx + 1}`} fill className="object-cover hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 33vw" unoptimized /></div>)}</div></section>}
 
@@ -353,7 +455,7 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
               createTripLabel="Create trip for this restaurant"
               savedLabel="Saved restaurant to trip"
               timeSlot="evening"
-              notes={cuisines.length > 0 ? cuisines.join(', ') : undefined}
+              notes={cuisines.length > 0 ? cuisines.map(formatCuisineLabel).join(', ') : undefined}
               metadata={{
                 cuisineTypes: cuisines,
                 priceLevel: restaurant.price_level,
@@ -364,7 +466,7 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
             />
 
             <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Details</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercaser">Details</h3>
               {restaurant.island_name && <div><p className="text-xs text-gray-400 font-medium">Location</p><p className="text-sm text-gray-700 font-medium">{restaurant.island_name}, Bahamas</p></div>}
               {addr && <div><p className="text-xs text-gray-400 font-medium">Address</p><p className="text-sm text-gray-700">{addr}</p></div>}
               {restaurant.price_level && <div><p className="text-xs text-gray-400 font-medium">Price level</p><PriceLevelDisplay level={restaurant.price_level} /></div>}
@@ -388,14 +490,12 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
                         src={s.photos?.[0]?.url ?? null}
                         alt={s.name}
                         title={s.name}
-                        eyebrow={s.cuisine_types?.[0] ?? 'Restaurant'}
-                        description="Provider photo is not available yet."
-                        pendingLabel="Photo pending"
+                        eyebrow={s.cuisine_types?.[0] ? formatCuisineLabel(s.cuisine_types[0]) : 'Restaurant'}
                         tone="restaurant"
                         className="aspect-video"
                         sizes="(max-width: 768px) 50vw, 25vw"
                       />
-                      <div className="p-3"><h3 className="line-clamp-1 text-sm font-bold text-gray-900">{s.name}</h3><div className="mt-1 flex items-center gap-2">{s.cuisine_types?.[0] && <span className="text-[11px] font-semibold text-charcoal">{s.cuisine_types[0]}</span>}{s.rating && <span className="text-xs font-semibold text-night">Rating {s.rating.toFixed(1)}</span>}</div></div>
+                      <div className="p-3"><h3 className="line-clamp-1 text-sm font-bold text-gray-900">{s.name}</h3><div className="mt-1 flex items-center gap-2">{s.cuisine_types?.[0] && <span className="text-xs font-semibold text-charcoal">{formatCuisineLabel(s.cuisine_types[0])}</span>}{s.rating && <span className="text-xs font-semibold text-night">Rating {s.rating.toFixed(1)}</span>}</div></div>
                     </div>
                   </Link>
                 )

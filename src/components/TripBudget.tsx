@@ -66,17 +66,17 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
           {budgetEstimate != null && (
             <div className="bg-gray-50 rounded-xl p-3.5">
               <p className="text-xs text-gray-400 mb-1">Total Budget</p>
-              <p className="text-lg font-extrabold text-gray-900">{formatMoney(budgetEstimate)}</p>
+              <p className="text-lg font-bold text-gray-900">{formatMoney(budgetEstimate)}</p>
             </div>
           )}
           <div className="bg-gray-50 rounded-xl p-3.5">
             <p className="text-xs text-gray-400 mb-1">Tracked</p>
-            <p className="text-lg font-extrabold text-gray-900">{formatMoney(trackedTotal)}</p>
+            <p className="text-lg font-bold text-gray-900">{formatMoney(trackedTotal)}</p>
           </div>
           {remaining != null && (
             <div className={`rounded-xl p-3.5 ${remaining < 0 ? 'bg-red-50' : 'bg-green-50'}`}>
               <p className={`text-xs mb-1 ${remaining < 0 ? 'text-red-400' : 'text-gray-400'}`}>Remaining</p>
-              <p className={`text-lg font-extrabold ${remaining < 0 ? 'text-red-600' : 'text-green-700'}`}>
+              <p className={`text-lg font-bold ${remaining < 0 ? 'text-red-600' : 'text-green-700'}`}>
                 {formatMoney(Math.abs(remaining))}
                 {remaining < 0 && <span className="text-sm font-normal ml-1">over</span>}
               </p>
@@ -85,7 +85,7 @@ export default function TripBudget({ budgetEstimate, budgetActual, flightTotal, 
           {budgetActual != null && (
             <div className="bg-gray-50 rounded-xl p-3.5">
               <p className="text-xs text-gray-400 mb-1">Actual Spent</p>
-              <p className="text-lg font-extrabold text-gray-700">{formatMoney(budgetActual)}</p>
+              <p className="text-lg font-bold text-gray-700">{formatMoney(budgetActual)}</p>
             </div>
           )}
         </div>

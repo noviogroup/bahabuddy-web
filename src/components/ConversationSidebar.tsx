@@ -27,7 +27,7 @@ import Skeleton from '@/components/ui/Skeleton'
 
 export interface Conversation {
   id: string
-  title: string | null
+  title?: string | null
   last_message_preview: string | null
   updated_at: string
 }

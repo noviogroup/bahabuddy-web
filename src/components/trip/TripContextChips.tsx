@@ -318,7 +318,7 @@ function SaveButton({ saving, disabled, onClick, label = 'Update' }: {
       type="button"
       onClick={onClick}
       disabled={saving || disabled}
-      className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-2.5 font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
+      className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-2.5 font-bold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
     >
       {saving ? (
         'Saving...'

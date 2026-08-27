@@ -16,3 +16,11 @@
     X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Apple Universal Links: the AASA file has no extension and must be served as
+# application/json with no redirect for iOS to verify deep links. See
+# public/.well-known/README.md.
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"

@@ -54,10 +54,10 @@ export default async function ConciergeCheckoutPage({
         ]}
         actions={(
           <>
-            <Link href="/concierge-trip-plan" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="/concierge-trip-plan" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               Change offer
             </Link>
-            <Link href="/dashboard" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="/dashboard" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               Dashboard
             </Link>
           </>
@@ -74,11 +74,11 @@ export default async function ConciergeCheckoutPage({
 
         <div className="grid lg:grid-cols-[1fr_0.8fr] gap-8 items-start">
           <div className="rounded-baha-xl bg-white border border-gray-200 p-6 lg:p-8 shadow-sm">
-            <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase tracking-wide">
+            <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase">
               <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
               Signed in as
             </p>
-            <h2 className="mt-2 text-2xl font-extrabold text-night">
+            <h2 className="mt-2 text-2xl font-bold text-night">
               {profile?.display_name || user.email}
             </h2>
             <p className="mt-3 text-charcoal leading-relaxed">
@@ -104,16 +104,16 @@ export default async function ConciergeCheckoutPage({
           </div>
 
           <aside className="rounded-baha-xl bg-white border border-gray-200 p-6 shadow-sm">
-            <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase tracking-wide">
+            <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase">
               <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
               Order summary
             </p>
             <div className="mt-4 flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-extrabold text-night">{offer.name}</h3>
+                <h3 className="text-xl font-bold text-night">{offer.name}</h3>
                 <p className="mt-2 text-sm text-charcoal leading-relaxed">{offer.description}</p>
               </div>
-              <p className="text-3xl font-extrabold text-night">${offer.priceUsd}</p>
+              <p className="text-3xl font-bold text-night">${offer.priceUsd}</p>
             </div>
 
             <div className="mt-6 rounded-baha-lg bg-gray-50 border border-gray-200 p-4 text-sm text-charcoal">
@@ -127,7 +127,7 @@ export default async function ConciergeCheckoutPage({
             </div>
 
             <div className="mt-6 border-t border-gray-200 pt-5">
-              <p className="text-xs font-bold text-charcoal uppercase tracking-wide mb-3">Other offers</p>
+              <p className="text-xs font-bold text-charcoal uppercase mb-3">Other offers</p>
               <div className="space-y-2">
                 {Object.entries(CONCIERGE_OFFERS).map(([id, item]) => (
                   <Link key={id} href={`/concierge-trip-plan/checkout?offer=${id}`} className={`block rounded-baha-md border px-4 py-3 text-sm transition-colors ${id === offerId ? 'border-gray-900 bg-white text-night ring-2 ring-gray-100' : 'border-gray-200 text-charcoal hover:border-gray-300 hover:bg-gray-50'}`}>
@@ -135,7 +135,7 @@ export default async function ConciergeCheckoutPage({
                       {id === offerId && <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />}
                       {item.name.replace('Baha Buddy ', '')}
                     </span>
-                    <span className="float-right font-extrabold">${item.priceUsd}</span>
+                    <span className="float-right font-bold">${item.priceUsd}</span>
                   </Link>
                 ))}
               </div>

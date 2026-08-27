@@ -61,8 +61,8 @@ export function ChipRow({
   const overflow = max && normalized.length > max ? normalized.length - max : 0
 
   const sizeClass = size === 'sm'
-    ? 'text-[10px] px-2 py-0.5'
-    : 'text-[11px] px-2.5 py-1'
+    ? 'text-xs px-2 py-0.5'
+    : 'text-xs px-2.5 py-1'
 
   const justify = align === 'center' ? 'justify-center' : 'justify-start'
 

@@ -23,7 +23,7 @@ export default function PlaceDetailLoading() {
       </section>
 
       <div className="max-w-6xl mx-auto px-4 py-10">
-        <div className="mb-10 aspect-[16/7] min-h-[240px] rounded-baha-xl border border-gray-200 bg-stone-100" />
+        <div className="mb-10 h-64 rounded-baha-xl border border-gray-200 bg-stone-100 sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]" />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-8">

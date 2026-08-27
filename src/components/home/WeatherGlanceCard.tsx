@@ -134,7 +134,7 @@ export default function WeatherGlanceCard({ island = 'Nassau' }: WeatherGlanceCa
         <div className="flex items-center gap-4">
           <WeatherIcon condition={data.condition} />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{island}</p>
+            <p className="text-xs font-semibold text-gray-500 uppercaser">{island}</p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-3xl font-bold text-night">
                 {loading ? '—' : `${data.tempF}°F`}
@@ -172,7 +172,7 @@ export default function WeatherGlanceCard({ island = 'Nassau' }: WeatherGlanceCa
                     </p>
                     <p className="mt-1 line-clamp-2 text-xs text-gray-600">{day.condition}</p>
                     {day.rainChance != null && (
-                      <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-gray-500">
+                      <p className="mt-1 text-xs font-semibold uppercase text-gray-500">
                         Rain {Math.round(day.rainChance)}%
                       </p>
                     )}

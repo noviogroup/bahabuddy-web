@@ -134,13 +134,13 @@ function AuthForm() {
   }
 
   const methodButtonClass = (nextMethod: Method) => [
-    'flex-1 rounded-full py-2 text-xs font-extrabold uppercase tracking-[0.12em] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
+    'flex-1 rounded-full py-2 text-xs font-bold uppercase transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200',
     method === nextMethod
       ? 'bg-brand-600 text-white shadow-sm'
       : 'text-gray-600 hover:bg-white hover:text-night',
   ].join(' ')
 
-  const primaryButtonClass = 'inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60'
+  const primaryButtonClass = 'inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60'
 
   return (
     <div className="rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
@@ -184,7 +184,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="mb-6 text-center"><BahaLogo className="mx-auto h-12 w-auto" /><h1 className="mt-4 text-3xl font-extrabold text-gray-900">Welcome to Baha Buddy</h1><p className="mt-2 text-gray-600">Sign in or create an account to continue.</p></div>
+        <div className="mb-6 text-center"><BahaLogo className="mx-auto h-12 w-auto" /><h1 className="mt-4 text-3xl font-bold text-gray-900">Welcome to Baha Buddy</h1><p className="mt-2 text-gray-600">Sign in or create an account to continue.</p></div>
         <Suspense fallback={<div className="rounded-baha-lg border border-gray-200 bg-white p-8 text-center text-gray-500 shadow-sm">Loading...</div>}><AuthForm /></Suspense>
       </div>
     </main>

@@ -36,10 +36,10 @@ export default function NassauCruiseDayPlannerPage() {
         ]}
         actions={(
           <>
-            <Link href="/nassau-cruise-itineraries" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white transition-colors hover:bg-brand-700">
+            <Link href="/nassau-cruise-itineraries" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700">
               View itineraries
             </Link>
-            <Link href="/build-my-cruise-day" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="/build-my-cruise-day" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               Build my cruise day
             </Link>
           </>
@@ -48,12 +48,12 @@ export default function NassauCruiseDayPlannerPage() {
 
       <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10 lg:grid-cols-2">
         <div>
-          <p className="text-sm font-bold uppercase tracking-wide text-brand-700">How it works</p>
-          <h2 className="mt-3 text-3xl font-extrabold text-night">A simple plan for a tight visitor window.</h2>
+          <p className="text-sm font-bold uppercase text-brand-700">How it works</p>
+          <h2 className="mt-3 text-3xl font-bold text-night">A simple plan for a tight visitor window.</h2>
           <ol className="mt-7 space-y-4">
             {steps.map((step, index) => (
               <li key={step} className="flex gap-4 rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold-400 text-sm font-extrabold text-night">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gold-400 text-sm font-bold text-night">
                   {index + 1}
                 </span>
                 <span className="pt-1 text-charcoal">{step}</span>
@@ -63,13 +63,13 @@ export default function NassauCruiseDayPlannerPage() {
         </div>
 
         <div className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
-          <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Pricing</p>
+          <p className="text-sm font-bold uppercase text-brand-700">Pricing</p>
           <div className="mt-5 space-y-4">
             {tiers.map((tier) => (
               <div key={tier.name} className="rounded-baha-lg border border-gray-200 p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <h3 className="font-extrabold text-night">{tier.name}</h3>
-                  <p className="font-extrabold text-brand-700">{tier.price}</p>
+                  <h3 className="font-bold text-night">{tier.name}</h3>
+                  <p className="font-bold text-brand-700">{tier.price}</p>
                 </div>
                 <p className="mt-2 text-sm text-charcoal">{tier.detail}</p>
               </div>

@@ -114,7 +114,7 @@ function BestMonthsBar({ best }: { best?: string[] }) {
 
   return (
     <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 mb-1">Best time to visit</p>
+      <p className="text-xs font-semibold uppercase text-gray-500 mb-1">Best time to visit</p>
       <div className="flex gap-0.5" role="img" aria-label="Best months to visit">
         {MONTHS.map((m, i) => {
           const isPeak = peakSet.has(m)
@@ -127,7 +127,7 @@ function BestMonthsBar({ best }: { best?: string[] }) {
           return (
             <div key={m} className="flex-1 flex flex-col items-center gap-0.5">
               <div className={`h-2 w-full rounded-sm ${bg}`} title={m.toUpperCase()} />
-              <span className={`text-[8px] font-semibold uppercase ${isPeak ? 'text-brand-700' : 'text-gray-400'}`}>
+              <span className={`text-xs font-semibold uppercase ${isPeak ? 'text-brand-700' : 'text-gray-400'}`}>
                 {m.charAt(0)}
               </span>
               {/* Hide the J/F/J double-J ambiguity \u2014 the bar itself communicates,
@@ -183,8 +183,6 @@ export function DestinationCard({ data, className }: Props) {
           alt={`${name} destination photo`}
           title={name}
           eyebrow="Destination"
-          description="Island details are available. Destination image is not available yet."
-          pendingLabel="Photo pending"
           className="h-32"
           imageClassName="object-cover"
           sizes="420px"
@@ -201,7 +199,7 @@ export function DestinationCard({ data, className }: Props) {
               )}
 
               <div className="absolute bottom-2 left-3 right-3">
-                <p className="text-white text-xl font-extrabold drop-shadow leading-tight">{name}</p>
+                <p className="text-white text-xl font-bold drop-shadow leading-tight">{name}</p>
                 {tagline && (
                   <p className="text-white/90 text-xs italic mt-0.5 drop-shadow line-clamp-1">{tagline}</p>
                 )}
@@ -223,7 +221,7 @@ export function DestinationCard({ data, className }: Props) {
 
         {/* Getting there + days recommended row */}
         {(getting_there || days_recommended) && (
-          <div className="flex items-center justify-between gap-3 text-[11px] pt-1">
+          <div className="flex items-center justify-between gap-3 text-xs pt-1">
             {getting_there && (
               <span className="inline-flex items-center gap-1.5 text-gray-600 min-w-0">
                 <span className="text-brand-600 shrink-0">{I.plane}</span>
@@ -242,16 +240,16 @@ export function DestinationCard({ data, className }: Props) {
         {/* Footer: price-from */}
         {price_from > 0 && (
           <div className="pt-2 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">From</span>
+            <span className="text-xs font-semibold uppercase text-gray-400">From</span>
             <span className="text-brand-600 font-bold text-base">${Math.round(price_from).toLocaleString()}</span>
           </div>
         )}
 
         <div className={`${price_from > 0 ? '' : 'pt-2 border-t border-gray-100'} flex items-center justify-between gap-3`}>
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+          <span className="text-xs font-semibold uppercase text-gray-400">
             Island preview
           </span>
-          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-brand-700">
+          <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-700">
             {href ? 'View island guide' : 'Ask Buddy for details'}
             {I.arrowRight}
           </span>

@@ -141,7 +141,7 @@ export default async function BuddyPickCard() {
       {/* Mini header */}
       <div className="flex items-center gap-2 px-5 md:px-6 mb-3">
         <span className="w-1 h-5 bg-gold-500 rounded-full" aria-hidden="true" />
-        <h2 className="text-base md:text-lg font-bold text-night">Buddy&apos;s Pick</h2>
+        <h2 className="text-base font-bold text-night">Buddy&apos;s Pick</h2>
       </div>
 
       <div className="px-5 md:px-6">

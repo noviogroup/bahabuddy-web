@@ -175,7 +175,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+        className={`fixed bottom-6 right-6 z-50 h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-105 ${open ? 'flex' : 'hidden sm:flex'} ${
           open ? 'bg-night hover:bg-gray-900 text-white' : 'bg-white border border-gray-200 hover:shadow-md p-0.5'
         }`}
         aria-label={open ? 'Close chat' : 'Chat with Baha Buddy'}

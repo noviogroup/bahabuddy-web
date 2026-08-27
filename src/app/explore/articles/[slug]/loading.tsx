@@ -31,7 +31,7 @@ export default function Loading() {
       </section>
 
       <main className="mx-auto max-w-4xl px-4 py-8">
-        <Skeleton className="mb-8 aspect-[16/7] min-h-[220px] w-full rounded-baha-xl" />
+        <Skeleton className="mb-8 h-60 w-full rounded-baha-xl sm:aspect-[16/7] sm:h-auto sm:min-h-[220px]" />
 
         <div className="mx-auto max-w-3xl">
           <div className="space-y-3 mb-10">

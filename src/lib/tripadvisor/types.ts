@@ -51,6 +51,20 @@ export const ISLAND_SLUG_MAP: Record<string, string> = {
   'acklins': 'Acklins',
 }
 
+const RESTAURANT_ISLAND_QUERY_ALIASES: Record<string, string[]> = {
+  Nassau: ['Nassau & Paradise Island'],
+  'Paradise Island': ['Nassau & Paradise Island'],
+  Exuma: ['The Exumas'],
+  Exumas: ['The Exumas'],
+  Eleuthera: ['Eleuthera & Harbour Island'],
+  'Harbour Island': ['Eleuthera & Harbour Island'],
+  'Grand Bahama': ['Freeport — Grand Bahama Island'],
+  Abacos: ['The Abacos'],
+  'Berry Islands': ['The Berry Islands'],
+  Acklins: ['Acklins & Crooked Island'],
+  'Crooked Island': ['Acklins & Crooked Island'],
+}
+
 export function isIslandSlug(slug: string): boolean {
   return slug in ISLAND_SLUG_MAP
 }
@@ -59,9 +73,35 @@ export function getIslandDisplayName(slug: string): string {
   return ISLAND_SLUG_MAP[slug] ?? slug
 }
 
+export function getRestaurantIslandQueryNames(islandName: string): string[] {
+  return Array.from(new Set([
+    islandName,
+    ...(RESTAURANT_ISLAND_QUERY_ALIASES[islandName] ?? []),
+  ]))
+}
+
 export function formatAddress(address: TripAdvisorLocation['address']): string {
   if (!address) return ''
   return [address.street1, address.city, address.state]
     .filter(Boolean)
     .join(', ')
+}
+
+export function formatTripAdvisorTokenLabel(value: string): string {
+  return value
+    .split(/[_\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
+export function formatCuisineLabel(value: string): string {
+  return formatTripAdvisorTokenLabel(value)
+}
+
+export function formatPriceLevelLabel(value: string): string {
+  const normalized = value.trim().replace(/\s*-\s*/g, ' - ')
+  if (/^\${1,4}$/.test(normalized)) return normalized
+  if (/^\${1,4} - \${1,4}$/.test(normalized)) return normalized
+  return formatTripAdvisorTokenLabel(normalized)
 }

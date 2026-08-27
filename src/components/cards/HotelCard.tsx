@@ -61,7 +61,7 @@ export interface HotelCardData {
   stars?: number
   /** Primary hero photo. Falls back to photos[0]. */
   photo_url?: string
-  /** Full photo gallery (jsonb array from google_places). */
+  /** Full photo gallery from cached place inventory. */
   photos?: string[]
   amenities?: string[]
   /** Highlight first chip ("Beachfront", "Adults-only", etc.). */
@@ -176,7 +176,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
   ) : null
 
   const starsRow = stars && stars > 0 ? (
-    <span className="text-charcoal text-xs font-extrabold leading-none">
+    <span className="text-charcoal text-xs font-bold leading-none">
       {stars}-star hotel
     </span>
   ) : null
@@ -198,7 +198,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
         {/* Identity */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[15px] text-gray-900 leading-tight truncate">{name}</p>
+            <p className="font-semibold text-sm text-gray-900 leading-tight truncate">{name}</p>
             <p className="text-xs text-gray-500 mt-0.5 flex items-center gap-1.5">
               <span className="text-gray-400">{I.mapPin}</span>
               <span className="truncate">{island ?? full_address ?? 'The Bahamas'}</span>
@@ -239,7 +239,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
 
         {!expanded && size === 'compact' && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
               Tap for photos &amp; reviews {I.chevron}
             </span>
             <div className="flex flex-wrap justify-end gap-2">
@@ -247,7 +247,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
                 <Link
                   href={detailHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex h-8 items-center rounded-full border border-gray-300 bg-white px-3 text-[11px] font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                  className="inline-flex h-8 items-center rounded-full border border-gray-300 bg-white px-3 text-xs font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
                 >
                   View stay
                 </Link>
@@ -259,7 +259,7 @@ export function HotelCard({ data, size = 'compact', onSave, className }: Props) 
                     e.stopPropagation()
                     onSave(data)
                   }}
-                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-[11px] font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
                 >
                   Add to trip
                 </button>

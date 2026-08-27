@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { FormEvent, type ReactNode, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { getStripe } from '@/lib/stripe/client'
@@ -48,6 +49,15 @@ export default function StayGuestBookingClient(props: Props) {
   const childrenCount = Math.max(0, props.childrenCount ?? 0)
   const requestedRooms = Math.max(1, props.requestedRooms ?? 1)
   const totalTravelers = props.adults + childrenCount
+  const hasTrip = props.trips.length > 0
+  const checkoutState = stage === 'payment'
+    ? 'Payment ready'
+    : stage === 'processing'
+      ? 'Preparing checkout'
+      : stage === 'error'
+        ? 'Review required'
+        : 'Guest details'
+  const returnTo = bookingReturnPath(props)
 
   async function startPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -100,70 +110,166 @@ export default function StayGuestBookingClient(props: Props) {
   const guest = { firstName, lastName, email, phone }
 
   return (
-    <main className="min-h-screen bg-gray-50 px-4 py-10 text-night-900">
-      <section className="mx-auto max-w-3xl">
-        <div className="mb-6 rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-gray-200">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.24em] text-gray-500">Secure hotel booking</p>
-          <h1 className="text-3xl font-extrabold tracking-tight text-night-950">{props.hotelName}</h1>
-          <p className="mt-2 text-sm text-night-600">
-            {props.roomName} · {props.checkin} to {props.checkout} · {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'} · {requestedRooms} {requestedRooms === 1 ? 'room' : 'rooms'} · {formattedAmount}
-          </p>
+    <main className="min-h-screen bg-white px-4 py-6 text-night md:py-8">
+      <section className="mx-auto max-w-6xl">
+        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase text-gray-500">
+              Secure hotel booking
+            </p>
+            <h1 className="mt-1 text-3xl font-bold text-night">
+              {props.hotelName}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-charcoal">
+              {props.roomName} · {props.checkin} to {props.checkout} · {totalTravelers} {totalTravelers === 1 ? 'traveler' : 'travelers'} · {requestedRooms} {requestedRooms === 1 ? 'room' : 'rooms'} · {formattedAmount}
+            </p>
+          </div>
+          <Link
+            href={`/stays/${encodeURIComponent(props.hotelId)}`}
+            className="inline-flex w-fit rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+          >
+            Back to stay details
+          </Link>
         </div>
 
-        {error && (
-          <div className="mb-5 rounded-2xl bg-coral-50 p-4 text-sm font-medium text-coral-800 ring-1 ring-coral-200">
-            {error}
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+          <div className="min-w-0 space-y-5">
+            <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-xs font-bold uppercase text-brand-700">
+                    {checkoutState}
+                  </p>
+                  <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-charcoal">
+                    Confirm the room rate, pay securely, and keep this stay with your trip.
+                  </p>
+                </div>
+                <div className="shrink-0 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-right">
+                  <p className="text-xs font-bold uppercase text-charcoal">
+                    Stay total
+                  </p>
+                  <p className="text-2xl font-bold text-night">
+                    {formattedAmount}
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 grid gap-2 sm:grid-cols-3">
+                <StayFact label="Dates" value={`${props.checkin} to ${props.checkout}`} />
+                <StayFact label="Travelers" value={`${totalTravelers}`} />
+                <StayFact label="Rooms" value={`${requestedRooms}`} />
+              </div>
+            </section>
+
+            {error && (
+              <div className="rounded-2xl bg-coral-50 p-4 text-sm font-medium text-coral-800 ring-1 ring-coral-200">
+                {error}
+              </div>
+            )}
+
+            {!hasTrip && stage !== 'payment' && (
+              <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+                <p className="text-sm font-semibold uppercase text-gray-500">
+                  Trip required
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-night">
+                  Create a trip before booking this stay
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-charcoal">
+                  Create the trip first, then return here to continue checkout.
+                </p>
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <Field label="Trip" htmlFor="stay-trip-empty">
+                    <TravelSearchSelect id="stay-trip-empty" value="" disabled>
+                      <option value="">No trips found</option>
+                    </TravelSearchSelect>
+                  </Field>
+                </div>
+                <button
+                  type="button"
+                  disabled
+                  className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors disabled:opacity-60"
+                >
+                  <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+                  Continue to pay {formattedAmount}
+                </button>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href={`/dashboard/trips/new?returnTo=${encodeURIComponent(returnTo)}&source=stay`}
+                    className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
+                  >
+                    <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+                    Create trip
+                  </Link>
+                  <Link
+                    href={`/stays/${encodeURIComponent(props.hotelId)}`}
+                    className="inline-flex rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                  >
+                    Back to stay
+                  </Link>
+                </div>
+              </section>
+            )}
+
+            {hasTrip && stage !== 'payment' && (
+              <form onSubmit={startPayment} className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <Field label="Trip" htmlFor="stay-trip">
+                    <TravelSearchSelect id="stay-trip" value={tripId} onChange={(e) => setTripId(e.target.value)} required>
+                      {props.trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.name}</option>)}
+                    </TravelSearchSelect>
+                  </Field>
+                  <Field label="Email" htmlFor="stay-email">
+                    <TravelSearchInput id="stay-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                  </Field>
+                  <Field label="First name" htmlFor="stay-first-name">
+                    <TravelSearchInput id="stay-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                  </Field>
+                  <Field label="Last name" htmlFor="stay-last-name">
+                    <TravelSearchInput id="stay-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                  </Field>
+                  <Field label="Phone" htmlFor="stay-phone">
+                    <TravelSearchInput id="stay-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                  </Field>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={stage === 'processing'}
+                  className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {stage !== 'processing' && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
+                  {stage === 'processing' ? 'Preparing secure checkout...' : `Continue to pay ${formattedAmount}`}
+                </button>
+              </form>
+            )}
+
+            {stage === 'payment' && clientSecret && prebookId && paymentIntentId && (
+              <Elements stripe={getStripe()} options={{ clientSecret }}>
+                <HotelPaymentForm
+                  {...props}
+                  tripId={tripId}
+                  guest={guest}
+                  prebookId={prebookId}
+                  paymentIntentId={paymentIntentId}
+                  tripItemId={tripItemId}
+                  setError={setError}
+                  setStage={setStage}
+                />
+              </Elements>
+            )}
           </div>
-        )}
 
-        {stage !== 'payment' && (
-          <form onSubmit={startPayment} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-gray-200">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Trip" htmlFor="stay-trip">
-                <TravelSearchSelect id="stay-trip" value={tripId} onChange={(e) => setTripId(e.target.value)} required>
-                  {props.trips.length === 0 ? <option value="">No trips found</option> : null}
-                  {props.trips.map((trip) => <option key={trip.id} value={trip.id}>{trip.name}</option>)}
-                </TravelSearchSelect>
-              </Field>
-              <Field label="Email" htmlFor="stay-email">
-                <TravelSearchInput id="stay-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-              </Field>
-              <Field label="First name" htmlFor="stay-first-name">
-                <TravelSearchInput id="stay-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
-              </Field>
-              <Field label="Last name" htmlFor="stay-last-name">
-                <TravelSearchInput id="stay-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
-              </Field>
-              <Field label="Phone" htmlFor="stay-phone">
-                <TravelSearchInput id="stay-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
-              </Field>
-            </div>
-
-            <button
-              type="submit"
-              disabled={stage === 'processing' || props.trips.length === 0}
-              className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
-            >
-              {stage !== 'processing' && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
-              {stage === 'processing' ? 'Preparing secure checkout...' : `Continue to pay ${formattedAmount}`}
-            </button>
-          </form>
-        )}
-
-        {stage === 'payment' && clientSecret && prebookId && paymentIntentId && (
-          <Elements stripe={getStripe()} options={{ clientSecret }}>
-            <HotelPaymentForm
-              {...props}
-              tripId={tripId}
-              guest={guest}
-              prebookId={prebookId}
-              paymentIntentId={paymentIntentId}
-              tripItemId={tripItemId}
-              setError={setError}
-              setStage={setStage}
-            />
-          </Elements>
-        )}
+          <HotelCheckoutRail
+            props={props}
+            state={checkoutState}
+            hasTrip={hasTrip}
+            stage={stage}
+            totalTravelers={totalTravelers}
+            requestedRooms={requestedRooms}
+            formattedAmount={formattedAmount}
+          />
+        </div>
       </section>
     </main>
   )
@@ -237,13 +343,13 @@ function HotelPaymentForm({
       const bookingId = result.bookingRecordId ?? result.bookingId ?? paymentIntentId
       window.location.href = `/trip/${encodeURIComponent(tripId)}?booking=${encodeURIComponent(String(bookingId))}`
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment succeeded, but provider booking failed. Contact support with your payment reference.')
+      setError(err instanceof Error ? err.message : 'Payment succeeded, but the booking needs support. Contact support with your payment reference.')
       setStage('error')
     }
   }
 
   return (
-    <form onSubmit={submitPayment} className="rounded-[2rem] bg-white p-6 shadow-sm ring-1 ring-gray-200">
+    <form onSubmit={submitPayment} className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
       <PaymentElement options={{ layout: 'tabs' }} />
       <button
         type="submit"
@@ -254,6 +360,136 @@ function HotelPaymentForm({
         Pay and confirm hotel
       </button>
     </form>
+  )
+}
+
+function HotelCheckoutRail({
+  props,
+  state,
+  hasTrip,
+  stage,
+  totalTravelers,
+  requestedRooms,
+  formattedAmount,
+}: {
+  props: Props
+  state: string
+  hasTrip: boolean
+  stage: Stage
+  totalTravelers: number
+  requestedRooms: number
+  formattedAmount: string
+}) {
+  const steps = [
+    {
+      label: 'Selected room',
+      complete: true,
+      detail: `${props.roomName} is attached to this checkout`,
+    },
+    {
+      label: 'Trip attached',
+      complete: hasTrip,
+      detail: hasTrip ? 'Ready to save into My Trip' : 'Create a trip before checkout',
+    },
+    {
+      label: 'Room rate',
+      complete: stage === 'payment',
+      active: stage === 'processing',
+      detail: stage === 'payment' ? 'Rate ready for payment' : 'Runs after guest details',
+    },
+    {
+      label: 'Payment and confirmation',
+      complete: false,
+      active: stage === 'payment',
+      detail: 'Confirmed after payment and booking checks finish',
+    },
+  ]
+
+  return (
+    <aside aria-label="Hotel checkout status" className="space-y-4 lg:sticky lg:top-24">
+      <section className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <p className="text-xs font-bold uppercase text-gray-500">
+          Checkout status
+        </p>
+        <h2 className="mt-1 text-lg font-bold text-night">
+          {state}
+        </h2>
+        <div className="mt-4 space-y-3">
+          {steps.map((step) => (
+            <div key={step.label} className="flex gap-3">
+              <span
+                className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-bold ${
+                  step.complete
+                    ? 'border-palm-200 bg-palm-50 text-palm-700'
+                    : step.active
+                      ? 'border-gold-300 bg-gold-50 text-night'
+                      : 'border-gray-200 bg-white text-gray-400'
+                }`}
+                aria-hidden="true"
+              >
+                {step.complete ? 'OK' : step.active ? 'Now' : ''}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-night">
+                  {step.label}
+                </p>
+                <p className="mt-0.5 text-xs font-semibold leading-5 text-gray-500">
+                  {step.detail}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-baha-lg border border-gray-200 bg-gray-50 p-4">
+        <p className="text-xs font-bold uppercase text-gray-500">
+          Stay snapshot
+        </p>
+        <dl className="mt-3 space-y-2">
+          <RailFact label="Stay" value={props.hotelName} />
+          <RailFact label="Room" value={props.roomName} />
+          <RailFact label="Guests" value={`${totalTravelers}`} />
+          <RailFact label="Rooms" value={`${requestedRooms}`} />
+          <RailFact label="Total" value={formattedAmount} />
+        </dl>
+      </section>
+
+      <section className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
+        <p className="text-xs font-bold uppercase text-gray-500">
+          Confirmation
+        </p>
+        <p className="mt-2 text-sm font-semibold leading-6 text-charcoal">
+          Baha Buddy shows confirmed only after payment and booking checks finish.
+        </p>
+      </section>
+    </aside>
+  )
+}
+
+function StayFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-gray-50 px-3 py-2 ring-1 ring-gray-200">
+      <p className="text-xs font-bold uppercase text-gray-500">
+        {label}
+      </p>
+      <p className="mt-0.5 truncate text-sm font-bold text-night">
+        {value}
+      </p>
+    </div>
+  )
+}
+
+function RailFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-gray-200">
+      <dt className="text-xs font-bold uppercase text-gray-500">
+        {label}
+      </dt>
+      <dd className="truncate text-right text-xs font-bold text-night">
+        {value}
+      </dd>
+    </div>
   )
 }
 
@@ -304,6 +540,23 @@ function ensureLocalBookingSaved(result: Record<string, unknown>) {
     || !result.bookingRecordId
     || !result.tripItemId
   ) {
-    throw new Error('Payment and provider booking succeeded, but Baha Buddy could not save the local booking record. Contact support with your payment reference.')
+    throw new Error('Payment succeeded, but this booking needs support before it can be shown as confirmed. Contact support with your payment reference.')
   }
+}
+
+function bookingReturnPath(props: Props): string {
+  const params = new URLSearchParams({
+    rate_id: props.rateId,
+    checkin: props.checkin,
+    checkout: props.checkout,
+    adults: String(props.adults),
+    children: String(Math.max(0, props.childrenCount ?? 0)),
+    rooms: String(Math.max(1, props.requestedRooms ?? 1)),
+    room: props.roomName,
+    amount: String(props.amountCents),
+    currency: props.currency,
+    hotel_name: props.hotelName,
+  })
+
+  return `/stays/${encodeURIComponent(props.hotelId)}/guests?${params.toString()}`
 }

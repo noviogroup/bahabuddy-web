@@ -1,4 +1,5 @@
 import { parseStayTravelerType, type StayTravelerType } from '@/lib/stay-traveler-types'
+import { stayIslandFilterLabel } from '@/lib/stay-island-filters'
 
 export type StaySortMode = 'rating' | 'stars'
 
@@ -77,6 +78,11 @@ function cleanString(value: string | undefined): string {
   return typeof value === 'string' ? value.trim() : ''
 }
 
+function cleanIsland(value: string | undefined): string {
+  const cleaned = cleanString(value)
+  return cleaned ? stayIslandFilterLabel(cleaned) : ''
+}
+
 function parseBoundedInt(value: string | undefined, min: number, max: number): number | undefined {
   const parsed = Number.parseInt(cleanString(value), 10)
   if (!Number.isFinite(parsed)) return undefined
@@ -110,7 +116,7 @@ export function readStaySearchParams(input: StaySearchParamsInput): StaySearchPa
   const checkout = cleanString(input.checkout)
 
   return {
-    island: cleanString(input.island),
+    island: cleanIsland(input.island),
     city: cleanString(input.city),
     type: cleanString(input.type),
     travelerType: parseStayTravelerType(input.traveler_type),
@@ -149,7 +155,7 @@ export function staySearchUrl(
 
   const params = new URLSearchParams()
   for (const key of ORDERED_KEYS) {
-    const value = cleanString(merged[key])
+    const value = key === 'island' ? cleanIsland(merged[key]) : cleanString(merged[key])
     if (value) params.set(key, value)
   }
 

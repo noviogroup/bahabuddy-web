@@ -129,7 +129,7 @@ export function SummaryCard({ data, tripId, className }: Props) {
     <CardShell mode="plain" accent="brand" className={className}>
       {/* Header ──────────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-brand-700 to-brand-500 px-4 py-3">
-        <p className="text-brand-100 text-[10px] font-bold uppercase tracking-widest">Trip summary</p>
+        <p className="text-brand-100 text-xs font-bold uppercasest">Trip summary</p>
         <p className="text-white font-bold text-lg mt-1 leading-tight">{tripName}</p>
         {dateRange && (
           <p className="text-brand-100 text-xs mt-0.5">{dateRange}</p>
@@ -141,17 +141,17 @@ export function SummaryCard({ data, tripId, className }: Props) {
         <div className="flex divide-x divide-gray-100 -mx-1">
           {days > 0 && (
             <div className="flex-1 px-1 text-center">
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Days</p>
+              <p className="text-xs uppercase text-gray-400 font-semibold">Days</p>
               <p className="text-base font-bold text-gray-900 mt-0.5">{days}</p>
             </div>
           )}
           <div className="flex-1 px-1 text-center">
-            <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Travelers</p>
+            <p className="text-xs uppercase text-gray-400 font-semibold">Travelers</p>
             <p className="text-base font-bold text-gray-900 mt-0.5">{travelers}</p>
           </div>
           {islands.length > 0 && (
             <div className="flex-1 px-1 text-center">
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Islands</p>
+              <p className="text-xs uppercase text-gray-400 font-semibold">Islands</p>
               <p className="text-base font-bold text-gray-900 mt-0.5">{islands.length}</p>
             </div>
           )}
@@ -159,7 +159,7 @@ export function SummaryCard({ data, tripId, className }: Props) {
 
         {/* Islands list when we have them — small inline below the stats */}
         {islands.length > 0 && (
-          <p className="text-[11px] text-gray-500 text-center leading-snug">
+          <p className="text-xs text-gray-500 text-center leading-snug">
             {islands.join(' · ')}
           </p>
         )}
@@ -170,9 +170,9 @@ export function SummaryCard({ data, tripId, className }: Props) {
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm font-semibold text-gray-700">Estimated total</span>
               <div className="text-right">
-                <span className="text-2xl font-extrabold text-brand-600 leading-none">{fmtUSD(totalCost)}</span>
+                <span className="text-2xl font-bold text-brand-600 leading-none">{fmtUSD(totalCost)}</span>
                 {perPerson != null && (
-                  <p className="text-[11px] text-gray-500 mt-0.5">{fmtUSD(perPerson)} per person</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{fmtUSD(perPerson)} per person</p>
                 )}
               </div>
             </div>
@@ -193,7 +193,7 @@ export function SummaryCard({ data, tripId, className }: Props) {
                     )
                   })}
                 </div>
-                <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px]">
+                <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
                   {segments.map(s => {
                     const pct = Math.round((s.amount / breakdownTotal) * 100)
                     return (

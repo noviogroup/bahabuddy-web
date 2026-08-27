@@ -42,19 +42,19 @@ export default function EmptySlotChatLink({
     <div className="rounded-baha-md border-2 border-dashed border-brand-100 bg-brand-50/35 px-4 py-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className="text-sm font-extrabold text-night">Add to Day {dayNumber} {slotLabel}</p>
+          <p className="text-sm font-bold text-night">Add to Day {dayNumber} {slotLabel}</p>
           <p className="mt-0.5 text-xs leading-5 text-gray-500">Browse real places and experiences first, then ask Buddy if you want help choosing.</p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
           <Link
             href={exploreHref}
-            className="rounded-full bg-brand-600 px-3.5 py-2 text-xs font-extrabold text-white hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+            className="rounded-full bg-brand-600 px-3.5 py-2 text-xs font-bold text-white hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
           >
             Browse and add
           </Link>
           <Link
             href={askBuddyHref}
-            className="rounded-full bg-white px-3.5 py-2 text-xs font-extrabold text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+            className="rounded-full bg-white px-3.5 py-2 text-xs font-bold text-brand-700 ring-1 ring-brand-200 hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
           >
             Ask Buddy
           </Link>

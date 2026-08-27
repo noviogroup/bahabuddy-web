@@ -30,6 +30,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import Sidebar from './Sidebar'
 import ChatPanel from './ChatPanel'
+import MobileChatEntryBar from '../home/MobileChatEntryBar'
 import { BahaLogo, BuddyAvatar } from '@/components/ui'
 
 export interface DashboardShellProps {
@@ -124,14 +125,14 @@ export default function DashboardShell({
       {/* ── Center: Main content column ───────────────────────────────── */}
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Mobile top bar (phone only) */}
-        <div className="lg:hidden shrink-0 flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200">
+        <div className="lg:hidden shrink-0 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white px-3 py-2 sm:px-4">
           <button
             type="button"
             onClick={() => setMobileNavOpen(true)}
             aria-label="Open navigation menu"
             aria-expanded={mobileNavOpen}
             aria-controls={mobileNavId}
-            className="text-gray-600 hover:text-night p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-gray-600 transition-colors hover:bg-brand-50 hover:text-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h16" />
@@ -141,9 +142,10 @@ export default function DashboardShell({
         </div>
 
         {/* Page content (scrollable) */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-6 sm:pb-24 lg:pb-0">
           {children}
         </div>
+        <MobileChatEntryBar />
       </main>
 
       {/* ── Right: Chat panel (desktop ≥1280px only) ──────────────────── */}
@@ -188,16 +190,16 @@ export default function DashboardShell({
             aria-label="Navigation menu"
             className="fixed inset-y-0 left-0 z-50 animate-slide-up motion-reduce:animate-none"
           >
-            {/* Hidden close button (focus target on open). Visible close
-                affordance is via the backdrop click + Escape key. */}
             <button
               ref={mobileNavCloseRef}
               type="button"
               onClick={() => setMobileNavOpen(false)}
               aria-label="Close navigation menu"
-              className="sr-only focus:not-sr-only focus:absolute focus:top-3 focus:right-3 focus:z-10 focus:bg-white focus:text-night focus:px-3 focus:py-1.5 focus:rounded-md focus:ring-2 focus:ring-brand-400"
+              className="absolute right-3 top-3 z-10 inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-gray-600 shadow-soft transition-colors hover:bg-gray-50 hover:text-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
             >
-              Close menu
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
             </button>
             <Sidebar
               userEmail={userEmail}
@@ -230,7 +232,7 @@ export default function DashboardShell({
                 type="button"
                 onClick={() => setChatOverlayOpen(false)}
                 aria-label="Close chat"
-                className="absolute top-3.5 right-4 z-10 text-gray-400 hover:text-night transition-colors p-1 rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
+                className="absolute right-3 top-2 z-10 inline-flex h-11 w-11 items-center justify-center rounded-xl text-gray-500 transition-colors hover:bg-gray-50 hover:text-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -257,8 +259,8 @@ interface FloatingChatButtonProps {
 function FloatingChatButton({ showOn, onClick }: FloatingChatButtonProps) {
   const visibility =
     showOn === 'tablet-only'
-      ? 'flex xl:hidden'
-      : 'flex'
+      ? 'hidden sm:flex xl:hidden'
+      : 'hidden sm:flex'
 
   return (
     <button
@@ -266,14 +268,15 @@ function FloatingChatButton({ showOn, onClick }: FloatingChatButtonProps) {
       onClick={onClick}
       aria-label="Open chat with Buddy"
       className={cn(
-        'fixed bottom-5 right-5 z-30 items-center gap-2 pl-2 pr-4 py-2 bg-white rounded-full shadow-card-hover border border-gray-200',
+        'fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-30 h-14 w-14 items-center justify-center bg-white p-1.5 rounded-full shadow-card-hover border border-gray-200',
+        'sm:bottom-5 sm:right-5 sm:h-auto sm:w-auto sm:gap-2 sm:justify-start sm:pl-2 sm:pr-4 sm:py-2',
         'hover:scale-105 motion-reduce:hover:scale-100 hover:shadow-gold-glow transition-all duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2',
         visibility,
       )}
     >
       <BuddyAvatar size="sm" state="idle" />
-      <span className="text-sm font-semibold text-night pr-1">Ask Buddy</span>
+      <span className="hidden text-sm font-semibold text-night pr-1 sm:inline">Ask Buddy</span>
     </button>
   )
 }

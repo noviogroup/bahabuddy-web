@@ -184,14 +184,14 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
           <div className="absolute bottom-0 left-0 right-0 p-5">
             {selectedIsland ? (
               <>
-                <p className="text-white/80 text-xs font-semibold uppercase tracking-widest">Your destination</p>
-                <p className="text-white text-2xl font-extrabold leading-tight drop-shadow">{selectedIsland.name}</p>
+                <p className="text-white/80 text-xs font-semibold uppercasest">Your destination</p>
+                <p className="text-white text-2xl font-bold leading-tight drop-shadow">{selectedIsland.name}</p>
                 <p className="text-white/90 text-xs mt-1 leading-relaxed line-clamp-2">{selectedIsland.tagline}</p>
               </>
             ) : (
               <>
-                <p className="text-white/80 text-xs font-semibold uppercase tracking-widest">Baha Buddy</p>
-                <p className="text-white text-2xl font-extrabold leading-tight drop-shadow">Your Bahamas, your way.</p>
+                <p className="text-white/80 text-xs font-semibold uppercasest">Baha Buddy</p>
+                <p className="text-white text-2xl font-bold leading-tight drop-shadow">Your Bahamas, your way.</p>
               </>
             )}
           </div>
@@ -199,7 +199,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
 
         {/* Form rail */}
         <div className="flex-1 min-w-0 overflow-y-auto p-6">
-          <h2 id={titleId} className="text-2xl font-extrabold text-night">Where to?</h2>
+          <h2 id={titleId} className="text-2xl font-bold text-night">Where to?</h2>
           <p className="text-sm text-gray-500 mt-1">Create the trip first, then add stays, flights, food, and tours directly.</p>
 
           {/* Destination */}
@@ -319,7 +319,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 font-bold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {submitting ? (
               <>

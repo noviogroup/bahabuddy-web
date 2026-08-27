@@ -6,15 +6,13 @@
  * Architectural choices for the web port (intentional deviations from mobile,
  * all documented inline):
  *
- *   1. Hotels: mobile routes through hotels-stays-proxy (LiteAPI) for live
- *      inventory. Web doesn't have that Edge Function under its own project,
- *      so we fall back to google_places filtered by type=lodging. Result:
- *      curated catalog instead of live LiteAPI prices. Swap to a live source
- *      once a web-side hotels-stays-proxy is deployed.
+ *   1. Hotels: read from the canonical Supabase `hotels` inventory table for
+ *      browse/chat cards, then hand off to the LiteAPI-backed booking routes
+ *      for live rates, prebook, and booking.
  *
- *   2. Activities: same story as hotels. Mobile uses Viator. Web falls back
- *      to google_places filtered by tourist_attraction. Swap when an
- *      activities-proxy is wired.
+ *   2. Restaurants/activities: web reads Supabase-backed canonical/cached
+ *      place inventory for browse quality. Compatibility table names are
+ *      storage details, not traveler-facing provider labels.
  *
  *   3. Flights: LiteAPI-backed beta flight search, matching the web booking
  *      routes and mobile booking provider contract.
@@ -29,17 +27,23 @@
  *      handles the fence; toolResultsToCards() handles the tool path.
  *
  *   6. Detail-page identifiers: every hotel / restaurant / activity card
- *      carries the source row's `place_id`. Clicking the card in chat opens
- *      the corresponding detail page at /stays/[id], /restaurants/[id], or
- *      /activities/[id]. Flight cards carry LiteAPI offer IDs for direct
- *      booking at /flights/[offerId]/book.
+ *      carries a stable source id in `place_id`. For hotels this is the
+ *      canonical `hotels.id`; for restaurants/activities it is the canonical
+ *      or cached/source place id. Clicking the card opens /stays/[id],
+ *      /restaurants/[id], or /activities/[id]. Flight cards carry LiteAPI
+ *      offer IDs for direct booking at /flights/[offerId]/book.
  */
 
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { CardData } from '@/components/RichCards'
-import { resolveAirlineLogoUrl } from '@/lib/airline-logos'
-import { callTravelProvider } from '@/lib/travel-booking/provider'
-import { fetchIslandWeather, WeatherProviderError } from '@/lib/weather'
+import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  CACHED_PLACE_REVIEW_TABLE,
+  CACHED_PLACE_SOURCE_TABLE,
+} from "@/lib/place-inventory";
+import type { CardData } from "@/components/RichCards";
+import { resolveAirlineLogoUrl } from "@/lib/airline-logos";
+import { stayIslandFilterAliases } from "@/lib/stay-island-filters";
+import { callTravelProvider } from "@/lib/travel-booking/provider";
+import { fetchIslandWeather, WeatherProviderError } from "@/lib/weather";
 
 // ──────────────────────────────────────────────────────────────────────────
 // TOOL DEFINITIONS (sent to Claude)
@@ -47,317 +51,430 @@ import { fetchIslandWeather, WeatherProviderError } from '@/lib/weather'
 
 export const TOOL_DEFINITIONS = [
   {
-    name: 'get_hotels',
-    description: 'Search for hotels and accommodations on a specific Bahamas island. Use when the user asks about where to stay, accommodations, hotels, resorts, or villas. ALWAYS call this instead of making up hotel names. Returns curated Bahamas lodging from the database.',
+    name: "get_hotels",
+    description:
+      "Search for hotels and accommodations on a specific Bahamas island. Use when the user asks about where to stay, accommodations, hotels, resorts, or villas. ALWAYS call this instead of making up hotel names. Returns curated Bahamas lodging from the database.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         island_id: {
-          type: 'string',
-          enum: ['nassau', 'paradise-island', 'exuma', 'eleuthera', 'harbour-island', 'andros', 'grand-bahama', 'bimini', 'long-island', 'abacos'],
-          description: 'The island to search on',
+          type: "string",
+          enum: [
+            "nassau",
+            "paradise-island",
+            "exuma",
+            "eleuthera",
+            "harbour-island",
+            "andros",
+            "grand-bahama",
+            "bimini",
+            "long-island",
+            "abacos",
+          ],
+          description: "The island to search on",
         },
         price_range: {
-          type: 'string',
-          enum: ['budget', 'moderate', 'upscale', 'fine-dining'],
-          description: 'Price tier filter',
+          type: "string",
+          enum: ["budget", "moderate", "upscale", "fine-dining"],
+          description: "Price tier filter",
         },
         min_rating: {
-          type: 'number',
-          description: 'Minimum guest rating on a 0-5 scale (e.g. 4.0 for highly rated).',
+          type: "number",
+          description:
+            "Minimum guest rating on a 0-5 scale (e.g. 4.0 for highly rated).",
         },
         limit: {
-          type: 'integer',
-          description: 'Max results (default 5, max 10)',
+          type: "integer",
+          description: "Max results (default 5, max 10)",
         },
       },
-      required: ['island_id'],
+      required: ["island_id"],
     },
   },
 
   {
-    name: 'get_restaurants',
-    description: 'Search for quality restaurants and dining options on a specific Bahamas island. Use when the user asks about food, dining, restaurants, cafes, bars, where to eat, or cuisine. Results are filtered to avoid generic delis, convenience food spots, and chain-style low-signal records. ALWAYS call this instead of making up restaurant names.',
+    name: "get_restaurants",
+    description:
+      "Search for quality restaurants and dining options on a specific Bahamas island. Use when the user asks about food, dining, restaurants, cafes, bars, where to eat, or cuisine. Results are filtered to avoid generic delis, convenience food spots, and chain-style low-signal records. ALWAYS call this instead of making up restaurant names.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         island_id: {
-          type: 'string',
-          enum: ['nassau', 'paradise-island', 'exuma', 'eleuthera', 'harbour-island', 'andros', 'grand-bahama', 'bimini', 'long-island', 'abacos'],
-          description: 'The island to search on',
+          type: "string",
+          enum: [
+            "nassau",
+            "paradise-island",
+            "exuma",
+            "eleuthera",
+            "harbour-island",
+            "andros",
+            "grand-bahama",
+            "bimini",
+            "long-island",
+            "abacos",
+          ],
+          description: "The island to search on",
         },
         cuisine_type: {
-          type: 'string',
-          description: 'Cuisine filter: bahamian, seafood, italian, international, american, asian, caribbean',
+          type: "string",
+          description:
+            "Cuisine filter: bahamian, seafood, italian, international, american, asian, caribbean",
         },
         price_range: {
-          type: 'string',
-          enum: ['budget', 'moderate', 'upscale', 'fine-dining'],
-          description: 'Price tier filter',
+          type: "string",
+          enum: ["budget", "moderate", "upscale", "fine-dining"],
+          description: "Price tier filter",
         },
         limit: {
-          type: 'integer',
-          description: 'Max results (default 5)',
+          type: "integer",
+          description: "Max results (default 5)",
         },
       },
-      required: ['island_id'],
+      required: ["island_id"],
     },
   },
 
   {
-    name: 'get_activities',
-    description: 'Search for tours, activities, and experiences on a specific Bahamas island. Use when the user asks about what to do, tours, excursions, snorkeling, fishing, cultural experiences, nightlife, or any activity. ALWAYS call this instead of making up activity names.',
+    name: "get_activities",
+    description:
+      "Search for tours, activities, and experiences on a specific Bahamas island. Use when the user asks about what to do, tours, excursions, snorkeling, fishing, cultural experiences, nightlife, or any activity. ALWAYS call this instead of making up activity names.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         island_id: {
-          type: 'string',
-          enum: ['nassau', 'paradise-island', 'exuma', 'eleuthera', 'harbour-island', 'andros', 'grand-bahama', 'bimini', 'long-island', 'abacos'],
-          description: 'The island to search on',
+          type: "string",
+          enum: [
+            "nassau",
+            "paradise-island",
+            "exuma",
+            "eleuthera",
+            "harbour-island",
+            "andros",
+            "grand-bahama",
+            "bimini",
+            "long-island",
+            "abacos",
+          ],
+          description: "The island to search on",
         },
         vibe_tags: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Filter by vibe: beach, adventure, culture, nightlife, romance, family, foodie, water-sports, luxury, fishing',
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Filter by vibe: beach, adventure, culture, nightlife, romance, family, foodie, water-sports, luxury, fishing",
         },
         kid_friendly: {
-          type: 'boolean',
-          description: 'Only return kid-friendly activities. Set true when the user has children.',
+          type: "boolean",
+          description:
+            "Only return kid-friendly activities. Set true when the user has children.",
         },
         limit: {
-          type: 'integer',
-          description: 'Max results (default 5)',
+          type: "integer",
+          description: "Max results (default 5)",
         },
       },
-      required: ['island_id'],
+      required: ["island_id"],
     },
   },
 
   {
-    name: 'search_flights',
-    description: 'Search for flights to the Bahamas. Use when the user asks about flights, airfare, getting to the Bahamas, or travel from their home city. Queries LiteAPI for beta real-time pricing and offer IDs.',
+    name: "search_flights",
+    description:
+      "Search for flights to the Bahamas. Use when the user asks about flights, airfare, getting to the Bahamas, or travel from their home city. Queries LiteAPI for beta real-time pricing and offer IDs.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         origin_city: {
-          type: 'string',
-          description: 'Departure city or 3-letter IATA airport code (e.g. "Miami" or "MIA")',
+          type: "string",
+          description:
+            'Departure city or 3-letter IATA airport code (e.g. "Miami" or "MIA")',
         },
         destination: {
-          type: 'string',
-          enum: ['NAS', 'EXU', 'ELH', 'FPO', 'GHB', 'BIM', 'ASD', 'MHH'],
-          description: 'Bahamas airport code. NAS=Nassau, EXU=Exuma, ELH=Eleuthera, FPO=Freeport, GHB=Governors Harbour, BIM=Bimini, ASD=Andros, MHH=Abacos',
+          type: "string",
+          enum: ["NAS", "EXU", "ELH", "FPO", "GHB", "BIM", "ASD", "MHH"],
+          description:
+            "Bahamas airport code. NAS=Nassau, EXU=Exuma, ELH=Eleuthera, FPO=Freeport, GHB=Governors Harbour, BIM=Bimini, ASD=Andros, MHH=Abacos",
         },
         departure_date: {
-          type: 'string',
-          description: 'Departure date YYYY-MM-DD. Must be today or in the future.',
+          type: "string",
+          description:
+            "Departure date YYYY-MM-DD. Must be today or in the future.",
         },
         return_date: {
-          type: 'string',
-          description: 'Return date YYYY-MM-DD (omit for one-way)',
+          type: "string",
+          description: "Return date YYYY-MM-DD (omit for one-way)",
         },
         passengers: {
-          type: 'integer',
-          description: 'Number of passengers (default 1)',
+          type: "integer",
+          description: "Number of passengers (default 1)",
         },
         cabin_class: {
-          type: 'string',
-          enum: ['economy', 'premium_economy', 'business', 'first'],
-          description: 'Cabin class preference',
+          type: "string",
+          enum: ["economy", "premium_economy", "business", "first"],
+          description: "Cabin class preference",
         },
       },
-      required: ['origin_city', 'destination', 'departure_date'],
+      required: ["origin_city", "destination", "departure_date"],
     },
   },
 
   {
-    name: 'get_trip_details',
-    description: 'Retrieve the current trip state including accommodations, flights, activities, and budget. Use when the user asks about "my trip," wants to review their plan, or you need context about what has already been planned.',
+    name: "get_trip_details",
+    description:
+      'Retrieve the current trip state including accommodations, flights, activities, and budget. Use when the user asks about "my trip," wants to review their plan, or you need context about what has already been planned.',
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         trip_id: {
-          type: 'string',
-          description: 'The trip UUID. Use the active trip from user context if not specified.',
+          type: "string",
+          description:
+            "The trip UUID. Use the active trip from user context if not specified.",
         },
       },
-      required: ['trip_id'],
+      required: ["trip_id"],
     },
   },
 
   {
-    name: 'get_user_profile',
-    description: 'Retrieve detailed user preferences, travel history, and engagement data. Use when you need more context about the user beyond what is in the system context.',
+    name: "get_user_profile",
+    description:
+      "Retrieve detailed user preferences, travel history, and engagement data. Use when you need more context about the user beyond what is in the system context.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {},
     },
   },
 
   {
-    name: 'create_itinerary_item',
-    description: 'Add an activity, restaurant, or experience to the user\'s trip timeline. Use when the user says "add this", "book this", "put this on day 3", or confirms they want something in their itinerary.',
+    name: "create_itinerary_item",
+    description:
+      'Add an activity, restaurant, or experience to the user\'s trip timeline. Use when the user says "add this", "book this", "put this on day 3", or confirms they want something in their itinerary.',
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         trip_id: {
-          type: 'string',
-          description: 'The trip UUID',
+          type: "string",
+          description: "The trip UUID",
         },
         day_number: {
-          type: 'integer',
-          description: 'Which day of the trip (1-indexed)',
+          type: "integer",
+          description: "Which day of the trip (1-indexed)",
         },
         time_slot: {
-          type: 'string',
-          enum: ['morning', 'afternoon', 'evening'],
-          description: 'Time slot for the activity',
+          type: "string",
+          enum: ["morning", "afternoon", "evening"],
+          description: "Time slot for the activity",
         },
         activity_type: {
-          type: 'string',
-          enum: ['hotel', 'restaurant', 'activity', 'flight', 'transport'],
-          description: 'Type of itinerary item',
+          type: "string",
+          enum: ["hotel", "restaurant", "activity", "flight", "transport"],
+          description: "Type of itinerary item",
         },
         name: {
-          type: 'string',
-          description: 'Name of the place or activity',
+          type: "string",
+          description: "Name of the place or activity",
         },
         notes: {
-          type: 'string',
-          description: 'Optional notes or special instructions',
+          type: "string",
+          description: "Optional notes or special instructions",
         },
       },
-      required: ['trip_id', 'day_number', 'time_slot', 'activity_type', 'name'],
+      required: ["trip_id", "day_number", "time_slot", "activity_type", "name"],
     },
   },
 
   {
-    name: 'get_weather',
-    description: 'Get current weather and 7-day forecast for a Bahamas island. Use when the user asks about weather, temperature, rain, or what to pack.',
+    name: "get_weather",
+    description:
+      "Get current weather and 7-day forecast for a Bahamas island. Use when the user asks about weather, temperature, rain, or what to pack.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         island_id: {
-          type: 'string',
-          enum: ['nassau', 'paradise-island', 'exuma', 'eleuthera', 'andros', 'grand-bahama', 'bimini', 'long-island', 'abacos'],
-          description: 'The island to get weather for',
+          type: "string",
+          enum: [
+            "nassau",
+            "paradise-island",
+            "exuma",
+            "eleuthera",
+            "andros",
+            "grand-bahama",
+            "bimini",
+            "long-island",
+            "abacos",
+          ],
+          description: "The island to get weather for",
         },
       },
-      required: ['island_id'],
+      required: ["island_id"],
     },
   },
 
   {
-    name: 'get_island_info',
-    description: 'Get detailed information about a specific Bahamian island including overview, highlights, best time to visit, and travel tips.',
+    name: "get_island_info",
+    description:
+      "Get detailed information about a specific Bahamian island including overview, highlights, best time to visit, and travel tips.",
     input_schema: {
-      type: 'object',
+      type: "object",
       properties: {
         island_id: {
-          type: 'string',
-          enum: ['nassau', 'paradise-island', 'exuma', 'eleuthera', 'harbour-island', 'andros', 'grand-bahama', 'bimini', 'long-island', 'abacos'],
-          description: 'The island to get info about',
+          type: "string",
+          enum: [
+            "nassau",
+            "paradise-island",
+            "exuma",
+            "eleuthera",
+            "harbour-island",
+            "andros",
+            "grand-bahama",
+            "bimini",
+            "long-island",
+            "abacos",
+          ],
+          description: "The island to get info about",
         },
       },
-      required: ['island_id'],
+      required: ["island_id"],
     },
   },
-] as const
+
+  {
+    name: "search_island_faq",
+    description:
+      "Search the admin-curated island knowledge base for current practical Bahamas guidance. Use for entry rules, customs, transportation, money, safety, connectivity, medical help, boating, accessibility, and local etiquette instead of relying on model memory.",
+    input_schema: {
+      type: "object",
+      properties: {
+        island_slug: {
+          type: "string",
+          enum: [
+            "nassau-paradise-island", "the-exumas", "eleuthera-harbour-island",
+            "andros", "grand-bahama", "bimini", "abacos", "cat-island",
+            "long-island", "san-salvador",
+          ],
+          description: "Island knowledge collection to search.",
+        },
+        category: { type: "string", description: "Optional exact FAQ category." },
+        keyword: { type: "string", description: "Optional keyword to match in FAQ questions." },
+        limit: { type: "integer", description: "Max results (default 5, max 10)." },
+      },
+      required: ["island_slug"],
+    },
+  },
+] as const;
 
 // ──────────────────────────────────────────────────────────────────────────
 // SHARED REFERENCE DATA
 // ──────────────────────────────────────────────────────────────────────────
 
 const ISLAND_DISPLAY: Record<string, string> = {
-  'nassau':            'Nassau',
-  'paradise-island':   'Paradise Island',
-  'exuma':             'Exuma',
-  'eleuthera':         'Eleuthera',
-  'harbour-island':    'Harbour Island',
-  'andros':            'Andros',
-  'grand-bahama':      'Grand Bahama',
-  'bimini':            'Bimini',
-  'long-island':       'Long Island',
-  'abacos':            'The Abacos',
-}
+  nassau: "Nassau",
+  "paradise-island": "Paradise Island",
+  exuma: "Exuma",
+  eleuthera: "Eleuthera",
+  "harbour-island": "Harbour Island",
+  andros: "Andros",
+  "grand-bahama": "Grand Bahama",
+  bimini: "Bimini",
+  "long-island": "Long Island",
+  abacos: "The Abacos",
+};
+
+const HOTEL_ISLAND_ALIASES: Record<string, string[]> = {
+  nassau: ["Nassau", "New Providence", "Paradise Island"],
+  "paradise-island": ["Paradise Island", "New Providence", "Nassau"],
+  exuma: ["Exuma", "The Exumas"],
+  eleuthera: ["Eleuthera"],
+  "harbour-island": ["Harbour Island", "Harbor Island", "Dunmore Town"],
+  andros: ["Andros"],
+  "grand-bahama": ["Grand Bahama", "Freeport"],
+  bimini: ["Bimini"],
+  "long-island": ["Long Island"],
+  abacos: ["Abaco", "Abacos", "The Abacos"],
+};
 
 const PRICE_LEVEL_MAP: Record<string, number[]> = {
-  'budget':      [0, 1],
-  'moderate':    [2],
-  'upscale':     [3],
-  'fine-dining': [3, 4],
-}
+  budget: [0, 1],
+  moderate: [2],
+  upscale: [3],
+  "fine-dining": [3, 4],
+};
 
-const RESTAURANT_MIN_REVIEW_COUNT = 15
-const RESTAURANT_MIN_RATING = 4.0
+const RESTAURANT_MIN_REVIEW_COUNT = 15;
+const RESTAURANT_MIN_RATING = 4.0;
 const RESTAURANT_EXCLUDED_NAME_TERMS = [
-  'brandon',
-  'deli',
-  'mini mart',
-  'minimart',
-  'convenience',
-  'grocery',
-  'supermarket',
-  'liquor',
-  'gas station',
-  'service station',
-  'food store',
-  'wholesale',
-  'pharmacy',
-  'marco',
-  'domino',
-  'kfc',
-  'mcdonald',
-  'burger king',
-  'wendy',
-  'subway',
-  'popeyes',
-  'dunkin',
-  'starbucks',
-]
+  "brandon",
+  "deli",
+  "mini mart",
+  "minimart",
+  "convenience",
+  "grocery",
+  "supermarket",
+  "liquor",
+  "gas station",
+  "service station",
+  "food store",
+  "wholesale",
+  "pharmacy",
+  "marco",
+  "domino",
+  "kfc",
+  "mcdonald",
+  "burger king",
+  "wendy",
+  "subway",
+  "popeyes",
+  "dunkin",
+  "starbucks",
+];
 
-const RESTAURANT_EXCLUDED_CUISINE_TERMS = [
-  'deli',
-  'fast food',
-  'convenience',
-]
+const RESTAURANT_EXCLUDED_CUISINE_TERMS = ["deli", "fast food", "convenience"];
 
 function textValue(value: unknown): string {
-  return typeof value === 'string' ? value.toLowerCase() : ''
+  return typeof value === "string" ? value.toLowerCase() : "";
 }
 
 function hasRestaurantPhoto(place: Record<string, unknown>): boolean {
-  const photoUrl = typeof place.photo_url === 'string' ? place.photo_url : ''
-  if (photoUrl.startsWith('http')) return true
-  const photos = place.photos
-  return Array.isArray(photos) && photos.length > 0
+  const photoUrl = typeof place.photo_url === "string" ? place.photo_url : "";
+  if (photoUrl.startsWith("http")) return true;
+  const photos = place.photos;
+  return Array.isArray(photos) && photos.length > 0;
 }
 
-export function isQualityRestaurantCandidate(place: Record<string, unknown>): boolean {
-  const name = textValue(place.name)
-  if (!name) return false
-  if (RESTAURANT_EXCLUDED_NAME_TERMS.some(term => name.includes(term))) {
-    return false
+export function isQualityRestaurantCandidate(
+  place: Record<string, unknown>,
+): boolean {
+  const name = textValue(place.name);
+  if (!name) return false;
+  if (RESTAURANT_EXCLUDED_NAME_TERMS.some((term) => name.includes(term))) {
+    return false;
   }
 
-  const cuisine = textValue(place.cuisine_type)
-  if (RESTAURANT_EXCLUDED_CUISINE_TERMS.some(term => cuisine.includes(term))) {
-    return false
+  const cuisine = textValue(place.cuisine_type);
+  if (
+    RESTAURANT_EXCLUDED_CUISINE_TERMS.some((term) => cuisine.includes(term))
+  ) {
+    return false;
   }
 
-  const rating = typeof place.rating === 'number' ? place.rating : Number(place.rating ?? 0)
+  const rating =
+    typeof place.rating === "number" ? place.rating : Number(place.rating ?? 0);
   if (!Number.isFinite(rating) || rating < RESTAURANT_MIN_RATING) {
-    return false
+    return false;
   }
 
-  const reviewCount = typeof place.user_ratings_total === 'number'
-    ? place.user_ratings_total
-    : Number(place.user_ratings_total ?? 0)
-  if (!Number.isFinite(reviewCount) || reviewCount < RESTAURANT_MIN_REVIEW_COUNT) {
-    return false
+  const reviewCount =
+    typeof place.user_ratings_total === "number"
+      ? place.user_ratings_total
+      : Number(place.user_ratings_total ?? 0);
+  if (
+    !Number.isFinite(reviewCount) ||
+    reviewCount < RESTAURANT_MIN_REVIEW_COUNT
+  ) {
+    return false;
   }
 
-  return hasRestaurantPhoto(place)
+  return hasRestaurantPhoto(place);
 }
 
 const ISLAND_INFO: Record<string, Record<string, unknown>> = {
@@ -500,43 +617,72 @@ const ISLAND_PHOTOS: Record<string, string> = {
 }
 
 const CITY_TO_IATA: Record<string, string> = {
-  'miami': 'MIA', 'fort lauderdale': 'FLL', 'west palm beach': 'PBI',
-  'palm beach': 'PBI', 'new york': 'JFK', 'jfk': 'JFK',
-  'newark': 'EWR', 'laguardia': 'LGA', 'atlanta': 'ATL', 'charlotte': 'CLT',
-  'raleigh': 'RDU', 'raleigh durham': 'RDU', 'baltimore': 'BWI',
-  'nashville': 'BNA', 'dallas': 'DFW', 'houston': 'IAH',
-  'houston hobby': 'HOU', 'chicago': 'ORD', 'los angeles': 'LAX',
-  'san francisco': 'SFO', 'boston': 'BOS', 'philadelphia': 'PHL',
-  'washington': 'IAD', 'dc': 'IAD', 'orlando': 'MCO', 'tampa': 'TPA',
-  'jacksonville': 'JAX', 'fort myers': 'RSW', 'new orleans': 'MSY',
-  'detroit': 'DTW', 'denver': 'DEN', 'seattle': 'SEA',
-  'minneapolis': 'MSP', 'phoenix': 'PHX', 'las vegas': 'LAS',
-  'san diego': 'SAN', 'portland': 'PDX', 'toronto': 'YYZ',
-  'montreal': 'YUL', 'vancouver': 'YVR', 'london': 'LHR',
-  'nassau': 'NAS', 'freeport': 'FPO',
-}
+  miami: "MIA",
+  "fort lauderdale": "FLL",
+  "west palm beach": "PBI",
+  "palm beach": "PBI",
+  "new york": "JFK",
+  jfk: "JFK",
+  newark: "EWR",
+  laguardia: "LGA",
+  atlanta: "ATL",
+  charlotte: "CLT",
+  raleigh: "RDU",
+  "raleigh durham": "RDU",
+  baltimore: "BWI",
+  nashville: "BNA",
+  dallas: "DFW",
+  houston: "IAH",
+  "houston hobby": "HOU",
+  chicago: "ORD",
+  "los angeles": "LAX",
+  "san francisco": "SFO",
+  boston: "BOS",
+  philadelphia: "PHL",
+  washington: "IAD",
+  dc: "IAD",
+  orlando: "MCO",
+  tampa: "TPA",
+  jacksonville: "JAX",
+  "fort myers": "RSW",
+  "new orleans": "MSY",
+  detroit: "DTW",
+  denver: "DEN",
+  seattle: "SEA",
+  minneapolis: "MSP",
+  phoenix: "PHX",
+  "las vegas": "LAS",
+  "san diego": "SAN",
+  portland: "PDX",
+  toronto: "YYZ",
+  montreal: "YUL",
+  vancouver: "YVR",
+  london: "LHR",
+  nassau: "NAS",
+  freeport: "FPO",
+};
 
 function resolveAirportCode(input: string): string | null {
-  if (!input) return null
-  const clean = input.trim()
-  if (/^[A-Z]{3}$/i.test(clean)) return clean.toUpperCase()
-  const lower = normalizeAirportLookup(clean)
-  if (CITY_TO_IATA[lower]) return CITY_TO_IATA[lower]
+  if (!input) return null;
+  const clean = input.trim();
+  if (/^[A-Z]{3}$/i.test(clean)) return clean.toUpperCase();
+  const lower = normalizeAirportLookup(clean);
+  if (CITY_TO_IATA[lower]) return CITY_TO_IATA[lower];
   for (const [city, code] of Object.entries(CITY_TO_IATA)) {
-    if (lower.includes(city) || city.includes(lower)) return code
+    if (lower.includes(city) || city.includes(lower)) return code;
   }
-  return null
+  return null;
 }
 
 function normalizeAirportLookup(value: string): string {
   return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
-    .replace(/[’']/g, '')
-    .replace(/[-/]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
+    .replace(/[’']/g, "")
+    .replace(/[-/]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -545,51 +691,137 @@ function normalizeAirportLookup(value: string): string {
 
 export interface ToolResult {
   /** Tool result data passed back to Claude as tool_result content. */
-  data: unknown
+  data: unknown;
   /** Optional concrete cards to emit to the UI via the `cards` SSE event. */
-  cards?: CardData[]
+  cards?: CardData[];
 }
 
 /**
- * Shape of a single photo entry in `google_places.photos` JSONB.
- * Mirrors what the Google Places Details API returns.
+ * Shape of a single photo entry in the cached place inventory photos JSONB.
+ * This mirrors the backend-enriched cached place details payload.
  */
 interface PhotoMeta {
-  reference: string
-  width?: number
-  height?: number
+  reference: string;
+  width?: number;
+  height?: number;
 }
 
-/** Build a proxy URL for a Google Place photo reference. Matches the
+/** Build a proxy URL for a cached place photo reference. Matches the
  *  pattern in `src/lib/place-photos.ts` so existing storage caching
  *  (the /api/place-photo route walks Supabase storage first) applies. */
 function photoRefToProxyUrl(reference: string, width = 800): string {
-  const params = new URLSearchParams({ ref: reference, w: String(width) })
-  return `/api/place-photo?${params.toString()}`
+  const params = new URLSearchParams({ ref: reference, w: String(width) });
+  return `/api/place-photo?${params.toString()}`;
 }
 
 /** Convert a place's photos JSONB array into renderable URL strings.
  *  Returns an empty array when the field is missing/malformed. */
 function buildPhotoGallery(photos: unknown): string[] {
-  if (!Array.isArray(photos)) return []
+  if (!Array.isArray(photos)) return [];
   return photos
-    .filter((p): p is PhotoMeta => !!p && typeof p === 'object' && typeof (p as PhotoMeta).reference === 'string')
-    .map(p => photoRefToProxyUrl(p.reference, 800))
+    .filter(
+      (p): p is PhotoMeta =>
+        !!p &&
+        typeof p === "object" &&
+        typeof (p as PhotoMeta).reference === "string",
+    )
+    .map((p) => photoRefToProxyUrl(p.reference, 800));
 }
+
+function validHttpUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return /^https?:\/\//i.test(trimmed) ? trimmed : null;
+}
+
+function buildHotelPhotoGallery(
+  mainPhotoUrl: unknown,
+  photos: unknown,
+): string[] {
+  const urls = new Set<string>();
+  const main = validHttpUrl(mainPhotoUrl);
+  if (main) urls.add(main);
+
+  if (Array.isArray(photos)) {
+    for (const photo of photos) {
+      const direct = validHttpUrl(photo);
+      if (direct) {
+        urls.add(direct);
+        continue;
+      }
+
+      if (photo && typeof photo === "object") {
+        const record = photo as Record<string, unknown>;
+        const url = validHttpUrl(record.url ?? record.image_url);
+        if (url) {
+          urls.add(url);
+          continue;
+        }
+
+        const reference =
+          typeof record.reference === "string"
+            ? record.reference
+            : typeof record.photo_reference === "string"
+              ? record.photo_reference
+              : null;
+        if (reference) urls.add(photoRefToProxyUrl(reference, 800));
+      }
+    }
+  }
+
+  return Array.from(urls);
+}
+
+function escapePostgrestOrValue(value: string): string {
+  return value.replace(/[(),]/g, " ");
+}
+
+function hotelIslandAliases(islandId: unknown): string[] {
+  if (typeof islandId !== "string") return [];
+  const displayOrRaw = ISLAND_DISPLAY[islandId] ?? islandId;
+  const configured = HOTEL_ISLAND_ALIASES[islandId] ?? [displayOrRaw];
+  return Array.from(
+    new Set(
+      [
+        ...configured,
+        ...stayIslandFilterAliases(islandId),
+        ...stayIslandFilterAliases(displayOrRaw),
+      ]
+        .map((alias) => alias.trim())
+        .filter(Boolean),
+    ),
+  );
+}
+
+type HotelInventoryRow = {
+  id: string;
+  name: string | null;
+  city: string | null;
+  island: string | null;
+  address: string | null;
+  star_rating: number | null;
+  review_score: number | null;
+  review_count: number | null;
+  main_photo_url: string | null;
+  photos: unknown;
+  amenities: string[] | null;
+  property_type_name: string | null;
+  description: string | null;
+};
 
 /** Shape of a single top-review record returned by fetchTopReviews. */
 interface TopReview {
-  text: string
-  author_name: string
-  rating: number
-  time: string
+  text: string;
+  author_name: string;
+  rating: number;
+  time: string;
 }
 
 /**
- * Batch-pull one positive review per place from `google_place_reviews`.
+ * Batch-pull one positive review per place from the cached place review table.
  *
- * Used by all three place-search executors (hotels, restaurants,
- * activities) to add social-proof snippets to their cards. We pull a
+ * Used by restaurant and activity executors to add social-proof snippets
+ * to their cards. We pull a
  * wide window (rating >= 4, newest first) then dedupe to first-per-place
  * client-side — PostgREST has no DISTINCT ON, and a LATERAL subquery
  * would require a custom RPC. Query cost is small (~1,700 review rows,
@@ -602,37 +834,37 @@ async function fetchTopReviews(
   supabase: SupabaseClient,
   placeIds: string[],
 ): Promise<Map<string, TopReview>> {
-  const out = new Map<string, TopReview>()
-  if (placeIds.length === 0) return out
+  const out = new Map<string, TopReview>();
+  if (placeIds.length === 0) return out;
 
   const { data: rows, error } = await supabase
-    .from('google_place_reviews')
-    .select('place_id, author_name, rating, text, time')
-    .in('place_id', placeIds)
-    .gte('rating', 4)
-    .not('text', 'is', null)
-    .order('time', { ascending: false })
-    .limit(placeIds.length * 4) // pull a few per place; we keep first
+    .from(CACHED_PLACE_REVIEW_TABLE)
+    .select("place_id, author_name, rating, text, time")
+    .in("place_id", placeIds)
+    .gte("rating", 4)
+    .not("text", "is", null)
+    .order("time", { ascending: false })
+    .limit(placeIds.length * 4); // pull a few per place; we keep first
 
   if (error) {
-    console.warn('[fetchTopReviews] lookup failed:', error.message)
-    return out
+    console.warn("[fetchTopReviews] lookup failed:", error.message);
+    return out;
   }
-  if (!rows) return out
+  if (!rows) return out;
 
   for (const r of rows) {
-    const pid = r.place_id as string
-    const txt = (r.text as string | null) ?? ''
+    const pid = r.place_id as string;
+    const txt = (r.text as string | null) ?? "";
     if (!out.has(pid) && txt.length > 30) {
       out.set(pid, {
         text: txt,
-        author_name: (r.author_name as string) ?? 'Guest',
+        author_name: (r.author_name as string) ?? "Guest",
         rating: (r.rating as number) ?? 5,
-        time: (r.time as string) ?? '',
-      })
+        time: (r.time as string) ?? "",
+      });
     }
   }
-  return out
+  return out;
 }
 
 export async function getHotels(
@@ -640,27 +872,52 @@ export async function getHotels(
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
   let query = supabase
-    .from('google_places')
-    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, description, amenities')
-    .eq('is_active', true)
-    .in('type', ['lodging', 'hotel', 'resort'])
-    .eq('island_id', args.island_id)
-    .gte('user_ratings_total', 5)
-    .order('rating', { ascending: false })
+    .from("hotels")
+    .select(
+      "id, name, city, island, address, star_rating, review_score, review_count, main_photo_url, photos, amenities, property_type_name, description",
+    )
+    .eq("is_active", true)
+    .order("star_rating", { ascending: false, nullsFirst: false })
+    .order("review_score", { ascending: false, nullsFirst: false })
+    .order("review_count", { ascending: false, nullsFirst: false })
+    .order("name", { ascending: true });
+
+  const aliases = hotelIslandAliases(args.island_id);
+  if (aliases.length > 0) {
+    query = query.or(
+      aliases
+        .map((value) => `island.ilike.%${escapePostgrestOrValue(value)}%`)
+        .join(","),
+    );
+  }
 
   if (args.price_range) {
-    const levels = PRICE_LEVEL_MAP[args.price_range as string]
-    if (levels) query = query.in('price_level', levels)
+    const priceRange = args.price_range as string;
+    if (priceRange === "budget") query = query.lte("star_rating", 3);
+    if (priceRange === "moderate")
+      query = query.gte("star_rating", 3).lte("star_rating", 4);
+    if (priceRange === "upscale" || priceRange === "fine-dining")
+      query = query.gte("star_rating", 4);
   }
-  if (args.min_rating) query = query.gte('rating', args.min_rating)
+  if (args.min_rating) {
+    const minRating = Number(args.min_rating);
+    if (Number.isFinite(minRating)) {
+      query = query.gte(
+        "review_score",
+        minRating > 5 ? minRating : minRating * 2,
+      );
+    }
+  }
 
-  const limit = Math.min(Number(args.limit) || 5, 10)
-  query = query.limit(limit)
+  const limit = Math.min(Number(args.limit) || 5, 10);
+  query = query.limit(limit);
 
-  const { data, error } = await query
+  const { data, error } = await query;
 
   if (error) {
-    return { data: { error: `Hotel search failed: ${error.message}`, results: [] } }
+    return {
+      data: { error: `Hotel search failed: ${error.message}`, results: [] },
+    };
   }
 
   if (!data || data.length === 0) {
@@ -669,76 +926,50 @@ export async function getHotels(
         results: [],
         message: `No hotels found on ${ISLAND_DISPLAY[args.island_id as string] ?? args.island_id} matching your criteria. Try a different island or relax the filters.`,
       },
-    }
+    };
   }
 
-  // ── Top-review fetch ──────────────────────────────────────────────
-  const placeIds = data.map(p => p.place_id as string).filter(Boolean)
-  const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
+  const rows = data as HotelInventoryRow[];
 
   // Compact data for Claude
-  const compact = data.map(p => ({
-    place_id: p.place_id,
+  const compact = rows.map((p) => ({
+    place_id: p.id,
+    provider_hotel_id: p.id,
     name: p.name,
-    island: p.island_id,
-    rating: p.rating,
-    review_count: p.user_ratings_total,
-    price_level: p.price_level,
+    island: p.island,
+    city: p.city,
+    rating: p.review_score,
+    stars: p.star_rating,
+    review_count: p.review_count,
+    property_type: p.property_type_name,
     amenities: p.amenities ?? [],
     description: p.description,
-  }))
+  }));
 
-  // Cards for the UI — `place_id` is what makes each card link to its
-  // detail page (/stays/[id]). The renderer falls back to non-linking
-  // when place_id is absent (defensive — should never happen for tool-
-  // emitted cards since the column is non-null in google_places).
-  const cards: CardData[] = data.map(p => {
-    const pid = p.place_id as string
-    const gallery = buildPhotoGallery(p.photos)
+  // Cards for the UI: hotels use the canonical `hotels.id` as `place_id`,
+  // so chat cards open the same /stays/[hotelId] detail route as the public
+  // stays feed. Live rates still come from the LiteAPI booking routes.
+  const cards: CardData[] = rows.map((p) => {
+    const gallery = buildHotelPhotoGallery(p.main_photo_url, p.photos);
     return {
-      card_type: 'hotel' as const,
-      place_id: pid,
-      name: p.name ?? 'Hotel',
-      island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
-      island_id: p.island_id ?? undefined,
-      rating: p.rating ?? 0,
-      stars: priceLevelToStars(p.price_level),
-      review_count: p.user_ratings_total ?? 0,
-      photo_url: p.photo_url ?? gallery[0] ?? undefined,
+      card_type: "hotel" as const,
+      place_id: p.id,
+      name: p.name ?? "Hotel",
+      island: p.island ?? p.city ?? undefined,
+      island_id:
+        typeof args.island_id === "string" ? args.island_id : undefined,
+      rating: p.review_score ?? 0,
+      stars: p.star_rating ?? undefined,
+      review_count: p.review_count ?? 0,
+      photo_url: gallery[0] ?? undefined,
       photos: gallery,
-      amenities: (p.amenities as string[] | null) ?? [],
-      price_per_night: priceLevelToNightlyEstimate(p.price_level),
-      price_is_estimate: true,
-      phone: (p.phone as string | null) ?? undefined,
-      website: (p.website as string | null) ?? undefined,
-      full_address: (p.address as string | null) ?? undefined,
-      top_review: reviewsByPlace.get(pid),
-    }
-  })
+      amenities: p.amenities ?? [],
+      full_address: p.address ?? undefined,
+      description: p.description ?? undefined,
+    };
+  });
 
-  return { data: { results: compact, count: data.length }, cards }
-}
-
-/** Heuristic: price_level 4 = 5-star feel, 3 = 4-star, 2 = 3-star, lower = 3-star. */
-function priceLevelToStars(level: number | null | undefined): number {
-  switch (level) {
-    case 4: return 5
-    case 3: return 4
-    case 2: return 3
-    case 1: return 3
-    default: return 3
-  }
-}
-
-/** Approximate USD/night from Google price_level until LiteAPI live rates ship. */
-export function priceLevelToNightlyEstimate(level: number | null | undefined): number {
-  switch (level) {
-    case 4: return 650
-    case 3: return 425
-    case 2: return 275
-    case 1: return 175
-    default: return 199
-  }
+  return { data: { results: compact, count: rows.length }, cards };
 }
 
 async function getRestaurants(
@@ -746,35 +977,42 @@ async function getRestaurants(
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
   let query = supabase
-    .from('google_places')
-    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, cuisine_type')
-    .eq('is_active', true)
-    .eq('type', 'restaurant')
-    .eq('island_id', args.island_id)
-    .gte('rating', RESTAURANT_MIN_RATING)
-    .gte('user_ratings_total', RESTAURANT_MIN_REVIEW_COUNT)
-    .order('rating', { ascending: false })
+    .from(CACHED_PLACE_SOURCE_TABLE)
+    .select(
+      "place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, cuisine_type",
+    )
+    .eq("is_active", true)
+    .eq("type", "restaurant")
+    .eq("island_id", args.island_id)
+    .gte("rating", RESTAURANT_MIN_RATING)
+    .gte("user_ratings_total", RESTAURANT_MIN_REVIEW_COUNT)
+    .order("rating", { ascending: false });
 
   if (args.cuisine_type) {
-    query = query.ilike('cuisine_type', `%${args.cuisine_type}%`)
+    query = query.ilike("cuisine_type", `%${args.cuisine_type}%`);
   }
   if (args.price_range) {
-    const levels = PRICE_LEVEL_MAP[args.price_range as string]
-    if (levels) query = query.in('price_level', levels)
+    const levels = PRICE_LEVEL_MAP[args.price_range as string];
+    if (levels) query = query.in("price_level", levels);
   }
 
-  const limit = Math.min(Number(args.limit) || 5, 10)
-  query = query.limit(Math.min(limit * 4, 40))
+  const limit = Math.min(Number(args.limit) || 5, 10);
+  query = query.limit(Math.min(limit * 4, 40));
 
-  const { data, error } = await query
+  const { data, error } = await query;
 
   if (error) {
-    return { data: { error: `Restaurant search failed: ${error.message}`, results: [] } }
+    return {
+      data: {
+        error: `Restaurant search failed: ${error.message}`,
+        results: [],
+      },
+    };
   }
 
   const filteredData = data
     ?.filter((p: Record<string, unknown>) => isQualityRestaurantCandidate(p))
-    .slice(0, limit)
+    .slice(0, limit);
 
   if (!filteredData || filteredData.length === 0) {
     return {
@@ -782,13 +1020,15 @@ async function getRestaurants(
         results: [],
         message: `No restaurants found on ${ISLAND_DISPLAY[args.island_id as string] ?? args.island_id} matching your criteria.`,
       },
-    }
+    };
   }
 
-  const placeIds = filteredData.map(p => p.place_id as string).filter(Boolean)
-  const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
+  const placeIds = filteredData
+    .map((p) => p.place_id as string)
+    .filter(Boolean);
+  const reviewsByPlace = await fetchTopReviews(supabase, placeIds);
 
-  const compact = filteredData.map(p => ({
+  const compact = filteredData.map((p) => ({
     place_id: p.place_id,
     name: p.name,
     island: p.island_id,
@@ -796,19 +1036,21 @@ async function getRestaurants(
     rating: p.rating,
     price_level: p.price_level,
     description: p.description,
-  }))
+  }));
 
-  const cards: CardData[] = filteredData.map(p => {
-    const pid = p.place_id as string
-    const gallery = buildPhotoGallery(p.photos)
-    const hours = Array.isArray(p.opening_hours) ? (p.opening_hours as string[]) : undefined
+  const cards: CardData[] = filteredData.map((p) => {
+    const pid = p.place_id as string;
+    const gallery = buildPhotoGallery(p.photos);
+    const hours = Array.isArray(p.opening_hours)
+      ? (p.opening_hours as string[])
+      : undefined;
     return {
-      card_type: 'restaurant' as const,
+      card_type: "restaurant" as const,
       place_id: pid,
-      name: p.name ?? 'Restaurant',
+      name: p.name ?? "Restaurant",
       island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
       island_id: p.island_id ?? undefined,
-      cuisine: (p.cuisine_type as string | null) ?? 'International',
+      cuisine: (p.cuisine_type as string | null) ?? "International",
       rating: p.rating ?? 0,
       review_count: p.user_ratings_total ?? 0,
       price_level: p.price_level ?? 2,
@@ -819,10 +1061,10 @@ async function getRestaurants(
       full_address: (p.address as string | null) ?? undefined,
       opening_hours: hours,
       top_review: reviewsByPlace.get(pid),
-    }
-  })
+    };
+  });
 
-  return { data: { results: compact, count: filteredData.length }, cards }
+  return { data: { results: compact, count: filteredData.length }, cards };
 }
 
 async function getActivities(
@@ -830,30 +1072,34 @@ async function getActivities(
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
   let query = supabase
-    .from('google_places')
-    .select('place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, vibe_tags, kid_friendly')
-    .eq('is_active', true)
-    .eq('type', 'attraction')
-    .eq('island_id', args.island_id)
-    .gte('user_ratings_total', 5)
-    .order('rating', { ascending: false })
+    .from(CACHED_PLACE_SOURCE_TABLE)
+    .select(
+      "place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, vibe_tags, kid_friendly",
+    )
+    .eq("is_active", true)
+    .eq("type", "attraction")
+    .eq("island_id", args.island_id)
+    .gte("user_ratings_total", 5)
+    .order("rating", { ascending: false });
 
   if (args.kid_friendly === true) {
-    query = query.eq('kid_friendly', true)
+    query = query.eq("kid_friendly", true);
   }
 
   // Vibe tag overlap (Supabase array contains operator)
   if (Array.isArray(args.vibe_tags) && args.vibe_tags.length > 0) {
-    query = query.overlaps('vibe_tags', args.vibe_tags as string[])
+    query = query.overlaps("vibe_tags", args.vibe_tags as string[]);
   }
 
-  const limit = Math.min(Number(args.limit) || 5, 10)
-  query = query.limit(limit)
+  const limit = Math.min(Number(args.limit) || 5, 10);
+  query = query.limit(limit);
 
-  const { data, error } = await query
+  const { data, error } = await query;
 
   if (error) {
-    return { data: { error: `Activity search failed: ${error.message}`, results: [] } }
+    return {
+      data: { error: `Activity search failed: ${error.message}`, results: [] },
+    };
   }
 
   if (!data || data.length === 0) {
@@ -862,13 +1108,13 @@ async function getActivities(
         results: [],
         message: `No activities found on ${ISLAND_DISPLAY[args.island_id as string] ?? args.island_id} matching your criteria. I can recommend activities from my knowledge of the Bahamas — just ask.`,
       },
-    }
+    };
   }
 
-  const placeIds = data.map(p => p.place_id as string).filter(Boolean)
-  const reviewsByPlace = await fetchTopReviews(supabase, placeIds)
+  const placeIds = data.map((p) => p.place_id as string).filter(Boolean);
+  const reviewsByPlace = await fetchTopReviews(supabase, placeIds);
 
-  const compact = data.map(p => ({
+  const compact = data.map((p) => ({
     place_id: p.place_id,
     name: p.name,
     island: p.island_id,
@@ -877,19 +1123,21 @@ async function getActivities(
     description: p.description,
     vibe_tags: p.vibe_tags,
     kid_friendly: p.kid_friendly,
-  }))
+  }));
 
-  const cards: CardData[] = data.map(p => {
-    const pid = p.place_id as string
-    const gallery = buildPhotoGallery(p.photos)
-    const hours = Array.isArray(p.opening_hours) ? (p.opening_hours as string[]) : undefined
+  const cards: CardData[] = data.map((p) => {
+    const pid = p.place_id as string;
+    const gallery = buildPhotoGallery(p.photos);
+    const hours = Array.isArray(p.opening_hours)
+      ? (p.opening_hours as string[])
+      : undefined;
     return {
-      card_type: 'activity' as const,
+      card_type: "activity" as const,
       place_id: pid,
-      name: p.name ?? 'Activity',
+      name: p.name ?? "Activity",
       island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
       island_id: p.island_id ?? undefined,
-      description: (p.description as string | null) ?? '',
+      description: (p.description as string | null) ?? "",
       rating: p.rating ?? 0,
       review_count: p.user_ratings_total ?? 0,
       vibe_tags: (p.vibe_tags as string[] | null) ?? [],
@@ -902,30 +1150,34 @@ async function getActivities(
       opening_hours: hours,
       top_review: reviewsByPlace.get(pid),
       icon: pickActivityIcon((p.vibe_tags as string[] | null) ?? []),
-    }
-  })
+    };
+  });
 
-  return { data: { results: compact, count: data.length }, cards }
+  return { data: { results: compact, count: data.length }, cards };
 }
 
 function pickActivityIcon(vibeTags: string[]): string {
-  if (vibeTags.includes('water-sports') || vibeTags.includes('diving')) return 'dive'
-  if (vibeTags.includes('beach')) return 'beach'
-  if (vibeTags.includes('fishing')) return 'fish'
-  if (vibeTags.includes('foodie')) return 'eat'
-  if (vibeTags.includes('culture')) return 'culture'
-  if (vibeTags.includes('luxury') || vibeTags.includes('spa')) return 'spa'
-  if (vibeTags.includes('adventure')) return 'hike'
-  return 'tour'
+  if (vibeTags.includes("water-sports") || vibeTags.includes("diving"))
+    return "dive";
+  if (vibeTags.includes("beach")) return "beach";
+  if (vibeTags.includes("fishing")) return "fish";
+  if (vibeTags.includes("foodie")) return "eat";
+  if (vibeTags.includes("culture")) return "culture";
+  if (vibeTags.includes("luxury") || vibeTags.includes("spa")) return "spa";
+  if (vibeTags.includes("adventure")) return "hike";
+  return "tour";
 }
 
-export async function searchFlights(args: Record<string, unknown>): Promise<ToolResult> {
-  const originCode = resolveAirportCode((args.origin_city as string) || '')
-  const destCode = ((args.destination as string) || 'NAS').toUpperCase()
-  const passengers = Number(args.passengers) || 1
-  const cabinClass = String(args.cabin_class ?? 'economy').toUpperCase()
-  const departureDate = String(args.departure_date ?? '').trim()
-  const returnDate = typeof args.return_date === 'string' ? args.return_date.trim() : ''
+export async function searchFlights(
+  args: Record<string, unknown>,
+): Promise<ToolResult> {
+  const originCode = resolveAirportCode((args.origin_city as string) || "");
+  const destCode = ((args.destination as string) || "NAS").toUpperCase();
+  const passengers = Number(args.passengers) || 1;
+  const cabinClass = String(args.cabin_class ?? "economy").toUpperCase();
+  const departureDate = String(args.departure_date ?? "").trim();
+  const returnDate =
+    typeof args.return_date === "string" ? args.return_date.trim() : "";
 
   if (!originCode) {
     return {
@@ -933,33 +1185,48 @@ export async function searchFlights(args: Record<string, unknown>): Promise<Tool
         error: `Could not resolve airport code for "${args.origin_city}". Try a 3-letter IATA code like MIA, JFK, ATL.`,
         results: [],
       },
-    }
+    };
   }
 
   if (!departureDate) {
     return {
       data: {
-        error: 'A future departure_date in YYYY-MM-DD format is required for live flight search.',
+        error:
+          "A future departure_date in YYYY-MM-DD format is required for live flight search.",
         results: [],
       },
-    }
+    };
   }
 
   const legs = [
-    { origin: originCode, destination: destCode, date: departureDate, direction: 'OUTBOUND' },
-    ...(returnDate ? [{ origin: destCode, destination: originCode, date: returnDate, direction: 'INBOUND' }] : []),
-  ]
+    {
+      origin: originCode,
+      destination: destCode,
+      date: departureDate,
+      direction: "OUTBOUND",
+    },
+    ...(returnDate
+      ? [
+          {
+            origin: destCode,
+            destination: originCode,
+            date: returnDate,
+            direction: "INBOUND",
+          },
+        ]
+      : []),
+  ];
 
   try {
-    const result = await callTravelProvider('/flights/rates', {
+    const result = await callTravelProvider("/flights/rates", {
       legs,
       adults: Math.max(1, passengers),
       cabinClass,
-      currency: 'USD',
-      country: 'US',
-    })
+      currency: "USD",
+      country: "US",
+    });
 
-    const cards = shapeLiteApiFlightCards(result.data)
+    const cards = shapeLiteApiFlightCards(result.data);
     const compact = cards.map((card) => ({
       offer_id: card.offer_id,
       provider_offer_id: card.provider_offer_id,
@@ -970,58 +1237,78 @@ export async function searchFlights(args: Record<string, unknown>): Promise<Tool
       duration: card.duration,
       stops: card.stops,
       price: card.price,
+      base_fare: card.base_fare,
+      taxes: card.taxes,
+      fees: card.fees,
       cabin_class: card.cabin_class,
       passengers: card.passengers,
-    }))
+    }));
 
     return {
       data: {
         results: compact,
         count: compact.length,
-        message: compact.length === 0
-          ? `No flights found from ${originCode} to ${destCode} on ${departureDate}. Try different dates or another airport.`
-          : undefined,
+        message:
+          compact.length === 0
+            ? `No flights found from ${originCode} to ${destCode} on ${departureDate}. Try different dates or another airport.`
+            : undefined,
       },
       cards,
-    }
+    };
   } catch (err) {
-    console.error('Flight search error:', err)
-    return { data: { error: `Flight search error: ${String(err)}`, results: [] } }
+    console.error("Flight search error:", err);
+    return {
+      data: { error: `Flight search error: ${String(err)}`, results: [] },
+    };
   }
 }
 
 function shapeLiteApiFlightCards(response: unknown): CardData[] {
-  const batches = Array.isArray(recordValue(response).data) ? recordValue(response).data as unknown[] : []
-  const cards: CardData[] = []
+  const batches = Array.isArray(recordValue(response).data)
+    ? (recordValue(response).data as unknown[])
+    : [];
+  const cards: CardData[] = [];
 
   for (const batchValue of batches) {
-    const batch = recordValue(batchValue)
-    const journeys = Array.isArray(batch.journeys) ? batch.journeys : []
+    const batch = recordValue(batchValue);
+    const journeys = Array.isArray(batch.journeys) ? batch.journeys : [];
     for (const journeyValue of journeys) {
-      const journey = recordValue(journeyValue)
-      const segments = recordListValue(journey.segments)
-      const outbound = segments.filter((segment) => segment.direction !== 'INBOUND')
-      const shownSegments = outbound.length > 0 ? outbound : segments
-      const first = shownSegments[0] ?? {}
-      const last = shownSegments[shownSegments.length - 1] ?? first
-      const carrier = recordValue(first.carrier)
-      const duration = recordValue(journey.totalDuration)
-      const offers = recordListValue(journey.offers)
-      const passengerCounts = recordValue(journey.parameters)
-      const passengerTotal = numericValue(passengerCounts.adults, 1) +
+      const journey = recordValue(journeyValue);
+      const segments = recordListValue(journey.segments);
+      const outbound = segments.filter(
+        (segment) => segment.direction !== "INBOUND",
+      );
+      const shownSegments = outbound.length > 0 ? outbound : segments;
+      const first = shownSegments[0] ?? {};
+      const last = shownSegments[shownSegments.length - 1] ?? first;
+      const carrier = recordValue(first.carrier);
+      const duration = recordValue(journey.totalDuration);
+      const offers = recordListValue(journey.offers);
+      const passengerCounts = recordValue(journey.parameters);
+      const passengerTotal =
+        numericValue(passengerCounts.adults, 1) +
         numericValue(passengerCounts.children) +
-        numericValue(passengerCounts.infants)
+        numericValue(passengerCounts.infants);
 
       for (const offer of offers) {
-        const display = recordValue(recordValue(offer.pricing).display)
-        const fare = recordValue(offer.fare)
-        const terms = recordValue(offer.terms)
-        const offerId = liteTextValue(offer.offerId)
-        const airlineName = liteTextValue(carrier.marketingName, liteTextValue(carrier.operatingName, 'Airline'))
-        const airlineCode = liteTextValue(carrier.marketingCode, liteTextValue(carrier.operatingCode, liteTextValue(carrier.iataCode)))
-        const providerLogoUrl = liteTextValue(carrier.logoUrl, liteTextValue(carrier.logo_url))
+        const display = recordValue(recordValue(offer.pricing).display);
+        const fare = recordValue(offer.fare);
+        const terms = recordValue(offer.terms);
+        const offerId = liteTextValue(offer.offerId);
+        const airlineName = liteTextValue(
+          carrier.marketingName,
+          liteTextValue(carrier.operatingName, "Airline"),
+        );
+        const airlineCode = liteTextValue(
+          carrier.marketingCode,
+          liteTextValue(carrier.operatingCode, liteTextValue(carrier.iataCode)),
+        );
+        const providerLogoUrl = liteTextValue(
+          carrier.logoUrl,
+          liteTextValue(carrier.logo_url),
+        );
         cards.push({
-          card_type: 'flight',
+          card_type: "flight",
           offer_id: offerId,
           provider_offer_id: offerId,
           route: `${liteTextValue(first.originCode)} to ${liteTextValue(last.destinationCode)}`,
@@ -1035,86 +1322,128 @@ function shapeLiteApiFlightCards(response: unknown): CardData[] {
           departure: formatLiteApiFlightTime(first.departureTime),
           arrival: formatLiteApiFlightTime(last.arrivalTime),
           duration: formatLiteApiDuration(numericValue(duration.minutes)),
-          stops: shownSegments.length <= 1 ? 'Direct' : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? 's' : ''}`,
+          stops:
+            shownSegments.length <= 1
+              ? "Direct"
+              : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? "s" : ""}`,
           price: numericValue(display.total),
-          currency: liteTextValue(display.currency, 'USD'),
-          cabin_class: liteTextValue(fare.family, 'Economy'),
-          fare_brand: liteTextValue(fare.brandName, liteTextValue(fare.name, liteTextValue(fare.family))),
+          base_fare: optionalNumericValue(display.base),
+          taxes: optionalNumericValue(display.taxes),
+          fees: optionalNumericValue(display.fees),
+          currency: liteTextValue(display.currency, "USD"),
+          cabin_class: liteTextValue(fare.family, "Economy"),
+          fare_brand: liteTextValue(
+            fare.brandName,
+            liteTextValue(fare.name, liteTextValue(fare.family)),
+          ),
           passengers: Math.max(1, passengerTotal),
           baggage: { checked: liteApiBaggageCount(offer.baggage) },
           refundable: terms.refundable === true,
-          expiration: liteTextValue(offer.expiresAt, liteTextValue(offer.expires_at, liteTextValue(offer.expiration))),
-          description: terms.refundable === true ? 'Refundable fare' : undefined,
-        })
+          expiration: liteTextValue(
+            offer.expiresAt,
+            liteTextValue(offer.expires_at, liteTextValue(offer.expiration)),
+          ),
+          description:
+            terms.refundable === true ? "Refundable fare" : undefined,
+        });
       }
     }
   }
 
   return cards
-    .filter((card) => card.offer_id && typeof card.price === 'number' && card.price > 0)
+    .filter(
+      (card) =>
+        card.offer_id && typeof card.price === "number" && card.price > 0,
+    )
     .sort((a, b) => Number(a.price ?? 0) - Number(b.price ?? 0))
-    .slice(0, 5)
+    .slice(0, 5);
 }
 
 function recordValue(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function recordListValue(value: unknown): Record<string, unknown>[] {
-  return Array.isArray(value) ? value.map(recordValue) : []
+  return Array.isArray(value) ? value.map(recordValue) : [];
 }
 
-function liteTextValue(value: unknown, fallback = ''): string {
-  return typeof value === 'string' && value.trim() ? value.trim() : fallback
+function liteTextValue(value: unknown, fallback = ""): string {
+  return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
 function numericValue(value: unknown, fallback = 0): number {
-  const n = typeof value === 'number' ? value : Number(value)
-  return Number.isFinite(n) ? n : fallback
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function optionalNumericValue(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const number = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : undefined;
 }
 
 function formatLiteApiFlightTime(value: unknown): string {
-  if (typeof value !== 'string' || !value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
+  if (typeof value !== "string" || !value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
 }
 
 function formatLiteApiDuration(minutes: number): string {
-  const hours = Math.floor(minutes / 60)
-  const remainder = minutes % 60
-  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`;
 }
 
 function liteApiBaggageCount(value: unknown): number {
-  const included = recordListValue(recordValue(value).included)
-  return included.filter((bag) => /checked/i.test(liteTextValue(bag.description))).length
+  const included = recordListValue(recordValue(value).included);
+  return included.filter((bag) =>
+    /checked/i.test(liteTextValue(bag.description)),
+  ).length;
 }
 
-async function getTripDetails(supabase: SupabaseClient, tripId: string): Promise<ToolResult> {
+async function getTripDetails(
+  supabase: SupabaseClient,
+  tripId: string,
+): Promise<ToolResult> {
   const { data, error } = await supabase
-    .from('trips')
-    .select(`
+    .from("trips")
+    .select(
+      `
       *,
       trip_accommodations(*),
       trip_flights(*),
       trip_activities(*)
-    `)
-    .eq('id', tripId)
-    .single()
+    `,
+    )
+    .eq("id", tripId)
+    .single();
 
-  if (error) return { data: { error: `Could not load trip: ${error.message}` } }
-  return { data }
+  if (error)
+    return { data: { error: `Could not load trip: ${error.message}` } };
+  return { data };
 }
 
-async function getUserProfile(supabase: SupabaseClient, userId: string): Promise<ToolResult> {
+async function getUserProfile(
+  supabase: SupabaseClient,
+  userId: string,
+): Promise<ToolResult> {
   const { data, error } = await supabase
-    .from('users')
-    .select('id, display_name, email, country, city, party_type, party_size, children_count, children_ages, interest_tags, engagement_score, dietary_needs, accessibility_needs')
-    .eq('id', userId)
-    .single()
-  if (error) return { data: { error: `Could not load profile: ${error.message}` } }
-  return { data }
+    .from("users")
+    .select(
+      "id, display_name, email, country, city, party_type, party_size, children_count, children_ages, interest_tags, engagement_score, dietary_needs, accessibility_needs",
+    )
+    .eq("id", userId)
+    .single();
+  if (error)
+    return { data: { error: `Could not load profile: ${error.message}` } };
+  return { data };
 }
 
 async function createItineraryItem(
@@ -1122,7 +1451,7 @@ async function createItineraryItem(
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
   const { data, error } = await supabase
-    .from('trip_activities')
+    .from("trip_activities")
     .insert({
       trip_id: args.trip_id,
       day_number: args.day_number,
@@ -1132,9 +1461,10 @@ async function createItineraryItem(
       notes: args.notes ?? null,
     })
     .select()
-    .single()
+    .single();
 
-  if (error) return { data: { error: `Could not add to itinerary: ${error.message}` } }
+  if (error)
+    return { data: { error: `Could not add to itinerary: ${error.message}` } };
 
   return {
     data: {
@@ -1142,12 +1472,14 @@ async function createItineraryItem(
       message: `Added "${args.name}" to Day ${args.day_number} (${args.time_slot})`,
       item: data,
     },
-  }
+  };
 }
 
 async function getWeather(islandId: string): Promise<ToolResult> {
   try {
-    const weather = await fetchIslandWeather(islandId, { fallbackToNassau: false })
+    const weather = await fetchIslandWeather(islandId, {
+      fallbackToNassau: false,
+    });
 
     return {
       data: {
@@ -1166,21 +1498,23 @@ async function getWeather(islandId: string): Promise<ToolResult> {
           condition: day.condition,
         })),
       },
-    }
+    };
   } catch (err) {
     if (err instanceof WeatherProviderError && err.status === 400) {
-      return { data: { error: err.message } }
+      return { data: { error: err.message } };
     }
-    return { data: { error: `Weather fetch failed: ${String(err)}` } }
+    return { data: { error: `Weather fetch failed: ${String(err)}` } };
   }
 }
 
 function getIslandInfo(islandId: string): ToolResult {
-  const info = ISLAND_INFO[islandId]
+  const info = ISLAND_INFO[islandId];
   if (!info) {
     return {
-      data: { error: `Unknown island: ${islandId}. Available: ${Object.keys(ISLAND_INFO).join(', ')}` },
-    }
+      data: {
+        error: `Unknown island: ${islandId}. Available: ${Object.keys(ISLAND_INFO).join(", ")}`,
+      },
+    };
   }
 
   // Emit a destination card alongside the tool_result data. This is the
@@ -1188,7 +1522,7 @@ function getIslandInfo(islandId: string): ToolResult {
   // with a UI card — the data is structured enough to render directly
   // without Claude needing to compose a card-data fence.
   const card: CardData = {
-    card_type: 'destination',
+    card_type: "destination",
     name: (info.name as string) ?? islandId,
     island_id: islandId,
     tagline: (info.tagline as string) ?? undefined,
@@ -1197,10 +1531,42 @@ function getIslandInfo(islandId: string): ToolResult {
     rating: (info.rating as number | undefined) ?? 4.5,
     best_months: (info.best_months as string[] | undefined) ?? undefined,
     getting_there: (info.getting_there as string | undefined) ?? undefined,
-    days_recommended: (info.days_recommended as string | undefined) ?? undefined,
-  }
+    days_recommended:
+      (info.days_recommended as string | undefined) ?? undefined,
+  };
 
-  return { data: info, cards: [card] }
+  return { data: info, cards: [card] };
+}
+
+async function searchIslandFaq(
+  supabase: SupabaseClient,
+  args: Record<string, unknown>,
+): Promise<ToolResult> {
+  const islandSlug = typeof args.island_slug === "string" ? args.island_slug.trim() : "";
+  if (!islandSlug) return { data: { error: "island_slug is required", faqs: [] } };
+
+  const limit = Math.max(1, Math.min(Number(args.limit) || 5, 10));
+  const keyword = typeof args.keyword === "string" ? args.keyword.trim().replace(/[%_]/g, "") : "";
+  const category = typeof args.category === "string" ? args.category.trim() : "";
+
+  let query = supabase
+    .from("island_faq")
+    .select("island_name,category,question,answer,traveller_type,priority")
+    .eq("island_slug", islandSlug)
+    .eq("status", "active")
+    .limit(limit);
+  if (category) query = query.eq("category", category);
+  if (keyword) query = query.ilike("question", `%${keyword}%`);
+
+  const { data, error } = await query;
+  if (error) return { data: { error: error.message, faqs: [] } };
+  return {
+    data: {
+      island_slug: islandSlug,
+      faqs: data || [],
+      count: data?.length || 0,
+    },
+  };
 }
 
 // ──────────────────────────────────────────────────────────────────────────
@@ -1219,24 +1585,37 @@ export async function executeTool(
 ): Promise<ToolResult> {
   try {
     switch (toolName) {
-      case 'get_hotels':              return await getHotels(supabase, toolInput)
-      case 'get_restaurants':         return await getRestaurants(supabase, toolInput)
-      case 'get_activities':          return await getActivities(supabase, toolInput)
-      case 'search_flights':          return await searchFlights(toolInput)
-      case 'get_trip_details':        return await getTripDetails(supabase, toolInput.trip_id as string)
-      case 'get_user_profile': {
-        if (!userId) return { data: { error: 'No authenticated user — cannot load profile.' } }
-        return await getUserProfile(supabase, userId)
+      case "get_hotels":
+        return await getHotels(supabase, toolInput);
+      case "get_restaurants":
+        return await getRestaurants(supabase, toolInput);
+      case "get_activities":
+        return await getActivities(supabase, toolInput);
+      case "search_flights":
+        return await searchFlights(toolInput);
+      case "get_trip_details":
+        return await getTripDetails(supabase, toolInput.trip_id as string);
+      case "get_user_profile": {
+        if (!userId)
+          return {
+            data: { error: "No authenticated user — cannot load profile." },
+          };
+        return await getUserProfile(supabase, userId);
       }
-      case 'create_itinerary_item':   return await createItineraryItem(supabase, toolInput)
-      case 'get_weather':             return await getWeather(toolInput.island_id as string)
-      case 'get_island_info':         return getIslandInfo(toolInput.island_id as string)
+      case "create_itinerary_item":
+        return await createItineraryItem(supabase, toolInput);
+      case "get_weather":
+        return await getWeather(toolInput.island_id as string);
+      case "get_island_info":
+        return getIslandInfo(toolInput.island_id as string);
+      case "search_island_faq":
+        return await searchIslandFaq(supabase, toolInput);
       default:
-        return { data: { error: `Unknown tool: ${toolName}` } }
+        return { data: { error: `Unknown tool: ${toolName}` } };
     }
   } catch (err) {
-    console.error(`[executeTool ${toolName}]`, err)
-    return { data: { error: `Tool execution failed: ${String(err)}` } }
+    console.error(`[executeTool ${toolName}]`, err);
+    return { data: { error: `Tool execution failed: ${String(err)}` } };
   }
 }
 
@@ -1246,15 +1625,27 @@ export async function executeTool(
  */
 export function toolProgressLabel(toolName: string): string {
   switch (toolName) {
-    case 'get_hotels':            return 'Searching hotels…'
-    case 'get_restaurants':       return 'Finding restaurants…'
-    case 'get_activities':        return 'Browsing activities…'
-    case 'search_flights':        return 'Checking flights…'
-    case 'get_trip_details':      return 'Pulling up your trip…'
-    case 'get_user_profile':      return 'Reviewing your preferences…'
-    case 'create_itinerary_item': return 'Adding to your itinerary…'
-    case 'get_weather':           return 'Checking the weather…'
-    case 'get_island_info':       return 'Looking up island details…'
-    default:                      return 'Working on it…'
+    case "get_hotels":
+      return "Searching hotels…";
+    case "get_restaurants":
+      return "Finding restaurants…";
+    case "get_activities":
+      return "Browsing activities…";
+    case "search_flights":
+      return "Checking flights…";
+    case "get_trip_details":
+      return "Pulling up your trip…";
+    case "get_user_profile":
+      return "Reviewing your preferences…";
+    case "create_itinerary_item":
+      return "Adding to your itinerary…";
+    case "get_weather":
+      return "Checking the weather…";
+    case "get_island_info":
+      return "Looking up island details…";
+    case "search_island_faq":
+      return "Searching current island guidance…";
+    default:
+      return "Working on it…";
   }
 }

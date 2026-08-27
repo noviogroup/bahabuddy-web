@@ -182,10 +182,10 @@ export default function DirectTripItemActions({
       className="overflow-hidden rounded-baha-xl border border-gray-200 bg-white shadow-sm"
     >
       <div className="border-b border-gray-100 bg-white px-5 py-4">
-        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
+        <p className="text-xs font-bold uppercase text-gray-500">
           Direct action
         </p>
-        <h3 className="mt-1 text-xl font-extrabold tracking-tight text-night">
+        <h3 className="mt-1 text-xl font-bold text-night">
           {heading}
         </h3>
         <p className="mt-1 text-sm font-semibold leading-6 text-gray-500">
@@ -207,7 +207,7 @@ export default function DirectTripItemActions({
             </p>
             <Link
               href={loginHref}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
             >
               Sign in to add to trip
             </Link>
@@ -221,7 +221,7 @@ export default function DirectTripItemActions({
             </p>
             <Link
               href={createTripHref}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
             >
               {createTripLabel}
             </Link>
@@ -252,7 +252,7 @@ export default function DirectTripItemActions({
               type="button"
               onClick={addToTrip}
               disabled={!selectedTripId || saveState === 'saving'}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
             >
               {saveState !== 'saving' && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
               {saveState === 'saving' ? 'Saving...' : primaryLabel}
@@ -261,7 +261,7 @@ export default function DirectTripItemActions({
             {saveState === 'saved' && selectedTripId && (
               <Link
                 href={`/trip/${encodeURIComponent(selectedTripId)}`}
-                className="inline-flex w-full items-center justify-center rounded-full bg-palm px-5 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-palm/90 focus:outline-none focus:ring-2 focus:ring-palm focus:ring-offset-2"
+                className="inline-flex w-full items-center justify-center rounded-full bg-palm px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-palm/90 focus:outline-none focus:ring-2 focus:ring-palm focus:ring-offset-2"
               >
                 View trip
               </Link>

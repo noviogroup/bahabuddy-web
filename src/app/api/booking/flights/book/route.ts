@@ -182,7 +182,7 @@ async function persistFlightBooking(input: {
     airline: flight.airline || stringValue(input.requestBody.airline, 'Flight'),
     booking_reference: reference || null,
     price: amount || null,
-    duffel_offer_id: input.offerId || null,
+    provider_offer_id: input.offerId || null,
     stripe_payment_intent_id: input.paymentIntentId || null,
   }
 
@@ -192,7 +192,7 @@ async function persistFlightBooking(input: {
       .from('trip_flights')
       .update(flightRow)
       .eq('trip_id', input.tripId)
-      .eq('duffel_offer_id', input.offerId)
+      .eq('provider_offer_id', input.offerId)
       .select('id')
       .maybeSingle()
     if (error) localErrors.push(`trip_flights update failed: ${errorMessage(error)}`)

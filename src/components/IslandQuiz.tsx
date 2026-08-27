@@ -192,20 +192,59 @@ export default function IslandQuiz() {
   // ── Intro ──
   if (step === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-brand-50 to-white flex flex-col items-center justify-center px-4 py-16">
-        <div className="max-w-md w-full text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-3">What Bahamas Island Are You?</h1>
-          <p className="text-gray-500 mb-10 text-lg leading-relaxed">
-            Answer 5 quick questions and we&apos;ll match you to your perfect Bahamian island escape.
-          </p>
-          <button
-            onClick={() => setStep(1)}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-brand-600 px-8 py-4 text-lg font-bold text-white shadow-lg shadow-brand-600/25 transition-colors hover:bg-brand-700"
-          >
-            <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
-            Start the Quiz
-          </button>
-          <p className="text-sm text-gray-400 mt-4">Takes about 1 minute · Free</p>
+      <div className="overflow-hidden rounded-baha-xl border border-gray-200 bg-white shadow-sm">
+        <div className="grid lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="relative min-h-64 lg:min-h-[430px]">
+            <Image
+              src={BahaImages.exumas}
+              alt="Clear Exuma water and sandbars"
+              fill
+              className="object-cover"
+              priority
+              unoptimized
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-night/70 via-night/20 to-transparent" />
+            <div className="absolute bottom-5 left-5 right-5 rounded-2xl border border-white/20 bg-white/15 p-4 text-white shadow-xl backdrop-blur-md">
+              <p className="text-xs font-bold uppercase text-white/75">
+                Buddy match logic
+              </p>
+              <p className="mt-2 text-lg font-bold leading-snug">
+                Match pace, food, water days, and island energy before you build the trip.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center p-6 sm:p-8 lg:p-10">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase text-brand-700">
+              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              Island fit quiz
+            </p>
+            <h1 className="mt-4 text-3xl font-bold text-night">
+              What Bahamas island fits your trip style?
+            </h1>
+            <p className="mt-4 text-base font-semibold leading-7 text-gray-600">
+              Answer five quick questions and Buddy will match you to an island direction you can turn into a real plan.
+            </p>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-3">
+              {['Beach pace', 'Food style', 'Adventure level'].map((item) => (
+                <div key={item} className="rounded-2xl border border-gray-200 bg-gray-50 px-3 py-3 text-sm font-bold text-night">
+                  {item}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => setStep(1)}
+              className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-8 py-4 text-base font-bold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2"
+            >
+              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              Start the quiz
+            </button>
+            <p className="mt-3 text-center text-sm font-semibold text-gray-400">
+              Takes about 1 minute. No account required.
+            </p>
+          </div>
         </div>
       </div>
     )
@@ -257,7 +296,7 @@ export default function IslandQuiz() {
           {/* Main content */}
           <div className="flex-1 flex flex-col items-center justify-center max-w-lg mx-auto w-full text-center py-8">
             <p className="text-white/70 text-base font-medium mb-2">Your island match</p>
-            <h2 className="text-5xl font-extrabold text-white mb-2 leading-tight">{result}</h2>
+            <h2 className="text-5xl font-bold text-white mb-2 leading-tight">{result}</h2>
 
             {/* Info card */}
             <div className="bg-white/15 backdrop-blur-sm border border-white/25 rounded-3xl p-6 mb-6 text-left">
@@ -315,9 +354,9 @@ export default function IslandQuiz() {
   if (!question) return null
 
   return (
-    <div className="min-h-screen bg-[#F8FAFB] flex flex-col">
+    <div className="overflow-hidden rounded-baha-xl border border-gray-200 bg-white shadow-sm">
       {/* Header */}
-      <div className="sticky top-0 z-10 bg-[#F8FAFB]/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3">
+      <div className="border-b border-gray-100 bg-gray-50 px-4 py-4">
         <div className="max-w-lg mx-auto flex items-center gap-4">
           <Link
             href="/explore/quiz"
@@ -345,10 +384,10 @@ export default function IslandQuiz() {
       </div>
 
       {/* Question content */}
-      <div className="flex-1 flex flex-col px-4 py-8">
+      <div className="px-4 py-8 sm:py-10">
         <div className="max-w-lg mx-auto w-full">
           <div className="text-center mb-8">
-            <h2 className="text-2xl font-extrabold text-gray-900 leading-snug">{question.question}</h2>
+            <h2 className="text-2xl font-bold text-gray-900 leading-snug">{question.question}</h2>
           </div>
 
           {/* Options */}

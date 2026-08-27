@@ -7,22 +7,9 @@ import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolic
 import { FilterButton, FilterGroup } from '@/components/marketplace/ResultFilterPanel'
 import { TravelSearchField, TravelSearchInput } from '@/components/marketplace/TravelSearchFields'
 import { buddyChatHref } from '@/lib/buddy-chat'
+import type { PublicPlace } from '@/lib/place-types'
 
-export interface Place {
-  id: string
-  name: string
-  category: string
-  island: string | null
-  description: string
-  image_url: string | null
-  tags: string[]
-  rating: number | null
-  review_count: number | null
-  amenities: string[] | null
-  price_range: string | null
-  short_description: string | null
-  enriched_at: string | null
-}
+export type Place = PublicPlace
 
 const CATEGORY_COLORS: Record<string, string> = {
   Island: 'bg-white/85 text-night ring-1 ring-white/70',
@@ -52,6 +39,20 @@ const ISLAND_ALIASES: Record<string, string> = {
   'harbour-island': 'eleuthera-harbour-island',
 }
 
+const ISLAND_DISPLAY_NAMES: Record<string, string> = {
+  'nassau-paradise-island': 'Nassau',
+  'the-exumas': 'The Exumas',
+  'eleuthera-harbour-island': 'Eleuthera & Harbour Island',
+  abacos: 'The Abacos',
+  andros: 'Andros',
+  bimini: 'Bimini',
+  'grand-bahama': 'Grand Bahama',
+  'long-island': 'Long Island',
+  nassau: 'Nassau',
+  exuma: 'Exuma',
+  exumas: 'The Exumas',
+}
+
 function normalizeFilterValue(value: string): string {
   return value
     .toLowerCase()
@@ -76,6 +77,20 @@ function matchFilterOption(value: string, options: string[], aliases: Record<str
     const option = normalizeFilterValue(name)
     return wanted.has(option) || wanted.has(stripIslandNoise(option))
   }) ?? ''
+}
+
+function displayIslandName(value: string): string {
+  if (value === 'All') return 'All islands'
+  const normalized = normalizeFilterValue(value)
+  if (ISLAND_DISPLAY_NAMES[normalized]) return ISLAND_DISPLAY_NAMES[normalized]
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => {
+      if (part.toLowerCase() === 'and') return '&'
+      return part.charAt(0).toUpperCase() + part.slice(1)
+    })
+    .join(' ')
 }
 
 interface Props {
@@ -133,10 +148,10 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
         >
           <div className="flex flex-col gap-3 border-b border-gray-100 bg-white px-4 py-4 md:flex-row md:items-center md:justify-between">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
+              <p className="text-xs font-bold uppercase text-gray-500">
                 Filter places
               </p>
-              <h2 className="mt-1 text-xl font-extrabold tracking-tight text-night">
+              <h2 className="mt-1 text-xl font-bold text-night">
                 {filtered.length} {filtered.length === 1 ? 'place' : 'places'} found
               </h2>
               <p className="mt-1 text-sm text-gray-500">
@@ -160,7 +175,7 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
 
           {activeFilterCount > 0 && (
             <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3">
-              <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-gray-400">
+              <span className="text-xs font-bold uppercase text-gray-400">
                 Active
               </span>
               {search.trim() && (
@@ -181,7 +196,7 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
                   className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-charcoal ring-1 ring-gray-200 transition-colors hover:bg-gray-50 hover:text-night focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
                 >
                   <span className="text-gray-400">Island:</span>
-                  <span>{island}</span>
+                  <span>{displayIslandName(island)}</span>
                   <span aria-hidden="true" className="text-gray-500">Remove</span>
                 </button>
               )}
@@ -210,7 +225,7 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
               />
             </TravelSearchField>
 
-            <FilterGroup label="Island" description="Choose the island or settlement.">
+            <FilterGroup label="Island">
               <FilterButton active={island === 'All'} onClick={() => setIsland('All')}>
                 All islands
               </FilterButton>
@@ -220,13 +235,13 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
                   active={island === name}
                   onClick={() => setIsland(name)}
                 >
-                  {name}
+                  {displayIslandName(name)}
                 </FilterButton>
               ))}
             </FilterGroup>
 
             <div className="md:col-span-2">
-              <FilterGroup label="Category" description="Filter by the kind of place you want.">
+              <FilterGroup label="Category">
                 {['All', ...allCategories].map((cat) => (
                   <FilterButton
                     key={cat}
@@ -243,12 +258,12 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
         </section>
 
         <div className="mb-4">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
+          <p className="text-xs font-bold uppercase text-gray-500">
             Results
           </p>
           <p className="mt-1 text-sm font-semibold text-gray-500">
             {filtered.length} {filtered.length === 1 ? 'place' : 'places'} found
-            {island !== 'All' && ` in ${island}`}
+            {island !== 'All' && ` in ${displayIslandName(island)}`}
             {category !== 'All' && ` | ${category}`}
             {search.trim() && ` | "${search.trim()}"`}
           </p>
@@ -321,7 +336,9 @@ function placeAskBuddyHref(place: Place): string {
   return buddyChatHref(prompt)
 }
 
-function placeAvailabilityHref(place: Place, detailUrl: string): string {
+function placeAvailabilityHref(place: Place, detailUrl: string, searchParams: URLSearchParams): string {
+  if (place.availability_href) return withTripContext(place.availability_href, searchParams)
+
   const key = placeCategoryKey(place)
   if (key.includes('hotel') || key.includes('stay') || key.includes('resort') || key.includes('villa')) {
     const params = new URLSearchParams()
@@ -339,10 +356,14 @@ function placeAvailabilityHref(place: Place, detailUrl: string): string {
   return `${detailUrl}#trip-actions`
 }
 
-function placeBookHref(place: Place, detailUrl: string): string | null {
+function placeBookHref(place: Place, detailUrl: string, searchParams: URLSearchParams): string | null {
+  if (place.book_href !== undefined) {
+    return place.book_href ? withTripContext(place.book_href, searchParams) : null
+  }
+
   const key = placeCategoryKey(place)
   if (key.includes('hotel') || key.includes('stay') || key.includes('resort') || key.includes('villa')) {
-    return placeAvailabilityHref(place, detailUrl)
+    return placeAvailabilityHref(place, detailUrl, searchParams)
   }
   if (
     key.includes('activity')
@@ -357,24 +378,30 @@ function placeBookHref(place: Place, detailUrl: string): string | null {
   return null
 }
 
-function placeDetailUrl(placeId: string, searchParams: URLSearchParams, hash?: string): string {
-  const params = new URLSearchParams()
+function withTripContext(href: string, searchParams: URLSearchParams, hash?: string): string {
+  const url = new URL(href, 'https://bahabuddy.local')
   for (const key of ['tripId', 'dayNumber', 'timeSlot']) {
     const value = searchParams.get(key)?.trim()
-    if (value) params.set(key, value)
+    if (value) url.searchParams.set(key, value)
   }
-  const qs = params.toString()
-  return `/explore/places/${placeId}${qs ? `?${qs}` : ''}${hash ? `#${hash}` : ''}`
+  if (hash) url.hash = hash
+  return `${url.pathname}${url.search}${url.hash}`
+}
+
+function placeDetailUrl(place: Place, searchParams: URLSearchParams, hash?: string): string {
+  return withTripContext(place.detail_href ?? `/explore/places/${encodeURIComponent(place.id)}`, searchParams, hash)
 }
 
 function PlaceCard({ place }: { place: Place }) {
   const searchParams = useSearchParams()
-  const detailUrl = placeDetailUrl(place.id, searchParams)
-  const isEnriched = !!place.enriched_at
+  const detailUrl = placeDetailUrl(place, searchParams)
+  const amenities = place.amenities ?? []
+  const hasRating = place.rating != null
+  const hasAmenities = amenities.length > 0
   const previewReason = placePreviewReason(place)
-  const addToTripHref = placeDetailUrl(place.id, searchParams, 'trip-actions')
-  const availabilityHref = placeAvailabilityHref(place, detailUrl)
-  const bookHref = placeBookHref(place, detailUrl)
+  const addToTripHref = placeDetailUrl(place, searchParams, 'trip-actions')
+  const availabilityHref = placeAvailabilityHref(place, detailUrl, searchParams)
+  const bookHref = placeBookHref(place, detailUrl, searchParams)
   const askBuddyHref = placeAskBuddyHref(place)
 
   return (
@@ -385,7 +412,6 @@ function PlaceCard({ place }: { place: Place }) {
           alt={place.name}
           title={place.name}
           eyebrow={place.category}
-          description="Real place data available. Photo is not available yet."
           className="h-40"
           tone={place.category === 'Dining' || place.category === 'Restaurant' ? 'restaurant' : 'activity'}
         />
@@ -405,26 +431,29 @@ function PlaceCard({ place }: { place: Place }) {
           {place.island && (
             <p className="text-xs font-medium text-gray-500">{place.island}</p>
           )}
-          {isEnriched && <StarRating rating={place.rating} reviewCount={place.review_count} />}
+          {hasRating && <StarRating rating={place.rating} reviewCount={place.review_count} />}
+          {place.source_label && (
+            <p className="text-xs font-semibold text-gray-400">{place.source_label}</p>
+          )}
         </div>
         <p className="text-xs text-gray-500 leading-relaxed line-clamp-2 mb-3 flex-1">
           {place.short_description || place.description}
         </p>
 
-        {isEnriched && place.amenities && place.amenities.length > 0 && (
+        {hasAmenities && (
           <div className="flex gap-1.5 mb-3">
-            {place.amenities.slice(0, 5).map((a) => (
+            {amenities.slice(0, 5).map((a) => (
               <span
                 key={a}
                 title={a}
-                className="text-[10px] font-medium bg-gray-50 text-gray-600 rounded-md px-1.5 py-0.5 capitalize"
+                className="text-xs font-medium bg-gray-50 text-gray-600 rounded-md px-1.5 py-0.5 capitalize"
               >
                 {a}
               </span>
             ))}
-            {place.amenities.length > 5 && (
+            {amenities.length > 5 && (
               <span className="w-6 h-6 flex items-center justify-center bg-gray-50 rounded-md text-xs text-gray-400 font-medium">
-                +{place.amenities.length - 5}
+                +{amenities.length - 5}
               </span>
             )}
           </div>
@@ -441,7 +470,7 @@ function PlaceCard({ place }: { place: Place }) {
         )}
 
         <div className="mb-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-500">
+          <p className="text-xs font-bold uppercase text-gray-500">
             Why Buddy picked this
           </p>
           <p className="mt-1 text-xs font-semibold leading-5 text-charcoal">

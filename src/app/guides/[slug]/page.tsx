@@ -100,14 +100,14 @@ export default async function GuidePage({ params }: { params: { slug: string } }
           <>
             <Link
               href={startTripHref}
-              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
             >
               <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
               Start trip from guide
             </Link>
             <Link
               href={buddyHref}
-              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
               Ask Buddy
             </Link>
@@ -115,14 +115,14 @@ export default async function GuidePage({ params }: { params: { slug: string } }
         )}
       >
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-charcoal ring-1 ring-gray-200">
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-charcoal ring-1 ring-gray-200">
             {categoryLabel}
           </span>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-charcoal ring-1 ring-gray-200">
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-charcoal ring-1 ring-gray-200">
             {readTime} read
           </span>
           {publishedLabel && (
-            <time className="rounded-full bg-white px-3 py-1 text-xs font-extrabold text-charcoal ring-1 ring-gray-200">
+            <time className="rounded-full bg-white px-3 py-1 text-xs font-bold text-charcoal ring-1 ring-gray-200">
               {publishedLabel}
             </time>
           )}
@@ -135,13 +135,11 @@ export default async function GuidePage({ params }: { params: { slug: string } }
           alt={article.title}
           title={article.title}
           eyebrow={categoryLabel}
-          description="Guide content is available. Article image is not available yet."
           className="mb-8 aspect-[16/7] min-h-[220px] rounded-baha-xl border border-gray-200 shadow-sm"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 896px"
           priority
           tone="island"
-          pendingLabel="Photo pending"
         />
 
         <article className="mx-auto max-w-3xl">
@@ -158,10 +156,10 @@ export default async function GuidePage({ params }: { params: { slug: string } }
 
           {/* CTA */}
           <div className="mt-12 rounded-2xl border border-gray-200 bg-white p-6 text-night shadow-sm sm:p-8">
-            <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mb-2">
+            <p className="text-xs font-bold uppercasest text-gray-500 mb-2">
               Ready to make it real?
             </p>
-            <h3 className="text-xl sm:text-2xl font-bold mb-3">Start a trip from this guide</h3>
+            <h3 className="text-xl font-bold mb-3">Start a trip from this guide</h3>
             <p className="text-sm text-charcoal mb-5 leading-relaxed max-w-lg">
               Create the trip record first, then turn this guide into stays, flights, food, and activities. Buddy is still available when conversation adds value.
             </p>

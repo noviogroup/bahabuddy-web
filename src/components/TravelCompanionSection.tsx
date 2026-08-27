@@ -31,14 +31,14 @@ export default function TravelCompanionSection() {
       <div className="max-w-6xl mx-auto px-4">
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_0.86fr]">
           <div>
-            <p className="text-sm font-extrabold uppercase tracking-[0.22em] text-brand-600">
+            <p className="text-sm font-bold uppercase text-brand-600">
               Travel Companion
             </p>
-            <h2 className="mt-3 max-w-3xl text-4xl font-extrabold tracking-tight text-night md:text-5xl">
+            <h2 className="mt-3 max-w-3xl text-4xl font-bold text-night">
               More than a booking site. Your Bahamas travel companion.
             </h2>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-charcoal">
-              Baha Buddy lets travelers search stays and flights, then keeps every booking tied to the full island plan. Buddy explains why a stay, fare, restaurant, or tour fits before the traveler saves, books, or asks for help.
+              Search stays and flights, compare Bahamas picks, and keep bookings tied to the trip plan.
             </p>
 
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
@@ -47,10 +47,10 @@ export default function TravelCompanionSection() {
                   key={item.title}
                   className="rounded-baha-xl border border-brand-100 bg-white/85 p-5 shadow-soft"
                 >
-                  <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-extrabold text-white">
+                  <div className="mb-4 inline-flex h-9 w-9 items-center justify-center rounded-full bg-brand-600 text-sm font-bold text-white">
                     {index + 1}
                   </div>
-                  <h3 className="font-extrabold text-night">{item.title}</h3>
+                  <h3 className="font-bold text-night">{item.title}</h3>
                   <p className="mt-2 text-sm leading-6 text-gray-600">{item.body}</p>
                 </div>
               ))}
@@ -59,13 +59,13 @@ export default function TravelCompanionSection() {
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <Link
                 href="/dashboard"
-                className="inline-flex items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-sm font-extrabold text-white shadow-card transition-colors hover:bg-brand-700"
+                className="inline-flex items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow-card transition-colors hover:bg-brand-700"
               >
                 Start planning with Buddy
               </Link>
               <Link
                 href="/stays"
-                className="inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-6 py-3 text-sm font-extrabold text-brand-700 transition-colors hover:bg-brand-50"
+                className="inline-flex items-center justify-center rounded-full border border-brand-200 bg-white px-6 py-3 text-sm font-bold text-brand-700 transition-colors hover:bg-brand-50"
               >
                 Browse travel deals
               </Link>
@@ -91,15 +91,15 @@ export default function TravelCompanionSection() {
                   <div className="absolute left-4 right-4 top-4 flex items-center justify-between">
                     <div className="flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 shadow-soft">
                       <BuddyAvatar size="xs" state="greeting" />
-                      <span className="text-xs font-extrabold text-brand-700">Baha Buddy</span>
+                      <span className="text-xs font-bold text-brand-700">Baha Buddy</span>
                     </div>
-                    <span className="rounded-full bg-gold-400 px-3 py-1 text-[10px] font-extrabold uppercase tracking-wide text-night">
+                    <span className="rounded-full bg-gold-400 px-3 py-1 text-xs font-bold uppercase text-night">
                       Live Trip
                     </span>
                   </div>
                   <div className="absolute bottom-4 left-4 right-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.18em] text-white/75">Exuma Plan</p>
-                    <h3 className="mt-1 text-2xl font-extrabold leading-tight text-white">
+                    <p className="text-xs font-bold uppercase text-white/75">Exuma Plan</p>
+                    <h3 className="mt-1 text-2xl font-bold leading-tight text-white">
                       5 days, built around your pace.
                     </h3>
                   </div>
@@ -120,7 +120,7 @@ export default function TravelCompanionSection() {
                   ))}
 
                   <div className="rounded-2xl border border-brand-100 bg-brand-50/80 p-3">
-                    <p className="text-xs font-extrabold uppercase tracking-wide text-brand-700">
+                    <p className="text-xs font-bold uppercase text-brand-700">
                       Buddy picked
                     </p>
                     <div className="mt-2 grid grid-cols-[3.25rem_1fr] gap-3">
@@ -135,7 +135,7 @@ export default function TravelCompanionSection() {
                         />
                       </div>
                       <div>
-                        <p className="text-sm font-extrabold text-night">Calm-water snorkel day</p>
+                        <p className="text-sm font-bold text-night">Calm-water snorkel day</p>
                         <p className="mt-0.5 text-xs leading-5 text-gray-600">
                           Fits your family pace and keeps the boat day away from arrival day.
                         </p>
@@ -146,8 +146,8 @@ export default function TravelCompanionSection() {
                   <div className="grid grid-cols-3 gap-2 text-center">
                     {['Stay', 'Flight', 'Guide'].map((label) => (
                       <div key={label} className="rounded-xl bg-sand-100 px-2 py-2">
-                        <p className="text-[10px] font-extrabold uppercase text-brand-700">{label}</p>
-                        <p className="mt-0.5 text-[11px] font-bold text-night">Ready</p>
+                        <p className="text-xs font-bold uppercase text-brand-700">{label}</p>
+                        <p className="mt-0.5 text-xs font-bold text-night">Ready</p>
                       </div>
                     ))}
                   </div>

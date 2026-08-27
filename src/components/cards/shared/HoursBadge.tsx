@@ -1,5 +1,5 @@
 /**
- * HoursBadge — renders today's opening hours from a google_places.opening_hours array.
+ * HoursBadge — renders today's opening hours from cached place inventory.
  *
  * `opening_hours` in our Supabase schema is a flat array of 7
  * "{Day}: X:XX AM – Y:YY PM" strings (or "{Day}: Closed") — the
@@ -64,7 +64,7 @@ export function HoursBadge({ hours, expanded = false, className = '' }: Props) {
 
   if (!expanded) {
     return (
-      <span className={`inline-flex items-center gap-1.5 text-[11px] ${className}`}>
+      <span className={`inline-flex items-center gap-1.5 text-xs ${className}`}>
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
         </svg>
@@ -81,8 +81,8 @@ export function HoursBadge({ hours, expanded = false, className = '' }: Props) {
   }
 
   return (
-    <div className={`text-[11px] ${className}`}>
-      <p className="text-gray-500 font-semibold uppercase tracking-wide text-[10px] mb-1">Hours</p>
+    <div className={`text-xs ${className}`}>
+      <p className="text-gray-500 font-semibold uppercase text-xs mb-1">Hours</p>
       <table className="w-full">
         <tbody>
           {hours.map((entry, i) => {

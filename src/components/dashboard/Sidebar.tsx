@@ -150,7 +150,7 @@ function NavList({ items, pathname, showLabels, isAutoExpanded, onNavigate }: Na
               </span>
               <span
                 className={cn(
-                  'text-base font-extrabold whitespace-nowrap',
+                  'text-base font-bold whitespace-nowrap',
                   active ? 'text-brand-700' : 'text-night',
                   labelVisibility(showLabels, isAutoExpanded),
                 )}
@@ -243,7 +243,7 @@ export default function Sidebar({
         <div className="mt-6">
           <h2
             className={cn(
-              'px-3 mb-2 text-base font-extrabold text-night underline underline-offset-4 decoration-night/30',
+              'px-3 mb-2 text-base font-bold text-night underline underline-offset-4 decoration-night/30',
               labelVisibility(showLabels, isAutoExpanded),
             )}
           >

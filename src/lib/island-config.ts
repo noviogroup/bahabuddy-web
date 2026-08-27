@@ -31,155 +31,212 @@
  *     instead — that one reads from the `islands` table directly.
  */
 
-import { BahaImages, type BahaImageKey } from './baha-images'
+import { BahaImages, type BahaImageKey } from "./baha-images";
 
 export interface IslandConfig {
   /** Canonical URL slug. Matches mobile's `ISLANDS[].slug` AND
    *  Supabase's `bahamas_attractions.island` values for most islands.
    *  Used in route params: `/explore/island/[slug]`. */
-  slug: string
+  slug: string;
   /** Display name. */
-  name: string
+  name: string;
   /** One-line marketing hook. */
-  tagline: string
+  tagline: string;
   /** Supabase query slug. Defaults to `slug`. Override for islands
    *  that share underlying records with a sibling (e.g.
    *  `paradise-island` queries `nassau-paradise-island`). */
-  dbSlug?: string
+  dbSlug?: string;
   /** Reference into `BahaImages`. */
-  heroImageKey: BahaImageKey
-  bestTime: string
-  vibe: string
-  tripLength: string
+  heroImageKey: BahaImageKey;
+  bestTime: string;
+  vibe: string;
+  tripLength: string;
   /** Plain prose fallback used when no Sanity `overview` is
    *  published for this island. */
-  description: string
+  description: string;
 }
 
 export const ISLAND_CONFIGS: IslandConfig[] = [
   {
-    slug: 'nassau-paradise-island',
-    name: 'Nassau',
-    tagline: 'The vibrant heart of the Bahamas — culture, beaches, and endless energy.',
-    heroImageKey: 'nassau',
-    bestTime: 'November – April',
-    vibe: 'Culture & Beaches',
-    tripLength: '3–5 days',
+    slug: "nassau-paradise-island",
+    name: "Nassau",
+    tagline:
+      "The vibrant heart of the Bahamas — culture, beaches, and endless energy.",
+    heroImageKey: "nassau",
+    bestTime: "November – April",
+    vibe: "Culture & Beaches",
+    tripLength: "3–5 days",
     description:
-      'Nassau is the colorful capital city of the Bahamas, packed with colonial architecture, world-class dining, vibrant nightlife, and some of the most beautiful beaches in the Caribbean. Across the bridge sits Paradise Island, home to Atlantis and Cabbage Beach. From the historic forts to the buzzing Junkanoo scene, Nassau delivers an unforgettable island experience.',
+      "Nassau is the colorful capital city of the Bahamas, packed with colonial architecture, world-class dining, vibrant nightlife, and some of the most beautiful beaches in the Caribbean. Across the bridge sits Paradise Island, home to Atlantis and Cabbage Beach. From the historic forts to the buzzing Junkanoo scene, Nassau delivers an unforgettable island experience.",
   },
   {
-    slug: 'paradise-island',
-    name: 'Paradise Island',
-    tagline: 'Atlantis, white-sand beaches, and resort island energy a short bridge from Nassau.',
-    dbSlug: 'nassau-paradise-island',
-    heroImageKey: 'paradiseIsland',
-    bestTime: 'November – April',
-    vibe: 'Resorts & Family',
-    tripLength: '3–5 days',
+    slug: "paradise-island",
+    name: "Paradise Island",
+    tagline:
+      "Atlantis, white-sand beaches, and resort island energy a short bridge from Nassau.",
+    dbSlug: "nassau-paradise-island",
+    heroImageKey: "paradiseIsland",
+    bestTime: "November – April",
+    vibe: "Resorts & Family",
+    tripLength: "3–5 days",
     description:
-      'Just across the bridge from Nassau, Paradise Island is home to the iconic Atlantis Resort, world-class beaches like Cabbage Beach, and a deeply manicured resort-island feel. It\'s the easiest way to combine city, beach, and family-friendly attractions in one short trip.',
+      "Just across the bridge from Nassau, Paradise Island is home to the iconic Atlantis Resort, world-class beaches like Cabbage Beach, and a deeply manicured resort-island feel. It's the easiest way to combine city, beach, and family-friendly attractions in one short trip.",
   },
   {
-    slug: 'the-exumas',
-    name: 'The Exumas',
-    tagline: 'Swimming pigs, turquoise sandbars, and the world\'s most pristine waters.',
-    heroImageKey: 'exumas',
-    bestTime: 'December – May',
-    vibe: 'Adventure & Nature',
-    tripLength: '4–7 days',
+    slug: "the-exumas",
+    name: "The Exumas",
+    tagline:
+      "Swimming pigs, turquoise sandbars, and the world's most pristine waters.",
+    heroImageKey: "exumas",
+    bestTime: "December – May",
+    vibe: "Adventure & Nature",
+    tripLength: "4–7 days",
     description:
-      'The Exumas are an archipelago of 365 cays stretching across breathtaking turquoise waters. Famous for the swimming pigs of Big Major Cay, pristine sandbars, and crystal-clear water that seems almost too perfect to be real. Snorkeling, kayaking, and island-hopping are the main events here.',
+      "The Exumas are an archipelago of 365 cays stretching across breathtaking turquoise waters. Famous for the swimming pigs of Big Major Cay, pristine sandbars, and crystal-clear water that seems almost too perfect to be real. Snorkeling, kayaking, and island-hopping are the main events here.",
   },
   {
-    slug: 'eleuthera-harbour-island',
-    name: 'Eleuthera',
-    tagline: 'Pink sand beaches, Glass Window Bridge, and unhurried island living.',
-    heroImageKey: 'eleuthera',
-    bestTime: 'November – May',
-    vibe: 'Off-the-Beaten-Path',
-    tripLength: '4–6 days',
+    slug: "eleuthera-harbour-island",
+    name: "Eleuthera",
+    tagline:
+      "Pink sand beaches, Glass Window Bridge, and unhurried island living.",
+    heroImageKey: "eleuthera",
+    bestTime: "November – May",
+    vibe: "Off-the-Beaten-Path",
+    tripLength: "4–6 days",
     description:
-      'Eleuthera is a slender, 100-mile-long island with a wild beauty that feels worlds away from the crowds. The famous pink sand beaches glow at sunrise, the Glass Window Bridge offers a dramatic divide between Atlantic and Caribbean, and the laid-back vibe invites you to truly slow down.',
+      "Eleuthera is a slender, 100-mile-long island with a wild beauty that feels worlds away from the crowds. The famous pink sand beaches glow at sunrise, the Glass Window Bridge offers a dramatic divide between Atlantic and Caribbean, and the laid-back vibe invites you to truly slow down.",
   },
   {
-    slug: 'harbour-island',
-    name: 'Harbour Island',
-    tagline: 'Golf carts, pink sand, and the most charming village in the Bahamas.',
-    dbSlug: 'eleuthera-harbour-island',
-    heroImageKey: 'harbourIsland',
-    bestTime: 'November – April',
-    vibe: 'Romantic & Boutique',
-    tripLength: '3–5 days',
+    slug: "harbour-island",
+    name: "Harbour Island",
+    tagline:
+      "Golf carts, pink sand, and the most charming village in the Bahamas.",
+    dbSlug: "eleuthera-harbour-island",
+    heroImageKey: "harbourIsland",
+    bestTime: "November – April",
+    vibe: "Romantic & Boutique",
+    tripLength: "3–5 days",
     description:
       'Harbour Island — affectionately called "Briland" by locals — is famous for its breathtaking 3-mile pink sand beach, colorful colonial cottages, and an intimate, upscale atmosphere. Golf carts rule the streets, and the village of Dunmore Town is filled with boutique shops, lovely restaurants, and a timeless island elegance.',
   },
   {
-    slug: 'andros',
-    name: 'Andros',
-    tagline: 'The untamed wilderness — the Bahamas\' largest and most mysterious island.',
-    heroImageKey: 'andros',
-    bestTime: 'December – May',
-    vibe: 'Wilderness & Diving',
-    tripLength: '5–7 days',
+    slug: "andros",
+    name: "Andros",
+    tagline:
+      "The untamed wilderness — the Bahamas' largest and most mysterious island.",
+    heroImageKey: "andros",
+    bestTime: "December – May",
+    vibe: "Wilderness & Diving",
+    tripLength: "5–7 days",
     description:
-      'Andros is the largest island in the Bahamas and one of the most biologically diverse places in the Caribbean. Bordering the Great Bahama Bank, the Andros Barrier Reef is the third-largest in the world. Blue holes, bonefishing flats, and vast unexplored forests make this the ultimate adventure destination.',
+      "Andros is the largest island in the Bahamas and one of the most biologically diverse places in the Caribbean. Bordering the Great Bahama Bank, the Andros Barrier Reef is the third-largest in the world. Blue holes, bonefishing flats, and vast unexplored forests make this the ultimate adventure destination.",
   },
   {
-    slug: 'grand-bahama',
-    name: 'Grand Bahama',
-    tagline: 'Diving, nature trails, and a city vibe just minutes from Florida.',
-    heroImageKey: 'grandBahama',
-    bestTime: 'November – April',
-    vibe: 'Diving & Nature',
-    tripLength: '3–5 days',
+    slug: "grand-bahama",
+    name: "Grand Bahama",
+    tagline:
+      "Diving, nature trails, and a city vibe just minutes from Florida.",
+    heroImageKey: "grandBahama",
+    bestTime: "November – April",
+    vibe: "Diving & Nature",
+    tripLength: "3–5 days",
     description:
-      'Grand Bahama is home to Freeport, the Bahamas\' second-largest city, and offers a compelling mix of world-class diving, nature reserves, and city conveniences. The island\'s underwater caves and reefs are among the Caribbean\'s finest, and the Lucayan National Park is a natural wonder not to be missed.',
+      "Grand Bahama is home to Freeport, the Bahamas' second-largest city, and offers a compelling mix of world-class diving, nature reserves, and city conveniences. The island's underwater caves and reefs are among the Caribbean's finest, and the Lucayan National Park is a natural wonder not to be missed.",
   },
   {
-    slug: 'bimini',
-    name: 'Bimini',
-    tagline: 'Hemingway\'s old haunt — sport fishing, sunken roads, and the closest Bahamian island to Florida.',
-    heroImageKey: 'bimini',
-    bestTime: 'March – June',
-    vibe: 'Fishing & Boating',
-    tripLength: '2–4 days',
+    slug: "bimini",
+    name: "Bimini",
+    tagline:
+      "Hemingway's old haunt — sport fishing, sunken roads, and the closest Bahamian island to Florida.",
+    heroImageKey: "bimini",
+    bestTime: "March – June",
+    vibe: "Fishing & Boating",
+    tripLength: "2–4 days",
     description:
       'Bimini sits just 50 miles east of Miami and feels like a forgotten Hemingway novel. Big-game fishing, the mysterious "Bimini Road" rock formation, and an easy long-weekend feel make this the entry point to the Bahamas for many first-time visitors arriving by boat or seaplane.',
   },
   {
-    slug: 'long-island',
-    name: 'Long Island',
-    tagline: 'The world\'s deepest blue hole, dramatic cliffs, and quiet, end-of-the-road beaches.',
-    heroImageKey: 'longIsland',
-    bestTime: 'December – May',
-    vibe: 'Adventure & Quiet',
-    tripLength: '4–6 days',
+    slug: "long-island",
+    name: "Long Island",
+    tagline:
+      "The world's deepest blue hole, dramatic cliffs, and quiet, end-of-the-road beaches.",
+    heroImageKey: "longIsland",
+    bestTime: "December – May",
+    vibe: "Adventure & Quiet",
+    tripLength: "4–6 days",
     description:
-      'Long Island lives up to its name — a thin, 80-mile-long ribbon home to Dean\'s Blue Hole, the deepest known sea-water blue hole in the world. Empty pink and white beaches, dramatic coastal cliffs, and an off-grid pace make it a favorite for travelers who want the Bahamas without the crowds.',
+      "Long Island lives up to its name — a thin, 80-mile-long ribbon home to Dean's Blue Hole, the deepest known sea-water blue hole in the world. Empty pink and white beaches, dramatic coastal cliffs, and an off-grid pace make it a favorite for travelers who want the Bahamas without the crowds.",
   },
   {
-    slug: 'abacos',
-    name: 'The Abacos',
-    tagline: 'Sailing capital of the Bahamas — pastel villages, reef-protected harbors, and easy island hopping.',
-    heroImageKey: 'abacos',
-    bestTime: 'November – June',
-    vibe: 'Sailing & Boating',
-    tripLength: '5–7 days',
+    slug: "abacos",
+    name: "The Abacos",
+    tagline:
+      "Sailing capital of the Bahamas — pastel villages, reef-protected harbors, and easy island hopping.",
+    heroImageKey: "abacos",
+    bestTime: "November – June",
+    vibe: "Sailing & Boating",
+    tripLength: "5–7 days",
     description:
       'The Abacos are a 120-mile chain of cays known as the "Sailing Capital of the World." Hope Town\'s candy-striped lighthouse, the loyalist-era pastel cottages of New Plymouth, and consistent trade winds make this the playground for sailors, divers, and travelers who like to wake up in a different harbor each morning.',
   },
-]
+  {
+    slug: "cat-island",
+    name: "Cat Island",
+    tagline:
+      "Quiet beaches, rake-and-scrape culture, Mount Alvernia, and deeply local out-island days.",
+    heroImageKey: "catIsland",
+    bestTime: "November – May",
+    vibe: "Quiet & Cultural",
+    tripLength: "4–6 days",
+    description:
+      "Cat Island is a slow, soulful out-island escape with quiet beaches, local music, and the highest natural point in the Bahamas at Mount Alvernia. It rewards travelers who want space, culture, and a more local rhythm rather than resort density or late-night options.",
+  },
+  {
+    slug: "san-salvador",
+    name: "San Salvador",
+    tagline:
+      "Wall diving, clear water, quiet beaches, and a focused island stay.",
+    heroImageKey: "sanSalvador",
+    bestTime: "November – May",
+    vibe: "Diving & History",
+    tripLength: "4–6 days",
+    description:
+      "San Salvador is a compact eastern Bahamas island known for clear water, wall diving, reef days, and a quieter history-rich pace. It is best for travelers who want a focused island stay with diving, beach time, and simple logistics once they arrive.",
+  },
+  {
+    slug: "berry-islands",
+    name: "Berry Islands",
+    tagline:
+      "Private-cay calm, boating, fishing, and space-forward island escapes.",
+    heroImageKey: "berryIslands",
+    bestTime: "November – May",
+    vibe: "Boating & Quiet Luxury",
+    tripLength: "4–7 days",
+    description:
+      "The Berry Islands are a chain of cays built for boat-forward days, fishing, private-feeling beaches, and quiet luxury. The trip works best when transfers, charters, or boat access are planned carefully before the rest of the itinerary is built.",
+  },
+  {
+    slug: "inagua",
+    name: "Inagua",
+    tagline: "Flamingos, salt ponds, national parks, and remote nature travel.",
+    heroImageKey: "inagua",
+    bestTime: "December – April",
+    vibe: "Remote Nature",
+    tripLength: "5–7 days",
+    description:
+      "Inagua is the far-southern nature trip: salt ponds, national parks, birding, and one of the Bahamas' most remote visitor experiences. It is for patient planners who value wildlife, open landscapes, and a quieter trip over casual first-timer convenience.",
+  },
+];
 
 /** Resolve a URL slug to its full config. Returns null when unknown. */
 export function getIslandConfig(slug: string): IslandConfig | null {
-  return ISLAND_CONFIGS.find(i => i.slug === slug) ?? null
+  return ISLAND_CONFIGS.find((i) => i.slug === slug) ?? null;
 }
 
 /** Returns the Supabase query slug for an island. Falls back to the
  *  URL slug when no explicit override is set. */
 export function getIslandDbSlug(config: IslandConfig): string {
-  return config.dbSlug ?? config.slug
+  return config.dbSlug ?? config.slug;
 }
 
 /** Resolve hero image URL from the config's BahaImages key.
@@ -190,7 +247,7 @@ export function getIslandDbSlug(config: IslandConfig): string {
  *    haven't been migrated to receive image URLs as props from their
  *    server parent. */
 export function getIslandHeroImage(config: IslandConfig): string {
-  return BahaImages[config.heroImageKey]
+  return BahaImages[config.heroImageKey];
 }
 
 // getIslandHeroSlides() moved to `@/lib/islands` — it's now async +

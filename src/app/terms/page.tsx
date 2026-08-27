@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
+import SanityManagedContentPage from '@/components/marketplace/SanityManagedContentPage'
+import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
@@ -7,7 +9,10 @@ export const metadata: Metadata = {
     'Baha Buddy terms of service for trip planning, bookings, payments, and account use.',
 }
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const managedPage = await fetchContentPageByRoute('/terms')
+  if (managedPage) return <SanityManagedContentPage page={managedPage} />
+
   return (
     <UtilityContentLayout
       activePath="/terms"
@@ -59,9 +64,8 @@ export default function TermsPage() {
         <h2>Payments</h2>
         <p>
           Payments are processed through Stripe or another approved payment
-          provider. A booking should not be treated as confirmed until payment,
-          provider booking, local booking records, and trip item state are
-          reconciled.
+          processor. A booking should not be treated as confirmed until payment
+          and booking checks are complete.
         </p>
       </section>
 

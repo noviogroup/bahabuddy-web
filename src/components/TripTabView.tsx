@@ -68,7 +68,7 @@ export default function TripTabView({
               label: hasMapData ? 'Map' : (
                 <span className="inline-flex items-baseline gap-1">
                   Map
-                  <span className="text-[10px] font-normal opacity-60">(empty)</span>
+                  <span className="text-xs font-normal opacity-60">(empty)</span>
                 </span>
               ),
               icon: (

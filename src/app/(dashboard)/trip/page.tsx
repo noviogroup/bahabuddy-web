@@ -68,7 +68,7 @@ export default async function TripIndexPage() {
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-4 mb-8 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-night">My Trips</h1>
+          <h1 className="text-2xl font-bold text-night">My Trips</h1>
           <p className="text-sm text-gray-500 mt-1">
             {tripList.length === 0
               ? 'No trips yet. Create one and add stays, flights, food, and tours directly.'

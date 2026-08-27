@@ -14,7 +14,7 @@ export default function TrustBand() {
           {TRUST_POINTS.map((point) => (
             <div
               key={point}
-              className="rounded-full bg-sand-50 border border-sand-200 px-4 py-3 text-center text-xs sm:text-sm font-bold text-brand-800"
+              className="rounded-full bg-sand-50 border border-sand-200 px-4 py-3 text-center text-xs font-bold text-brand-800"
             >
               {point}
             </div>

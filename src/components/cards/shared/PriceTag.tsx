@@ -74,7 +74,7 @@ export function PriceTag({
   return (
     <div className={`flex flex-col ${alignClass} ${className}`}>
       {prefix && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 leading-none mb-0.5">
+        <span className="text-xs font-semibold uppercase text-gray-400 leading-none mb-0.5">
           {prefix}
         </span>
       )}
@@ -89,7 +89,7 @@ export function PriceTag({
         )}
       </div>
       {secondary && (
-        <span className="text-[11px] text-gray-400 mt-0.5">{secondary}</span>
+        <span className="text-xs text-gray-400 mt-0.5">{secondary}</span>
       )}
     </div>
   )

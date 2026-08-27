@@ -67,15 +67,15 @@ export function ReviewSnippet({
   return (
     <figure className={`${container} ${className}`}>
       {rating != null && rating > 0 && (
-        <span className="text-charcoal text-[11px] font-extrabold tracking-wide">
+        <span className="text-charcoal text-xs font-bold">
           Rating {Number(rating).toFixed(1)}
         </span>
       )}
-      <blockquote className={`italic text-[13px] font-medium leading-snug text-gray-800 ${CLAMP[clamp]}`}>
+      <blockquote className={`italic text-sm font-medium leading-snug text-gray-800 ${CLAMP[clamp]}`}>
         &ldquo;{text.replace(/^["']|["']$/g, '')}&rdquo;
       </blockquote>
       {(author || relWhen) && (
-        <figcaption className="text-[11px] text-gray-500 mt-1">
+        <figcaption className="text-xs text-gray-500 mt-1">
           {author && <span>— {author}</span>}
           {author && relWhen && <span>, </span>}
           {relWhen && <span>{relWhen}</span>}

@@ -31,7 +31,7 @@ export function FilterChip({
     <Link
       href={href}
       aria-current={active ? 'true' : undefined}
-      className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 ${
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 ${
         active
           ? activeClass
           : 'border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50 hover:text-night'
@@ -64,7 +64,7 @@ export function FilterButton({
       type="button"
       aria-pressed={active}
       onClick={onClick}
-      className={`inline-flex shrink-0 items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-sm font-bold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 ${
+      className={`inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full border px-3.5 py-2 text-sm font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2 ${
         active
           ? activeClass
           : 'border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50 hover:text-night'
@@ -90,7 +90,7 @@ export function FilterGroup({
   return (
     <div className="min-w-0">
       <div className="mb-2">
-        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-night">
+        <p className="text-xs font-semibold uppercase text-night">
           {label}
         </p>
         {description && (
@@ -122,7 +122,7 @@ export function ResultFilterPanel({
   ariaLabel: string
   eyebrow: string
   title: string
-  description: string
+  description?: string
   summaryItems?: FilterSummaryItem[]
   activeFilters: ActiveFilter[]
   clearHref: string
@@ -138,25 +138,27 @@ export function ResultFilterPanel({
     >
       <div className="flex flex-col gap-3 border-b border-gray-100 bg-white px-4 py-3 md:flex-row md:items-center md:justify-between md:py-4">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
+          <p className="text-xs font-semibold uppercase text-gray-500">
             {eyebrow}
           </p>
-          <h2 className="mt-1 text-xl font-extrabold tracking-tight text-night">
+          <h2 className="mt-1 text-xl font-bold text-night">
             {title}
           </h2>
-          <p className="mt-1 text-sm text-gray-500">
-            {description}
-          </p>
+          {description && (
+            <p className="mt-1 text-sm text-gray-500">
+              {description}
+            </p>
+          )}
         </div>
         {activeFilters.length > 0 ? (
           <Link
             href={clearHref}
-            className="inline-flex w-fit items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+            className="inline-flex w-fit items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
           >
             Clear all filters
           </Link>
         ) : (
-          <span className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-bold text-gray-500 ring-1 ring-gray-200">
+          <span className="inline-flex w-fit rounded-full bg-white px-4 py-2 text-sm font-medium text-gray-500 ring-1 ring-gray-200">
             {emptyLabel}
           </span>
         )}
@@ -169,10 +171,10 @@ export function ResultFilterPanel({
               key={item.label}
               className="rounded-baha-md border border-gray-200 bg-white px-3 py-2"
             >
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-400">
+              <p className="text-xs font-medium uppercase text-gray-400">
                 {item.label}
               </p>
-              <p className="mt-1 truncate text-sm font-extrabold text-night">
+              <p className="mt-1 truncate text-sm font-semibold text-night">
                 {item.value}
               </p>
               {item.detail && (
@@ -187,14 +189,14 @@ export function ResultFilterPanel({
 
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 border-b border-gray-100 px-4 py-3">
-          <span className="text-xs font-extrabold uppercase tracking-[0.14em] text-gray-400">
+          <span className="text-xs font-medium uppercase text-gray-400">
             Active
           </span>
           {activeFilters.map((filter) => (
             <Link
               key={`${filter.label}-${filter.value}`}
               href={filter.href}
-              className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-charcoal ring-1 ring-gray-200 transition-colors hover:bg-gray-50 hover:text-night focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+              className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-charcoal ring-1 ring-gray-200 transition-colors hover:bg-gray-50 hover:text-night focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
               title={`Remove ${filter.label} filter`}
             >
               <span className="text-gray-400">{filter.label}:</span>
@@ -206,9 +208,9 @@ export function ResultFilterPanel({
       )}
 
       <details className="group md:hidden">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-extrabold text-night marker:hidden">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold text-night marker:hidden">
           <span>{mobileSummary}</span>
-          <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-charcoal ring-1 ring-gray-200">
+          <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-charcoal ring-1 ring-gray-200">
             {activeFilters.length > 0 ? `${activeFilters.length} active` : 'Open'}
           </span>
         </summary>

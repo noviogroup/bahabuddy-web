@@ -19,11 +19,11 @@ export default function ConciergeRevenueBand() {
       <div className="max-w-6xl mx-auto px-4 py-14 lg:py-16">
         <div className="grid lg:grid-cols-[1.1fr_0.9fr] gap-8 items-center">
           <div>
-            <p className="mb-5 inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-brand-700">
+            <p className="mb-5 inline-flex items-center gap-2 text-sm font-bold uppercase text-brand-700">
               <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
               New revenue offer: Concierge Trip Plan
             </p>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-night tracking-tight mb-4">
+            <h2 className="text-3xl font-bold text-night mb-4">
               Let Buddy build the idea. Let our local team polish the trip.
             </h2>
             <p className="text-lg text-charcoal leading-relaxed max-w-2xl mb-6">
@@ -51,7 +51,7 @@ export default function ConciergeRevenueBand() {
             <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <p className="text-sm font-semibold text-brand-700">Recommended launch price</p>
-                <p className="text-4xl font-extrabold text-night mt-1">$149</p>
+                <p className="text-4xl font-bold text-night mt-1">$149</p>
               </div>
               <span className="rounded-full bg-palm-50 text-palm-700 px-3 py-1 text-xs font-bold">
                 Fastest path to revenue

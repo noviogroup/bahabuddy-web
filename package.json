@@ -22,7 +22,9 @@
     "verify:booking-readiness": "node scripts/verify-booking-readiness.mjs",
     "sync": "bash scripts/git-sync.sh",
     "screenshots:web": "node scripts/capture-web-screenshots.mjs",
-    "screenshots:web:auth": "node scripts/capture-auth-web-screenshots.mjs"
+    "screenshots:web:auth": "node scripts/capture-auth-web-screenshots.mjs",
+    "screenshots:web:auth-lower": "node scripts/capture-auth-lower-state-screenshots.mjs",
+    "screenshots:ui-consistency": "node scripts/capture-ui-consistency-screenshots.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -39,7 +41,8 @@
     "next-sanity": "^9.12.3",
     "react": "^18",
     "react-day-picker": "^10.0.1",
-    "react-dom": "^18"
+    "react-dom": "^18",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.10",

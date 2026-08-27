@@ -106,18 +106,18 @@ export default function HeroCard({
         {badge && (
           <span
             className={cn(
-              'self-start text-[10px] font-extrabold tracking-widest uppercase px-2 py-1 rounded mb-2',
+              'self-start text-xs font-boldst uppercase px-2 py-1 rounded mb-2',
               BADGE[badgeColor],
             )}
           >
             {badge}
           </span>
         )}
-        <h3 className="text-white text-2xl md:text-3xl font-bold leading-tight text-balance drop-shadow-sm">
+        <h3 className="text-white text-2xl font-bold leading-tight text-balance drop-shadow-sm">
           {title}
         </h3>
         {subtitle && (
-          <p className="text-white/85 text-sm md:text-base mt-1.5 leading-relaxed max-w-prose">
+          <p className="text-white/85 text-sm mt-1.5 leading-relaxed max-w-prose">
             {subtitle}
           </p>
         )}

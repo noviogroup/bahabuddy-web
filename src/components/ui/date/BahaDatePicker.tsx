@@ -19,6 +19,7 @@ export interface BahaDatePickerProps {
   id?: string
   name?: string
   required?: boolean
+  ariaLabel?: string
 }
 
 function CalendarIcon({ className }: { className?: string }) {
@@ -45,6 +46,7 @@ export default function BahaDatePicker({
   id: idProp,
   name,
   required,
+  ariaLabel,
 }: BahaDatePickerProps) {
   const autoId = useId()
   const id = idProp ?? autoId
@@ -117,7 +119,7 @@ export default function BahaDatePicker({
       {label && (
         <label
           htmlFor={`${id}-trigger`}
-          className="mb-2 block px-1 text-[11px] font-extrabold uppercase tracking-[0.16em] text-night"
+          className="mb-2 block px-1 text-xs font-semibold uppercase text-night"
         >
           {label}
         </label>
@@ -126,9 +128,10 @@ export default function BahaDatePicker({
         id={`${id}-trigger`}
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-label={ariaLabel ?? label ?? placeholder}
         aria-expanded={open}
         aria-haspopup="dialog"
-        className={`flex h-12 w-full items-center gap-2 rounded-xl border bg-white px-4 text-left text-sm font-extrabold outline-none transition-all focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100 ${
+        className={`flex h-12 w-full items-center gap-2 rounded-xl border bg-white px-4 text-left text-sm font-semibold outline-none transition-all focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100 ${
           open ? 'border-gray-500 ring-4 ring-gray-100' : 'border-gray-200 hover:border-gray-300'
         } ${!value ? 'text-gray-400' : 'text-night'}`}
       >
@@ -142,7 +145,7 @@ export default function BahaDatePicker({
       {open && (
         <div
           role="dialog"
-          aria-label={label ?? 'Choose date'}
+          aria-label={ariaLabel ?? label ?? 'Choose date'}
           className="absolute z-50 mt-2 left-0 right-0 sm:left-auto sm:min-w-[320px] rounded-baha-lg border border-gray-200 bg-white p-4 shadow-card-hover"
         >
           {calendar}

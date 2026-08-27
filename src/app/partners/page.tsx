@@ -130,6 +130,11 @@ export default function PartnersPage({
           <a href="/concierge-trip-plan"> concierge trip planning offer</a>.
         </p>
         <p>
+          Tourism boards, destination marketing organizations, and island
+          stakeholders can review the dedicated
+          <a href="/tourism-board-partnerships"> tourism board partnership path</a>.
+        </p>
+        <p>
           <a href="#partner-application">Apply to become a partner</a>
         </p>
       </section>
@@ -165,7 +170,7 @@ export default function PartnersPage({
           {tiers.map((tier) => (
             <article key={tier.name} className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
               <h3>{tier.name}</h3>
-              <p className="text-2xl font-extrabold text-brand-700">{tier.price}</p>
+              <p className="text-2xl font-bold text-brand-700">{tier.price}</p>
               <p>{tier.description}</p>
               <div className="mt-4 space-y-2">
                 {tier.features.map((feature) => (

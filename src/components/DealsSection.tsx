@@ -138,10 +138,10 @@ export default function DealsSection({ deals }: Props) {
     <section className="py-24 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-brand-600 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-600 text-sm font-semiboldst uppercase mb-3">
             Current Deals
           </p>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Bahamas Packages &amp; Deals
           </h2>
           <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">
@@ -170,7 +170,6 @@ export default function DealsSection({ deals }: Props) {
                   alt={deal.title}
                   title={deal.title}
                   eyebrow={typeConfig.label}
-                  description="Deal details are available. Provider image is not available yet."
                   className="h-48"
                   imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
                   sizes="(max-width: 640px) 100vw, 50vw"
@@ -196,7 +195,7 @@ export default function DealsSection({ deals }: Props) {
                     <p className="text-xs text-gray-400 mb-2 font-medium">{deal.resort_name}</p>
                   )}
 
-                  <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.14em] text-brand-700">
+                  <p className="mb-2 text-xs font-bold uppercase text-brand-700">
                     {islandLabel || action.contextLabel}
                   </p>
 
@@ -226,13 +225,13 @@ export default function DealsSection({ deals }: Props) {
                     <div className="ml-auto flex flex-wrap justify-end gap-2">
                       <Link
                         href={action.primaryHref}
-                        className="text-xs font-extrabold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+                        className="text-xs font-bold bg-brand-600 hover:bg-brand-700 text-white rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
                       >
                         {action.primaryLabel}
                       </Link>
                       <Link
                         href={action.secondaryHref}
-                        className="text-xs font-extrabold border border-brand-200 bg-white text-brand-700 hover:bg-brand-50 rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
+                        className="text-xs font-bold border border-brand-200 bg-white text-brand-700 hover:bg-brand-50 rounded-lg px-3 py-1.5 transition-colors whitespace-nowrap"
                       >
                         Ask Buddy
                       </Link>
@@ -245,7 +244,7 @@ export default function DealsSection({ deals }: Props) {
         </div>
 
         <div className="text-center mt-12">
-          <p className="text-gray-400 mb-5 text-sm tracking-wide">
+          <p className="text-gray-400 mb-5 text-sm">
             Get personalized deal recommendations in the app
           </p>
           <StoreBadgeLinks height={44} />

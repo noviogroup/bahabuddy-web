@@ -25,8 +25,8 @@ export default async function ConciergeOrderDetailsPage({ params }: { params: Pa
   return (
     <div className="max-w-3xl mx-auto px-5 md:px-6 py-6 pb-10">
       <div className="mb-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
-        <p className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-bold uppercase tracking-wide text-charcoal">Concierge details</p>
-        <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-night md:text-4xl">Tell us what to plan</h1>
+        <p className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-bold uppercase text-charcoal">Concierge details</p>
+        <h1 className="mt-4 text-3xl font-bold text-night">Tell us what to plan</h1>
         <p className="mt-3 leading-relaxed text-charcoal">Share your dates, group size, budget, preferred islands, and travel style so the Baha Buddy team can prepare your Concierge plan.</p>
       </div>
 

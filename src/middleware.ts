@@ -6,7 +6,7 @@ export function isGuestChatPath(pathname: string): boolean {
 }
 
 export function isProtectedRoutePath(pathname: string): boolean {
-  const protectedPaths = ['/dashboard', '/trip', '/profile']
+  const protectedPaths = ['/dashboard', '/trip', '/profile', '/vendor']
   const isFlightBookingRoute = /^\/flights\/[^/]+\/book(?:\/|$)/.test(pathname)
 
   return (
@@ -79,6 +79,8 @@ export const config = {
     '/trip/:path*',
     '/profile/:path*',
     '/profile',
+    '/vendor/:path*',
+    '/vendor',
     '/flights/:path*',
     '/flights',
     '/login',

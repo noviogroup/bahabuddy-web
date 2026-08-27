@@ -1,12 +1,17 @@
 import type { Metadata } from 'next'
 import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
+import SanityManagedContentPage from '@/components/marketplace/SanityManagedContentPage'
+import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'Help Center',
   description: 'Baha Buddy help center for trip planning, bookings, accounts, and support.',
 }
 
-export default function HelpPage() {
+export default async function HelpPage() {
+  const managedPage = await fetchContentPageByRoute('/help')
+  if (managedPage) return <SanityManagedContentPage page={managedPage} />
+
   return (
     <UtilityContentLayout
       activePath="/help"

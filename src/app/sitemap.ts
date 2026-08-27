@@ -63,6 +63,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const staticPages: MetadataRoute.Sitemap = [
     { path: '', changeFrequency: 'weekly', priority: 1 },
+    { path: '/search', changeFrequency: 'daily', priority: 0.9 },
     { path: '/stays', changeFrequency: 'daily', priority: 0.9 },
     { path: '/flights', changeFrequency: 'daily', priority: 0.9 },
     { path: '/explore', changeFrequency: 'weekly', priority: 0.9 },
@@ -76,6 +77,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/restaurants', changeFrequency: 'weekly', priority: 0.65 },
     { path: '/concierge-trip-plan', changeFrequency: 'weekly', priority: 0.7 },
     { path: '/partners', changeFrequency: 'monthly', priority: 0.6 },
+    { path: '/tourism-board-partnerships', changeFrequency: 'monthly', priority: 0.6 },
     { path: '/list-your-property', changeFrequency: 'monthly', priority: 0.6 },
     { path: '/about', changeFrequency: 'monthly', priority: 0.5 },
     { path: '/how-it-works', changeFrequency: 'monthly', priority: 0.55 },

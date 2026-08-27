@@ -135,7 +135,7 @@ export default function TripMap({ markers }: Props) {
         marker.addListener('click', () => {
           infoWindow.setContent(`
             <div style="font-family:Figtree, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;padding:4px 2px;max-width:200px">
-              <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${color};margin-bottom:2px">${typeLabel}</div>
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:${color};margin-bottom:2px">${typeLabel}</div>
               <div style="font-size:14px;font-weight:700;margin-bottom:2px">${m.label}</div>
               ${m.detail ? `<div style="font-size:12px;color:#555">${m.detail}</div>` : ''}
             </div>

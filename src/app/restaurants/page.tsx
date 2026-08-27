@@ -9,7 +9,12 @@ import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolic
 import { FilterChip, FilterGroup, ResultFilterPanel } from '@/components/marketplace/ResultFilterPanel'
 import { buddyChatHref } from '@/lib/buddy-chat'
 import type { TripAdvisorLocation } from '@/lib/tripadvisor/types'
-import { ISLAND_SLUG_MAP } from '@/lib/tripadvisor/types'
+import {
+  formatCuisineLabel,
+  formatPriceLevelLabel,
+  getRestaurantIslandQueryNames,
+  ISLAND_SLUG_MAP,
+} from '@/lib/tripadvisor/types'
 
 export const metadata: Metadata = {
   title: 'Best Restaurants in the Bahamas | Baha Buddy',
@@ -38,7 +43,10 @@ async function getRestaurants(
       .limit(100)
 
     if (island) {
-      query = query.ilike('island_name', island)
+      const islandNames = getRestaurantIslandQueryNames(island)
+      query = typeof (query as { in?: unknown }).in === 'function'
+        ? (query as typeof query & { in: (column: string, values: string[]) => typeof query }).in('island_name', islandNames)
+        : query.eq('island_name', island)
     }
     if (cuisine) {
       query = query.contains('cuisine_types', [cuisine])
@@ -86,17 +94,12 @@ function getIslandOptions(): { slug: string; name: string }[] {
 }
 
 function PriceLevelDisplay({ level }: { level: string }) {
-  const count =
-    level === '$' ? 1 : level === '$$' ? 2 : level === '$$$' ? 3 : level === '$$$$' ? 4 : level.length
   return (
     <span
       className="font-bold text-night text-sm"
       aria-label={`Price level ${level}`}
     >
-      {'$'.repeat(Math.min(count, 4))}
-      <span className="text-gray-300">
-        {'$'.repeat(Math.max(0, 4 - count))}
-      </span>
+      {formatPriceLevelLabel(level)}
     </span>
   )
 }
@@ -106,7 +109,7 @@ function restaurantPreviewReason(rest: TripAdvisorLocation): string {
     return `Strong traveler rating${rest.island_name ? ` on ${rest.island_name}` : ''}, useful for shortlisting dining plans.`
   }
   if (rest.cuisine_types && rest.cuisine_types.length > 0) {
-    return `Cuisine fit: ${rest.cuisine_types.slice(0, 2).join(' and ')}.`
+    return `Cuisine fit: ${rest.cuisine_types.slice(0, 2).map(formatCuisineLabel).join(' and ')}.`
   }
   if (rest.num_reviews && rest.num_reviews > 0) {
     return `${rest.num_reviews.toLocaleString()} traveler reviews to compare before you reserve.`
@@ -132,7 +135,7 @@ function restaurantAskBuddyHref(rest: TripAdvisorLocation): string {
   const prompt = [
     `Tell me about ${rest.name}`,
     rest.island_name ? `Island: ${rest.island_name}` : '',
-    rest.cuisine_types?.[0] ? `Cuisine: ${rest.cuisine_types[0]}` : '',
+    rest.cuisine_types?.[0] ? `Cuisine: ${formatCuisineLabel(rest.cuisine_types[0])}` : '',
   ].filter(Boolean).join('. ')
   return buddyChatHref(prompt)
 }
@@ -188,7 +191,7 @@ export default async function RestaurantsPage({
         '@type': 'Restaurant',
         name: r.name,
         ...(r.cuisine_types && r.cuisine_types.length > 0 && {
-          servesCuisine: r.cuisine_types.join(', '),
+          servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(', '),
         }),
         ...(r.rating && {
           aggregateRating: {
@@ -203,7 +206,7 @@ export default async function RestaurantsPage({
 
   const renderFilterControls = () => (
     <>
-      <FilterGroup label="Island" description="Choose the island or settlement.">
+      <FilterGroup label="Island">
         <FilterChip href={buildFilterUrl({ island: undefined })} active={!activeIsland}>
           All islands
         </FilterChip>
@@ -219,7 +222,7 @@ export default async function RestaurantsPage({
       </FilterGroup>
 
       {cuisineTypes.length > 0 && (
-        <FilterGroup label="Cuisine" description="Seafood, Bahamian, fine dining, cafes, and more.">
+        <FilterGroup label="Cuisine">
           <FilterChip href={buildFilterUrl({ cuisine: undefined })} active={!activeCuisine} tone="gold">
             All cuisines
           </FilterChip>
@@ -230,7 +233,7 @@ export default async function RestaurantsPage({
               active={activeCuisine === cuisine}
               tone="gold"
             >
-              {cuisine}
+              {formatCuisineLabel(cuisine)}
             </FilterChip>
           ))}
         </FilterGroup>
@@ -265,19 +268,19 @@ export default async function RestaurantsPage({
           <>
             <Link
               href={startFoodTripHref}
-              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
             >
               Start food trip
             </Link>
             <Link
               href={exploreFoodCultureHref}
-              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
               Explore food culture
             </Link>
             <Link
               href={askFoodBuddyHref}
-              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
             >
               Ask Buddy
             </Link>
@@ -290,7 +293,6 @@ export default async function RestaurantsPage({
           ariaLabel="Filter restaurants"
           eyebrow="Filter restaurants"
           title={`${restaurants.length} restaurant${restaurants.length !== 1 ? 's' : ''} found`}
-          description="Narrow dining by island and cuisine without turning the page into a chat handoff."
           activeFilters={activeFilters}
           clearHref="/restaurants"
           emptyLabel="Showing all restaurants"
@@ -301,7 +303,7 @@ export default async function RestaurantsPage({
 
         {/* Results count */}
         <div className="mb-6">
-          <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
+          <p className="text-xs font-bold uppercase text-gray-500">
             Results
           </p>
           <p className="mt-1 text-sm font-semibold text-gray-500">
@@ -348,7 +350,6 @@ export default async function RestaurantsPage({
                       alt={rest.name}
                       title={rest.name}
                       eyebrow="Bahamas dining"
-                      description="Real listing available. Restaurant photo is not available yet."
                       className="h-48"
                       tone="neutral"
                     />
@@ -368,8 +369,8 @@ export default async function RestaurantsPage({
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {rest.cuisine_types && rest.cuisine_types.length > 0 && (
-                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-charcoal">
-                          {rest.cuisine_types[0]}
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-charcoal">
+                          {formatCuisineLabel(rest.cuisine_types[0])}
                         </span>
                       )}
                       {rest.island_name && (
@@ -397,7 +398,7 @@ export default async function RestaurantsPage({
                             key={c}
                             className="rounded-full border border-gray-200 bg-white px-3 py-0.5 text-xs font-medium text-gray-600"
                           >
-                            {c}
+                            {formatCuisineLabel(c)}
                           </span>
                         ))}
                       </div>
@@ -410,7 +411,7 @@ export default async function RestaurantsPage({
                     )}
 
                     <div className="mt-3 rounded-xl border border-gray-200 bg-white px-3 py-2">
-                      <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-500">
+                      <p className="text-xs font-bold uppercase text-gray-500">
                         Why Buddy picked this
                       </p>
                       <p className="mt-1 text-xs font-semibold leading-5 text-charcoal">

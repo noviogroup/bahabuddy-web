@@ -144,7 +144,7 @@ function Step1Name({ name, onChange, onNext }: {
   return (
     <div>
       <div className="text-center mb-10">
-        <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Welcome to Baha Buddy!</h1>
+        <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Baha Buddy!</h1>
         <p className="text-gray-500">Let&apos;s personalize your Bahamas experience. First — what should we call you?</p>
       </div>
 
@@ -182,7 +182,7 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
   return (
     <div>
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">What&apos;s your travel vibe?</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">What&apos;s your travel vibe?</h2>
         <p className="text-gray-500 text-sm">Pick everything that resonates — we&apos;ll tailor your recommendations.</p>
       </div>
 
@@ -245,7 +245,7 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
   return (
     <div>
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-extrabold text-gray-900 mb-2">Who are you traveling with?</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">Who are you traveling with?</h2>
         <p className="text-gray-500 text-sm">This helps Buddy find the right deals and activities for you.</p>
       </div>
 

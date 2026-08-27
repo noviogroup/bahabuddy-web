@@ -158,18 +158,18 @@ export default async function TripPage({ params }: { params: { id: string } }) {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-100">
               <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Party</p>
+                <p className="text-xs text-gray-400 uppercase">Party</p>
                 <p className="text-sm font-medium text-gray-700 mt-0.5">{trip.party_size} {trip.party_type}</p>
               </div>
               {totalDays > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Duration</p>
+                  <p className="text-xs text-gray-400 uppercase">Duration</p>
                   <p className="text-sm font-medium text-gray-700 mt-0.5">{totalDays} {totalDays === 1 ? 'day' : 'days'}</p>
                 </div>
               )}
               {trip.budget_estimate && (
                 <div>
-                  <p className="text-xs text-gray-400 uppercase tracking-wide">Budget</p>
+                  <p className="text-xs text-gray-400 uppercase">Budget</p>
                   <p className="text-sm font-medium text-gray-700 mt-0.5">${trip.budget_estimate.toLocaleString()}</p>
                 </div>
               )}
@@ -193,8 +193,8 @@ export default async function TripPage({ params }: { params: { id: string } }) {
             </svg>
             <div className="relative flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-brand-100 text-xs font-bold uppercase tracking-widest">Ready when you are</p>
-                <h2 className="text-xl sm:text-2xl font-extrabold mt-1">Book this trip</h2>
+                <p className="text-brand-100 text-xs font-bold uppercasest">Ready when you are</p>
+                <h2 className="text-xl font-bold mt-1">Book this trip</h2>
                 <p className="text-brand-100 text-sm mt-1">Lock in {trip.name} for ${trip.budget_estimate?.toLocaleString()}.</p>
               </div>
               <Link href={checkoutHref} className="inline-flex items-center gap-2 bg-white text-brand-700 hover:bg-brand-50 font-bold px-5 py-3 rounded-full transition-colors shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-600">

@@ -66,8 +66,7 @@ function statusLabel(status: string): string {
 function providerLabel(provider: string | null | undefined): string | null {
   if (!provider) return null
   const normalized = provider.toLowerCase()
-  if (normalized.includes('liteapi')) return 'LiteAPI'
-  if (normalized.includes('duffel')) return 'Duffel'
+  if (normalized.includes('liteapi')) return 'Travel partner'
   return provider
 }
 
@@ -87,7 +86,7 @@ function recoveryGuidance(status: string, booking: Booking): {
   if (status === 'failed') {
     return {
       title: 'Booking needs support',
-      body: 'Do not book again yet. Support should review payment, provider status, and trip item state before you retry.',
+      body: 'Do not book again yet. Support should review this booking before you retry.',
       tone: 'border-coral-200 bg-coral-50 text-coral-900',
       actionLabel: 'Contact support',
       href,
@@ -96,8 +95,8 @@ function recoveryGuidance(status: string, booking: Booking): {
 
   if (status === 'pending') {
     return {
-      title: 'Provider confirmation pending',
-      body: 'Payment or provider confirmation is still being reconciled. Keep this booking open and avoid a duplicate purchase.',
+      title: 'Booking confirmation pending',
+      body: 'Payment or airline confirmation is still being checked. Keep this booking open and avoid a duplicate purchase.',
       tone: 'border-gray-200 bg-gray-50 text-charcoal',
       actionLabel: 'Ask support to check',
       href,
@@ -135,7 +134,7 @@ function supportHref(booking: Booking, status: string): string {
     `Product: ${typeLabel(booking.type)}`,
     `Status: ${status}`,
     `Payment status: ${booking.paymentStatus ?? 'not set'}`,
-    `Provider status: ${booking.providerStatus ?? 'not set'}`,
+    `Booking status: ${booking.providerStatus ?? 'not set'}`,
     `Reference: ${booking.bookingReference ?? 'pending'}`,
   ].join('\n'))
   return `mailto:support@bahabuddy.com?subject=${subject}&body=${body}`
@@ -239,10 +238,10 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-400">
+                        <span className="text-xs font-bold uppercase text-gray-400">
                           {typeLabel(b.type)}
                         </span>
-                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.12em] ring-1 ${statusTone(status)}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold uppercase ring-1 ${statusTone(status)}`}>
                           {statusLabel(status)}
                         </span>
                       </div>
@@ -278,7 +277,7 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
 
                   {recovery && (
                     <div className={`mt-3 rounded-2xl border p-3 ${recovery.tone}`}>
-                      <p className="text-xs font-extrabold uppercase tracking-[0.12em]">
+                      <p className="text-xs font-bold uppercase">
                         {recovery.title}
                       </p>
                       <p className="mt-1 text-xs font-semibold leading-5 opacity-85">
@@ -286,7 +285,7 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
                       </p>
                       <a
                         href={recovery.href}
-                        className="mt-2 inline-flex text-xs font-extrabold underline underline-offset-4"
+                        className="mt-2 inline-flex text-xs font-bold underline underline-offset-4"
                       >
                         {recovery.actionLabel}
                       </a>
@@ -320,7 +319,7 @@ export default function BookingsList({ bookings }: { bookings: Booking[] }) {
 function BookingFact({ label, value }: { label: string; value: string | null | undefined }) {
   return (
     <div className="rounded-xl bg-gray-50 px-3 py-2">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.12em] text-gray-400">
+      <p className="text-xs font-bold uppercase text-gray-400">
         {label}
       </p>
       <p className="mt-0.5 truncate font-semibold capitalize text-gray-700">

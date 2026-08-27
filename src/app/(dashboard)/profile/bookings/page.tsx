@@ -98,7 +98,7 @@ export default async function BookingsPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-night">My Bookings</h1>
+        <h1 className="text-2xl font-bold text-night">My Bookings</h1>
         <p className="text-sm text-gray-500 mt-1">
           {bookings.length === 0
             ? "Flights and hotels you book will show up here."
