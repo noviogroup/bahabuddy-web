@@ -40,6 +40,7 @@ describe('public sitemap routes', () => {
 
     const expectedStaticRoutes = [
       '',
+      '/search',
       '/stays',
       '/flights',
       '/explore',
@@ -53,6 +54,7 @@ describe('public sitemap routes', () => {
       '/restaurants',
       '/concierge-trip-plan',
       '/partners',
+      '/tourism-board-partnerships',
       '/list-your-property',
       '/about',
       '/how-it-works',

@@ -37,7 +37,7 @@ export interface RestaurantCardData {
   cuisine?: string
   rating?: number
   review_count?: number
-  /** 1–4 from google_places.price_level. Rendered as $ to $$$$. */
+  /** 1-4 from cached place inventory price_level. Rendered as $ to $$$$. */
   price_level?: number
   photo_url?: string
   photos?: string[]
@@ -165,10 +165,10 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
         {/* Identity + cuisine + price */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <p className="font-semibold text-[15px] text-gray-900 leading-tight truncate">{name}</p>
+            <p className="font-semibold text-sm text-gray-900 leading-tight truncate">{name}</p>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {cuisine && (
-                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-charcoal">
+                <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-charcoal">
                   {cuisine}
                 </span>
               )}
@@ -206,7 +206,7 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
 
         {!expanded && size === 'compact' && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-2">
-            <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-400">
+            <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
               Tap for hours &amp; reviews {I.chevron}
             </span>
             <div className="flex flex-wrap justify-end gap-2">
@@ -214,7 +214,7 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
                 <Link
                   href={detailHref}
                   onClick={(e) => e.stopPropagation()}
-                  className="inline-flex h-8 items-center rounded-full border border-gray-300 bg-white px-3 text-[11px] font-extrabold text-night transition-colors hover:border-brand-300 hover:text-brand-700"
+                  className="inline-flex h-8 items-center rounded-full border border-gray-300 bg-white px-3 text-xs font-bold text-night transition-colors hover:border-brand-300 hover:text-brand-700"
                 >
                   View details
                 </Link>
@@ -226,7 +226,7 @@ export function RestaurantCard({ data, size = 'compact', onSave, className }: Pr
                     e.stopPropagation()
                     onSave(data)
                   }}
-                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-[11px] font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+                  className="inline-flex h-8 items-center rounded-full bg-brand-600 px-3 text-xs font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
                 >
                   Add to trip
                 </button>

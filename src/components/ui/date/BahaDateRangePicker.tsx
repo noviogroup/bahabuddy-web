@@ -25,6 +25,9 @@ export interface BahaDateRangePickerProps {
   placeholder?: string
   minDate?: string
   className?: string
+  triggerClassName?: string
+  showIcon?: boolean
+  ariaLabel?: string
   id?: string
   showNights?: boolean
 }
@@ -50,6 +53,9 @@ export default function BahaDateRangePicker({
   placeholder = 'Add dates',
   minDate,
   className = '',
+  triggerClassName = '',
+  showIcon = true,
+  ariaLabel,
   id: idProp,
   showNights = true,
 }: BahaDateRangePickerProps) {
@@ -130,20 +136,21 @@ export default function BahaDateRangePicker({
   return (
     <div ref={rootRef} id={id} className={`relative ${className}`}>
       {label && (
-        <span className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
+        <span className="block text-xs font-semibold text-gray-600 uppercase mb-1">
           {label}
         </span>
       )}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
+        aria-label={ariaLabel}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={`w-full flex items-center gap-2 rounded-baha-md border bg-white px-3 py-2.5 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 ${
           open ? 'border-gray-500 ring-2 ring-gray-100' : 'border-gray-300 hover:border-gray-400'
-        } ${!start && !end ? 'text-gray-400' : 'text-night font-medium'}`}
+        } ${!start && !end ? 'text-gray-400' : 'text-night font-medium'} ${triggerClassName}`}
       >
-        <CalendarIcon className="w-5 h-5 shrink-0 text-charcoal" />
+        {showIcon && <CalendarIcon className="w-5 h-5 shrink-0 text-charcoal" />}
         <span className="flex-1 truncate">{display}</span>
       </button>
 

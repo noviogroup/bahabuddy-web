@@ -126,7 +126,7 @@ export default async function TourDetailPage({ params }: PageProps) {
             </span>
           )}
           {tour.cruise_friendly && (
-            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-bold text-blue-800">
+            <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-bold text-brand-800">
               Cruise-friendly
             </span>
           )}
@@ -139,8 +139,6 @@ export default async function TourDetailPage({ params }: PageProps) {
           alt={tour.title}
           title={tour.title}
           eyebrow="Tour"
-          description="Tour cover image is not available yet."
-          pendingLabel="Photo pending"
           tone="activity"
           className="mb-10 h-64 rounded-baha-xl border border-gray-200 shadow-sm sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]"
           imageClassName="object-cover"
@@ -158,7 +156,7 @@ export default async function TourDetailPage({ params }: PageProps) {
               <ol className="space-y-6">
                 {stops.map((stop, idx) => (
                   <li key={stop.id} className="relative pl-12">
-                    <div className="absolute left-3 top-1 flex h-5 w-5 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white ring-4 ring-white">
+                    <div className="absolute left-3 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-brand-600 text-xs font-bold text-white ring-4 ring-white">
                       {idx + 1}
                     </div>
                     <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">

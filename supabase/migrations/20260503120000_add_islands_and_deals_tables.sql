@@ -35,7 +35,7 @@ CREATE POLICY "Islands are publicly readable"
 -- bahamas_deals
 -- Curated deals and packages for the Explore / chat card layer.
 -- Not live pricing — representative deal types from official BTA sources.
--- For live pricing, use Duffel (flights) and LiteAPI (hotels).
+-- For live pricing, use LiteAPI for flights and hotels.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.bahamas_deals (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -68,7 +68,7 @@ CREATE POLICY "Deals are publicly readable"
 -- ---------------------------------------------------------------------------
 -- bahamas_attractions
 -- Curated attractions, landmarks, dive sites, and experiences.
--- Supplements the google_places table (which has 61 restaurant/hotel/activity entries).
+-- Supplements Supabase cached/source place inventory with curated attraction rows.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.bahamas_attractions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

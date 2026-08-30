@@ -68,7 +68,7 @@ export default async function TripIndexPage() {
       {/* Header */}
       <div className="flex items-start sm:items-center justify-between gap-4 mb-8 flex-wrap">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-night">My Trips</h1>
+          <h1 className="text-2xl font-bold text-night">My Trips</h1>
           <p className="text-sm text-gray-500 mt-1">
             {tripList.length === 0
               ? 'No trips yet. Create one and add stays, flights, food, and tours directly.'
@@ -79,7 +79,6 @@ export default async function TripIndexPage() {
           href="/dashboard/trips/new?returnTo=%2Ftrip&source=trip_index"
           className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
         >
-          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
@@ -115,7 +114,6 @@ function EmptyState() {
           href="/dashboard/trips/new?returnTo=%2Ftrip&source=trip_index"
           className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-semibold text-white shadow-card transition-colors hover:bg-brand-700"
         >
-          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
           Create trip
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />

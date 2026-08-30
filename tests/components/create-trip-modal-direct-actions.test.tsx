@@ -34,7 +34,7 @@ describe('CreateTripModal direct trip creation', () => {
     expect(screen.getByRole('button', { name: 'Flexible' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('button', { name: 'Create trip' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('button', { name: 'Create trip' })).toHaveTextContent('Create trip')
-    expect(screen.getByRole('button', { name: 'Create trip' }).querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Create trip' }).querySelector('.bg-gold-400')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByRole('button', { name: /Nassau/i }))
     fireEvent.click(screen.getByRole('button', { name: 'Create trip' }))

@@ -2,7 +2,7 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      // Supabase Storage — used for cached Google Places photos
+      // Supabase Storage — used for cached place-source photos
       // (google_place_photos.storage_url) and user uploads.
       {
         protocol: 'https',
@@ -26,9 +26,17 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.nassauparadiseisland.com',
       },
-      // Google Places Photo API — when we don't proxy via
-      // /api/place-photo, next/image may receive direct googleusercontent
-      // URLs. The maps.googleapis.com host issues redirects to these.
+      // Tourism-board partner training portal CDN. These URLs are
+      // temporary fallbacks until the approved originals are promoted
+      // into Sanity and served from cdn.sanity.io.
+      {
+        protocol: 'https',
+        hostname: 'travprocdn.imgix.net',
+      },
+      // Provider photo fallback — when we don't proxy via
+      // /api/place-photo, next/image may receive direct photo CDN
+      // URLs. The maps.googleapis.com host issues redirects to these
+      // for legacy cached source rows.
       {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',

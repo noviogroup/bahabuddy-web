@@ -86,7 +86,6 @@ export function ConciergeDetailsClientForm({ order }: { order: ConciergeDetailsO
         <TravelSearchTextarea id="concierge-detail-notes" name="notes" rows={5} defaultValue={order.notes || ''} />
       </TravelSearchField>
       <button type="submit" disabled={saving} className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-6 py-3 font-bold text-white hover:bg-brand-700 disabled:opacity-60">
-        <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
         {saving ? 'Saving…' : 'Submit trip details'}
       </button>
     </form>

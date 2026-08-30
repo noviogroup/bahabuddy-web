@@ -113,7 +113,7 @@ export default async function DealsPage({
     : []
 
   const renderFilterControls = () => (
-    <FilterGroup label="Deal type" description="Browse stays, tours, packages, and activities.">
+    <FilterGroup label="Deal type">
       {DEAL_TYPES.map(type => {
         const config = type !== 'All' ? DEAL_TYPE_CONFIG[type] : null
         return (
@@ -143,11 +143,10 @@ export default async function DealsPage({
         ]}
         actions={(
           <>
-            <Link href="/stays" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-700">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
+            <Link href="/stays" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">
               Browse stays
             </Link>
-            <Link href={buddyChatHref('Find Bahamas deals for my trip')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+            <Link href={buddyChatHref('Find Bahamas deals for my trip')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night hover:border-gray-400 hover:bg-gray-50">
               Ask Buddy
             </Link>
           </>
@@ -159,7 +158,6 @@ export default async function DealsPage({
           ariaLabel="Filter deals"
           eyebrow="Filter deals"
           title={`${filtered.length} deal${filtered.length !== 1 ? 's' : ''} found`}
-          description="Sort current Bahamas offers by the type of trip you want to book."
           activeFilters={activeFilters}
           clearHref="/deals"
           emptyLabel="Showing all deals"
@@ -170,8 +168,7 @@ export default async function DealsPage({
         </ResultFilterPanel>
 
         <div className="mb-6">
-          <p className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase text-gray-500">
             Results
           </p>
           <p className="mt-1 text-sm font-semibold text-gray-500">
@@ -204,7 +201,6 @@ export default async function DealsPage({
                     alt={deal.title}
                     title={deal.title}
                     eyebrow={typeConfig.label}
-                    description="Deal details are available. Provider image is not available yet."
                     className="h-48"
                     imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
                     tone="neutral"
@@ -226,12 +222,12 @@ export default async function DealsPage({
 
                     <div className="mb-3 grid grid-cols-2 gap-2 rounded-2xl border border-gray-200 bg-white p-2.5">
                       <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">From</p>
-                        <p className="mt-0.5 text-sm font-extrabold text-night">{formatPrice(deal.price_from_usd, deal.price_unit)}</p>
+                        <p className="text-xs font-bold uppercase text-gray-400">From</p>
+                        <p className="mt-0.5 text-sm font-bold text-night">{formatPrice(deal.price_from_usd, deal.price_unit)}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-extrabold uppercase tracking-wide text-gray-400">Fit</p>
-                        <p className="mt-0.5 truncate text-sm font-extrabold text-night">{islandLabel || action.contextLabel}</p>
+                        <p className="text-xs font-bold uppercase text-gray-400">Fit</p>
+                        <p className="mt-0.5 truncate text-sm font-bold text-night">{islandLabel || action.contextLabel}</p>
                       </div>
                     </div>
 
@@ -258,14 +254,13 @@ export default async function DealsPage({
                     <div className="mt-auto grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
                       <Link
                         href={action.primaryHref}
-                        className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-brand-700"
+                        className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-brand-700"
                       >
-                        <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
                         {action.primaryLabel}
                       </Link>
                       <Link
                         href={action.secondaryHref}
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
                       >
                         {action.secondaryLabel}
                       </Link>
@@ -287,7 +282,6 @@ export default async function DealsPage({
               rel="noopener noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
               Download on iOS
             </a>
             <a

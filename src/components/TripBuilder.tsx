@@ -379,7 +379,7 @@ export default function TripBuilder() {
                   return (
                     <div key={slot} className="px-5 py-3">
                       <div className="flex items-center justify-between mb-2">
-                        <p className="text-xs font-medium text-gray-400 uppercase tracking-wide">
+                        <p className="text-xs font-medium text-gray-400 uppercase">
                           {label}
                         </p>
                         <button
@@ -400,8 +400,7 @@ export default function TripBuilder() {
                       ) : (
                         <ul className="space-y-2">
                           {slotItems.map(item => (
-                            <li key={item.id} className="flex items-start gap-2 group">
-                              <span className="text-gray-300 mt-0.5">•</span>
+                            <li key={item.id} className="group flex items-start border-l-2 border-gray-100 pl-3">
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm text-gray-800 font-medium leading-tight">{item.activityName}</p>
                                 {item.notes && (

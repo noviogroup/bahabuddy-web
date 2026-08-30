@@ -10,6 +10,7 @@ export const utilityNav = [
   { href: '/contact', label: 'Contact us' },
   { href: '/accessibility', label: 'Accessibility' },
   { href: '/partners', label: 'Partner with us' },
+  { href: '/tourism-board-partnerships', label: 'Tourism board partnerships' },
   { href: '/list-your-property', label: 'List your property' },
   { href: '/privacy', label: 'Privacy Policy' },
   { href: '/terms', label: 'Terms of Service' },
@@ -72,7 +73,7 @@ export default function UtilityContentLayout({
               Effective date: {effectiveDate}
             </p>
           )}
-          <div className="max-w-none space-y-7 text-charcoal [&_a]:font-semibold [&_a]:text-night [&_a]:underline [&_a]:underline-offset-2 [&_h2]:text-xl [&_h2]:font-extrabold [&_h2]:tracking-tight [&_h2]:text-night [&_h3]:text-base [&_h3]:font-extrabold [&_h3]:text-night [&_li]:leading-7 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:leading-7 [&_p]:text-charcoal [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
+          <div className="max-w-none space-y-7 text-charcoal [&_a]:font-semibold [&_a]:text-night [&_a]:underline [&_a]:underline-offset-2 [&_h2]:text-xl [&_h2]:font-bold [&_h2]:text-night [&_h3]:text-base [&_h3]:font-bold [&_h3]:text-night [&_li]:leading-7 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_p]:leading-7 [&_p]:text-charcoal [&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5">
             {children}
           </div>
         </article>

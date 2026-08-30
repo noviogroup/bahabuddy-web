@@ -362,7 +362,7 @@ export default function TripSuggestionRotator({ trip, hasItinerary }: TripSugges
         </div>
 
         {/* Buddy's question */}
-        <h2 className="text-lg sm:text-xl font-bold text-night leading-snug max-w-2xl">
+        <h2 className="text-lg font-bold text-night leading-snug max-w-2xl">
           {slide.question}
         </h2>
 

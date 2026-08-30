@@ -138,43 +138,53 @@ export default function StayDetailActions({
     <section
       id="trip-actions"
       aria-label="Stay trip actions"
-      className="overflow-hidden rounded-baha-xl border border-gray-200 bg-white shadow-sm"
+      className="overflow-hidden rounded-baha-xl border border-brand-100 bg-white shadow-sm"
     >
-      <div className="border-b border-gray-100 bg-white px-5 py-4">
-        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
-          Trip actions
+      <div className="border-b border-brand-100 bg-brand-50 px-5 py-4">
+        <p className="text-xs font-bold uppercase text-brand-700">
+          Trip next step
         </p>
-        <h3 className="mt-1 text-xl font-extrabold tracking-tight text-night">
-          Save or check rates
+        <h3 className="mt-1 text-xl font-bold text-night">
+          Save or plan this stay
         </h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Add this stay to a trip, then compare live rooms below.
+        <p className="mt-1 text-sm leading-6 text-charcoal">
+          Use the full room section for live rates, then keep this stay attached to your Bahamas trip.
         </p>
       </div>
 
-      <div className="space-y-4 p-5">
+      <div className="space-y-5 p-5">
+        <ol className="grid gap-2 text-sm font-semibold text-charcoal" aria-label="Stay booking flow">
+          {['Compare room options above', 'Save the stay to a trip', 'Plan around the location'].map((step, index) => (
+            <li key={step} className="flex items-center gap-3">
+              <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-xs font-bold text-brand-700">
+                {index + 1}
+              </span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
+
         <a
           href="#availability"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
+          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
         >
-          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
           Check rates
         </a>
 
         {authState === 'loading' && (
-          <div className="rounded-baha-lg border border-gray-200 bg-gray-50 p-4 text-sm font-semibold text-gray-500">
+          <div className="border-t border-gray-100 pt-4 text-sm font-semibold text-gray-500">
             Checking your trip list...
           </div>
         )}
 
         {authState === 'guest' && (
-          <div className="rounded-baha-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="border-t border-gray-100 pt-4">
             <p className="text-sm font-semibold text-night">
               Sign in to save this stay to a trip.
             </p>
             <Link
               href={loginHref}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
             >
               Sign in to add to trip
             </Link>
@@ -182,13 +192,13 @@ export default function StayDetailActions({
         )}
 
         {authState === 'ready' && trips.length === 0 && (
-          <div className="rounded-baha-lg border border-gray-200 bg-gray-50 p-4">
+          <div className="border-t border-gray-100 pt-4">
             <p className="text-sm font-semibold text-night">
               Create a trip before saving this stay.
             </p>
             <Link
               href={createTripHref}
-              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+              className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
             >
               Create trip
             </Link>
@@ -196,9 +206,12 @@ export default function StayDetailActions({
         )}
 
         {authState === 'ready' && trips.length > 0 && (
-          <div className="space-y-3">
+          <div className="space-y-3 border-t border-gray-100 pt-4">
+            <p className="text-sm font-bold text-night">
+              Save for planning
+            </p>
             <label htmlFor="stay-trip-select" className="block">
-              <span className="mb-1.5 block text-xs font-extrabold uppercase tracking-[0.14em] text-night">
+              <span className="mb-1.5 block text-xs font-bold uppercase text-night">
                 Save to
               </span>
               <TravelSearchSelect
@@ -224,16 +237,16 @@ export default function StayDetailActions({
               type="button"
               onClick={addToTrip}
               disabled={!selectedTripId || saveState === 'saving'}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
             >
-              {saveState !== 'saving' && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
+
               {saveState === 'saving' ? 'Saving stay...' : 'Add to trip'}
             </button>
 
             {saveState === 'saved' && selectedTripId && (
               <Link
                 href={`/trip/${encodeURIComponent(selectedTripId)}`}
-                className="inline-flex w-full items-center justify-center rounded-full bg-palm px-5 py-2.5 text-sm font-extrabold text-white transition-colors hover:bg-palm/90 focus:outline-none focus:ring-2 focus:ring-palm focus:ring-offset-2"
+                className="inline-flex w-full items-center justify-center rounded-full bg-palm px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-palm/90 focus:outline-none focus:ring-2 focus:ring-palm focus:ring-offset-2"
               >
                 View trip
               </Link>

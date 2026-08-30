@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
+import SanityManagedContentPage from '@/components/marketplace/SanityManagedContentPage'
+import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'About Baha Buddy',
@@ -7,7 +9,10 @@ export const metadata: Metadata = {
     'Baha Buddy is an AI-powered Bahamas travel companion by Novio Group. Plan trips, compare stays and flights, and travel with local context.',
 }
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const managedPage = await fetchContentPageByRoute('/about')
+  if (managedPage) return <SanityManagedContentPage page={managedPage} />
+
   return (
     <UtilityContentLayout
       activePath="/about"

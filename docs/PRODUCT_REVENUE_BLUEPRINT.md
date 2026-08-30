@@ -591,7 +591,7 @@ Required metrics:
 - Cost per chat
 - Cost per trip created
 - Cost per booking
-- Cost by service: Anthropic, Duffel, LiteAPI, Viator, Deepgram, OpenAI TTS, Stripe, Supabase
+- Cost by service: Anthropic, LiteAPI, Viator, Deepgram, OpenAI TTS, Stripe, and Supabase
 
 ### Booking performance
 

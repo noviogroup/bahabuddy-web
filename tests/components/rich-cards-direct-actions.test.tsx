@@ -60,7 +60,7 @@ describe('RichCardRenderer direct actions', () => {
     expect(screen.getByRole('link', { name: /view full details/i })).toHaveAttribute('href', '/stays/sls-baha-mar')
   })
 
-  test('hotel card without provider imagery shows an honest photo pending state', () => {
+  test('hotel card without imagery shows branded fallback context', () => {
     render(
       <RichCardRenderer
         cardData={{
@@ -74,8 +74,8 @@ describe('RichCardRenderer direct actions', () => {
       />,
     )
 
-    expect(screen.getByText('Photo pending')).toBeInTheDocument()
-    expect(screen.getByText('Card details are available. Provider photo is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Photo pending')).not.toBeInTheDocument()
+    expect(screen.getAllByText('No Photo Stay').length).toBeGreaterThan(0)
     expect(screen.queryByAltText('Photo of No Photo Stay')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View stay' })).toHaveAttribute('href', '/stays/no-photo-stay')
   })
@@ -178,8 +178,8 @@ describe('RichCardRenderer direct actions', () => {
       />,
     )
 
-    expect(screen.getByText('Photo pending')).toBeInTheDocument()
-    expect(screen.getByText('Island details are available. Destination image is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Photo pending')).not.toBeInTheDocument()
+    expect(screen.getByText('Andros')).toBeInTheDocument()
     expect(screen.queryByAltText('Andros destination photo')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Read about Andros' })).toHaveAttribute('href', '/explore/island/andros')
   })
@@ -190,6 +190,9 @@ describe('RichCardRenderer direct actions', () => {
     const card: CardData = {
       card_type: 'flight',
       airline: 'Bahamasair',
+      airline_code: 'UP',
+      flight_number: 'UP 221',
+      flight_numbers: ['UP 221'],
       route: 'MIA → NAS',
       departure: '10:00 AM',
       arrival: '11:00 AM',
@@ -204,6 +207,25 @@ describe('RichCardRenderer direct actions', () => {
       refundable: true,
       expiration: '2026-06-18T16:30:00Z',
       airline_logo_url: 'https://logos.example/bahamasair.svg',
+      trip_type: 'round_trip',
+      flight_legs: [
+        {
+          direction: 'OUTBOUND',
+          route: 'MIA to NAS',
+          departure: '10:00 AM',
+          arrival: '11:00 AM',
+          duration: '1h',
+          stops: 'Direct',
+        },
+        {
+          direction: 'INBOUND',
+          route: 'NAS to MIA',
+          departure: '4:00 PM',
+          arrival: '5:05 PM',
+          duration: '1h 5m',
+          stops: 'Direct',
+        },
+      ],
       offer_id: 'lite-offer-123',
       provider_offer_id: 'lite-offer-123',
     }
@@ -227,6 +249,7 @@ describe('RichCardRenderer direct actions', () => {
     expect(screen.getByAltText('Bahamasair logo')).toHaveStyle({ width: '44px', height: 'auto' })
     expect(screen.getByAltText('Bahamasair logo').className).not.toMatch(/border|rounded|bg-/)
     expect(screen.getByText('Main Cabin')).toBeInTheDocument()
+    expect(screen.getByText('UP 221 · Economy')).toBeInTheDocument()
     expect(screen.getByText('2 travelers')).toBeInTheDocument()
     expect(screen.getByText('Total for 2')).toBeInTheDocument()
     expect(screen.getByText('$173 each')).toBeInTheDocument()
@@ -239,6 +262,9 @@ describe('RichCardRenderer direct actions', () => {
     expect(bookingUrl.pathname).toBe('/flights/lite-offer-123/book')
     expect(bookingUrl.searchParams.get('route')).toBe('MIA → NAS')
     expect(bookingUrl.searchParams.get('airline')).toBe('Bahamasair')
+    expect(bookingUrl.searchParams.get('flightNumber')).toBe('UP 221')
+    expect(bookingUrl.searchParams.get('airlineLogoUrl')).toBe('https://logos.example/bahamasair.svg')
+    expect(bookingUrl.searchParams.get('tripType')).toBe('round_trip')
     expect(bookingUrl.searchParams.get('departure')).toBe('10:00 AM')
     expect(bookingUrl.searchParams.get('arrival')).toBe('11:00 AM')
     expect(bookingUrl.searchParams.get('price')).toBe('345')
@@ -247,6 +273,10 @@ describe('RichCardRenderer direct actions', () => {
     expect(bookingUrl.searchParams.get('fare')).toBe('Main Cabin')
     expect(bookingUrl.searchParams.get('carryOn')).toBe('1')
     expect(bookingUrl.searchParams.get('checkedBags')).toBe('1')
+    expect(JSON.parse(bookingUrl.searchParams.get('legs') ?? '[]')).toMatchObject([
+      { direction: 'OUTBOUND', route: 'MIA to NAS' },
+      { direction: 'INBOUND', route: 'NAS to MIA' },
+    ])
     expect(screen.queryByRole('button', { name: 'Plan this flight' })).not.toBeInTheDocument()
   })
 

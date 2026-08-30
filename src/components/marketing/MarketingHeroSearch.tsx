@@ -4,7 +4,7 @@
  * MarketingHeroSearch — direct-intent search panel for the public landing hero.
  *
  * Marketing-site equivalent of the dashboard's `HeroSearchPanel`. Same
- * four-category model (Plan a Trip / Stays / Flights / Things to Do),
+ * direct-intent model (Plan a Trip / Stays / Flights / Things to Do / Transport),
  * but adapted for an unauthenticated visitor on the public homepage hero:
  *
  *   • A white marketplace card over the rotating island hero photos,
@@ -14,7 +14,7 @@
  *     rotating placeholder, and suggestion chips, but routes into direct
  *     trip creation instead of sending the visitor back to chat.
  *
- *   • The other three tabs use simplified forms (Where + Travelers
+ *   • The other tabs use simplified forms (Where + Travelers
  *     only — no date pickers, no rooms picker). Marketing-funnel
  *     visitors haven't committed yet; lower friction = better
  *     conversion. Dates default to "today + 14" server-side so the
@@ -26,6 +26,7 @@
  *   - Stays         → /stays?island=…
  *   - Flights       → /flights?origin=…&destination=…
  *   - Things to Do  → /explore/places?…
+ *   - Transport     → /concierge-trip-plan?…
  */
 
 import { useEffect, useRef, useState, useCallback, type ReactNode, type FormEvent, type KeyboardEvent } from 'react'
@@ -72,25 +73,20 @@ const ACTIVITY_VIBES: readonly { key: string; label: string }[] = [
 // Keep these in sync if marketing updates the hero microcopy.
 
 const ROTATING_PLACEHOLDERS = [
-  'Plan a trip to see the swimming pigs in Exuma…',
-  'Best snorkeling spots in Nassau…',
-  'Plan an Exuma Cays day trip itinerary…',
-  'Best nightlife spots in Nassau…',
-  'Plan a family beach vacation in the Bahamas…',
-  'Romantic things to do in Harbour Island…',
-  'Visit Seven Mile Beach in Andros…',
-  'Best local seafood and food tours…',
+  'Plan a 5-day beach and boat trip in Exuma...',
+  'Find family-friendly things to do in Nassau...',
+  'Build a romantic weekend in Harbour Island...',
+  'Plan an island-hopping trip across The Bahamas...',
+  'Find stays, flights, tours, and transport for my trip...',
 ] as const
 
 const QUICK_CHIPS: readonly { label: string; prompt: string }[] = [
-  { label: 'Swimming Pigs (Exuma)',     prompt: 'Plan a trip to see the swimming pigs in Exuma' },
-  { label: 'Snorkeling in Nassau',      prompt: 'Best snorkeling spots in Nassau Bahamas' },
-  { label: 'Exuma Cays day trip',       prompt: 'Plan an Exuma Cays day trip itinerary' },
-  { label: 'Nassau nightlife',          prompt: 'Best nightlife spots in Nassau Bahamas' },
-  { label: 'Family beach holiday',      prompt: 'Plan a family beach vacation in the Bahamas' },
-  { label: 'Romantic Harbour Island',   prompt: 'Romantic things to do in Harbour Island Bahamas' },
-  { label: 'Seven Mile Beach, Andros',  prompt: 'Plan a visit to Seven Mile Beach in Andros Bahamas' },
-  { label: 'Local seafood tour',        prompt: 'Best local seafood restaurants and food tours in the Bahamas' },
+  { label: 'Exuma beach + boat day', prompt: 'Plan a 5-day beach and boat trip in Exuma' },
+  { label: 'Nassau family activities', prompt: 'Find family-friendly things to do in Nassau' },
+  { label: 'Romantic Harbour Island', prompt: 'Build a romantic weekend in Harbour Island' },
+  { label: 'Local seafood tour', prompt: 'Best local seafood restaurants and food tours in the Bahamas' },
+  { label: 'Island hopping plan', prompt: 'Plan an island-hopping trip across The Bahamas' },
+  { label: 'Seven Mile Beach, Andros', prompt: 'Plan a quiet beach day around Seven Mile Beach in Andros' },
 ]
 
 const PLACEHOLDER_MS = 2000
@@ -98,7 +94,7 @@ const PLACEHOLDER_FADE_MS = 400
 
 // ─── Tab definitions ─────────────────────────────────────────────────────────
 
-type TabKey = 'plan' | 'stays' | 'flights' | 'things'
+type TabKey = 'plan' | 'stays' | 'flights' | 'things' | 'transport'
 
 interface Tab {
   key: TabKey
@@ -130,11 +126,26 @@ const ICON_TICKET = (
   </svg>
 )
 
+const ICON_TRANSPORT = (
+  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 16V8a3 3 0 013-3h8a3 3 0 013 3v8M7 16h10M7 19h.01M17 19h.01M6 12h12M9 5V3m6 2V3" />
+  </svg>
+)
+
 const TABS: readonly Tab[] = [
-  { key: 'plan',    label: 'Plan a Trip',  icon: ICON_SPARKLE },
-  { key: 'stays',   label: 'Stays',        icon: ICON_BED },
-  { key: 'flights', label: 'Flights',      icon: ICON_FLIGHT },
-  { key: 'things',  label: 'Things to Do', icon: ICON_TICKET },
+  { key: 'plan',      label: 'Plan a Trip',  icon: ICON_SPARKLE },
+  { key: 'stays',     label: 'Stays',        icon: ICON_BED },
+  { key: 'flights',   label: 'Flights',      icon: ICON_FLIGHT },
+  { key: 'things',    label: 'Things to Do', icon: ICON_TICKET },
+  { key: 'transport', label: 'Transport',    icon: ICON_TRANSPORT },
+]
+
+const TRANSPORT_OPTIONS: readonly { value: string; label: string }[] = [
+  { value: 'airport-transfer', label: 'Airport transfer' },
+  { value: 'taxi-driver', label: 'Taxi or driver' },
+  { value: 'rental-car', label: 'Rental car' },
+  { value: 'ferry', label: 'Ferry or water taxi' },
+  { value: 'boat-charter', label: 'Boat charter' },
 ]
 
 // ─── Date helpers ────────────────────────────────────────────────────────────
@@ -176,6 +187,10 @@ export default function MarketingHeroSearch() {
   // ── Things to Do state ──
   const [thingsIsland, setThingsIsland] = useState<string>('nassau')
   const [thingsVibes, setThingsVibes] = useState<Set<string>>(new Set())
+
+  // ── Transport state ──
+  const [transportIsland, setTransportIsland] = useState<string>('nassau')
+  const [transportNeed, setTransportNeed] = useState<string>('airport-transfer')
 
   useEffect(() => {
     const storedOrigin = readStoredTravelOrigin()?.origin
@@ -260,6 +275,15 @@ export default function MarketingHeroSearch() {
     })
   }
 
+  function submitTransport(e: FormEvent) {
+    e.preventDefault()
+    const params = new URLSearchParams()
+    params.set('source', 'marketing_hero_transport')
+    params.set('island', transportIsland)
+    params.set('need', transportNeed)
+    window.location.href = `/concierge-trip-plan?${params.toString()}`
+  }
+
   function toggleVibe(key: string) {
     setThingsVibes(prev => {
       const next = new Set(prev)
@@ -272,10 +296,10 @@ export default function MarketingHeroSearch() {
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div className="mx-auto w-full max-w-3xl">
-      <div className="overflow-hidden rounded-[1.75rem] border border-white/70 bg-white shadow-2xl shadow-brand-950/25">
+    <div className="relative z-20 mx-auto w-full max-w-3xl overflow-visible">
+      <div className="overflow-visible rounded-[29px] border border-white bg-white shadow-2xl shadow-brand-950/25">
         {/* Tab strip */}
-        <div role="tablist" aria-label="Search category" className="flex items-stretch gap-0 overflow-x-auto border-b border-gray-200 bg-white">
+        <div role="tablist" aria-label="Search category" className="grid grid-cols-2 items-stretch overflow-hidden rounded-t-[29px] border-b border-gray-200 bg-white min-[360px]:grid-cols-3 sm:flex">
           {TABS.map(tab => {
             const active = activeTab === tab.key
             return (
@@ -284,7 +308,7 @@ export default function MarketingHeroSearch() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setActiveTab(tab.key)}
-                className={`group relative flex items-center gap-2 px-4 py-4 text-sm font-extrabold whitespace-nowrap transition-colors sm:px-5 ${
+                className={`group relative flex min-h-14 w-full items-center justify-center gap-2 px-2 py-3 text-sm font-bold whitespace-nowrap transition-colors sm:min-h-0 sm:w-auto sm:px-5 sm:py-4 ${
                   active ? 'text-brand-700' : 'text-gray-500 hover:text-night'
                 }`}
               >
@@ -308,17 +332,17 @@ export default function MarketingHeroSearch() {
         </div>
 
         {/* Form area */}
-        <div className="bg-offwhite p-3 sm:p-4">
+        <div className="rounded-b-[29px] bg-white p-3 sm:p-4">
           {activeTab === 'plan' && (
             <form onSubmit={submitPlan} aria-label="Create a trip with Baha Buddy">
-              <div className="flex gap-2 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-input">
+              <div className="flex flex-col gap-2 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-input min-[480px]:flex-row">
                 <div className="relative flex-1 min-w-0">
                   <input
                     type="text"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     aria-label="Tell Baha Buddy what kind of Bahamas trip you want"
-                    className="relative z-10 min-w-0 w-full bg-transparent px-3 py-3 text-base font-bold text-night outline-none"
+                    className="relative z-10 min-h-12 min-w-0 w-full bg-transparent px-3 py-3 text-base font-bold text-night outline-none"
                   />
                   {!query && (
                     <span
@@ -333,10 +357,9 @@ export default function MarketingHeroSearch() {
                 </div>
                 <button
                   type="submit"
-                  className="flex shrink-0 items-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-extrabold text-white shadow-card transition-colors hover:bg-brand-700 active:bg-brand-700"
+                  className="flex min-h-12 w-full shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-600 px-4 py-2.5 text-sm font-bold text-white shadow-card transition-colors hover:bg-brand-700 active:bg-brand-700 min-[480px]:w-auto"
                 >
-                  <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
-                  Start trip
+                  Build My Trip
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
@@ -426,7 +449,7 @@ export default function MarketingHeroSearch() {
                 options={ISLANDS.map(i => ({ value: i.slug, label: i.label }))}
               />
               <div>
-                <p className="mb-1.5 text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
+                <p className="mb-1.5 text-xs font-bold uppercase text-gray-500">
                   Optional &mdash; what&rsquo;s your vibe?
                 </p>
                 <div className="flex flex-wrap gap-1.5">
@@ -453,6 +476,28 @@ export default function MarketingHeroSearch() {
               <SubmitBar cta="Find activities" />
             </form>
           )}
+
+          {activeTab === 'transport' && (
+            <form onSubmit={submitTransport} aria-label="Find Bahamas transport" className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <HeroSearchSelect
+                  id="m-transport-island"
+                  label="Where"
+                  value={transportIsland}
+                  onChange={setTransportIsland}
+                  options={ISLANDS.map(i => ({ value: i.slug, label: i.label }))}
+                />
+                <HeroSearchSelect
+                  id="m-transport-need"
+                  label="Need"
+                  value={transportNeed}
+                  onChange={setTransportNeed}
+                  options={TRANSPORT_OPTIONS}
+                />
+              </div>
+              <SubmitBar cta="Find transport" />
+            </form>
+          )}
         </div>
       </div>
 
@@ -460,14 +505,14 @@ export default function MarketingHeroSearch() {
           panel so the chip row keeps its own breathing room and matches
           the pre-existing hero layout. */}
       {activeTab === 'plan' && (
-        <div className="-mx-4 w-full max-w-3xl overflow-x-auto px-4 pb-1 pt-4">
-          <div className="flex flex-wrap justify-center gap-2">
+        <div className="relative -mx-4 w-full max-w-3xl after:pointer-events-none after:absolute after:inset-y-4 after:right-0 after:w-12 after:bg-gradient-to-l after:from-brand-600/70 after:to-transparent sm:after:hidden">
+          <div className="flex snap-x snap-mandatory flex-nowrap justify-start gap-2 overflow-x-auto px-4 pb-1 pt-4 [scrollbar-width:none] sm:flex-wrap sm:justify-center sm:overflow-visible [&::-webkit-scrollbar]:hidden">
             {QUICK_CHIPS.map((chip) => (
               <button
                 key={chip.label}
                 type="button"
                 onClick={() => handleChip(chip.prompt)}
-                className="whitespace-nowrap rounded-full border border-white/75 bg-white/90 px-4 py-2 text-sm font-extrabold text-brand-700 shadow-soft backdrop-blur-md transition-all hover:border-gold-300 hover:bg-gold-50 active:bg-gold-50"
+                className="min-h-11 shrink-0 snap-start whitespace-nowrap rounded-full border border-white/75 bg-white/90 px-4 py-2 text-sm font-bold text-brand-700 shadow-soft backdrop-blur-md transition-all hover:border-gold-300 hover:bg-gold-50 active:bg-gold-50"
               >
                 {chip.label}
               </button>
@@ -567,7 +612,7 @@ function HeroSearchSelect({ id, label, value, onChange, options }: HeroSearchSel
 
   return (
     <label ref={rootRef} htmlFor={id} className="block">
-      <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
+      <span className="mb-1 block text-xs font-bold uppercase text-gray-500">
         {label}
       </span>
       <div className="relative">
@@ -597,14 +642,14 @@ function HeroSearchSelect({ id, label, value, onChange, options }: HeroSearchSel
             setActiveIndex(selectedIndex)
           }}
           onKeyDown={handleKeyDown}
-          className={`flex h-12 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm font-extrabold text-night shadow-input transition-colors focus:outline-none focus:ring-4 focus:ring-brand-100 ${
+          className={`flex h-12 w-full items-center justify-between gap-2 rounded-xl border px-3 text-left text-sm font-bold text-night shadow-input transition-colors focus:outline-none focus:ring-4 focus:ring-brand-100 ${
             open
               ? 'border-brand-500 bg-white'
               : 'border-gray-200 bg-white hover:border-gray-300'
           }`}
         >
           <span className="min-w-0 truncate">{selectedOption?.label ?? 'Select'}</span>
-          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-700 shadow-sm" aria-hidden="true">
+          <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-brand-700 shadow-sm" aria-hidden="true">
             <svg className={`h-4 w-4 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 9l6 6 6-6" />
             </svg>
@@ -615,7 +660,7 @@ function HeroSearchSelect({ id, label, value, onChange, options }: HeroSearchSel
           <div
             id={listboxId}
             role="listbox"
-            className="absolute left-0 z-50 mt-2 min-w-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl shadow-gray-950/10 ring-1 ring-black/5"
+            className="absolute left-0 z-[90] mt-2 min-w-full overflow-hidden rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl shadow-gray-950/10 ring-1 ring-black/5"
           >
             {options.map((option, index) => {
               const active = index === activeIndex
@@ -632,13 +677,13 @@ function HeroSearchSelect({ id, label, value, onChange, options }: HeroSearchSel
                     event.preventDefault()
                     chooseOption(option.value)
                   }}
-                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-extrabold transition-colors ${
+                  className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors ${
                     active ? 'bg-brand-50 text-night' : 'text-charcoal hover:bg-gray-50 hover:text-night'
                   }`}
                 >
                   <span className="min-w-0 truncate">{option.label}</span>
                   {selected && (
-                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold-400 text-night" aria-hidden="true">
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white" aria-hidden="true">
                       <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none">
                         <path d="m3.5 8.2 2.8 2.8 6.2-6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
@@ -663,7 +708,7 @@ interface HeroSearchComboboxFieldProps {
 function HeroSearchComboboxField({ label, htmlFor, children }: HeroSearchComboboxFieldProps) {
   return (
     <label htmlFor={htmlFor} className="block">
-      <span className="mb-1 block text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
+      <span className="mb-1 block text-xs font-bold uppercase text-gray-500">
         {label}
       </span>
       {children}
@@ -676,9 +721,8 @@ function SubmitBar({ cta }: { cta: string }) {
     <div className="flex justify-end pt-1">
       <button
         type="submit"
-        className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 font-extrabold text-white shadow-card transition-colors hover:bg-brand-700 active:bg-brand-700"
+        className="inline-flex items-center gap-2 rounded-xl bg-brand-600 px-5 py-2.5 font-bold text-white shadow-card transition-colors hover:bg-brand-700 active:bg-brand-700"
       >
-        <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
         {cta}
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />

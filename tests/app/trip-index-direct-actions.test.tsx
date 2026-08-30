@@ -62,7 +62,7 @@ describe('TripIndexPage direct trip actions', () => {
       '/dashboard/trips/new?returnTo=%2Ftrip&source=trip_index',
     )
     expect(newTrip).toHaveClass('bg-brand-600')
-    expect(newTrip.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(newTrip.querySelector('.bg-gold-400')).not.toBeInTheDocument()
 
     const createTrip = screen.getByRole('link', { name: /Create trip/i })
     expect(createTrip).toHaveAttribute(
@@ -70,7 +70,7 @@ describe('TripIndexPage direct trip actions', () => {
       '/dashboard/trips/new?returnTo=%2Ftrip&source=trip_index',
     )
     expect(createTrip).toHaveClass('bg-brand-600')
-    expect(createTrip.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(createTrip.querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ask Buddy first' })).toHaveAttribute(
       'href',
       expect.stringContaining('/dashboard/chat?q='),

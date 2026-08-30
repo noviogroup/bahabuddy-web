@@ -31,37 +31,52 @@ describe('FlightSearchClient marketplace layout', () => {
     vi.unstubAllGlobals()
   })
 
-  test('renders inline search with sidebar filters that drive the live search request', async () => {
+  test('renders focused search with trip details and route shortcuts that drive the live request', async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => mockFlightResponse())
     vi.stubGlobal('fetch', fetchMock)
 
     const { container } = render(<FlightSearchClient />)
 
     await screen.findByText('No flights found')
-    expect(screen.getByRole('form', { name: 'Flight search' })).toBeInTheDocument()
-    expect(screen.getByText('Inline flight search')).toBeInTheDocument()
-    expect(screen.getByRole('complementary', { name: 'Flight filters' })).toBeInTheDocument()
+    const searchForm = screen.getByRole('form', { name: 'Flight search' })
+    expect(searchForm).toBeInTheDocument()
+    expect(searchForm).toHaveClass('bg-night')
+    expect(searchForm).not.toHaveClass('border-gray-200')
+    expect(within(searchForm).getByRole('heading', { name: 'Find flights from anywhere in the world to The Bahamas' })).toBeInTheDocument()
+    expect(screen.queryByText('Inline flight search')).not.toBeInTheDocument()
+    expect(screen.queryByRole('complementary', { name: 'Flight filters' })).not.toBeInTheDocument()
     const promotions = screen.getByRole('complementary', { name: 'Flight promotions' })
     expect(promotions).toBeInTheDocument()
-    expect(screen.getByText('Filter flights')).toBeInTheDocument()
-    expect(screen.getByText('Promo space')).toBeInTheDocument()
-    expect(screen.getByRole('radio', { name: 'One-way' })).not.toHaveClass('bg-brand-600')
+    expect(screen.queryByText('Filter flights')).not.toBeInTheDocument()
+    expect(screen.getByRole('region', { name: 'Popular flight routes' })).toBeInTheDocument()
+    expect(screen.queryByText('Promo space')).not.toBeInTheDocument()
+    expect(screen.getByText('Plan with Buddy')).toBeInTheDocument()
+    expect(screen.getByText('Flights are just the start')).toBeInTheDocument()
+    expect(screen.getByText('Deals & guides')).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'One-way' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('button', { name: /Search/ })).toHaveClass('bg-brand-600')
     expect(promotions.querySelector('section')).not.toHaveClass('bg-night')
+    expect(screen.getByRole('link', { name: 'Start planning' })).toHaveAttribute('href', '/dashboard/trips/new?source=flight_search')
     expect(screen.getByRole('link', { name: 'See concierge options' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('link', { name: 'See concierge options' })).toHaveAttribute('href', '/concierge-trip-plan')
     expect(container.innerHTML).toMatch(/text-brand-700/)
-    expect(container.innerHTML).toMatch(/bg-gold-400/)
-    expect(container.innerHTML).not.toMatch(/border-gold|border-sand|bg-sand|ring-sand/)
-    expect(screen.getByRole('link', { name: 'View current deals' })).toHaveAttribute('href', '/deals')
+    expect(container.innerHTML).not.toContain('h-2 w-2 rounded-full bg-gold-400')
+    expect(container.innerHTML).toMatch(/border-brand-600/)
+    expect(container.innerHTML).not.toMatch(/border-sand|bg-sand|ring-sand/)
+    expect(screen.getByRole('link', { name: 'View deals' })).toHaveAttribute('href', '/deals')
+    expect(screen.getByRole('link', { name: 'Read guides' })).toHaveAttribute('href', '/guides')
     expect(screen.getByRole('link', { name: 'Browse stays' })).toHaveAttribute('href', '/stays?sort=stars')
     expect(screen.getByRole('button', { name: 'Miami to Nassau' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Edit travelers and cabin' })).toHaveTextContent('1 traveler, Economy')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Traveler count menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Edit travelers and cabin' }))
+    expect(screen.getByRole('dialog', { name: 'Choose travelers and cabin' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Open Travelers menu' }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: '2 travelers' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Cabin class menu' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Open Cabin menu' }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Business' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Apply filters' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }))
+    fireEvent.click(screen.getByRole('button', { name: /Search/ }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(latestRequestBody(fetchMock)).toMatchObject({
@@ -102,7 +117,7 @@ describe('FlightSearchClient marketplace layout', () => {
     expect(document.querySelector('select#destination')).toBeNull()
   })
 
-  test('redirects hidden filter select focus into the custom menu', async () => {
+  test('redirects hidden trip detail select focus into the custom menu', async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => mockFlightResponse())
     vi.stubGlobal('fetch', fetchMock)
 
@@ -110,15 +125,17 @@ describe('FlightSearchClient marketplace layout', () => {
 
     await screen.findByText('No flights found')
 
-    const nativeTravelerSelect = document.querySelector('select#passengers-filter')
+    fireEvent.click(screen.getByRole('button', { name: 'Edit travelers and cabin' }))
+
+    const nativeTravelerSelect = document.querySelector('select#passengers-search-select')
     expect(nativeTravelerSelect).toHaveClass('sr-only')
 
     fireEvent.focus(nativeTravelerSelect as HTMLSelectElement)
 
     expect(screen.getByRole('listbox')).toBeInTheDocument()
-    expect(screen.getByText('Choose Traveler count')).toBeInTheDocument()
+    expect(screen.getByText('Choose Travelers')).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Open Traveler count menu' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: 'Open Travelers menu' })).toHaveFocus()
     })
   })
 

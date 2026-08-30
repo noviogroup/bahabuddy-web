@@ -62,7 +62,7 @@ describe('StayDetailActions', () => {
 
     const checkRatesLink = screen.getByRole('link', { name: 'Check rates' })
     expect(checkRatesLink).toHaveClass('bg-brand-600')
-    expect(checkRatesLink.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(checkRatesLink.querySelector('.bg-gold-400')).toBeNull()
 
     const trigger = await screen.findByRole('button', { name: 'Open Save to menu' })
     expect(document.querySelector('select#stay-trip-select')).toHaveClass('sr-only')
@@ -71,7 +71,7 @@ describe('StayDetailActions', () => {
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Exuma Summer' }))
     const addButton = screen.getByRole('button', { name: 'Add to trip' })
     expect(addButton).toHaveClass('bg-brand-600')
-    expect(addButton.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(addButton.querySelector('.bg-gold-400')).toBeNull()
     fireEvent.click(addButton)
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))

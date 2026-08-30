@@ -48,10 +48,10 @@ export default async function NassauCruiseItineraryDetailPage({ params }: PagePr
         ]}
         actions={(
           <>
-            <Link href={`/build-my-cruise-day?itinerary=${plan.slug}`} className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white transition-colors hover:bg-brand-700">
+            <Link href={`/build-my-cruise-day?itinerary=${plan.slug}`} className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700">
               Personalize this plan
             </Link>
-            <Link href="#timeline" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="#timeline" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               View stops
             </Link>
           </>
@@ -60,7 +60,6 @@ export default async function NassauCruiseItineraryDetailPage({ params }: PagePr
         <div className="flex flex-wrap gap-2 text-xs font-bold text-charcoal">
           {[plan.area, hours, plan.mobility_level, plan.budget_level].filter(Boolean).map((item) => (
             <span key={item} className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
-              <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
               {item}
             </span>
           ))}
@@ -74,7 +73,7 @@ export default async function NassauCruiseItineraryDetailPage({ params }: PagePr
         <aside className="space-y-6">
           <ReturnSafetyCard />
           <div className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <p className="text-sm font-bold uppercase tracking-wide text-brand-700">Plan options</p>
+            <p className="text-sm font-bold uppercase text-brand-700">Plan options</p>
             <div className="mt-4 space-y-3 text-sm text-charcoal">
               <div className="flex justify-between"><span>Ready-made</span><strong>${plan.base_price.toFixed(2)}</strong></div>
               <div className="flex justify-between"><span>Personalized</span><strong>${plan.personalized_price.toFixed(2)}</strong></div>

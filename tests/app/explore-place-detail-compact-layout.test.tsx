@@ -76,7 +76,7 @@ vi.mock('@/components/marketplace/ImageWithSourcePolicy', () => ({
 
 type QueryResult = {
   data: unknown[] | unknown | null
-  error: null
+  error: { message: string } | null
 }
 
 const placeRow = {
@@ -132,7 +132,9 @@ class MockSupabaseQuery {
   private result: QueryResult
 
   constructor(private readonly table: string) {
-    this.result = table === 'place_reviews'
+    this.result = table === 'v_places_search'
+      ? { data: [], error: null }
+      : table === 'place_reviews'
       ? { data: reviewRows, error: null }
       : table === 'place_photos'
         ? { data: [], error: null }
@@ -155,7 +157,11 @@ class MockSupabaseQuery {
     return this
   })
 
-  single = vi.fn(async () => ({ data: placeRow, error: null }))
+  single = vi.fn(async () => (
+    this.table === 'v_places_search'
+      ? { data: null, error: { message: 'not found' } }
+      : { data: placeRow, error: null }
+  ))
 
   then<TResult1 = QueryResult, TResult2 = never>(
     onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,

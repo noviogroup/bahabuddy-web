@@ -82,6 +82,7 @@ function shapeRoom(room: Record<string, unknown>) {
     currency: stringValue(offerRetail.currency ?? totals[0]?.currency, 'USD'),
     rate_id: stringValue(room.offerId),
     offer_id: stringValue(room.offerId),
+    image_urls: extractRoomImageUrls([room, rate]).slice(0, 4),
     cancellation_summary: cancellationSummary(cancellation),
   }
 }
@@ -122,4 +123,66 @@ function stringValue(value: unknown, fallback = ''): string {
 function numberOrNull(value: unknown): number | null {
   const n = typeof value === 'number' ? value : Number(value)
   return Number.isFinite(n) ? n : null
+}
+
+function extractRoomImageUrls(value: unknown): string[] {
+  const urls = new Set<string>()
+  collectRoomImageUrls(value, urls)
+  return Array.from(urls)
+}
+
+function collectRoomImageUrls(value: unknown, urls: Set<string>, depth = 0, allowString = false) {
+  if (depth > 6 || value == null) return
+
+  if (typeof value === 'string') {
+    const url = validImageUrl(value)
+    if (allowString && url) urls.add(url)
+    return
+  }
+
+  if (Array.isArray(value)) {
+    for (const item of value) collectRoomImageUrls(item, urls, depth + 1, allowString)
+    return
+  }
+
+  if (typeof value !== 'object') return
+
+  const record = value as Record<string, unknown>
+  for (const [key, nested] of Object.entries(record)) {
+    if (isPropertyImageField(key)) continue
+    if (isDirectImageUrlField(key)) {
+      collectRoomImageUrls(nested, urls, depth + 1, true)
+      continue
+    }
+    if (isRoomImageCollectionField(key)) {
+      collectRoomImageUrls(nested, urls, depth + 1, true)
+    }
+  }
+}
+
+function isDirectImageUrlField(key: string): boolean {
+  return /^(url|urlHd|urlHD|imageUrl|image_url|photoUrl|photo_url|src|thumbnail)$/i.test(key)
+}
+
+function isRoomImageCollectionField(key: string): boolean {
+  return /^(roomImages|room_images|roomImageUrls|room_image_urls|images|imageUrls|image_urls|photos|photoUrls|gallery|media|thumbnails)$/i.test(key)
+}
+
+function isPropertyImageField(key: string): boolean {
+  return /hotel|property|exterior|amenit|destination/i.test(key)
+}
+
+function validImageUrl(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const url = value.trim()
+  if (!/^https?:\/\//i.test(url)) return null
+  try {
+    const parsed = new URL(url)
+    return /\.(?:avif|jpe?g|png|webp)$/i.test(parsed.pathname)
+      || /(?:cupid\.travel|liteapi|giata|cloudfront|cloudinary|images?|photos?|media|cdn)/i.test(`${parsed.hostname}${parsed.pathname}`)
+      ? url
+      : null
+  } catch {
+    return null
+  }
 }

@@ -17,7 +17,10 @@ const HIDDEN_PREFIXES = [
   '/profile',
   '/trip',
   '/login',
+  '/search',
   '/share',
+  '/explore/island',
+  '/stays',
   '/api',
 ]
 
@@ -39,7 +42,9 @@ export default function TravelOriginPrompt() {
   const pathname = usePathname()
   const [origin, setOrigin] = useState('')
   const [visible, setVisible] = useState(false)
+  const [externalPickerOpen, setExternalPickerOpen] = useState(false)
   const [confirmationOrigin, setConfirmationOrigin] = useState<string | null>(null)
+  const promptRef = useRef<HTMLElement | null>(null)
   const promptShownRef = useRef(false)
 
   useEffect(() => {
@@ -88,29 +93,59 @@ export default function TravelOriginPrompt() {
     return () => window.clearTimeout(timeout)
   }, [confirmationOrigin])
 
+  useEffect(() => {
+    if (!visible) {
+      setExternalPickerOpen(false)
+      return
+    }
+
+    function updateExternalPickerState() {
+      window.requestAnimationFrame(() => {
+        const expandedPicker = document.querySelector<HTMLElement>(
+          '[role="combobox"][aria-expanded="true"], [aria-haspopup="listbox"][aria-expanded="true"]',
+        )
+        setExternalPickerOpen(Boolean(
+          expandedPicker && !promptRef.current?.contains(expandedPicker),
+        ))
+      })
+    }
+
+    document.addEventListener('focusin', updateExternalPickerState)
+    document.addEventListener('mousedown', updateExternalPickerState)
+    document.addEventListener('keydown', updateExternalPickerState)
+    updateExternalPickerState()
+
+    return () => {
+      document.removeEventListener('focusin', updateExternalPickerState)
+      document.removeEventListener('mousedown', updateExternalPickerState)
+      document.removeEventListener('keydown', updateExternalPickerState)
+    }
+  }, [visible])
+
   if (!pathname || shouldHideOriginPrompt(pathname)) return null
 
   if (confirmationOrigin) {
     return (
-      <div className="fixed bottom-4 left-4 z-50 hidden max-w-xs rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-xs font-bold text-night shadow-sm backdrop-blur md:block">
+      <div className="fixed bottom-4 left-4 z-50 hidden max-w-xs rounded-2xl border border-gray-200 bg-white/95 px-4 py-3 text-xs font-semibold text-night shadow-sm backdrop-blur md:block">
         Flights will preview from {confirmationOrigin}.
       </div>
     )
   }
 
-  if (!visible) return null
+  if (!visible || externalPickerOpen) return null
 
   return (
     <aside
+      ref={promptRef}
       aria-label="Travel origin prompt"
       className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur md:bottom-5 md:left-5 md:right-auto md:max-w-sm"
     >
       <form onSubmit={handleSubmit} className="grid gap-3">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-gray-500">
+          <p className="text-xs font-semibold uppercase text-gray-500">
             Personalize fares
           </p>
-          <h2 className="mt-0.5 text-base font-extrabold text-night">
+          <h2 className="mt-0.5 text-base font-semibold text-night">
             Where are you travelling from?
           </h2>
           <p className="mt-1 text-xs font-semibold leading-5 text-gray-500">
@@ -139,15 +174,14 @@ export default function TravelOriginPrompt() {
         <div className="grid grid-cols-2 gap-2">
           <button
             type="submit"
-            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
+            className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Use origin
           </button>
           <button
             type="button"
             onClick={handleDismiss}
-            className="inline-flex h-10 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-sm font-extrabold text-night transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+            className="inline-flex h-10 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-sm font-semibold text-night transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
           >
             Not now
           </button>

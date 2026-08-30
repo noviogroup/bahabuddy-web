@@ -1,21 +1,14 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 
-// Serves the Google Maps API key to authenticated client components.
-// Key is kept server-only (GOOGLE_MAPS_API_KEY, not NEXT_PUBLIC_*).
+// Serves Google Maps config to client components.
+// The key is not committed or bundled with NEXT_PUBLIC_*, but it is still a
+// browser Google Maps key and must be restricted by HTTP referrer in Google Cloud.
+// GOOGLE_MAPS_MAP_ID is optional and enables Google Cloud map styling.
 export async function GET() {
-  try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
-      return NextResponse.json({ key: null }, { status: 401 })
-    }
-  } catch {
-    // If auth check fails, still serve key (trip page is already auth-gated)
-  }
-
   const key = process.env.GOOGLE_MAPS_API_KEY ?? null
-  return NextResponse.json({ key }, {
+  const mapId = process.env.GOOGLE_MAPS_MAP_ID ?? null
+
+  return NextResponse.json({ key, mapId }, {
     headers: {
       'Cache-Control': 'private, max-age=3600',
     },

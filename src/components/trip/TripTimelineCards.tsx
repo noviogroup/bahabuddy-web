@@ -86,15 +86,15 @@ function ReadinessCard({
     <div className="rounded-baha-md border border-sand-200 bg-white p-4 shadow-soft">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-gray-400">{label}</p>
-          <p className="mt-1 text-sm font-extrabold text-night">{state}</p>
+          <p className="text-xs font-bold uppercase text-gray-400">{label}</p>
+          <p className="mt-1 text-sm font-bold text-night">{state}</p>
         </div>
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${toneClass}`}>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${toneClass}`}>
           {tone === 'palm' ? 'Added' : 'Action'}
         </span>
       </div>
       <p className="mt-2 text-sm leading-5 text-gray-500">{body}</p>
-      <Link href={href} className="mt-3 inline-flex text-sm font-extrabold text-brand-700 hover:text-brand-800">
+      <Link href={href} className="mt-3 inline-flex text-sm font-bold text-brand-700 hover:text-brand-800">
         {action}
       </Link>
     </div>
@@ -117,8 +117,8 @@ function TripReadinessStrip({
     <section className="rounded-baha-lg border border-brand-100 bg-brand-50/40 p-4 shadow-soft">
       <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <p className="text-xs font-extrabold uppercase tracking-[0.2em] text-brand-700">Trip readiness</p>
-          <h2 className="mt-1 text-lg font-extrabold text-night">What still needs attention</h2>
+          <p className="text-xs font-bold uppercase text-brand-700">Trip readiness</p>
+          <h2 className="mt-1 text-lg font-bold text-night">What still needs attention</h2>
         </div>
         <p className="text-sm font-semibold text-gray-500">{trip.name}</p>
       </div>
@@ -161,10 +161,10 @@ function FlightTimelineCard({ flight }: { flight: TripFlight }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-extrabold text-night">
+            <h3 className="text-base font-bold text-night">
               {flight.origin} to {flight.destination}
             </h3>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${
               booked ? 'bg-palm-50 text-palm-700 ring-palm-200' : 'bg-gold-50 text-gold-800 ring-gold-200'
             }`}>
               {booked ? 'Booked' : 'Saved flight'}
@@ -175,7 +175,7 @@ function FlightTimelineCard({ flight }: { flight: TripFlight }) {
           </p>
         </div>
         <div className="text-left sm:text-right">
-          <p className="text-sm font-extrabold text-palm-700">{fmtMoney(flight.price)}</p>
+          <p className="text-sm font-bold text-palm-700">{fmtMoney(flight.price)}</p>
           {flight.booking_reference && (
             <p className="mt-1 text-xs font-mono text-gray-500">Ref {flight.booking_reference}</p>
           )}
@@ -188,7 +188,7 @@ function FlightTimelineCard({ flight }: { flight: TripFlight }) {
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-        <Link href="/flights" className="rounded-full bg-brand-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-brand-700">
+        <Link href="/flights" className="rounded-full bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700">
           Compare flights
         </Link>
       </div>
@@ -205,8 +205,8 @@ function StayTimelineCard({ stay, primaryIsland }: { stay: TripAccommodation; pr
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-base font-extrabold text-night">{stay.name}</h3>
-            <span className={`rounded-full px-2.5 py-1 text-[11px] font-bold ring-1 ${
+            <h3 className="text-base font-bold text-night">{stay.name}</h3>
+            <span className={`rounded-full px-2.5 py-1 text-xs font-bold ring-1 ${
               booked ? 'bg-palm-50 text-palm-700 ring-palm-200' : 'bg-gold-50 text-gold-800 ring-gold-200'
             }`}>
               {booked ? 'Booked' : 'Saved stay'}
@@ -215,7 +215,7 @@ function StayTimelineCard({ stay, primaryIsland }: { stay: TripAccommodation; pr
           {stayIsland && <p className="mt-1 text-sm font-semibold text-gray-500">{stayIsland}</p>}
         </div>
         <div className="text-left sm:text-right">
-          <p className="text-sm font-extrabold text-palm-700">
+          <p className="text-sm font-bold text-palm-700">
             {stay.price_per_night ? `${fmtMoney(stay.price_per_night)}/night` : 'Rate pending'}
           </p>
           {stay.booking_reference && (
@@ -231,7 +231,7 @@ function StayTimelineCard({ stay, primaryIsland }: { stay: TripAccommodation; pr
       </dl>
 
       <div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-        <Link href={`/stays${islandQuery(stayIsland)}`} className="rounded-full bg-brand-600 px-4 py-2 text-xs font-extrabold text-white hover:bg-brand-700">
+        <Link href={`/stays${islandQuery(stayIsland)}`} className="rounded-full bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700">
           Find stays
         </Link>
       </div>
@@ -242,7 +242,7 @@ function StayTimelineCard({ stay, primaryIsland }: { stay: TripAccommodation; pr
 function TimelineFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl bg-offwhite px-3 py-2">
-      <dt className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-400">{label}</dt>
+      <dt className="text-xs font-bold uppercase text-gray-400">{label}</dt>
       <dd className="mt-1 text-sm font-bold text-night">{value}</dd>
     </div>
   )
@@ -272,10 +272,10 @@ export default function TripTimelineCards({
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-400">Transport</p>
-              <h2 className="text-lg font-extrabold text-night">Flights</h2>
+              <p className="text-xs font-bold uppercase text-gray-400">Transport</p>
+              <h2 className="text-lg font-bold text-night">Flights</h2>
             </div>
-            <Link href="/flights" className="text-sm font-extrabold text-brand-700 hover:text-brand-800">
+            <Link href="/flights" className="text-sm font-bold text-brand-700 hover:text-brand-800">
               Compare fares
             </Link>
           </div>
@@ -289,10 +289,10 @@ export default function TripTimelineCards({
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-400">Where you sleep</p>
-              <h2 className="text-lg font-extrabold text-night">Stays</h2>
+              <p className="text-xs font-bold uppercase text-gray-400">Where you sleep</p>
+              <h2 className="text-lg font-bold text-night">Stays</h2>
             </div>
-            <Link href={`/stays${islandQuery(primaryIsland)}`} className="text-sm font-extrabold text-brand-700 hover:text-brand-800">
+            <Link href={`/stays${islandQuery(primaryIsland)}`} className="text-sm font-bold text-brand-700 hover:text-brand-800">
               Find alternatives
             </Link>
           </div>
@@ -308,10 +308,10 @@ export default function TripTimelineCards({
         <section>
           <div className="mb-3 flex items-end justify-between gap-3">
             <div>
-              <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-400">Daily flow</p>
-              <h2 className="text-lg font-extrabold text-night">Itinerary</h2>
+              <p className="text-xs font-bold uppercase text-gray-400">Daily flow</p>
+              <h2 className="text-lg font-bold text-night">Itinerary</h2>
             </div>
-            <Link href={`/explore/places${islandQuery(primaryIsland)}`} className="text-sm font-extrabold text-brand-700 hover:text-brand-800">
+            <Link href={`/explore/places${islandQuery(primaryIsland)}`} className="text-sm font-bold text-brand-700 hover:text-brand-800">
               Browse ideas
             </Link>
           </div>
@@ -321,24 +321,24 @@ export default function TripTimelineCards({
 
               return (
                 <div key={dayNum} className="rounded-baha-md border border-gray-200 bg-white p-4 shadow-soft">
-                  <h3 className="mb-3 text-base font-extrabold text-night">Day {dayNum}</h3>
+                  <h3 className="mb-3 text-base font-bold text-night">Day {dayNum}</h3>
                   {(['morning', 'afternoon', 'evening'] as const).map((slot) => {
                     const items = slots[slot] ?? []
 
                     return (
                       <div key={slot} className="mb-4 last:mb-0">
-                        <p className="mb-2 text-xs font-extrabold uppercase tracking-[0.16em] text-gray-400">{slot}</p>
+                        <p className="mb-2 text-xs font-bold uppercase text-gray-400">{slot}</p>
                         {items.length > 0 ? (
                           <ul className="space-y-2">
                             {items.map((item) => (
                               <li key={item.id} className="rounded-2xl bg-offwhite px-3 py-3">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                                   <div>
-                                    <p className="text-sm font-extrabold text-night">{item.activity_name}</p>
+                                    <p className="text-sm font-bold text-night">{item.activity_name}</p>
                                     {item.notes && <p className="mt-1 text-sm leading-5 text-gray-500">{item.notes}</p>}
                                   </div>
                                   {item.activity_type && (
-                                    <span className="w-fit rounded-full bg-white px-2.5 py-1 text-[11px] font-bold text-brand-700 ring-1 ring-brand-100">
+                                    <span className="w-fit rounded-full bg-white px-2.5 py-1 text-xs font-bold text-brand-700 ring-1 ring-brand-100">
                                       {item.activity_type}
                                     </span>
                                   )}

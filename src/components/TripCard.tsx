@@ -81,10 +81,10 @@ export default function TripCard({ trip }: TripCardProps) {
             }`}
           >
             <div className="px-6 text-center text-white">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/75">
+              <p className="text-xs font-bold uppercase text-white/75">
                 Trip image pending
               </p>
-              <p className="mt-1 text-lg font-extrabold leading-tight">
+              <p className="mt-1 text-lg font-bold leading-tight">
                 {trip.islands?.[0] ?? 'Bahamas trip'}
               </p>
             </div>
@@ -120,13 +120,13 @@ export default function TripCard({ trip }: TripCardProps) {
             {trip.islands.slice(0, 3).map(island => (
               <span
                 key={island}
-                className="bg-brand-50 text-brand-700 text-[11px] font-medium px-2 py-0.5 rounded-full ring-1 ring-brand-200"
+                className="bg-brand-50 text-brand-700 text-xs font-medium px-2 py-0.5 rounded-full ring-1 ring-brand-200"
               >
                 {island}
               </span>
             ))}
             {trip.islands.length > 3 && (
-              <span className="text-[11px] text-gray-400 font-medium px-2 py-0.5">
+              <span className="text-xs text-gray-400 font-medium px-2 py-0.5">
                 +{trip.islands.length - 3} more
               </span>
             )}

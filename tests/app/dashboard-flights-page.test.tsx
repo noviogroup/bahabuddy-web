@@ -11,7 +11,7 @@ describe('DashboardFlightsPage', () => {
     render(<DashboardFlightsPage />)
 
     expect(screen.getByText('Compare and book Bahamas flights')).toBeInTheDocument()
-    expect(screen.getByText(/structured traveler, passport, payment, and confirmation flow/i)).toBeInTheDocument()
+    expect(screen.getByText(/Search live fares, review traveler details, and keep the booking with your trip/i)).toBeInTheDocument()
     expect(screen.getByTestId('dashboard-flight-marketplace')).toBeInTheDocument()
     expect(screen.queryByText(/provider key stays server-side/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/prebook payload/i)).not.toBeInTheDocument()

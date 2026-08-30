@@ -184,7 +184,7 @@ describe('concierge direct actions', () => {
     expect(url.searchParams.get('source')).toBe('concierge_order')
     expect(url.searchParams.get('seed')).toContain('concierge trip plan')
     expect(screen.getByRole('link', { name: 'Submit trip details' })).toHaveClass('bg-brand-600')
-    expect(screen.getByRole('link', { name: 'Submit trip details' }).querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Submit trip details' }).querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Continue planning with Buddy' })).not.toBeInTheDocument()
     expect(container.innerHTML).not.toContain('/dashboard/chat?intent=concierge')
     expect(container.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)
@@ -218,7 +218,7 @@ describe('concierge direct actions', () => {
     const paymentView = render(payments)
 
     expect(screen.getByRole('link', { name: 'Receipt' })).toHaveClass('bg-brand-600')
-    expect(screen.getByRole('link', { name: 'Receipt' }).querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Receipt' }).querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(paymentView.container.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)
 
     paymentView.unmount()
@@ -234,7 +234,7 @@ describe('concierge direct actions', () => {
     const receiptView = render(receipt)
 
     expect(screen.getByRole('link', { name: 'View order' })).toHaveClass('bg-brand-600')
-    expect(screen.getByRole('link', { name: 'View order' }).querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'View order' }).querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(receiptView.container.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)
   })
 })

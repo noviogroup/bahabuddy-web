@@ -1,7 +1,7 @@
 # Web Booking Readiness Gate Review - June 21, 2026
 
 Review time: June 21, 2026, 16:43 EDT
-Updated: June 21, 2026, 19:58 EDT
+Updated: June 23, 2026, 17:47 EDT
 Scope: non-destructive hotel/flight booking readiness before live LiteAPI/Stripe lifecycle QA
 
 ## Executive Status
@@ -15,6 +15,8 @@ June 21 follow-up: the local web runtime now has `SUPABASE_SERVICE_ROLE_KEY` con
 June 21 deployed-runtime follow-up: web now exposes a protected `GET /api/internal/booking-readiness` endpoint and the verifier can call it with `--runtime-url` or `BOOKING_READINESS_RUNTIME_URL` to prove deployed web env/schema readiness without creating payments, prebooks, provider bookings, canonical booking rows, trip items, or audit rows.
 
 June 21 Netlify follow-up: two Netlify MCP upload attempts reached the upload step but failed with `502 Bad Gateway`. The alternate Netlify CLI path succeeded: production deploy `6a3879a3d33124694477b840` is now live from the local web repo at `f7347c4`. Deployed runtime proof remains open because site-level visitor password protection returns Netlify HTML `401` before requests reach `/api/internal/booking-readiness`.
+
+June 23 documentation audit: this gate remains correctly documented as a preflight, not as booking lifecycle completion. The open production gate is still deployed runtime proof plus controlled live LiteAPI/Stripe hotel and flight lifecycle QA.
 
 ## What Changed
 

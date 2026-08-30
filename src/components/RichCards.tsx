@@ -8,6 +8,7 @@ import { HotelCard as NewHotelCard, type HotelCardData,
          FlightCard as NewFlightCard, type FlightCardData, type FlightLayover,
          DestinationCard as NewDestinationCard, type DestinationCardData,
          MapCard as NewMapCard, type MapCardData, type MapLocation } from './cards'
+import type { FlightBaggageSummary, FlightCheckoutLeg } from '@/lib/flight-checkout-summary'
 import {
   appendFlightCheckoutSummary,
   flightCheckoutSummaryFromCard,
@@ -51,9 +52,10 @@ export interface CardData {
   card_type: CardType
   // mixed: contains cards array
   cards?: CardData[]
-  /** Stable identifier from google_places.place_id, used to link the
-   *  card to its detail page. Present on hotel / restaurant / activity
-   *  cards emitted by tools. Absent on Claude-synthesized cards. */
+  /** Stable source identifier used to link the card to its detail page.
+   *  Hotels use `hotels.id`; restaurants and activities prefer canonical
+   *  `places` ids, with cached Supabase source ids only as fallback.
+   *  Absent on Claude-synthesized cards. */
   place_id?: string
   // hotel
   name?: string
@@ -90,6 +92,9 @@ export interface CardData {
   duration?: string
   from_price?: number
   price?: number
+  base_fare?: number
+  taxes?: number
+  fees?: number
   supplier?: string
   product_code?: string
   icon?: string
@@ -97,11 +102,18 @@ export interface CardData {
   route?: string
   airline?: string
   airline_code?: string
+  flight_number?: string
+  flight_numbers?: string[]
   airline_logo_url?: string
   departure?: string
   arrival?: string
   stops?: string
   passengers?: number
+  trip_type?: string
+  flight_legs?: FlightCheckoutLeg[]
+  aircraft?: string
+  aircraft_types?: string[]
+  aircraft_codes?: string[]
   // day_plan
   day_number?: number
   morning?: string
@@ -125,7 +137,7 @@ export interface CardData {
   phone?: string
   website?: string
   full_address?: string
-  /** Flat array of "Monday: 11am – 10pm" strings from google_places.opening_hours. */
+  /** Flat array of "Monday: 11am – 10pm" strings from cached place inventory. */
   opening_hours?: string[]
   /** Vibe-category labels (beach, adventure, culture…) for activities. */
   vibe_tags?: string[]
@@ -165,9 +177,7 @@ export interface CardData {
   /** Flight: ordered layovers when not direct. */
   layovers?: FlightLayover[]
   /** Flight: baggage allowance badges. */
-  baggage?: { carry_on?: boolean; checked?: number }
-  /** Legacy flight offer ID from older Duffel cards. Prefer offer_id/provider_offer_id. */
-  duffel_offer_id?: string
+  baggage?: FlightBaggageSummary
   /** LiteAPI flight offer ID / normalized provider offer ID. */
   offer_id?: string
   provider_offer_id?: string
@@ -494,7 +504,7 @@ function FlightCardAdapter({
   activeTripId?: string
   onAddToTrip?: (cardData: CardData, tripId: string) => void | Promise<void>
 }) {
-  const offerId = flightOfferId(data)
+  const offerId = providerOfferIdFromCard(data)
   const bookingHref = offerId
     ? appendFlightCheckoutSummary(
       `/flights/${encodeURIComponent(offerId)}/book`,
@@ -505,12 +515,17 @@ function FlightCardAdapter({
     route: data.route,
     airline: data.airline,
     airline_code: data.airline_code,
+    flight_number: data.flight_number,
+    flight_numbers: data.flight_numbers,
     airline_logo_url: data.airline_logo_url,
     departure: data.departure,
     arrival: data.arrival,
     duration: data.duration,
     stops: data.stops,
     price: data.price,
+    base_fare: data.base_fare,
+    taxes: data.taxes,
+    fees: data.fees,
     currency: data.currency,
     passengers: data.passengers,
     cabin_class: data.cabin_class,
@@ -520,7 +535,11 @@ function FlightCardAdapter({
     expiration: data.expiration,
     layovers: data.layovers,
     baggage: data.baggage,
-    duffel_offer_id: data.duffel_offer_id,
+    trip_type: data.trip_type,
+    flight_legs: data.flight_legs,
+    aircraft: data.aircraft,
+    aircraft_types: data.aircraft_types,
+    aircraft_codes: data.aircraft_codes,
   }
 
   const actions = (
@@ -529,7 +548,7 @@ function FlightCardAdapter({
           <button
             type="button"
             onClick={() => onAddToTrip(data, activeTripId)}
-            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Add to trip
           </button>
@@ -537,9 +556,8 @@ function FlightCardAdapter({
         {bookingHref && (
           <a
             href={bookingHref}
-            className="inline-flex h-9 min-w-32 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-xs font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+            className="inline-flex h-9 min-w-32 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Book this fare
           </a>
         )}
@@ -547,7 +565,7 @@ function FlightCardAdapter({
           <button
             type="button"
             onClick={() => onSendMessage(`Help me save the ${data.airline ?? 'flight'} option to my trip`)}
-            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Plan this flight
           </button>
@@ -558,8 +576,8 @@ function FlightCardAdapter({
   return <NewFlightCard data={flightData} actions={actions} />
 }
 
-function flightOfferId(data: CardData): string | null {
-  const value = data.offer_id ?? data.provider_offer_id ?? data.duffel_offer_id
+export function providerOfferIdFromCard(data: CardData): string | null {
+  const value = data.offer_id ?? data.provider_offer_id
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 

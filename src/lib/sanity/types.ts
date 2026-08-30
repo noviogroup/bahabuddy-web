@@ -79,6 +79,9 @@ export type SanityArticleCategory =
   | 'adventure'
   | 'culture'
   | 'insider_tips'
+  | 'cruise_planning'
+  | 'planning_basics'
+  | 'events_seasons'
 
 /** Human-readable category labels. Match Studio's `options.list`. */
 export const ARTICLE_CATEGORY_LABEL: Record<SanityArticleCategory, string> = {
@@ -88,6 +91,9 @@ export const ARTICLE_CATEGORY_LABEL: Record<SanityArticleCategory, string> = {
   adventure: 'Adventure',
   culture: 'Culture',
   insider_tips: 'Insider Tips',
+  cruise_planning: 'Cruise Planning',
+  planning_basics: 'Planning Basics',
+  events_seasons: 'Events & Seasons',
 }
 
 // ─── Tip ────────────────────────────────────────────────────────────────────
@@ -194,15 +200,44 @@ export interface SanityDestination {
    *  /explore/places/[island] route uses this to bridge editorial
    *  content with the database-driven place list. */
   islandId: string | null
+  routeAliases: string[]
   imageUrl: string | null
   tagline: string | null
   overview: unknown[] | null
-  highlights: Array<{ label: string; icon: string | null }>
+  highlights: Array<{ label: string; icon: string | null; description: string | null }>
   bestTimeToVisit: string | null
   gettingThere: string | null
+  gateways: Array<{
+    code: string | null
+    name: string
+    type: 'airport' | 'ferry' | 'port'
+    note: string | null
+  }>
+  tripFit: {
+    vibe: string | null
+    recommendedStay: string | null
+    pace: string | null
+    bestFor: string[]
+    notIdealFor: string | null
+  } | null
+  practicalNotes: unknown[] | null
+  faqs: Array<{ question: string; answer: unknown[] | null }>
   gallery: string[]
+  heroImage: SanityContentImage | null
+  galleryItems: SanityContentImage[]
   featured: boolean
   order: number
+}
+
+export interface SanityContentImage {
+  url: string | null
+  alt: string | null
+  caption: string | null
+  credit: string | null
+  sourceUrl: string | null
+  subjectIdentity: string | null
+  rightsStatus: string | null
+  licenseName: string | null
 }
 
 // ─── Experience ─────────────────────────────────────────────────────────────
@@ -371,6 +406,40 @@ export interface SanityTravelerStory {
 }
 
 export type SanityPartyType = 'solo' | 'couple' | 'family' | 'friends'
+
+// ─── Managed Content Page ─────────────────────────────────────────────────
+
+export interface SanityContentPageAction {
+  label: string
+  href: string
+  style: 'primary' | 'secondary' | 'text' | null
+  openInNewTab: boolean
+}
+
+export interface SanityContentPageSection {
+  _key: string
+  anchor: string | null
+  eyebrow: string | null
+  heading: string
+  body: unknown[] | null
+  items: Array<{_key: string; title: string; description: string | null; icon: string | null}>
+  actions: SanityContentPageAction[]
+  layout: string | null
+}
+
+export interface SanityContentPage {
+  _id: string
+  title: string
+  routePath: string
+  pageType: string
+  eyebrow: string | null
+  subtitle: string | null
+  heroImageUrl: string | null
+  heroActions: SanityContentPageAction[]
+  sections: SanityContentPageSection[]
+  effectiveDate: string | null
+  versionLabel: string | null
+}
 
 /**
  * Maps party-type enum to the display label shown on the colored pill.

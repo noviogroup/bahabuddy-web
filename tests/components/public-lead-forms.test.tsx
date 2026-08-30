@@ -3,6 +3,7 @@ import { describe, expect, test, vi } from 'vitest'
 import BuildMyCruiseDayPage from '@/app/build-my-cruise-day/page'
 import ListYourPropertyPage from '@/app/list-your-property/page'
 import PartnersPage from '@/app/partners/page'
+import TourismBoardPartnershipsPage from '@/app/tourism-board-partnerships/page'
 import { ConciergeDetailsClientForm } from '@/components/concierge/ConciergeDetailsClientForm'
 import PartnerApplicationForm from '@/components/revenue/PartnerApplicationForm'
 import TravelDocumentLeadForm from '@/components/revenue/TravelDocumentLeadForm'
@@ -50,12 +51,36 @@ describe('public lead and intake forms', () => {
     const utilityNav = screen.getByRole('navigation', { name: 'Company and legal pages' })
     expect(utilityNav).toBeInTheDocument()
     expect(within(utilityNav).getByRole('link', { name: 'Partner with us' })).toHaveAttribute('href', '/partners')
+    expect(within(utilityNav).getByRole('link', { name: 'Tourism board partnerships' })).toHaveAttribute(
+      'href',
+      '/tourism-board-partnerships',
+    )
     expect(screen.getByText('Application received')).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Founding partner opportunity' })).toBeInTheDocument()
     expect(screen.getByRole('heading', { name: 'Partner intake' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'tourism board partnership path' })).toHaveAttribute(
+      'href',
+      '/tourism-board-partnerships',
+    )
     expect(form).toHaveAttribute('action', '/partners?submitted=partner')
     expect(form).toHaveClass('border-gray-200')
     expect(container.innerHTML).not.toMatch(/bg-gradient-brand|border-sand|bg-sand|ring-sand/)
+  })
+
+  test('tourism board page renders destination partnership intake flow', () => {
+    const { container } = render(<TourismBoardPartnershipsPage searchParams={{ submitted: 'tourism-board' }} />)
+    const form = container.querySelector('form[name="baha-buddy-partner-application"]')
+    const utilityNav = screen.getByRole('navigation', { name: 'Company and legal pages' })
+
+    expect(screen.getByRole('heading', { name: 'Tourism board partnerships' })).toBeInTheDocument()
+    expect(within(utilityNav).getByRole('link', { name: 'Tourism board partnerships' })).toHaveClass('bg-gray-100')
+    expect(screen.getByText('Partnership inquiry received')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Partnership models' })).toBeInTheDocument()
+    expect(screen.getByText('Visitor-intent reporting')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Submit a destination partnership inquiry' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'partner application' })).toHaveAttribute('href', '/partners')
+    expect(form).toHaveAttribute('action', '/tourism-board-partnerships?submitted=tourism-board')
+    expect(form).toHaveClass('border-gray-200')
   })
 
   test('travel-document lead form exposes accessible marketplace fields', () => {
@@ -91,7 +116,7 @@ describe('public lead and intake forms', () => {
     expect(screen.getByLabelText('Preferred islands')).toHaveValue('Nassau, Exuma')
     expect(screen.getByLabelText('Trip style and notes')).toHaveValue('Food, beaches, and easy transfers')
     expect(screen.getByRole('button', { name: 'Submit trip details' })).toHaveClass('bg-brand-600')
-    expect(screen.getByRole('button', { name: 'Submit trip details' }).querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit trip details' }).querySelector('.bg-gold-400')).not.toBeInTheDocument()
   })
 
   test('cruise-day intake uses marketplace fields and preserves itinerary context', async () => {

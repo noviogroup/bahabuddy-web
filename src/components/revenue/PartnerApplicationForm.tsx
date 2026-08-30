@@ -50,8 +50,8 @@ export default function PartnerApplicationForm({
       </p>
 
       <div>
-        <p className="text-sm font-bold text-brand-700 uppercase tracking-wide">Partner application</p>
-        <h3 className="mt-2 text-2xl font-extrabold text-night">{title}</h3>
+        <p className="text-sm font-bold text-brand-700 uppercase">Partner application</p>
+        <h3 className="mt-2 text-2xl font-bold text-night">{title}</h3>
         <p className="mt-2 text-sm text-charcoal leading-relaxed">
           {description}
         </p>

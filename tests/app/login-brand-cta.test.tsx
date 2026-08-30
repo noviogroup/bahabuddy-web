@@ -38,7 +38,7 @@ describe('LoginPage brand CTAs', () => {
       button.getAttribute('type') === 'submit'
     ))
     expect(signInSubmit).toHaveClass('bg-brand-600')
-    expect(container.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(signInSubmit.querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(container.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Magic link' }))

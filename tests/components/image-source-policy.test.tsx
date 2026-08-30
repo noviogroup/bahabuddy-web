@@ -17,23 +17,23 @@ describe('ImageWithSourcePolicy', () => {
     expect(screen.queryByText('Image pending')).not.toBeInTheDocument()
   })
 
-  test('shows image pending when the image source is missing', () => {
+  test('shows branded fallback context when the image source is missing', () => {
     render(
       <ImageWithSourcePolicy
         src={null}
         alt="Missing place photo"
         title="Island stop"
         eyebrow="Food and culture"
-        description="Real item data is available. Photo is not available yet."
       />,
     )
 
-    expect(screen.getByText('Image pending')).toBeInTheDocument()
+    expect(screen.queryByText('Image pending')).not.toBeInTheDocument()
     expect(screen.getByText('Island stop')).toBeInTheDocument()
+    expect(screen.getByText('Food and culture')).toBeInTheDocument()
     expect(screen.queryByAltText('Missing place photo')).not.toBeInTheDocument()
   })
 
-  test('falls back to image pending after an image load failure', () => {
+  test('falls back to branded context after an image load failure', () => {
     render(
       <ImageWithSourcePolicy
         src="https://images.example/broken.jpg"
@@ -45,8 +45,9 @@ describe('ImageWithSourcePolicy', () => {
 
     fireEvent.error(screen.getByAltText('Broken provider photo'))
 
-    expect(screen.getByText('Image pending')).toBeInTheDocument()
+    expect(screen.queryByText('Image pending')).not.toBeInTheDocument()
     expect(screen.getByText('Broken image item')).toBeInTheDocument()
+    expect(screen.getByText('Stay')).toBeInTheDocument()
     expect(screen.queryByAltText('Broken provider photo')).not.toBeInTheDocument()
   })
 })

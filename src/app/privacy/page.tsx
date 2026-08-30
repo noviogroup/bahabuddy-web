@@ -1,5 +1,7 @@
 import type { Metadata } from 'next'
 import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
+import SanityManagedContentPage from '@/components/marketplace/SanityManagedContentPage'
+import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
@@ -7,7 +9,10 @@ export const metadata: Metadata = {
     'Baha Buddy privacy policy. Learn how we collect, use, and protect traveler data.',
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const managedPage = await fetchContentPageByRoute('/privacy')
+  if (managedPage) return <SanityManagedContentPage page={managedPage} />
+
   return (
     <UtilityContentLayout
       activePath="/privacy"
@@ -47,9 +52,9 @@ export default function PrivacyPage() {
         <h2>AI and third-party services</h2>
         <p>
           Baha Buddy uses third-party services including Supabase, Anthropic,
-          OpenAI, Google Maps and Places, LiteAPI, Stripe, analytics providers,
-          and support tooling. Each provider handles data under its own terms and
-          policies.
+          OpenAI, Google Maps for maps, Supabase cached place inventory, LiteAPI,
+          Stripe, analytics providers, and support tooling. Each provider handles
+          data under its own terms and policies.
         </p>
       </section>
 

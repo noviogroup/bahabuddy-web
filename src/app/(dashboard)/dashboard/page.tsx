@@ -9,7 +9,6 @@ import {
   BuddyPickCard,
   WeatherGlanceCard,
   TravelTipCard,
-  MobileChatEntryBar,
 } from '@/components/home'
 import CreateTripCTA from '@/components/trip/CreateTripCTA'
 import { deriveUserState } from '@/lib/derive-user-state'
@@ -41,7 +40,8 @@ export const dynamic = 'force-dynamic'
  *   6. BuddyPickCard (weekly rotating gold editorial pick)
  *   7. WeatherGlanceCard (weather at primary destination)
  *   8. TravelTipCard (daily rotating editorial tip)
- *   9. MobileChatEntryBar (xl:hidden — chat entry on tablet/phone)
+ * The phone chat dock is owned by DashboardShell so it never covers page
+ * content and remains consistent across authenticated routes.
  *
  * The Phase B `QuickActionsRow` (4 chat-mediated quick prompts) and the
  * inline "Or search directly" Flights/Hotels grid have been folded into
@@ -110,8 +110,6 @@ export default async function DashboardPage() {
       <div className="mb-8">
         <TravelTipCard />
       </div>
-
-      <MobileChatEntryBar />
     </div>
   )
 }

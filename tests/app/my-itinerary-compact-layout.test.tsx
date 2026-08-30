@@ -37,7 +37,7 @@ describe('my itinerary compact handoff page', () => {
       expect(href).toContain('source=guided_itinerary')
       expect(href).toContain('seed=Guided+Nassau+cruise+day+itinerary+order-123')
       expect(link).toHaveClass('bg-brand-600')
-      expect(link.querySelector('.bg-gold-400')).toBeInTheDocument()
+      expect(link.querySelector('.bg-gold-400')).not.toBeInTheDocument()
     }
 
     expect(screen.getByRole('link', { name: 'Browse guided days' })).toHaveAttribute(

@@ -16,11 +16,10 @@ export default function GuidedDayTimeline({ stops }: GuidedDayTimelineProps) {
     <section className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-wide text-brand-700">
-            <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+          <p className="inline-flex items-center gap-2 text-sm font-bold uppercase text-brand-700">
             Timeline
           </p>
-          <h2 className="mt-2 text-2xl font-extrabold text-night">Follow the day stop by stop.</h2>
+          <h2 className="mt-2 text-2xl font-bold text-night">Follow the day stop by stop.</h2>
         </div>
         <p className="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-brand-700">
           {stops.length} stops
@@ -32,10 +31,10 @@ export default function GuidedDayTimeline({ stops }: GuidedDayTimelineProps) {
           <article key={stop.id} className="rounded-baha-lg border border-gray-200 p-4">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-gray-400">
+                <p className="text-xs font-bold uppercase text-gray-400">
                   Stop {stop.stop_order} · {formatOffset(stop.suggested_arrival_offset_minutes)}
                 </p>
-                <h3 className="mt-1 text-lg font-extrabold text-night">{stop.name}</h3>
+                <h3 className="mt-1 text-lg font-bold text-night">{stop.name}</h3>
                 {stop.description && <p className="mt-2 text-sm leading-relaxed text-charcoal">{stop.description}</p>}
               </div>
               <div className="shrink-0 rounded-baha-md bg-gray-100 px-3 py-2 text-sm font-bold text-charcoal">

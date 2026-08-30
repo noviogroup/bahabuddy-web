@@ -70,8 +70,6 @@ interface Segment {
   amount: number
   /** Tailwind bg-* class for the bar segment. */
   color: string
-  /** Tailwind bg-* / text-* pair for the legend dot. */
-  dotColor: string
   textColor: string
 }
 
@@ -83,11 +81,11 @@ interface Segment {
  */
 function buildSegments(breakdown: CostBreakdown): Segment[] {
   const all: Segment[] = [
-    { label: 'Hotel',      amount: breakdown.hotel ?? 0,      color: 'bg-brand-500',  dotColor: 'bg-brand-500',  textColor: 'text-brand-700' },
-    { label: 'Flights',    amount: breakdown.flights ?? 0,    color: 'bg-gold-500',   dotColor: 'bg-gold-500',   textColor: 'text-gold-700' },
-    { label: 'Activities', amount: breakdown.activities ?? 0, color: 'bg-coral-500',  dotColor: 'bg-coral-500',  textColor: 'text-coral-700' },
-    { label: 'Food',       amount: breakdown.food ?? 0,       color: 'bg-palm-500',   dotColor: 'bg-palm-500',   textColor: 'text-palm-700' },
-    { label: 'Other',      amount: breakdown.other ?? 0,      color: 'bg-gray-400',   dotColor: 'bg-gray-400',   textColor: 'text-gray-700' },
+    { label: 'Hotel',      amount: breakdown.hotel ?? 0,      color: 'bg-brand-500',  textColor: 'text-brand-700' },
+    { label: 'Flights',    amount: breakdown.flights ?? 0,    color: 'bg-gold-500',   textColor: 'text-gold-700' },
+    { label: 'Activities', amount: breakdown.activities ?? 0, color: 'bg-coral-500',  textColor: 'text-coral-700' },
+    { label: 'Food',       amount: breakdown.food ?? 0,       color: 'bg-palm-500',   textColor: 'text-palm-700' },
+    { label: 'Other',      amount: breakdown.other ?? 0,      color: 'bg-gray-400',   textColor: 'text-gray-700' },
   ]
   return all.filter(s => s.amount > 0)
 }
@@ -129,7 +127,7 @@ export function SummaryCard({ data, tripId, className }: Props) {
     <CardShell mode="plain" accent="brand" className={className}>
       {/* Header ──────────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-brand-700 to-brand-500 px-4 py-3">
-        <p className="text-brand-100 text-[10px] font-bold uppercase tracking-widest">Trip summary</p>
+        <p className="text-brand-100 text-xs font-bold uppercasest">Trip summary</p>
         <p className="text-white font-bold text-lg mt-1 leading-tight">{tripName}</p>
         {dateRange && (
           <p className="text-brand-100 text-xs mt-0.5">{dateRange}</p>
@@ -141,17 +139,17 @@ export function SummaryCard({ data, tripId, className }: Props) {
         <div className="flex divide-x divide-gray-100 -mx-1">
           {days > 0 && (
             <div className="flex-1 px-1 text-center">
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Days</p>
+              <p className="text-xs uppercase text-gray-400 font-semibold">Days</p>
               <p className="text-base font-bold text-gray-900 mt-0.5">{days}</p>
             </div>
           )}
           <div className="flex-1 px-1 text-center">
-            <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Travelers</p>
+            <p className="text-xs uppercase text-gray-400 font-semibold">Travelers</p>
             <p className="text-base font-bold text-gray-900 mt-0.5">{travelers}</p>
           </div>
           {islands.length > 0 && (
             <div className="flex-1 px-1 text-center">
-              <p className="text-[10px] uppercase tracking-wide text-gray-400 font-semibold">Islands</p>
+              <p className="text-xs uppercase text-gray-400 font-semibold">Islands</p>
               <p className="text-base font-bold text-gray-900 mt-0.5">{islands.length}</p>
             </div>
           )}
@@ -159,7 +157,7 @@ export function SummaryCard({ data, tripId, className }: Props) {
 
         {/* Islands list when we have them — small inline below the stats */}
         {islands.length > 0 && (
-          <p className="text-[11px] text-gray-500 text-center leading-snug">
+          <p className="text-xs text-gray-500 text-center leading-snug">
             {islands.join(' · ')}
           </p>
         )}
@@ -170,9 +168,9 @@ export function SummaryCard({ data, tripId, className }: Props) {
             <div className="flex items-baseline justify-between gap-3">
               <span className="text-sm font-semibold text-gray-700">Estimated total</span>
               <div className="text-right">
-                <span className="text-2xl font-extrabold text-brand-600 leading-none">{fmtUSD(totalCost)}</span>
+                <span className="text-2xl font-bold text-brand-600 leading-none">{fmtUSD(totalCost)}</span>
                 {perPerson != null && (
-                  <p className="text-[11px] text-gray-500 mt-0.5">{fmtUSD(perPerson)} per person</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{fmtUSD(perPerson)} per person</p>
                 )}
               </div>
             </div>
@@ -193,12 +191,11 @@ export function SummaryCard({ data, tripId, className }: Props) {
                     )
                   })}
                 </div>
-                <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-[11px]">
+                <ul className="flex flex-wrap gap-x-3 gap-y-1 mt-2 text-xs">
                   {segments.map(s => {
                     const pct = Math.round((s.amount / breakdownTotal) * 100)
                     return (
-                      <li key={s.label} className="inline-flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${s.dotColor}`} aria-hidden="true" />
+                      <li key={s.label} className="inline-flex items-center gap-1">
                         <span className="text-gray-600">{s.label}</span>
                         <span className={`font-semibold ${s.textColor}`}>{pct}%</span>
                       </li>

@@ -12,6 +12,20 @@ import {
 } from '@/lib/stay-search-params'
 
 describe('stay search params', () => {
+  test('normalizes public island display names for stay inventory filters', () => {
+    const params = readStaySearchParams({
+      island: 'The Exumas',
+      sort: 'stars',
+    })
+
+    expect(params.island).toBe('Exuma')
+    expect(staySearchUrl(params, { type: 'Villa' })).toBe(
+      '/stays?island=Exuma&type=Villa',
+    )
+
+    expect(readStaySearchParams({ island: 'the-abacos' }).island).toBe('Abaco')
+  })
+
   test('preserves booking context when changing a stay filter', () => {
     const params = readStaySearchParams({
       island: 'Exuma',

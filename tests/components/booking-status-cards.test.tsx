@@ -70,7 +70,7 @@ describe('booking status cards', () => {
     expect(within(stayCard as HTMLElement).getByText('Stay')).toBeInTheDocument()
     expect(within(stayCard as HTMLElement).getByText('Needs support')).toBeInTheDocument()
     expect(within(stayCard as HTMLElement).getByText('$1,260 total')).toBeInTheDocument()
-    expect(within(stayCard as HTMLElement).getByText('Provider: LiteAPI')).toBeInTheDocument()
+    expect(within(stayCard as HTMLElement).getByText('Provider: Travel partner')).toBeInTheDocument()
     expect(within(stayCard as HTMLElement).getByText('Booking needs support')).toBeInTheDocument()
     expect(within(stayCard as HTMLElement).getByText(/Do not book again yet/i)).toBeInTheDocument()
     expect(within(stayCard as HTMLElement).getByRole('link', { name: 'Contact support' })).toHaveAttribute(
@@ -106,7 +106,7 @@ describe('booking status cards', () => {
     )
 
     expect(screen.getByText('Pending')).toBeInTheDocument()
-    expect(screen.getByText('Provider confirmation pending')).toBeInTheDocument()
+    expect(screen.getByText('Booking confirmation pending')).toBeInTheDocument()
     expect(screen.getByText(/avoid a duplicate purchase/i)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Ask support to check' })).toHaveAttribute(
       'href',
@@ -121,7 +121,7 @@ describe('booking status cards', () => {
     const browseStays = screen.getByRole('link', { name: 'Browse stays' })
     expect(browseStays).toHaveAttribute('href', '/stays')
     expect(browseStays).toHaveClass('bg-brand-600')
-    expect(browseStays.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(browseStays.querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Compare flights' })).toHaveAttribute('href', '/flights')
     expect(screen.getByRole('link', { name: 'Compare flights' })).toHaveClass('border-gray-300')
     expect(document.body.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)

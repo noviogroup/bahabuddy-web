@@ -1,5 +1,9 @@
 # Baha Buddy Foundation Sync Audit
 
+> **Superseded snapshot.** This document captured the foundation before the June 21 RLS,
+> share/invite, and booking-readiness verification. In particular, its statement that `trips` RLS is
+> disabled is not current. Use the root command center and system architecture.
+
 ## Purpose
 
 This document captures the current foundation state across Baha Buddy Web, Mobile, Admin, and Supabase before new product enhancements are developed.
@@ -111,9 +115,9 @@ Important tables and row counts:
 | `activities` | 0 | enabled | Legacy/curated table, currently empty |
 | `restaurants` | 0 | enabled | Legacy/curated table, currently empty |
 | `flights` | 0 | enabled | Curated flight deals/packages |
-| `google_places` | 476 | enabled | Cached Google Places data |
-| `google_place_reviews` | 1,724 | enabled | Cached Google reviews |
-| `google_place_photos` | 0 | enabled | Google photo references/cached URLs |
+| `google_places` | 476 | enabled | Supabase cached/source place inventory |
+| `google_place_reviews` | 1,724 | enabled | Cached provider reviews |
+| `google_place_photos` | 0 | enabled | Cached provider photo references/storage URLs |
 | `tripadvisor_locations` | 331 | enabled | TripAdvisor hotel/restaurant data |
 | `place_photos` | 15 | enabled | Generic place photos table exists |
 | `place_reviews` | 3 | enabled | Generic place reviews table exists |
@@ -135,9 +139,9 @@ Important tables and row counts:
 | `api_usage_log` | 0 | enabled | API usage tracking |
 | `ai_usage_log` | 194 | enabled | AI usage tracking |
 | `ai_usage_logs` | 0 | enabled | Possible duplicate/older AI usage table |
-| `airports` | 9,030 | enabled | Duffel airport catalog |
-| `cities` | 255 | enabled | Duffel city catalog |
-| `airlines` | 777 | enabled | Duffel airline catalog |
+| `airports` | 9,030 | enabled | Airport catalog metadata |
+| `cities` | 255 | enabled | City catalog metadata |
+| `airlines` | 777 | enabled | Airline catalog metadata |
 
 ---
 
@@ -161,7 +165,7 @@ The platform has multiple source-specific and legacy tables operating side by si
 Different surfaces may show different data:
 
 - Web hotel/restaurant directories use TripAdvisor data.
-- Chat tools may still use Google Places data.
+- Chat tools may still use Supabase cached place inventory as source/enrichment data.
 - Mobile uses TripAdvisor service for hotel/restaurant screens.
 - Admin does not yet manage a canonical place record.
 - Legacy `hotels`, `restaurants`, and `activities` tables are empty and can confuse future development.
@@ -263,7 +267,7 @@ Do not delete them. They provide source history, raw external metadata, ratings,
 | Trip activities | Yes conceptually | Needs test | Needs visibility | `trip_activities` has 0 rows | Weak/underused |
 | Trip sharing | Partial web/share page | Yes recent mobile work | No ops view | `share_links` | Needs deployment/test |
 | Trip invites | Partial web/social layer | Yes recent mobile work | No ops view | `trip_invitations`, `trip_collaborators` | Needs deployment/test |
-| Google Places | Used by chat/tools | Used historically | No canonical admin control | `google_places` | Source table only |
+| Supabase cached place inventory | Used by chat/tools as source/enrichment | Used by older flows as source/enrichment | Canonical admin control comes from `places`; source rows should not be described as traveler-facing inventory | `google_places` legacy source table | Source/enrichment only |
 | TripAdvisor hotels/restaurants | Yes web directories | Yes mobile screens | No canonical admin control | `tripadvisor_locations` | Source table only |
 | Legacy hotel/restaurant/activity tables | Likely not primary | Likely not primary | Maybe old references | empty tables | Should deprecate or convert |
 | Sanity content | Yes | Yes | Studio external | Sanity | Good but separate from places |
@@ -293,30 +297,25 @@ Notes:
 - Confirm which functions are still called by mobile/web.
 - Remove or retire unused functions only after call-site audit.
 
-### Google Places
+### Supabase Cached Place Inventory
 
-- `google-places-sync`
-- `google-places-photo`
-- `google-places-photo-sync`
+- Backend-only cached source refresh functions, including older provider-named jobs such as `google-places-sync`, `google-places-photo`, and `google-places-photo-sync`.
 
 Notes:
 
-- Google Places is active and has 476 cached rows.
-- Should become source/enrichment feed into canonical `places`.
+- Cached place inventory is active and has 476 provider-enriched rows.
+- It should become source/enrichment feed into canonical `places`.
 
-### Flights / Duffel
+### Flights / LiteAPI and Legacy Catalog Metadata
 
-- `flights-proxy`
-- `duffel-catalog-sync`
-- `airport-autocomplete`
-- `duffel-create-order`
-- `duffel-order-management`
-- `duffel-webhook`
+- Active flight search and booking use LiteAPI.
+- Archived non-LiteAPI flight/catalog functions remain in historical inventories only and should not be expanded.
+- `airport-autocomplete` remains relevant for user-friendly route entry.
 
 Notes:
 
-- Airports/cities/airlines catalogs are populated.
-- Flight booking/order stack exists and should be included in parity testing.
+- Airports/cities/airlines catalogs are populated and useful for search UX.
+- LiteAPI is the active flight booking provider. Legacy flight order functions are deprecated and should not be expanded.
 
 ### Hotels / Restaurants
 
@@ -372,11 +371,11 @@ Audit these features across web, mobile, and admin:
 - Restaurant directory
 - Place detail pages
 - TripAdvisor data
-- Google Places data
+- Supabase cached place inventory
 - Mixpanel events
 - AI usage logging
 - Booking flows
-- Stripe/Duffel/hotel/restaurant order flows
+- Stripe/LiteAPI hotel and flight booking flows
 
 Deliverable:
 
@@ -409,7 +408,7 @@ Create and populate:
 Backfill strategy:
 
 1. Backfill TripAdvisor hotels/restaurants into `places`.
-2. Backfill Google Places into `places`.
+2. Backfill cached provider-enrichment rows into `places`.
 3. Deduplicate by normalized name + island + coordinates.
 4. Link source rows through `place_sources`.
 5. Create app-facing views.
@@ -429,7 +428,7 @@ Move app reads gradually:
 
 - Web `/hotels` and `/restaurants` from `tripadvisor_locations` to `v_places_*`.
 - Mobile TripAdvisor screens from `tripadvisor_locations` to `v_places_*`.
-- Chat tools from `google_places` to `v_places_*`.
+- Chat tools from source inventory tables to `v_places_*`.
 - Detail pages use canonical `places.id` or stable slug.
 
 Do not break source-specific pages until parity is proven.
@@ -457,7 +456,7 @@ Mark these as source/legacy:
 - `hotels`
 - `restaurants`
 - `activities`
-- direct app queries to `google_places`
+- older source-table read paths for cached/source inventory such as `google_places`
 - direct app queries to `tripadvisor_locations`
 
 Eventually archive or convert once the canonical layer is stable.
@@ -493,4 +492,4 @@ Before writing migrations, decide:
 
 External services feed Baha Buddy. They do not define Baha Buddy.
 
-Google Places, TripAdvisor, Sanity, Duffel, LiteAPI, Viator, and partner data should enrich the platform. The product-facing source of truth should be Baha Buddy's own canonical tables and admin-controlled records.
+Supabase cached place inventory, TripAdvisor, Sanity, LiteAPI, Viator, legacy catalog metadata, and partner data should enrich the platform. The product-facing source of truth should be Baha Buddy's own canonical tables and admin-controlled records.

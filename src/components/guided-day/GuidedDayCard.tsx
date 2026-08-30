@@ -12,11 +12,10 @@ export default function GuidedDayCard({ plan }: GuidedDayCardProps) {
     <article className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-brand-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
+          <p className="inline-flex items-center gap-2 text-xs font-bold uppercase text-brand-700">
             {plan.area}
           </p>
-          <h3 className="mt-2 text-xl font-extrabold text-night">{plan.title}</h3>
+          <h3 className="mt-2 text-xl font-bold text-night">{plan.title}</h3>
         </div>
         <p className="rounded-full bg-gray-100 px-3 py-1 text-sm font-bold text-brand-700">
           ${plan.base_price.toFixed(2)}

@@ -95,7 +95,7 @@ describe('DirectTripItemActions', () => {
 
     const button = screen.getByRole('button', { name: 'Add to trip' })
     expect(button).toHaveClass('bg-brand-600')
-    expect(button.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(button.querySelector('.bg-gold-400')).toBeNull()
     fireEvent.click(button)
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))

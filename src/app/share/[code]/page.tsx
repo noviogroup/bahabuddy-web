@@ -1,15 +1,25 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
-import { BahaLogo } from '@/components/ui'
 import { Trip, TripFlight, TripAccommodation, TripActivity } from '@/types/database'
 import type { Metadata } from 'next'
+import { Children, type ReactNode } from 'react'
+import MarketplacePublicHeader from '@/components/marketplace/MarketplacePublicHeader'
+import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
+import Footer from '@/components/Footer'
 
 export const dynamic = 'force-dynamic'
 
 function fmt(d: string | null) {
   if (!d) return '—'
+  const dateOnlyMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d)
+  if (dateOnlyMatch) {
+    const [, year, month, day] = dateOnlyMatch
+    return new Date(Number(year), Number(month) - 1, Number(day))
+      .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  }
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
@@ -20,8 +30,23 @@ function fmtDatetime(d: string | null) {
   })
 }
 
+function fmtMoney(amount: number | null) {
+  if (amount == null) return null
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(amount)
+}
+
+async function createShareClient() {
+  const adminClient = createAdminClient()
+  if (adminClient) return adminClient
+  return createClient()
+}
+
 export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
-  const supabase = await createClient()
+  const supabase = await createShareClient()
   const { data: shareLink } = await supabase
     .from('share_links')
     .select('trip_id')
@@ -45,7 +70,7 @@ export async function generateMetadata({ params }: { params: { code: string } })
 }
 
 export default async function SharePage({ params }: { params: { code: string } }) {
-  const supabase = await createClient()
+  const supabase = await createShareClient()
 
   const { data: shareLink } = await supabase
     .from('share_links')
@@ -59,15 +84,33 @@ export default async function SharePage({ params }: { params: { code: string } }
   const isExpired = shareLink.expires_at ? new Date(shareLink.expires_at) < new Date() : false
   if (isExpired) notFound()
 
-  // Increment view count via raw SQL increment (fire-and-forget)
+  // Valid public share links expose a read-only trip snapshot. The service role
+  // is server-only and keeps RLS strict for normal anonymous trip access.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase.rpc('increment_share_view' as any, { code: params.code }).then(() => {})
 
   const [tripRes, flightsRes, accRes, activitiesRes] = await Promise.all([
-    supabase.from('trips').select('*').eq('id', shareLink.trip_id).single(),
-    supabase.from('trip_flights').select('*').eq('trip_id', shareLink.trip_id).order('departure_at'),
-    supabase.from('trip_accommodations').select('*').eq('trip_id', shareLink.trip_id).order('check_in'),
-    supabase.from('trip_activities').select('*').eq('trip_id', shareLink.trip_id).order('day_number').order('sort_order'),
+    supabase
+      .from('trips')
+      .select('id,user_id,name,status,date_start,date_end,islands,party_type,party_size,budget_estimate,budget_actual,hero_image_url,created_at,updated_at')
+      .eq('id', shareLink.trip_id)
+      .single(),
+    supabase
+      .from('trip_flights')
+      .select('id,trip_id,origin,destination,departure_at,arrival_at,airline,booking_reference,price,created_at')
+      .eq('trip_id', shareLink.trip_id)
+      .order('departure_at'),
+    supabase
+      .from('trip_accommodations')
+      .select('id,trip_id,name,island,check_in,check_out,price_per_night,guests,booking_reference,created_at')
+      .eq('trip_id', shareLink.trip_id)
+      .order('check_in'),
+    supabase
+      .from('trip_activities')
+      .select('id,trip_id,day_number,time_slot,activity_name,activity_type,notes,sort_order,created_at')
+      .eq('trip_id', shareLink.trip_id)
+      .order('day_number')
+      .order('sort_order'),
   ])
 
   if (!tripRes.data) notFound()
@@ -78,122 +121,205 @@ export default async function SharePage({ params }: { params: { code: string } }
   const activities = (activitiesRes.data ?? []) as TripActivity[]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-brand-50 to-brand-50">
-      <header className="bg-white/80 backdrop-blur border-b border-brand-100 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
-          <BahaLogo href="/" size="sm" />
+    <div className="min-h-screen bg-offwhite text-night">
+      <MarketplacePublicHeader />
+      <CompactPageHeader
+        eyebrow="Shared trip"
+        title={trip.name}
+        subtitle="A read-only Bahamas trip preview from Baha Buddy."
+        crumbs={[
+          { href: '/', label: 'Home' },
+          { label: 'Shared trip' },
+        ]}
+        actions={(
           <Link
-            href="/login"
-            className="text-sm text-brand-600 hover:text-brand-700 font-medium"
+            href="/dashboard"
+            className="rounded-md bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700"
           >
-            Plan your own trip →
+            Plan your own trip
           </Link>
-        </div>
-      </header>
-
-      <main className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        {isCollaborative && (
-          <div className="bg-purple-50 border border-purple-200 rounded-2xl px-5 py-4">
-            <p className="font-semibold text-purple-900 text-sm">You&apos;ve been invited to view this trip</p>
-            <p className="text-purple-600 text-xs mt-0.5">Read-only access — you can see all the details but can&apos;t make changes.</p>
-          </div>
         )}
+      />
 
-        <div className="bg-white rounded-2xl shadow-sm border border-brand-100 overflow-hidden">
-          {trip.hero_image_url && (
-            <div className="relative h-48">
-              <Image
-                src={trip.hero_image_url}
-                alt={trip.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 42rem"
-                unoptimized
-              />
+      <main className="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.55fr)]">
+        <section className="space-y-6">
+          {isCollaborative && (
+            <div className="rounded-3xl border border-brand-100 bg-white px-5 py-4 shadow-soft">
+              <p className="text-sm font-bold text-night">You have been invited to view this trip</p>
+              <p className="mt-1 text-sm leading-6 text-charcoal">This preview is read-only, so you can review the plan without changing the traveler&apos;s itinerary.</p>
             </div>
           )}
-          <div className="p-6">
-            <h1 className="text-2xl font-bold text-gray-900">{trip.name}</h1>
-            {(trip.date_start || trip.date_end) && (
-              <p className="text-gray-500 mt-1">{fmt(trip.date_start)} → {fmt(trip.date_end)}</p>
-            )}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {trip.islands?.map(island => (
-                <span key={island} className="bg-brand-50 text-brand-700 text-sm px-3 py-1 rounded-full">
-                  {island}
-                </span>
-              ))}
-            </div>
-            <div className="flex gap-4 mt-4 text-sm text-gray-500">
-              <span>{trip.party_size} {trip.party_type}</span>
-              <span className="capitalize">{trip.status}</span>
-            </div>
-          </div>
-        </div>
 
-        {flights.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Flights</h2>
-            <div className="space-y-3">
-              {flights.map(f => (
-                <div key={f.id} className="bg-white rounded-xl border border-brand-100 p-4">
-                  <div className="flex items-center gap-3">
-                    <span className="font-semibold">{f.origin}</span>
-                    <span className="text-gray-400">to</span>
-                    <span className="font-semibold">{f.destination}</span>
-                    {f.airline && <span className="text-sm text-gray-500 ml-auto">{f.airline}</span>}
-                  </div>
-                  <div className="flex gap-4 mt-1 text-sm text-gray-500">
-                    {f.departure_at && <span>{fmtDatetime(f.departure_at)}</span>}
-                  </div>
+          <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-soft">
+            {trip.hero_image_url && (
+              <div className="relative h-72 md:h-96">
+                <Image
+                  src={trip.hero_image_url}
+                  alt={trip.name}
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 1024px) 100vw, 44rem"
+                  unoptimized
+                  priority
+                />
+                <div className="absolute inset-x-0 bottom-0 bg-hero-bottom p-5 text-white">
+                  <p className="text-xs font-bold uppercase text-gold-300">Buddy trip preview</p>
+                  <p className="mt-1 text-2xl font-bold">{trip.name}</p>
                 </div>
-              ))}
+              </div>
+            )}
+            <div className="grid gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+              <TripFact label="Dates" value={trip.date_start || trip.date_end ? `${fmt(trip.date_start)} to ${fmt(trip.date_end)}` : 'Dates flexible'} />
+              <TripFact label="Travelers" value={`${trip.party_size} ${trip.party_type}`} />
+              <TripFact label="Status" value={trip.status} />
+              <TripFact label="Budget" value={fmtMoney(trip.budget_estimate) ?? 'Not set'} />
             </div>
-          </section>
-        )}
+            {trip.islands?.length > 0 && (
+              <div className="border-t border-gray-100 px-5 py-4">
+                <p className="mb-2 text-xs font-bold uppercase text-gray-500">Islands</p>
+                <div className="flex flex-wrap gap-2">
+                  {trip.islands.map(island => (
+                    <span key={island} className="rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">
+                      {island}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
-        {accommodations.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Where we&apos;re staying</h2>
-            <div className="space-y-3">
-              {accommodations.map(a => (
-                <div key={a.id} className="bg-white rounded-xl border border-brand-100 p-4">
-                  <h3 className="font-semibold text-gray-900">{a.name}</h3>
-                  {a.island && <p className="text-sm text-gray-500">{a.island}</p>}
-                  {(a.check_in || a.check_out) && (
-                    <p className="text-sm text-gray-500 mt-1">{fmt(a.check_in)} → {fmt(a.check_out)}</p>
+          <SharedSection title="Flights" empty="No flights have been added to this shared trip yet." count={flights.length}>
+            {flights.map(f => (
+              <div key={f.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-soft">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-gray-500">{f.airline ?? 'Flight'}</p>
+                    <p className="mt-1 text-lg font-bold text-night">{f.origin} to {f.destination}</p>
+                  </div>
+                  {fmtMoney(f.price) && (
+                    <p className="self-start rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">{fmtMoney(f.price)}</p>
                   )}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {activities.length > 0 && (
-          <section>
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">The plan</h2>
-            <div className="bg-white rounded-xl border border-brand-100 p-4 space-y-3">
-              {activities.map(a => (
-                <div key={a.id} className="flex gap-2 text-sm">
-                  <span className="text-gray-400 shrink-0">Day {a.day_number} · {a.time_slot}</span>
-                  <span className="text-gray-700">{a.activity_name}</span>
+                <div className="mt-4 grid gap-3 text-sm text-charcoal sm:grid-cols-2">
+                  <TripFact label="Departure" value={fmtDatetime(f.departure_at)} compact />
+                  <TripFact label="Arrival" value={fmtDatetime(f.arrival_at)} compact />
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
+              </div>
+            ))}
+          </SharedSection>
 
-        <div className="bg-brand-600 rounded-2xl p-6 text-center text-white">
-          <p className="font-semibold text-lg mb-1">Plan your own Bahamas trip</p>
-          <p className="text-brand-200 text-sm mb-4">AI-powered itineraries, deals, and more.</p>
-          <Link
-            href="/"
-            className="inline-block bg-white text-brand-700 font-medium px-6 py-2.5 rounded-full hover:bg-brand-50 transition-colors text-sm"
-          >
-            Get Baha Buddy
-          </Link>
-        </div>
+          <SharedSection title="Where we are staying" empty="No stays have been added to this shared trip yet." count={accommodations.length}>
+            {accommodations.map(a => (
+              <div key={a.id} className="rounded-2xl border border-gray-200 bg-white p-4 shadow-soft">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-night">{a.name}</h3>
+                    {a.island && <p className="mt-1 text-sm font-semibold text-charcoal">{a.island}</p>}
+                  </div>
+                  {fmtMoney(a.price_per_night) && (
+                    <p className="self-start rounded-full bg-brand-50 px-3 py-1 text-sm font-bold text-brand-700">{fmtMoney(a.price_per_night)} nightly</p>
+                  )}
+                </div>
+                <div className="mt-4 grid gap-3 text-sm text-charcoal sm:grid-cols-3">
+                  <TripFact label="Check in" value={fmt(a.check_in)} compact />
+                  <TripFact label="Check out" value={fmt(a.check_out)} compact />
+                  <TripFact label="Guests" value={a.guests ? String(a.guests) : 'Not set'} compact />
+                </div>
+              </div>
+            ))}
+          </SharedSection>
+
+          <SharedSection title="The plan" empty="No itinerary stops have been added to this shared trip yet." count={activities.length}>
+            <div className="rounded-3xl border border-gray-200 bg-white p-4 shadow-soft">
+              <div className="space-y-3">
+                {activities.map(a => (
+                  <div key={a.id} className="grid gap-2 rounded-2xl bg-offwhite p-4 sm:grid-cols-[8rem_minmax(0,1fr)]">
+                    <p className="text-xs font-bold uppercase text-brand-700">Day {a.day_number} {a.time_slot}</p>
+                    <div>
+                      <p className="font-bold text-night">{a.activity_name}</p>
+                      {a.notes && <p className="mt-1 text-sm leading-6 text-charcoal">{a.notes}</p>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </SharedSection>
+        </section>
+
+        <aside className="space-y-4 lg:sticky lg:top-32 lg:self-start">
+          <div className="rounded-3xl border border-gray-200 bg-white p-5 shadow-soft">
+            <p className="text-xs font-bold uppercase text-brand-700">Trip snapshot</p>
+            <div className="mt-4 space-y-3">
+              <TripFact label="Flights" value={String(flights.length)} compact />
+              <TripFact label="Stays" value={String(accommodations.length)} compact />
+              <TripFact label="Plan items" value={String(activities.length)} compact />
+            </div>
+          </div>
+
+          <div className="rounded-3xl bg-brand-600 p-5 text-white shadow-card">
+            <p className="text-lg font-bold">Build your own Bahamas trip</p>
+            <p className="mt-2 text-sm leading-6 text-brand-100">Use Buddy to compare islands, plan stays, check flights, and turn ideas into a trip.</p>
+            <Link
+              href="/"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-md bg-white px-4 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:bg-brand-50"
+            >
+              Start planning
+            </Link>
+          </div>
+        </aside>
       </main>
+
+      <Footer />
     </div>
+  )
+}
+
+function TripFact({
+  label,
+  value,
+  compact = false,
+}: {
+  label: string
+  value: string
+  compact?: boolean
+}) {
+  return (
+    <div className={compact ? '' : 'rounded-2xl bg-offwhite p-3'}>
+      <p className="text-xs font-bold uppercase text-gray-500">{label}</p>
+      <p className={`mt-1 font-bold text-night ${compact ? 'text-sm' : 'text-base'}`}>{value}</p>
+    </div>
+  )
+}
+
+function SharedSection({
+  title,
+  empty,
+  children,
+  count,
+}: {
+  title: string
+  empty: string
+  children: ReactNode
+  count?: number
+}) {
+  const items = Children.toArray(children).filter(Boolean)
+  const itemCount = count ?? items.length
+
+  return (
+    <section>
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="text-xl font-bold text-night">{title}</h2>
+        <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-gray-500 ring-1 ring-gray-200">
+          {itemCount} {itemCount === 1 ? 'item' : 'items'}
+        </span>
+      </div>
+      {items.length > 0 ? (
+        <div className="space-y-3">{items}</div>
+      ) : (
+        <div className="rounded-3xl border border-dashed border-gray-300 bg-white p-5 text-sm font-semibold text-charcoal">
+          {empty}
+        </div>
+      )}
+    </section>
   )
 }

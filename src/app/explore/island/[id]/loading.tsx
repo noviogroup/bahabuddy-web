@@ -33,7 +33,7 @@ export default function Loading() {
       </section>
 
       <main className="max-w-6xl mx-auto px-4 py-10">
-        <Skeleton className="mb-10 aspect-[16/7] min-h-[240px] w-full rounded-baha-xl" />
+        <Skeleton className="mb-10 h-64 w-full rounded-baha-xl sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]" />
 
         <div className="grid grid-cols-3 gap-4 mb-10 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
           {Array.from({ length: 3 }).map((_, i) => (

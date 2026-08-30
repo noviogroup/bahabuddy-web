@@ -51,7 +51,7 @@ describe('TripContextChips brand CTA states', () => {
     const update = screen.getByRole('button', { name: /Update/i })
     expect(update).toHaveClass('bg-brand-600')
     expect(update).toHaveClass('hover:bg-brand-700')
-    expect(update.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(update.querySelector('.bg-gold-400')).not.toBeInTheDocument()
 
     fireEvent.click(screen.getByLabelText('Close'))
     fireEvent.click(screen.getByRole('button', { name: '$$' }))
@@ -59,6 +59,6 @@ describe('TripContextChips brand CTA states', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: /Luxury/i })).toBeInTheDocument())
     fireEvent.click(screen.getByRole('button', { name: /Luxury/i }))
     expect(screen.getByRole('button', { name: /Luxury/i })).toHaveClass('border-brand-600')
-    expect(screen.getByRole('button', { name: /Luxury/i }).querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Luxury/i }).querySelector('.bg-gold-400')).not.toBeInTheDocument()
   })
 })

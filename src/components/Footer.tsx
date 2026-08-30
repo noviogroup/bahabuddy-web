@@ -14,6 +14,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
   {
     title: 'Travel products',
     links: [
+      { href: '/search', label: 'Search' },
       { href: '/stays', label: 'Stays' },
       { href: '/flights', label: 'Flights' },
       { href: '/explore', label: 'Explore' },

@@ -16,6 +16,7 @@ const DEFAULT_ROUTES = [
 const baseUrl = (process.env.BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 const stamp = process.env.SCREENSHOT_STAMP ?? new Date().toISOString().replace(/[:.]/g, '-')
 const outputDir = path.resolve(process.cwd(), '..', 'docs', 'visual-review', 'screenshots', stamp, 'web')
+const settleMs = Number(process.env.SCREENSHOT_SETTLE_MS ?? '4000')
 const requestedRoutes = (process.env.SCREENSHOT_ROUTES ?? '')
   .split(',')
   .map((route) => route.trim())
@@ -101,6 +102,33 @@ async function scrollForLazyImages(page) {
   await page.waitForTimeout(600)
 }
 
+async function waitForMedia(page) {
+  await page.evaluate(async () => {
+    const images = Array.from(document.images)
+    await Promise.allSettled(
+      images.map((image) => {
+        if (image.complete && image.naturalWidth > 0) return undefined
+        return image.decode?.().catch(() => undefined)
+      }),
+    )
+    await Promise.allSettled(
+      Array.from(document.querySelectorAll('video')).map(
+        (video) =>
+          new Promise((resolve) => {
+            if (video.readyState >= 2) {
+              resolve(undefined)
+              return
+            }
+            const done = () => resolve(undefined)
+            video.addEventListener('loadeddata', done, { once: true })
+            video.addEventListener('error', done, { once: true })
+            setTimeout(done, 2000)
+          }),
+      ),
+    )
+  })
+}
+
 const captures = []
 const failures = []
 
@@ -117,6 +145,8 @@ for (const route of routes) {
     }
 
     await scrollForLazyImages(page)
+    await waitForMedia(page).catch(() => undefined)
+    await page.waitForTimeout(settleMs)
     await page.screenshot({ path: filePath, fullPage: true })
 
     captures.push({

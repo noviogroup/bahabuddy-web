@@ -153,7 +153,7 @@ What's still using `<img>`:
 
 ### When/whether to do D.7b
 
-The blocker is that LiteAPI, Viator, Google Places, and Supabase Storage all serve photos from different CDN domains. Each one has to be added to `next.config.mjs`'s `remotePatterns` before `next/image` can fetch it. Wrong pattern = 404 on every image.
+The blocker is that LiteAPI, Viator/activity providers, backend-enriched place photo hosts, and Supabase Storage can all serve photos from different CDN domains. Each one has to be added to `next.config.mjs`'s `remotePatterns` before `next/image` can fetch it. Wrong pattern = 404 on every image.
 
 To do D.7b safely:
 
@@ -172,7 +172,7 @@ To do D.7b safely:
        // Add the captured ones, e.g.:
        { protocol: 'https', hostname: 'static.cupid.travel' },     // LiteAPI
        { protocol: 'https', hostname: 'media.tacdn.com' },         // Viator
-       { protocol: 'https', hostname: 'lh3.googleusercontent.com' }, // Google Places
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' }, // backend-enriched place photos
      ],
    },
    ```
@@ -182,7 +182,7 @@ To do D.7b safely:
 
 If any URL 404s after the conversion, either the pattern is wrong or the API returned an unexpected host — log it and add the host.
 
-**Recommended approach:** ship D.7b in a separate branch and test against a real Duffel/LiteAPI/Viator sandbox before merging. Don't combine with other changes.
+**Recommended approach:** ship D.7b in a separate branch and test against a real LiteAPI/Viator sandbox before merging. Don't combine with other changes.
 
 ---
 

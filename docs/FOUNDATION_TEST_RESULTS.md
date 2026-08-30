@@ -79,7 +79,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
 | 3.1 Accommodation CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripAccommodation` model implemented with full CRUD in `supabase_service.dart`. `nights` computed from check-in/out dates. `totalCost` prefers stored `total_price`, falls back to `nightly_price × nights`. `isBooked` requires non-empty `booking_reference`. 8 unit tests pass. Records tied to `trip_id`. | |
-| 3.2 Flight CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripFlight` model implemented. Duffel offer/PNR discrimination: `off_*` IDs = not booked; `ord_*` IDs = booked. `route` formats with arrow separator. `canConfirmFromTrip` requires offer ID and no booking yet. 5 unit tests pass. Records tied to `trip_id`. | |
+| 3.2 Flight CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripFlight` model implemented. Provider offer/PNR discrimination: `off_*` IDs = not booked; booked rows carry a provider booking reference/PNR. `route` formats with arrow separator. `canConfirmFromTrip` requires offer ID and no booking yet. 5 unit tests pass. Records tied to `trip_id`. | |
 | 3.3 Activity CRUD | Flutter Engineer | Code review + unit tests | 2026-06-07 | Pass | `TripActivity` model implemented. `TripItems.activitiesByDay` correctly buckets by `day_number`. `isEmpty`/`isNotEmpty`/`totalItems`/`estimatedTotal` aggregations all pass unit tests. Records tied to `trip_id`. | |
 
 ---
@@ -125,8 +125,8 @@ When you run a test, add a row to the relevant table below. Use this format:
 | 7.1 Web hotel directory | Web Developer | Local + production + Supabase | 2026-06-07 | Pass | 103 hotels in `tripadvisor_locations` (all with ratings + photos). `/hotels` page queries by `category = 'restaurants'` → corrected: `category = 'hotels'`. Island filtering supported. Detail pages at `/hotels/[id]`. **Fix applied:** `/hotels` was incorrectly in middleware `protectedPaths` (auth-walled a public SEO page) — removed. Production site was redirecting to login; will be public after next deploy. | |
 | 7.2 Web restaurant directory | Web Developer | Local + Supabase | 2026-06-07 | Pass | 114 restaurants in `tripadvisor_locations` (all with ratings + photos). `/restaurants` page queries by `category = 'restaurants'`. Island + cuisine filtering supported. Detail pages at `/restaurants/[id]`. Route builds locally. **404 on deployed site** because production build was broken (ESLint errors in `RichCards.tsx` — now fixed). Will work after next deploy. | |
 | 7.3 Mobile hotel/restaurant screens | Flutter Engineer | Code review | 2026-06-07 | Pass | `HotelsScreen` and `RestaurantsScreen` both implemented, pulling from `tripadvisor_locations` table (BAH-99 seeded 103 hotels, 114 restaurants, 16/16 islands). Island filter chip bar on both screens. Cuisine filter on restaurants. Pull-to-refresh. `RefreshIndicator` + `CustomScrollView`. Graceful empty/loading states. Detail views available. Analytics events tracked. | |
-| 7.4 Google Places chat recommendation | Flutter Engineer | Code review | 2026-06-07 | Pass | `places_service.dart` implemented. `claude-chat-proxy` Edge Function has 9 tools including Google Places lookup. Chat provider handles rich card rendering (`place`, `hotel`, `restaurant`, `attraction` card types). `ChatMessage.fromJson` normalizes card_data shape variants (Map, List, JSON string) — 7 unit tests pass. | |
-| 7.5 Canonical places migration readiness | | | | Skip | DB Engineer scope — requires schema analysis across TripAdvisor/Google Places tables | |
+| 7.4 Cached place inventory chat recommendation | Flutter Engineer | Code review | 2026-06-07 | Pass | `places_service.dart` implemented. `claude-chat-proxy` Edge Function has 9 tools including Supabase cached/canonical place lookup. Chat provider handles rich card rendering (`place`, `hotel`, `restaurant`, `attraction` card types). `ChatMessage.fromJson` normalizes card_data shape variants (Map, List, JSON string) — 7 unit tests pass. | |
+| 7.5 Canonical places migration readiness | | | | Skip | DB Engineer scope — requires schema analysis across TripAdvisor/source inventory tables | |
 
 ---
 
@@ -135,7 +135,7 @@ When you run a test, add a row to the relevant table below. Use this format:
 | Test ID | Tester | Environment | Date | Result | Notes | Follow-up issue |
 |---------|--------|-------------|------|--------|-------|-----------------|
 | 8.1 Flight search | | | | | | |
-| 8.2 Duffel order flow | | | | | | |
+| 8.2 LiteAPI flight booking lifecycle | | | | | | |
 | 8.3 Hotel booking/prebook flow | | | | | | |
 | 8.4 Stripe checkout test | | | | | | |
 
@@ -157,9 +157,9 @@ When you run a test, add a row to the relevant table below. Use this format:
 |---------|--------|-------------|------|--------|-------|-----------------|
 | 10.1 AI/chat function | Flutter Engineer | Code review | 2026-06-07 | Pass | `ai_service.dart` checks `currentSession?.accessToken` before every call — null token yields `AIStreamEvent.error('Not signed in')`. Each request includes `thread_id` (user-scoped) and optional `trip_id`. SSE streaming implemented via Dio `ResponseBody`. Messages saved via `claude-chat-proxy` Edge Function with auth enforcement. Model: `claude-opus-4-7` (upgraded BAH-93). No evidence of cross-user thread leakage in client code. | |
 | 10.1 AI/chat function (web) | Web Developer | Code review + Supabase | 2026-06-07 | Pass | Web `/api/chat` route uses Anthropic SDK with `claude-opus-4-7`. 9 tools in `src/lib/chat-tools.ts`. SSE streaming. System prompt cached. 19 threads / 346 messages in DB. Blocked on Netlify deployment only (ANTHROPIC_API_KEY not set). | BAH-20 |
-| 10.2 Google Places sync/photo | | | | Skip | DB Engineer / Edge Function scope — not in Flutter mobile surface | |
+| 10.2 Place enrichment sync/photo | | | | Skip | DB Engineer / Edge Function scope — not in Flutter mobile surface | |
 | 10.3 Share/invite functions (web) | Codex | Production Supabase | 2026-06-21 | Pass | `create-share-link`, `resolve-share-link`, and `accept-invite` are live-verified by `npm run verify:share-invite-remote`. The pass also caught and fixed `resolve-share-link` activity snapshot drift; the function now selects stable activity columns and fails loudly on item lookup errors. `resolve-share-link` was redeployed to project `cxcfymhoncysyloutvkh`. | BAH-107 |
-| 10.4 Booking functions | | | | Skip | Booking Expert agent scope — Duffel/LiteAPI/Stripe flows not covered by this pass | |
+| 10.4 Booking functions | | | | Skip | Booking Expert agent scope — LiteAPI/Stripe and historical non-LiteAPI migration paths not covered by this pass | |
 
 ---
 

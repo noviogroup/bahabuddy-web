@@ -17,7 +17,7 @@ const initialProfile = {
 }
 
 describe('ProfileForm brand CTA', () => {
-  test('uses the brand primary save action and gold accent', () => {
+  test('uses the brand primary save action without a decorative dot', () => {
     const { container } = render(<ProfileForm initial={initialProfile} />)
 
     fireEvent.change(screen.getByLabelText('Display name'), {
@@ -27,7 +27,7 @@ describe('ProfileForm brand CTA', () => {
     const save = screen.getByRole('button', { name: /Save changes/i })
     expect(save).toHaveClass('bg-brand-600')
     expect(save).toHaveClass('hover:bg-brand-700')
-    expect(container.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(save.querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(container.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)
   })
 })

@@ -28,7 +28,7 @@ export default function FaqAccordion({ faqs }: Props) {
     <div className="space-y-6">
       {Array.from(grouped.entries()).map(([category, items]) => (
         <div key={category}>
-          <h3 className="text-sm font-bold text-charcoal uppercase tracking-wider mb-3">
+          <h3 className="text-sm font-bold text-charcoal uppercaser mb-3">
             {category}
           </h3>
           <div className="divide-y divide-gray-200 rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">

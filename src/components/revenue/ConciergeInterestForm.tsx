@@ -30,11 +30,10 @@ export default function ConciergeInterestForm() {
       </p>
 
       <div>
-        <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase tracking-wide">
-          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+        <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase">
           Concierge request
         </p>
-        <h3 className="mt-2 text-2xl font-extrabold text-night">Send your trip for review</h3>
+        <h3 className="mt-2 text-2xl font-bold text-night">Send your trip for review</h3>
         <p className="mt-2 text-sm text-charcoal leading-relaxed">
           Share the basic details. The team can follow up with payment, questions, and next steps
           while Stripe checkout is being connected.

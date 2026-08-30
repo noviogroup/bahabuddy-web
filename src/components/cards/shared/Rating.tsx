@@ -23,7 +23,7 @@ interface Props {
 }
 
 const SIZES = {
-  sm: { text: 'text-[11px]' },
+  sm: { text: 'text-xs' },
   md: { text: 'text-xs' },
   lg: { text: 'text-sm' },
 } as const
@@ -45,7 +45,7 @@ export function Rating({
 
   return (
     <span className={`inline-flex items-center gap-1 ${className}`}>
-      <span className={`${labelColor} font-extrabold ${s.text}`}>Rating {display}</span>
+      <span className={`${labelColor} font-bold ${s.text}`}>Rating {display}</span>
       {showReviews && (
         <span className={`text-gray-500 ${s.text}`}>
           ({count!.toLocaleString()})

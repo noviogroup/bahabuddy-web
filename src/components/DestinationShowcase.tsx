@@ -141,10 +141,10 @@ export default function DestinationShowcase({ attractions }: Props) {
     <section className="py-24 bg-stone-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-brand-600 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-600 text-sm font-semiboldst uppercase mb-3">
             Explore the Bahamas
           </p>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
             700+ Islands to Discover
           </h2>
           <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">
@@ -169,7 +169,6 @@ export default function DestinationShowcase({ attractions }: Props) {
                   alt={attraction.name}
                   title={attraction.name}
                   eyebrow={attraction.category}
-                  description="Destination details are available. Place image is not available yet."
                   className="aspect-video"
                   imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
                   priority={usingFallbackAttractions}
@@ -223,7 +222,7 @@ export default function DestinationShowcase({ attractions }: Props) {
         </div>
 
         <div className="text-center mt-12">
-          <p className="text-gray-400 mb-5 text-sm tracking-wide">
+          <p className="text-gray-400 mb-5 text-sm">
             Discover all destinations in the Baha Buddy app
           </p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">

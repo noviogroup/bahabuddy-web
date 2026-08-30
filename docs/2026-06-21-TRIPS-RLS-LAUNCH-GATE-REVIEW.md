@@ -1,7 +1,7 @@
 # Trips RLS Launch Gate Review - June 21, 2026
 
 Review time: June 21, 2026, 07:47 EDT
-Updated: June 21, 2026, 11:10 EDT
+Updated: June 23, 2026, 17:47 EDT
 Scope: web Supabase migration set and launch-readiness blocker for `public.trips`
 
 ## Executive Status
@@ -116,13 +116,22 @@ The verifier found and fixed two verifier-side issues while being built: unconfi
 
 ## Remaining App-Level Validation
 
-The catalog state, core RLS behavior, share/invite behavior, and web trip-list app-session behavior are now proven. The remaining trips/security checks are mobile app-level flows:
+June 23 documentation audit update: the mobile app-level flows listed in the original June 21 version were completed in the follow-up mobile trip visibility review.
+
+Now proven:
 
 - owned trip list loading in the mobile app
 - accepted collaborator trip visibility in the mobile app
 - unrelated trip non-visibility in the mobile app
-- invite acceptance returning to the correct mobile trip surface
+- invite acceptance returning to `/trip/:tripId` instead of `/my-trip`
+- iOS simulator app-session verification for trip-list visibility
+- iOS simulator app-session verification for invite acceptance return behavior through the live `accept-invite` path
+
+Remaining trips/security launch scope:
+
+- physical-device invite acceptance smoke during device QA
+- broader visual QA across public web, authenticated web, admin, and mobile
 
 ## Decision
 
-The table-level trips RLS launch gate, core owner/collaborator behavior, share/invite behavior, and web trip-list app-session behavior are now live-verified. Do not mark the broader trips/security launch gate complete until mobile trip-list behavior is exercised through the actual app surface.
+The table-level trips RLS launch gate, core owner/collaborator behavior, share/invite behavior, web trip-list app-session behavior, and mobile simulator trip-list/invite-return behavior are live-verified. Do not mark the broader trips/security launch gate fully complete until physical-device invite smoke and current visual QA are captured.

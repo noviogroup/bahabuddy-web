@@ -9,10 +9,9 @@ import { getHotels } from '@/lib/chat-tools'
  * `getHotels` executor with the same arg shape. Behaviour parity with
  * chat is guaranteed.
  *
- * Current data source: `google_places` filtered by type=lodging
- * (decision §1 in chat-tools.ts). Will swap to LiteAPI when a web-side
- * hotels-stays-proxy ships — at that point check_in/check_out dates
- * become real inputs.
+ * Current data source: canonical Supabase `hotels` inventory for browse
+ * quality. Live rates and booking still run through the LiteAPI-backed
+ * booking routes.
  *
  * Auth: required (belt + suspenders alongside (dashboard) layout gate).
  *

@@ -31,6 +31,7 @@ import type {
   SanitySiteSettings,
   SanitySocialVideo,
   SanityTravelerStory,
+  SanityContentPage,
 } from './types'
 
 // ─── Article ────────────────────────────────────────────────────────────────
@@ -41,33 +42,45 @@ const ARTICLE_CARD_PROJECTION = /* groq */ `
   title,
   excerpt,
   category,
-  "imageUrl": heroImage.asset->url,
+  "imageUrl": select(
+    heroImage.rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(heroImage.permittedChannels, [])
+      => coalesce(heroImage.asset->url, heroImage.externalUrl),
+    null
+  ),
+  "heroImage": heroImage {
+    "url": select(
+      rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(permittedChannels, [])
+        => coalesce(asset->url, externalUrl),
+      null
+    ), alt, caption, credit, sourceUrl,
+    subjectIdentity, rightsStatus, licenseName
+  },
   readTimeMinutes,
   publishedAt,
   "featured": coalesce(featured, false)
 `
 
 const ARTICLES_QUERY = /* groq */ `
-  *[_type == "article" && !(_id in path("drafts.**"))] | order(publishedAt desc) {
+  *[_type == "article" && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(publishedAt desc) {
     ${ARTICLE_CARD_PROJECTION}
   }
 `
 
 const FEATURED_ARTICLES_QUERY = /* groq */ `
-  *[_type == "article" && featured == true && !(_id in path("drafts.**"))] | order(publishedAt desc) {
+  *[_type == "article" && featured == true && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(publishedAt desc) {
     ${ARTICLE_CARD_PROJECTION}
   }
 `
 
 const ARTICLE_BY_SLUG_QUERY = /* groq */ `
-  *[_type == "article" && slug.current == $slug && !(_id in path("drafts.**"))][0] {
+  *[_type == "article" && slug.current == $slug && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))][0] {
     ${ARTICLE_CARD_PROJECTION},
     body
   }
 `
 
 const ALL_ARTICLE_SLUGS_QUERY = /* groq */ `
-  *[_type == "article" && !(_id in path("drafts.**"))].slug.current
+  *[_type == "article" && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))].slug.current
 `
 
 /**
@@ -116,13 +129,13 @@ const TIP_PROJECTION = /* groq */ `
 `
 
 const TIPS_QUERY = /* groq */ `
-  *[_type == "tip" && !(_id in path("drafts.**"))] | order(publishedAt desc) {
+  *[_type == "tip" && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(publishedAt desc) {
     ${TIP_PROJECTION}
   }
 `
 
 const FEATURED_TIPS_QUERY = /* groq */ `
-  *[_type == "tip" && featured == true && !(_id in path("drafts.**"))] | order(publishedAt desc) {
+  *[_type == "tip" && featured == true && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(publishedAt desc) {
     ${TIP_PROJECTION}
   }
 `
@@ -151,7 +164,11 @@ const DEAL_PROJECTION = /* groq */ `
   _id,
   "slug": slug.current,
   title,
-  "imageUrl": heroImage.asset->url,
+  "imageUrl": select(
+    heroImage.rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(heroImage.permittedChannels, [])
+      => coalesce(heroImage.asset->url, heroImage.externalUrl),
+    null
+  ),
   category,
   description,
   "destinationName": destination->name,
@@ -167,7 +184,7 @@ const DEAL_PROJECTION = /* groq */ `
 `
 
 const ACTIVE_DEALS_QUERY = /* groq */ `
-  *[_type == "deal" && active == true && !(_id in path("drafts.**"))] | order(_createdAt desc) {
+  *[_type == "deal" && active == true && "web" in channels && !(_id in path("drafts.**"))] | order(_createdAt desc) {
     ${DEAL_PROJECTION}
   }
 `
@@ -193,31 +210,44 @@ const DESTINATION_PROJECTION = /* groq */ `
   "slug": slug.current,
   name,
   islandId,
-  "imageUrl": heroImage.asset->url,
+  "routeAliases": coalesce(routeAliases, []),
+  "imageUrl": select(
+    heroImage.rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(heroImage.permittedChannels, [])
+      => coalesce(heroImage.asset->url, heroImage.externalUrl),
+    null
+  ),
   tagline,
   overview,
-  "highlights": coalesce(highlights[]{ label, "icon": coalesce(icon, null) }, []),
+  "highlights": coalesce(highlights[]{ label, "icon": coalesce(icon, null), "description": coalesce(description, null) }, []),
   bestTimeToVisit,
   gettingThere,
-  "gallery": coalesce(gallery[].asset->url, []),
+  "gateways": coalesce(airports[]{ code, name, type, note }, []),
+  "tripFit": tripFit { vibe, recommendedStay, pace, "bestFor": coalesce(bestFor, []), notIdealFor },
+  practicalNotes,
+  "faqs": coalesce(faqs[]{ question, answer }, []),
+  "gallery": coalesce(gallery[rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(permittedChannels, [])]{"url": coalesce(asset->url, externalUrl)}.url, []),
+  "galleryItems": coalesce(gallery[rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(permittedChannels, [])]{
+    "url": coalesce(asset->url, externalUrl), alt, caption, credit, sourceUrl,
+    subjectIdentity, rightsStatus, licenseName
+  }, []),
   "featured": coalesce(featured, false),
   "order": coalesce(order, 99)
 `
 
 const DESTINATIONS_QUERY = /* groq */ `
-  *[_type == "destination" && !(_id in path("drafts.**"))] | order(order asc, name asc) {
+  *[_type == "destination" && editorialReviewStatus == "approved" && "web" in coalesce(channels, []) && !(_id in path("drafts.**"))] | order(order asc, name asc) {
     ${DESTINATION_PROJECTION}
   }
 `
 
 const FEATURED_DESTINATIONS_QUERY = /* groq */ `
-  *[_type == "destination" && featured == true && !(_id in path("drafts.**"))] | order(order asc) {
+  *[_type == "destination" && editorialReviewStatus == "approved" && featured == true && "web" in coalesce(channels, []) && !(_id in path("drafts.**"))] | order(order asc) {
     ${DESTINATION_PROJECTION}
   }
 `
 
 const DESTINATION_BY_ISLAND_QUERY = /* groq */ `
-  *[_type == "destination" && islandId == $islandId && !(_id in path("drafts.**"))][0] {
+  *[_type == "destination" && editorialReviewStatus == "approved" && (islandId == $islandId || slug.current == $islandId || $islandId in coalesce(routeAliases, [])) && "web" in coalesce(channels, []) && !(_id in path("drafts.**"))][0] {
     ${DESTINATION_PROJECTION}
   }
 `
@@ -245,7 +275,11 @@ const EXPERIENCE_PROJECTION = /* groq */ `
   _id,
   "slug": slug.current,
   title,
-  "imageUrl": heroImage.asset->url,
+  "imageUrl": select(
+    heroImage.rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(heroImage.permittedChannels, [])
+      => coalesce(heroImage.asset->url, heroImage.externalUrl),
+    null
+  ),
   category,
   "destinationName": destination->name,
   shortDescription,
@@ -258,13 +292,13 @@ const EXPERIENCE_PROJECTION = /* groq */ `
 `
 
 const EXPERIENCES_QUERY = /* groq */ `
-  *[_type == "experience" && !(_id in path("drafts.**"))] | order(featured desc, title asc) {
+  *[_type == "experience" && active != false && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(featured desc, order asc, title asc) {
     ${EXPERIENCE_PROJECTION}
   }
 `
 
 const FEATURED_EXPERIENCES_QUERY = /* groq */ `
-  *[_type == "experience" && featured == true && !(_id in path("drafts.**"))] {
+  *[_type == "experience" && active != false && featured == true && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(order asc) {
     ${EXPERIENCE_PROJECTION}
   }
 `
@@ -284,7 +318,11 @@ const SITE_SETTINGS_QUERY = /* groq */ `
     _id,
     heroHeadline,
     heroSubheadline,
-    "heroImageUrl": heroImage.asset->url,
+    "heroImageUrl": select(
+      heroImage.rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(heroImage.permittedChannels, [])
+        => coalesce(heroImage.asset->url, heroImage.externalUrl),
+      null
+    ),
     "featuredDestinationSlugs": coalesce(featuredDestinations[]->slug.current, []),
     "featuredExperienceSlugs": coalesce(featuredExperiences[]->slug.current, []),
     "featuredArticleSlug": featuredArticle->slug.current,
@@ -309,6 +347,41 @@ export async function fetchSiteSettings(): Promise<SanitySiteSettings | null> {
   return safeFetch<SanitySiteSettings>(SITE_SETTINGS_QUERY)
 }
 
+// ─── Managed Content Page ─────────────────────────────────────────────────
+
+const CONTENT_PAGE_BY_ROUTE_QUERY = /* groq */ `
+  *[_type == "contentPage" && routePath == $routePath && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))][0] {
+    _id,
+    title,
+    routePath,
+    pageType,
+    "eyebrow": coalesce(eyebrow, null),
+    "subtitle": coalesce(subtitle, null),
+    "heroImageUrl": select(
+      heroImage.rightsStatus in ["approved_partner", "approved_licensed"] && "web" in coalesce(heroImage.permittedChannels, [])
+        => coalesce(heroImage.asset->url, heroImage.externalUrl),
+      null
+    ),
+    "heroActions": coalesce(heroActions[]{label, href, style, "openInNewTab": coalesce(openInNewTab, false)}, []),
+    "sections": coalesce(sections[]{
+      _key,
+      "anchor": coalesce(anchor, null),
+      "eyebrow": coalesce(eyebrow, null),
+      heading,
+      body,
+      "items": coalesce(items[]{_key, title, "description": coalesce(description, null), "icon": coalesce(icon, null)}, []),
+      "actions": coalesce(actions[]{label, href, style, "openInNewTab": coalesce(openInNewTab, false)}, []),
+      "layout": coalesce(layout, "default")
+    }, []),
+    "effectiveDate": coalesce(effectiveDate, null),
+    "versionLabel": coalesce(versionLabel, null)
+  }
+`
+
+export async function fetchContentPageByRoute(routePath: string): Promise<SanityContentPage | null> {
+  return safeFetch<SanityContentPage>(CONTENT_PAGE_BY_ROUTE_QUERY, {routePath})
+}
+
 // ─── Social Video (Community tab) ───────────────────────────────────────────
 
 const SOCIAL_VIDEO_PROJECTION = /* groq */ `
@@ -327,7 +400,7 @@ const SOCIAL_VIDEO_PROJECTION = /* groq */ `
 `
 
 const SOCIAL_VIDEOS_QUERY = /* groq */ `
-  *[_type == "socialVideo" && !(_id in path("drafts.**"))] | order(featured desc, order asc, publishedAt desc) {
+  *[_type == "socialVideo" && active != false && (!defined(channels) || "web" in channels) && rightsStatus != "needs_review" && !(_id in path("drafts.**"))] | order(featured desc, order asc, publishedAt desc) {
     ${SOCIAL_VIDEO_PROJECTION}
   }
 `
@@ -358,7 +431,7 @@ const TRAVELER_STORY_PROJECTION = /* groq */ `
 `
 
 const TRAVELER_STORIES_QUERY = /* groq */ `
-  *[_type == "travelerStory" && !(_id in path("drafts.**"))] | order(featured desc, order asc, publishedAt desc) {
+  *[_type == "travelerStory" && active != false && consentConfirmed == true && (!defined(channels) || "web" in channels) && !(_id in path("drafts.**"))] | order(featured desc, order asc, publishedAt desc) {
     ${TRAVELER_STORY_PROJECTION}
   }
 `

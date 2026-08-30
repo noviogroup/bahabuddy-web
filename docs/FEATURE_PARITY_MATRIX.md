@@ -1,6 +1,9 @@
 # Baha Buddy Feature Parity Matrix
 
-Last reviewed: June 20, 2026, 21:45 EDT
+Last reviewed: June 23, 2026, 17:47 EDT
+
+> **June 23 parity snapshot.** Partner/vendor work, July provider cleanup, and the July 26 backend
+> inventory audit postdate this matrix. Use the root command center for live status.
 
 ## Purpose
 
@@ -9,6 +12,8 @@ This document maps current product capability across Baha Buddy Web, Mobile, Adm
 It should be used before any new product enhancement work. The goal is to identify which modules are ahead, which are behind, and what must be brought to parity before building Cruise Day Planner, Self-Guided Tours, Partner Portal, Concierge Orders, or deeper revenue features.
 
 Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED-REVIEW.md`](./2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED-REVIEW.md).
+
+June 23 audit note: several foundation gates that were marked as pending in the June 20 matrix have since been verified and documented. Trips RLS, share/invite, web trip-list app-session behavior, and mobile simulator trip-list/invite-return behavior now have evidence in the June 21 dated reviews. The remaining launch risks are deployed booking-runtime proof, live provider/payment lifecycle reconciliation, Firebase/APNs push delivery, physical-device checks, visual QA, and canonical place/content migration.
 
 ---
 
@@ -31,12 +36,12 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 |---|---|---|---|---|---|---|---|
 | User profile | Profile/onboarding surfaces exist | `upsertUserFromOnboarding`, `getCurrentUser` active | User list/detail exists | `users` has 19 rows, RLS enabled | N/A | ✅ Current | Confirm profile fields match across web/mobile |
 | Anonymous/user auth | Supabase auth in web | `signInAnonymously` in mobile | Admin auth wrapper | `auth.users` + `users` | N/A | 🟡 Partial | Confirm web/mobile auth modes and upgrade path from anonymous to email |
-| Saved trips | Trip index/detail exists | `createTrip`, `getTrips` active | Trip list/detail exists | `trips` has 25 rows; web source migration `20260621120000_trips_rls_launch_gate.sql` added | AI/chat functions create trips | ⚠️ Risk | Apply and validate `trips` RLS before broad beta |
+| Saved trips | Trip index/detail exists | `createTrip`, `getTrips` active | Trip list/detail exists | `trips` RLS launch gate applied and validated in later June 21 checks | AI/chat functions create trips | ✅ Current | Keep web/mobile trip-list smoke checks in release QA |
 | Trip detail | `/trip/[id]` web page exists | My Trip flow exists | Trip detail API exists | `trip_accommodations`, `trip_flights`, `trip_activities` | N/A | 🟡 Partial | Test same trip across web/mobile |
-| Trip ownership | Web trip page checks `trip.user_id === user.id` | Mobile queries `.eq('user_id', uid)` | Admin uses service role | Source migration now enables `trips` RLS and audits owner/collaborator policies; live state still needs verification | N/A | ⚠️ Risk | Apply migration and prove owner/collaborator/service-role behavior |
-| Trip collaborators | Web invite component/API exists | Mobile collaborator helpers exist | No ops surface | `trip_collaborators` has 0 rows | `accept-invite` expected | 🧪 Needs Test | Deploy/verify functions and test collaborator access |
-| Trip sharing | Web share page/button exists | Mobile share helpers/screens exist | No ops view | `share_links` has 0 rows | `create-share-link`, `resolve-share-link` expected | 🧪 Needs Test | Confirm functions deployed and PUBLIC_APP_URL/deep links aligned |
-| Trip invitations | Web `/api/trips/invite` exists | Mobile `sendTripInvite`, `previewInvite`, `acceptInvite` exist | No ops view | `trip_invitations` has 0 rows | `send-trip-invite`, `accept-invite` expected | 🧪 Needs Test | Test invite email/link flow and admin visibility |
+| Trip ownership | Web trip page checks ownership/collaborator access | Mobile owned plus accepted collaborator behavior verified | Admin uses service role | Owner, non-owner, collaborator, editor child-write, and service-role behavior verified live | N/A | ✅ Current | Keep physical-device invite smoke in launch QA |
+| Trip collaborators | Web invite component/API exists | Mobile collaborator helpers and simulator invite-return verified | Admin ops visibility still light | Accepted collaborator read and invite acceptance verified live | `accept-invite` verified | ✅ Current | Add admin visibility later; physical-device smoke remains |
+| Trip sharing | Web share page/button exists | Mobile share helpers/screens exist | No ops view | Share link creation and sanitized public resolution verified live | `create-share-link`, `resolve-share-link` verified | ✅ Current | Keep deep-link checks in visual/device QA |
+| Trip invitations | Web `/api/trips/invite` exists | Mobile preview/accept/return route verified in simulator | No ops view | Invitation preview, accept, accepted state, collaborator row, and `collaborator_ids` sync verified live | `send-trip-invite`, `accept-invite` deployed; accept path verified | ✅ Current | Real email delivery and physical-device smoke remain |
 | Trip realtime | Web has `useTripRealtime` | Mobile `subscribeToTripChanges` exists | No ops surface | Realtime needs migration confirmation | N/A | 🧪 Needs Test | Confirm Realtime enabled on trip item tables |
 
 ---
@@ -60,7 +65,7 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 |---|---|---|---|---|---|---|---|
 | TripAdvisor hotels | `/hotels`, `/hotels/[id]` use `tripadvisor_locations` | `tripadvisorHotelsProvider` active | No admin management | `tripadvisor_locations` has 331 rows | Possibly seeder | ✅ Current | Move to canonical `places` view later |
 | TripAdvisor restaurants | `/restaurants`, `/restaurants/[id]` use `tripadvisor_locations` | `tripadvisorRestaurantsProvider` active | No admin management | `tripadvisor_locations` has 331 rows | Possibly seeder | ✅ Current | Move to canonical `places` view later |
-| Google Places | Chat/detail tools use `google_places` | Used by older/explore flows | No canonical control | `google_places` has 476 rows; reviews 1,724 | `google-places-sync`, `google-places-photo` | ✅ Current as source | Convert to source feed into canonical `places` |
+| Supabase cached place inventory | Chat/detail tools use cached source/enrichment data | Used by older/explore flows as source/enrichment | Canonical control comes from `places`; source rows should not be treated as current product inventory | Cached source inventory has 476 rows; reviews 1,724 | Provider sync/photo jobs | ✅ Current as source/enrichment | Keep canonical `places` first; migrate source rows into managed place records |
 | Legacy hotels table | Not primary | Not primary | Could confuse admin/devs | `hotels` has 0 rows | N/A | 🔴 Gap | Deprecate or convert to view later |
 | Legacy restaurants table | Not primary | Not primary | Could confuse admin/devs | `restaurants` has 0 rows | N/A | 🔴 Gap | Deprecate or convert to view later |
 | Legacy activities table | Not primary | Not primary | Could confuse admin/devs | `activities` has 0 rows | N/A | 🔴 Gap | Deprecate or convert to view later |
@@ -76,9 +81,9 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 
 | Feature | Web | Mobile | Admin | Supabase | Edge Functions | Status | Required Action |
 |---|---|---|---|---|---|---|---|
-| Flight search | Web direct search/chat support; live LiteAPI `/flights/rates` smoke passed | Mobile service helpers exist | Billing/service dashboard | `airports`, `cities`, `airlines` populated | `flights-proxy`, `airport-autocomplete` | ✅ Current | Run flight prebook/payment/provider booking lifecycle |
-| Duffel catalog | Web/mobile can use airport data | Mobile has Duffel integration path | Admin service status | airports 9,030; cities 255; airlines 777 | `duffel-catalog-sync` | ✅ Current | Confirm scheduled/triggered sync process |
-| Duffel order creation | Web/mobile booking path likely exists | Mobile addFlight/update booking refs | Admin bookings view | `trip_flights` has 11; `bookings` has 0 | `duffel-create-order`, `duffel-order-management`, `duffel-webhook` | 🧪 Needs Test | Confirm paid/order lifecycle writes expected rows |
+| Flight search | Web direct search/chat support; live LiteAPI `/flights/rates` smoke passed | Mobile service helpers exist | Billing/service dashboard | `airports`, `cities`, `airlines` populated | `liteapi-proxy`, `airport-autocomplete` | ✅ Current | Run flight prebook/payment/provider booking lifecycle |
+| Airport/catalog metadata | Web/mobile can use populated airport, city, and airline metadata | Mobile can use the same metadata for selectors/search | Admin service status | airports 9,030; cities 255; airlines 777 | Legacy import/sync jobs | ✅ Source metadata only | Keep for search UX; do not treat as flight booking provider |
+| Historical non-LiteAPI flight compatibility | Deprecated; do not expand | Deprecated; active trip-flight offer storage now uses `provider_offer_id` | Historical support only | `trip_flights` has normalized provider-offer naming after the July 6 migration | Historical order/webhook functions | ⚠️ Deprecated | Keep UI/provider labels generic or LiteAPI-specific; delete old functions after LiteAPI lifecycle smoke passes |
 | Hotel booking/order | Web has hotel surfaces; live LiteAPI `/hotels/rates` smoke passed | Mobile accommodation helpers include LiteAPI fields | Admin billing/services | `trip_accommodations` has 6; `bookings` has 0 | `hotels-proxy`, `hotel-order-management` | 🟡 Partial | Run hotel prebook/payment/provider booking lifecycle |
 | Restaurant order flow | Web restaurants exist | Mobile restaurants exist | No obvious order ops | `bookings` has 0 | `restaurant-order-management` | 🟡 Partial | Define if restaurants are reservations, referrals, or orders |
 | Stripe checkout | Web checkout exists | Mobile Stripe dependency exists | Admin billing summarizes revenue | `bookings` has 0 | Stripe Edge Functions expected from code/docs | 🧪 Needs Test | Run full payment/booking test before launch |
@@ -142,25 +147,22 @@ Current web validation is documented in [`2026-06-20-WEB-PUBLIC-BOOKING-UI-DATED
 
 ## 9. Main Gaps to Resolve Before New Features
 
-### Gap 1: Trips security foundation
+### Gate 1: Trips security foundation
 
-`trips` was documented as having RLS disabled in live inventory. A source-control launch-gate migration now exists in the web repo, but live application and validation are still required before broad beta or before building more trip-based product lines.
+This gate is no longer the primary blocker it was on June 20. Later June 21 reviews document live trips RLS behavior, share/invite behavior, web app-session trip-list behavior, and mobile simulator trip-list/invite-return behavior against the shared Supabase project.
 
-Required:
+Remaining:
 
-- Apply `20260621120000_trips_rls_launch_gate.sql` to the shared Supabase project
-- Verify owner policies
-- Verify collaborator policies
-- Test web/mobile saved trips
-- Test chat auto-save
-- Test sharing/invite flows
+- Run physical-device invite acceptance smoke during device QA.
+- Keep web/mobile saved trip checks in release regression.
+- Add admin visibility for share/invite operations after core launch gates are stable.
 
 ### Gap 2: Canonical place source exists, but app read paths are not fully migrated
 
 Current place data is split across:
 
 - Canonical `places` and `place_sources`
-- Google Places
+- Supabase cached provider-enrichment rows
 - TripAdvisor locations
 - legacy hotels/restaurants/activities
 - generic photos/reviews
@@ -221,7 +223,7 @@ Required:
 
 1. Confirm canonical `places` and `place_sources` migrations are applied in production.
 2. Backfill TripAdvisor rows.
-3. Backfill Google Places rows.
+3. Backfill cached provider-enrichment rows.
 4. Deduplicate and map sources.
 5. Confirm `v_places_hotels`, `v_places_restaurants`, `v_places_activities`.
 6. Connect admin media, partner links, featured/sponsored flags, and source priority.
@@ -230,7 +232,7 @@ Required:
 
 1. Migrate web hotel/restaurant directories to canonical views.
 2. Migrate mobile hotel/restaurant providers to canonical views.
-3. Migrate chat tools from Google Places to canonical views.
+3. Migrate chat tools from source inventory tables to canonical views.
 4. Keep source tables for enrichment/sync.
 
 ### Phase 4 — Admin control

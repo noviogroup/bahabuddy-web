@@ -1,6 +1,9 @@
 # Baha Buddy Web Dashboard — Workplan
 
-> Single source of truth for task status across Phases A–D + C.11 + C.12 of the web parity rebuild.
+> **Historical parity-rebuild workplan.** It is no longer the cross-surface source of truth.
+> Use `../docs/2026-06-25-GO-LIVE-COMMAND-CENTER.md` for current work.
+>
+> This remains the task record for Phases A–D + C.11 + C.12 of the web parity rebuild.
 > Pairs with `PROGRESS.md` (architecture), `CHANGELOG.md` (session log), `PERF-AUDIT.md` (D.10 playbook), `README.md` (orientation).
 >
 > **Last updated: end of Session 13 follow-up** — Edge Function mutation-safety regex hardened, `socialVideo` + `travelerStory` Studio schemas authored, ExploreTabs refactored to receive Community content as props with Sanity-first + hardcoded fallback. Code on disk; build verification still owned by Valdez.
@@ -59,7 +62,7 @@
 | B.13 | `useTripRealtime` hook + `<TripRealtimeListener>` | ✅ | needs `enable_trip_realtime.sql` 🔵 |
 | B.14 | Canonical mobile system prompt with cache_control | ✅ | `{{TODAY_DATE}}` / `{{CURRENT_YEAR}}` runtime substitution. Session 11: backtick escape fix |
 | B.15 | BuddyAvatar state machine in ChatPanel | ✅ | |
-| B.16 | Native tool_use migration (Sonnet 4.5 + 9 tools) | ✅ | MAX_TURNS=4, MAX_TOOL_CALLS=8. Session 12: cards carry `place_id` for detail-page links |
+| B.16 | Native tool_use migration (`claude-sonnet-4-5` + 9 tools) | ✅ | MAX_TURNS=4, MAX_TOOL_CALLS=8. Session 12: cards carry `place_id` for detail-page links |
 
 ---
 
@@ -90,9 +93,9 @@
 | ID | Task | Status | Notes |
 |---|---|---|---|
 | C.11.1 | `/explore/articles/[slug]` article reader route | ✅ | Session 13: switched to Sanity-first with `<PortableTextBody>` + `revalidate = 300`; hardcoded `lib/article-content.ts` is the fallback |
-| C.11.2 | `/hotels/[id]` detail route | ✅ | `force-dynamic`. Queries `google_places` WHERE `place_id` AND `type IN ('lodging','hotel','resort')` |
-| C.11.3 | `/activities/[id]` detail route | ✅ | Queries `google_places` for attraction-style types |
-| C.11.4 | `/restaurants/[id]` detail route | ✅ | Queries `google_places` WHERE `type='restaurant'` |
+| C.11.2 | `/hotels/[id]` detail route | ✅ | `force-dynamic`. Queries Supabase cached place inventory by `place_id` and lodging-style type |
+| C.11.3 | `/activities/[id]` detail route | ✅ | Queries Supabase cached place inventory for attraction-style types |
+| C.11.4 | `/restaurants/[id]` detail route | ✅ | Queries Supabase cached place inventory by `place_id` and restaurant type |
 | C.11.5 | RichCards rewiring — wrap clickable cards in `<Link>` | ✅ | `CardData` adds `place_id` + `island_id` |
 | C.11.6 | ExploreTabs rewiring — Discover cards link to article reader | ✅ | Plain `<Link href="/explore/articles/[slug]">` |
 
@@ -162,7 +165,7 @@
 | Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` env var | 🔵 | Without it, /checkout shows "not configured" screen gracefully |
 | Verify Stripe webhook URL still active in Stripe Dashboard | 🔵 | `https://cxcfymhoncysyloutvkh.supabase.co/functions/v1/stripe-webhook` |
 | Run `supabase/enable_trip_realtime.sql` | 🔵 | Idempotent |
-| Set `DUFFEL_API_TOKEN` env var | 🔵 | Without it, `search_flights` returns graceful "unavailable" |
+| Set LiteAPI flight env vars | 🔵 | Flights now use LiteAPI. Without valid server-side LiteAPI keys, `search_flights` returns graceful "unavailable" |
 | Rotate Supabase Service Role Key | 🔵 | Pre-existing P0 |
 | Rotate Anthropic API key | 🔵 | Pre-existing P0 |
 | Domain-restrict Google Maps API key | 🔵 | Pre-existing P0 |
@@ -194,7 +197,7 @@
 4. **Smoke-test C.11 routes** (carried from Session 12) and Session 13's Community surface.
 5. **D.10 Performance audit.** Needs a green `npm run build` first. Now includes Session 13 follow-up's Sanity-rendered Community surface.
 6. **D.7b RichCards + detail-page heroes → `next/image`.** Low priority.
-7. **Stripe + Realtime + Duffel env config.** Mechanical.
+7. **Stripe + Realtime + LiteAPI env config.** Mechanical.
 8. **xlsx workplan transcription.** Mechanical.
 
 ---
@@ -204,7 +207,7 @@
 This codebase is **production-ready pending Edge Function redeploy, build verification, environment configuration, and the D.10 perf pass**. All features land cleanly:
 
 - Authenticated dashboard with chat, trips, profile, explore, bookings, checkout
-- AI chat with native tool use (9 tools) on Claude Sonnet 4.5, streaming SSE, prompt caching
+- AI chat with native tool use (9 tools) on `claude-sonnet-4-5`, streaming SSE, prompt caching
 - End-to-end Stripe checkout from chat Summary card or trip detail page
 - Editorial content via canonical Sanity Studio with hardcoded fallback. **Community tab fully Sanity-aware (Session 13 follow-up): socialVideo + travelerStory schemas curate-ready in Studio**
 - Article reader supports both Portable Text from Sanity and hardcoded markdown-style sections (Session 13: C.7b closed)

@@ -40,11 +40,10 @@ export default async function GuidesPage() {
         ]}
         actions={(
           <>
-            <Link href="/explore" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-700">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
+            <Link href="/explore" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white hover:bg-brand-700">
               Explore islands
             </Link>
-            <Link href={buddyChatHref('Help me choose a Bahamas guide')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
+            <Link href={buddyChatHref('Help me choose a Bahamas guide')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night hover:border-gray-400 hover:bg-gray-50">
               Ask Buddy
             </Link>
           </>
@@ -82,7 +81,6 @@ export default async function GuidesPage() {
                       alt={article.title}
                       title={article.title}
                       eyebrow={categoryLabel}
-                      description="Guide details are available. Article image is not available yet."
                       className="aspect-video"
                       imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
                       tone="island"
@@ -109,15 +107,14 @@ export default async function GuidesPage() {
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <Link
                         href={guideHref}
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
                       >
                         Read guide
                       </Link>
                       <Link
                         href={startTripHref}
-                        className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-3 py-2 text-xs font-extrabold text-white transition-colors hover:bg-brand-700"
+                        className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-700"
                       >
-                        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
                         Start trip
                       </Link>
                     </div>
@@ -137,7 +134,6 @@ export default async function GuidesPage() {
             href="/login"
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Get started free
           </Link>
         </div>

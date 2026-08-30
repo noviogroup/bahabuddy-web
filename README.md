@@ -1,8 +1,11 @@
-# Baha Buddy — Web Dashboard
+# Baha Buddy Web
 
-The web companion to the [Baha Buddy mobile app](../Baha-Buddy-V2/) — an AI travel planner for the Bahamas. Built with Next.js 14 (App Router), Supabase, and Anthropic's Claude Sonnet 4.5.
+The web companion to the [Baha Buddy mobile app](../Baha-Buddy-V2/) is a Next.js 14 App Router
+application backed by the shared Supabase project.
 
-This is the **authenticated dashboard surface** — chat with Buddy, manage trips, browse Explore, book travel. The marketing site is a separate project at [`../website/`](../website/).
+This repository owns the **public marketplace and marketing pages**, **authenticated dashboard**,
+**Buddy chat**, **stays/flights booking funnels**, **Explore content**, **concierge funnel**, and
+**partner/vendor surfaces**. The web chat route currently uses `claude-sonnet-4-6`.
 
 ---
 
@@ -21,6 +24,8 @@ npm run build && npm run start
 
 Open [http://localhost:3000](http://localhost:3000).
 
+Use Node 20–22, matching the package `engines` contract.
+
 ---
 
 ## Required environment variables
@@ -34,7 +39,8 @@ Set these in `.env.local`. Missing any one of them produces a **graceful fallbac
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase admin key | Chat API can't write trips |
 | `ANTHROPIC_API_KEY` | Claude API key (server only) | Chat API returns 500 |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Elements (client) | `/dashboard/checkout` shows "not configured" screen. Trip detail + chat SummaryCard hide Book CTA. |
-| `DUFFEL_API_TOKEN` | Flight search (server only) | `search_flights` tool returns "unavailable". Buddy adapts. |
+| `LITEAPI_API_KEY` | Hotel and flight search/booking (server only) | Live travel search and booking routes return friendly unavailable states. |
+| `LITEAPI_PUBLIC_KEY` | LiteAPI payment SDK support when required | Flight payment flows cannot initialize provider-side payment when required. |
 | `NEXT_PUBLIC_SANITY_PROJECT_ID` | Editorial content | Hardcoded content keeps rendering. App fully usable. |
 | `NEXT_PUBLIC_SANITY_DATASET` | Editorial content | Same as above. |
 | `NEXT_PUBLIC_SANITY_API_VERSION` | Editorial content | Same as above. |
@@ -49,13 +55,15 @@ Run `supabase/enable_trip_realtime.sql` once in the Supabase SQL Editor. Idempot
 
 ## Documentation
 
-Four docs live at the project root. Each has a distinct purpose — read them in this order if you're new:
+Start with the workspace [`documentation map`](../docs/README.md) and
+[`go-live command center`](../docs/2026-06-25-GO-LIVE-COMMAND-CENTER.md). The web-local documents
+below preserve the architecture and implementation journal for this surface:
 
 | Doc | Purpose | Read when… |
 |---|---|---|
-| **[`PROGRESS.md`](./PROGRESS.md)** | Architecture of record. What every file does, why each decision was made, current phase status. | First time orienting to the project. |
-| **[`WORKPLAN.md`](./WORKPLAN.md)** | Live task tracker. Every ID (A.1, B.13, C.9.7, D.9.5…) with status and notes. | Picking the next thing to work on. |
-| **[`CHANGELOG.md`](./CHANGELOG.md)** | Session-by-session record of what shipped. | Catching up on recent changes. |
+| **[`PROGRESS.md`](./PROGRESS.md)** | Web parity architecture journal. | Understanding earlier design decisions. |
+| **[`WORKPLAN.md`](./WORKPLAN.md)** | Historical Phases A–D task record. | Looking up the parity rebuild history. |
+| **[`CHANGELOG.md`](./CHANGELOG.md)** | Session-by-session historical record. | Catching up on earlier changes. |
 | **[`PERF-AUDIT.md`](./PERF-AUDIT.md)** | Playbook for the D.10 performance pass. Bundle analyzer, route budgets, Lighthouse targets. | Running the perf audit (after a green build). |
 
 For Sanity setup specifically, see [`src/lib/sanity/README.md`](./src/lib/sanity/README.md).
@@ -69,7 +77,7 @@ For Sanity setup specifically, see [`src/lib/sanity/README.md`](./src/lib/sanity
 - **Server components by default.** `'use client'` is the exception — applied only where state, hooks, or browser APIs are needed.
 - **Mobile is canonical.** Web mirrors mobile: same Supabase schema, same Edge Functions for Stripe + webhooks, same Claude system prompt, same design tokens.
 - **Streaming SSE chat** with native tool use. Buddy calls 9 tools (hotels, restaurants, activities, flights, weather, etc.) inside the agentic loop bounded at `MAX_TURNS=4` / `MAX_TOOL_CALLS=8`.
-- **Graceful degradation.** Stripe / Sanity / Duffel can each be missing and the app still works — features degrade quietly with friendly fallbacks, never a crash.
+- **Graceful degradation.** Stripe, Sanity, and LiteAPI can each be missing and the app still works — features degrade quietly with friendly fallbacks, never a crash.
 
 Full architecture detail is in `PROGRESS.md`.
 
@@ -146,8 +154,9 @@ The Supabase project and all Edge Functions (Stripe payment, webhook, etc.) are 
 
 ---
 
-## Status
+## Current status
 
-**Phase A, B, C complete. Phase D ~95% complete.** Only the performance audit (D.10) remains, which needs a green `npm run build` first. See `PERF-AUDIT.md` for the playbook.
-
-Current task counter is in `WORKPLAN.md`. As of end of Session 10: ~52.5 / 53 tasks (~99%).
+The public marketplace, dashboard, chat, trips, Explore, stay/flight funnels, concierge, and
+partner/vendor foundations are implemented in source. Launch approval remains blocked by the
+cross-surface operational gates in the root command center, especially live LiteAPI/Stripe lifecycle
+proof, deployed-runtime readiness, key rotation, and backend deployment ownership.

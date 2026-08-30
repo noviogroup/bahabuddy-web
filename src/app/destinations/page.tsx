@@ -1,470 +1,932 @@
-import { createClient } from '@/lib/supabase/server'
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import Footer from '@/components/Footer'
-import ChatWidget from '@/components/ChatWidget'
-import { BahaImages, ISLANDS } from '@/lib/baha-images'
-import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
-import { FilterChip, FilterGroup, ResultFilterPanel } from '@/components/marketplace/ResultFilterPanel'
-import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
-import { buddyChatHref } from '@/lib/buddy-chat'
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
+import Footer from "@/components/Footer";
+import ChatWidget from "@/components/ChatWidget";
+import { DestinationFallbackImages } from "@/lib/baha-images";
+import { buddyChatHref } from "@/lib/buddy-chat";
 
 export const metadata: Metadata = {
-  title: 'Destinations - Explore the Bahamas | Baha Buddy',
-  description: 'Browse 700+ Bahamas islands, beaches, and attractions. Find your perfect island escape with Baha Buddy\'s AI travel assistant.',
+  title: "Bahamas Island Finder | Baha Buddy",
+  description:
+    "Compare Bahamas islands by trip style, access, pace, and planning complexity so Buddy can help you choose the right island.",
   openGraph: {
-    title: 'Explore Bahamas Destinations | Baha Buddy',
-    description: 'Browse islands, beaches, and attractions across the Bahamas.',
+    title: "Find the Right Bahamas Island | Baha Buddy",
+    description:
+      "Compare Bahamas islands by trip style, access, pace, and planning complexity.",
   },
-}
+};
 
-export const revalidate = 3600
+export const revalidate = 3600;
 
-interface Attraction {
-  id: string
-  name: string
-  category: string
-  island: string | null
-  description: string
-  image_url: string | null
-  tags: string[]
-}
+type DestinationSearchParams = {
+  style?: string;
+  island?: string;
+};
 
-const FALLBACK_ATTRACTIONS: Attraction[] = [
-  { id: '1', name: 'Nassau', category: 'Island', island: 'Nassau', description: 'The vibrant capital city with colorful colonial architecture, world-class dining, and stunning beaches.', image_url: BahaImages.nassau, tags: ['Culture', 'Beaches', 'Shopping'] },
-  { id: '2', name: 'Exuma', category: 'Island', island: 'Exuma', description: 'Home to the famous swimming pigs and the world\'s most pristine turquoise waters and sandbars.', image_url: BahaImages.exumas, tags: ['Swimming Pigs', 'Snorkeling', 'Secluded'] },
-  { id: '3', name: 'Eleuthera', category: 'Island', island: 'Eleuthera', description: 'Stunning pink sand beaches, Glass Window Bridge, and a laidback island lifestyle away from crowds.', image_url: BahaImages.eleuthera, tags: ['Pink Sand', 'Surfing', 'Off-the-beaten-path'] },
-  { id: '4', name: 'Harbour Island', category: 'Island', island: 'Harbour Island', description: 'Famous for its charming pink sand beach and colorful colonial cottages. Golf carts are the main transport.', image_url: BahaImages.bahamasLifestyle, tags: ['Pink Sand', 'Boutique', 'Romantic'] },
-  { id: '5', name: 'The Abacos', category: 'Island', island: 'Abacos', description: 'The sailing capital of the Bahamas with charming Loyalist Cays, world-class marinas, and crystal-clear waters.', image_url: BahaImages.abacos, tags: ['Sailing', 'Boating', 'Fishing'] },
-  { id: '6', name: 'Paradise Island', category: 'Island', island: 'Paradise Island', description: 'Connected to Nassau by bridge, home to Atlantis Resort, casinos, and stunning white-sand beaches.', image_url: BahaImages.snorkeling, tags: ['Resorts', 'Atlantis', 'Family'] },
-  { id: '7', name: 'Bimini', category: 'Island', island: 'Bimini', description: 'The closest Bahamian island to Florida, famous for deep-sea fishing, sharks, and the Road to Atlantis legend.', image_url: BahaImages.bimini, tags: ['Fishing', 'Diving', 'Adventure'] },
-  { id: '8', name: 'Long Island', category: 'Island', island: 'Long Island', description: 'Remote and strikingly beautiful, with dramatic cliffs, Dean\'s Blue Hole, and pristine beaches with barely any crowds.', image_url: BahaImages.longIsland, tags: ['Remote', 'Diving', 'Scenic'] },
-  { id: '9', name: 'Grand Bahama', category: 'Island', island: 'Grand Bahama', description: 'Home to Freeport and one of the Caribbean\'s top diving destinations with stunning underwater caves and reefs.', image_url: BahaImages.grandBahama, tags: ['Diving', 'Freeport', 'Caves'] },
-]
+type TripStyle = {
+  id: string;
+  label: string;
+  summary: string;
+};
 
-const ALL_CATEGORIES = ['All', 'Island', 'Beach', 'Water Activity', 'Culture', 'Nature', 'Dining']
+type IslandFit = {
+  slug: string;
+  name: string;
+  region: string;
+  imageSrc: string;
+  summary: string;
+  bestFor: string[];
+  styles: string[];
+  access: string;
+  tripLength: string;
+  pace: string;
+  complexity: "Easy" | "Moderate" | "High-touch";
+  signature: string[];
+  notFor: string;
+  airportCode?: string;
+  guideSlug?: string;
+};
 
-const ISLAND_SLUG_BY_NAME = new Map(
-  ISLANDS.map((island) => [normalizeKey(island.name), island.slug]),
-)
+const TRIP_STYLES: TripStyle[] = [
+  {
+    id: "all",
+    label: "All trips",
+    summary: "Compare every island by fit, pace, and logistics.",
+  },
+  {
+    id: "first-time",
+    label: "First trip",
+    summary: "Easy access, strong stays, and simple planning.",
+  },
+  {
+    id: "family",
+    label: "Family",
+    summary: "Kid-friendly stays, simpler transfers, and flexible days.",
+  },
+  {
+    id: "romance",
+    label: "Romance",
+    summary: "Boutique stays, quiet beaches, and polished dinners.",
+  },
+  {
+    id: "luxury",
+    label: "Luxury",
+    summary: "High-end stays, charters, and private-feeling days.",
+  },
+  {
+    id: "adventure",
+    label: "Adventure",
+    summary: "Boats, blue holes, diving, fishing, and nature.",
+  },
+  {
+    id: "quiet",
+    label: "Quiet",
+    summary: "Slower pace, fewer crowds, and remote beaches.",
+  },
+  {
+    id: "culture",
+    label: "Culture",
+    summary: "Food, music, history, local craft, and town energy.",
+  },
+  {
+    id: "boating",
+    label: "Boating",
+    summary: "Cays, marinas, charters, and island hopping.",
+  },
+  {
+    id: "diving",
+    label: "Diving",
+    summary: "Reefs, blue holes, wrecks, walls, and shark dives.",
+  },
+];
 
-const ISLAND_SLUG_ALIASES: Record<string, string> = {
-  nassau: 'nassau-paradise-island',
-  'new-providence': 'nassau-paradise-island',
-  exuma: 'the-exumas',
-  exumas: 'the-exumas',
-  'the-exumas': 'the-exumas',
-  eleuthera: 'eleuthera-harbour-island',
-  'harbour-island': 'harbour-island',
-  'the-abacos': 'abacos',
-  abaco: 'abacos',
-  abacos: 'abacos',
-}
+const HERO_IMAGE = DestinationFallbackImages.islandFinderHero;
+
+const DECISION_STEPS = [
+  {
+    step: "1",
+    title: "Choose the island",
+    body: "Match pace, access, trip length, and budget before adding hotels or activities.",
+  },
+  {
+    step: "2",
+    title: "Check the logistics",
+    body: "Confirm the arrival airport, transfer style, and whether the island supports the trip you want.",
+  },
+  {
+    step: "3",
+    title: "Build the plan",
+    body: "Buddy connects stays, flights, food, boat days, and transfers once the island is right.",
+  },
+] as const;
+
+const ISLAND_FITS: IslandFit[] = [
+  {
+    slug: "nassau-paradise-island",
+    name: "Nassau & Paradise Island",
+    region: "New Providence",
+    imageSrc: DestinationFallbackImages.nassauParadiseIsland,
+    summary:
+      "The easiest first Bahamas base: direct flights, resorts, food, nightlife, beaches, and history in one compact area.",
+    bestFor: ["First-timers", "Families", "Food & nightlife"],
+    styles: ["first-time", "family", "culture", "luxury"],
+    access: "Direct flights into NAS; short taxis and resort transfers.",
+    tripLength: "3-5 days",
+    pace: "Lively",
+    complexity: "Easy",
+    signature: [
+      "Atlantis and Cabbage Beach",
+      "Junkanoo and forts",
+      "Arawak Cay food",
+    ],
+    notFor: "Travelers who want a silent, remote-island pace.",
+    airportCode: "NAS",
+    guideSlug: "nassau-paradise-island",
+  },
+  {
+    slug: "the-exumas",
+    name: "The Exumas",
+    region: "Great Exuma and the cays",
+    imageSrc: DestinationFallbackImages.exumas,
+    summary:
+      "Turquoise water, sandbars, pigs, boat days, and luxury-casual island hopping across a chain of cays.",
+    bestFor: ["Couples", "Boating", "Bucket-list water"],
+    styles: ["romance", "luxury", "adventure", "quiet", "boating"],
+    access: "Fly into EXU, then use taxis, boat tours, and private charters.",
+    tripLength: "4-7 days",
+    pace: "Water-led",
+    complexity: "Moderate",
+    signature: ["Exuma Cays", "Swimming pigs", "Sandbars and snorkeling"],
+    notFor: "Travelers who want dense nightlife or everything walkable.",
+    airportCode: "EXU",
+    guideSlug: "the-exumas",
+  },
+  {
+    slug: "eleuthera-harbour-island",
+    name: "Eleuthera",
+    region: "Eleuthera",
+    imageSrc: DestinationFallbackImages.eleuthera,
+    summary:
+      "A long, relaxed island for beach drives, surf breaks, pink sand, and a slower independent-traveler rhythm.",
+    bestFor: ["Road trips", "Quiet beaches", "Couples"],
+    styles: ["romance", "adventure", "quiet", "culture"],
+    access:
+      "Fly into North Eleuthera or Governor's Harbour; rent a car for range.",
+    tripLength: "4-6 days",
+    pace: "Laid-back",
+    complexity: "Moderate",
+    signature: [
+      "Glass Window Bridge",
+      "Pink sand beaches",
+      "Local settlements",
+    ],
+    notFor: "Travelers who dislike driving between beaches and restaurants.",
+    airportCode: "ELH",
+    guideSlug: "eleuthera-harbour-island",
+  },
+  {
+    slug: "harbour-island",
+    name: "Harbour Island",
+    region: "Off North Eleuthera",
+    imageSrc: DestinationFallbackImages.harbourIsland,
+    summary:
+      "Boutique hotels, golf carts, polished restaurants, and one of the most romantic pink-sand beach settings.",
+    bestFor: ["Honeymoons", "Boutique luxury", "Short romantic trips"],
+    styles: ["romance", "luxury", "quiet", "culture"],
+    access: "Fly into ELH, then take a quick taxi and water taxi to Briland.",
+    tripLength: "3-5 days",
+    pace: "Polished and calm",
+    complexity: "Moderate",
+    signature: ["Pink Sands Beach", "Dunmore Town", "Golf-cart days"],
+    notFor: "Travelers looking for a budget-heavy or nightlife-first trip.",
+    airportCode: "ELH",
+    guideSlug: "harbour-island",
+  },
+  {
+    slug: "abacos",
+    name: "The Abacos",
+    region: "Abaco cays",
+    imageSrc: DestinationFallbackImages.abacos,
+    summary:
+      "Sailing, marinas, pastel settlements, reef-protected water, and easy cay-to-cay boating days.",
+    bestFor: ["Sailors", "Boaters", "Families who want cays"],
+    styles: ["family", "adventure", "quiet", "boating"],
+    access: "Fly into MHH, then use ferries, carts, rentals, or boats by cay.",
+    tripLength: "5-7 days",
+    pace: "Harbor-hopping",
+    complexity: "Moderate",
+    signature: ["Hope Town lighthouse", "Marinas", "Island hopping"],
+    notFor: "Travelers who want one resort and no transfer planning.",
+    airportCode: "MHH",
+    guideSlug: "abacos",
+  },
+  {
+    slug: "bimini",
+    name: "Bimini",
+    region: "Western Bahamas",
+    imageSrc: DestinationFallbackImages.bimini,
+    summary:
+      "The quick escape from Florida with fishing, shark dives, beach clubs, and a compact weekend footprint.",
+    bestFor: ["Long weekends", "Fishing", "Florida gateways"],
+    styles: ["first-time", "adventure", "boating", "diving"],
+    access: "Fly into BIM or arrive by ferry/boat from South Florida.",
+    tripLength: "2-4 days",
+    pace: "Quick and social",
+    complexity: "Easy",
+    signature: ["Big-game fishing", "Sapona wreck", "Beach clubs"],
+    notFor: "Travelers planning a long, remote island reset.",
+    airportCode: "BIM",
+    guideSlug: "bimini",
+  },
+  {
+    slug: "andros",
+    name: "Andros",
+    region: "Central Bahamas",
+    imageSrc: DestinationFallbackImages.andros,
+    summary:
+      "The wild island: bonefishing, blue holes, reefs, mangroves, craft, and serious nature with fewer crowds.",
+    bestFor: ["Diving", "Bonefishing", "Nature"],
+    styles: ["adventure", "quiet", "culture", "diving"],
+    access:
+      "Fly into ASD or nearby regional airports; plan transfers carefully.",
+    tripLength: "5-7 days",
+    pace: "Wild and spacious",
+    complexity: "High-touch",
+    signature: ["Blue holes", "Andros Barrier Reef", "Bonefish flats"],
+    notFor: "Travelers who need polished resort density and easy nightlife.",
+    airportCode: "ASD",
+    guideSlug: "andros",
+  },
+  {
+    slug: "grand-bahama",
+    name: "Grand Bahama",
+    region: "Freeport and Lucaya",
+    imageSrc: DestinationFallbackImages.grandBahama,
+    summary:
+      "A practical base for diving, nature parks, beaches, and city convenience with direct airport access.",
+    bestFor: ["Diving", "Families", "Easy logistics"],
+    styles: ["first-time", "family", "adventure", "diving"],
+    access: "Fly into FPO; taxis and tours cover most visitor routes.",
+    tripLength: "3-5 days",
+    pace: "Convenient",
+    complexity: "Easy",
+    signature: ["Lucayan National Park", "Diving", "Freeport and Port Lucaya"],
+    notFor: "Travelers who want tiny-cay intimacy from the first minute.",
+    airportCode: "FPO",
+    guideSlug: "grand-bahama",
+  },
+  {
+    slug: "long-island",
+    name: "Long Island",
+    region: "Southern Bahamas",
+    imageSrc: DestinationFallbackImages.longIsland,
+    summary:
+      "Dramatic cliffs, Dean's Blue Hole, empty beaches, and a long-road island made for independent explorers.",
+    bestFor: ["Quiet beaches", "Blue holes", "Scenic drives"],
+    styles: ["adventure", "quiet", "diving", "romance"],
+    access: "Use regional flights and a rental car; distances matter.",
+    tripLength: "4-6 days",
+    pace: "Remote and scenic",
+    complexity: "High-touch",
+    signature: ["Dean's Blue Hole", "Cape Santa Maria", "Cliffs and coves"],
+    notFor: "Travelers who want dense restaurant choice every night.",
+    guideSlug: "long-island",
+  },
+  {
+    slug: "cat-island",
+    name: "Cat Island",
+    region: "Central Bahamas",
+    imageSrc: DestinationFallbackImages.catIsland,
+    summary:
+      "Quiet beaches, rake-and-scrape culture, Mount Alvernia, and a deeply local out-island feel.",
+    bestFor: ["Quiet", "Culture", "Low-key romance"],
+    styles: ["quiet", "culture", "romance"],
+    access: "Regional flights and rental cars; plan around limited schedules.",
+    tripLength: "4-6 days",
+    pace: "Slow and local",
+    complexity: "High-touch",
+    signature: ["Mount Alvernia", "Rake-and-scrape", "Empty beaches"],
+    notFor: "Travelers who want resort density or late-night options.",
+  },
+  {
+    slug: "san-salvador",
+    name: "San Salvador",
+    region: "Eastern Bahamas",
+    imageSrc: DestinationFallbackImages.sanSalvador,
+    summary:
+      "Wall diving, history, clear water, and quiet beaches for travelers who want a focused island stay.",
+    bestFor: ["Diving", "History", "Quiet beach days"],
+    styles: ["quiet", "adventure", "diving", "culture"],
+    access: "Regional flights; keep the plan simple once you arrive.",
+    tripLength: "4-6 days",
+    pace: "Quiet and focused",
+    complexity: "High-touch",
+    signature: ["Wall dives", "Columbus history", "Uncrowded beaches"],
+    notFor: "Travelers who want lots of shopping or nightlife.",
+  },
+  {
+    slug: "berry-islands",
+    name: "Berry Islands",
+    region: "Northwest Bahamas",
+    imageSrc: DestinationFallbackImages.berryIslands,
+    summary:
+      "Cays, fishing, private-island energy, and boat-forward days for travelers who value space.",
+    bestFor: ["Boating", "Luxury", "Fishing"],
+    styles: ["luxury", "quiet", "boating", "adventure"],
+    access: "Best with charter, boat, or carefully planned transfers.",
+    tripLength: "4-7 days",
+    pace: "Private-cay calm",
+    complexity: "High-touch",
+    signature: ["Cays", "Fishing", "Private beaches"],
+    notFor: "Travelers who want easy public transit or dense towns.",
+  },
+  {
+    slug: "inagua",
+    name: "Inagua",
+    region: "Far southern Bahamas",
+    imageSrc: DestinationFallbackImages.inagua,
+    summary:
+      "Flamingos, national parks, birding, salt ponds, and a remote nature trip for patient planners.",
+    bestFor: ["Birding", "Nature", "Remote travel"],
+    styles: ["quiet", "adventure"],
+    access:
+      "Remote regional access; schedules and lodging need careful planning.",
+    tripLength: "5-7 days",
+    pace: "Remote nature",
+    complexity: "High-touch",
+    signature: ["Flamingo colony", "National parks", "Salt ponds"],
+    notFor: "Travelers who want a casual first Bahamas trip.",
+  },
+];
+
+const STYLE_BY_ID = new Map(TRIP_STYLES.map((style) => [style.id, style]));
 
 function normalizeKey(value: string | null | undefined): string {
-  return (value ?? '')
+  return (value ?? "")
     .toLowerCase()
-    .replace(/&/g, 'and')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+    .replace(/&/g, "and")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
 }
 
 function paramsFrom(values: Record<string, string | null | undefined>): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) {
-    if (value?.trim()) params.set(key, value.trim())
+    if (value?.trim()) params.set(key, value.trim());
   }
-  const qs = params.toString()
-  return qs ? `?${qs}` : ''
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
 }
 
-function islandSlugForDestination(attraction: Attraction): string {
-  const candidates = [
-    attraction.island,
-    attraction.name,
-    normalizeKey(attraction.island),
-    normalizeKey(attraction.name),
-  ].filter(Boolean) as string[]
-
-  for (const value of candidates) {
-    const key = normalizeKey(value)
-    if (ISLAND_SLUG_ALIASES[key]) return ISLAND_SLUG_ALIASES[key]
-    const direct = ISLAND_SLUG_BY_NAME.get(key)
-    if (direct) return direct
-    if (ISLANDS.some((island) => island.slug === key)) return key
-  }
-
-  return normalizeKey(attraction.island || attraction.name)
+function activeStyleFrom(rawStyle: string | undefined): TripStyle {
+  return STYLE_BY_ID.get(normalizeKey(rawStyle)) ?? TRIP_STYLES[0];
 }
 
-function isIslandDestination(attraction: Attraction): boolean {
-  return normalizeKey(attraction.category) === 'island'
-}
-
-function CategoryIcon({ category }: { category: string }) {
-  const key = normalizeKey(category)
-  if (key.includes('beach') || key.includes('water')) return <WaveIcon />
-  if (key.includes('dining')) return <DiningIcon />
-  if (key.includes('culture')) return <GuideIcon />
-  if (key.includes('nature')) return <LeafIcon />
-  if (key.includes('island')) return <IslandIcon />
-  return <PinIcon />
-}
-
-function IslandIcon() {
+function findIsland(rawIsland: string | undefined): IslandFit | null {
+  const key = normalizeKey(rawIsland);
+  if (!key) return null;
   return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 18c2.2-2 4.5-3 7-3s4.8 1 7 3" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15c.2-4.8 1.3-8 4-10" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 15c-.2-4.7-1.4-7.8-4-10" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M8 5c2.4.1 3.8 1.2 4 3.3C13 6.4 14.4 5.3 16 5" />
-    </svg>
-  )
+    ISLAND_FITS.find(
+      (island) =>
+        normalizeKey(island.name) === key ||
+        normalizeKey(island.slug) === key ||
+        island.name.toLowerCase().includes((rawIsland ?? "").toLowerCase()),
+    ) ?? null
+  );
 }
 
-function WaveIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M3 20c2 0 2-2 4-2s2 2 4 2 2-2 4-2 2 2 4 2 2-2 4-2" />
-    </svg>
-  )
+function styleHref(styleId: string, activeIsland: IslandFit | null): string {
+  return `/destinations${paramsFrom({
+    style: styleId === "all" ? undefined : styleId,
+    island: activeIsland?.name,
+  })}`;
 }
 
-function DiningIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M7 3v8M4 3v8M10 3v8M4 11h6l-1 10H5L4 11Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M17 3v18M14 3h6v8a3 3 0 0 1-3 3" />
-    </svg>
-  )
+function clearIslandHref(activeStyle: TripStyle): string {
+  return `/destinations${paramsFrom({
+    style: activeStyle.id === "all" ? undefined : activeStyle.id,
+  })}`;
 }
 
-function GuideIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M5 5.5A2.5 2.5 0 0 1 7.5 3H20v16H7.5A2.5 2.5 0 0 0 5 21.5v-16Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 7h7M9 11h7M9 15h4" />
-    </svg>
-  )
+function islandGuideHref(island: IslandFit): string {
+  if (island.guideSlug) return `/explore/island/${island.guideSlug}`;
+  return `/explore/places${paramsFrom({ island: island.name })}`;
 }
 
-function LeafIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M20 4c-7.7.6-12.8 4.5-14 11 4.7 1.6 10.4-.9 12.5-6.2.6-1.5 1-3.1 1.5-4.8Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 15c3.8-1 6.5-3 8.2-6" />
-    </svg>
-  )
+function islandExploreHref(island: IslandFit): string {
+  return `/explore/places${paramsFrom({ island: island.name })}`;
 }
 
-function PinIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" aria-hidden="true">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21s7-5.1 7-11a7 7 0 1 0-14 0c0 5.9 7 11 7 11Z" />
-      <circle cx="12" cy="10" r="2.4" />
-    </svg>
-  )
+function islandFlightsHref(island: IslandFit): string | null {
+  return island.airportCode
+    ? `/flights${paramsFrom({ destination: island.airportCode })}`
+    : null;
 }
 
-function destinationDetailHref(attraction: Attraction): string {
-  if (isIslandDestination(attraction)) {
-    return `/explore/island/${islandSlugForDestination(attraction)}`
-  }
-  return `/explore/places/${encodeURIComponent(attraction.id)}`
+function startTripHref(island: IslandFit): string {
+  const guideHref = islandGuideHref(island);
+  return `/dashboard/trips/new${paramsFrom({
+    returnTo: guideHref,
+    source: "destination",
+    destination: island.guideSlug ?? island.slug,
+    seed: `Plan a Bahamas trip around ${island.name}. Include stays, flights, transfers, food, activities, and realistic timing.`,
+  })}`;
 }
 
-function destinationExploreHref(attraction: Attraction): string {
-  if (isIslandDestination(attraction)) {
-    return `/explore/places${paramsFrom({ island: attraction.island || attraction.name })}`
-  }
-  return `/explore/places${paramsFrom({ island: attraction.island, category: attraction.category })}`
+function askBuddyHref(island?: IslandFit): string {
+  return buddyChatHref(
+    island
+      ? `Help me decide if ${island.name} is the right Bahamas island for my trip. Compare fit, access, stays, flights, food, and activities.`
+      : "Help me choose the right Bahamas island for my trip. Ask about my dates, travelers, budget, pace, and must-have experiences.",
+  );
 }
 
-function destinationAddHref(attraction: Attraction): string {
-  const detailHref = destinationDetailHref(attraction)
-  if (isIslandDestination(attraction)) {
-    return `/dashboard/trips/new${paramsFrom({ returnTo: detailHref, source: 'destination' })}`
-  }
-  return `${detailHref}#trip-actions`
-}
-
-function destinationAskBuddyHref(attraction: Attraction): string {
-  const prompt = [
-    `Help me plan around ${attraction.name}`,
-    attraction.island ? `Island: ${attraction.island}` : '',
-    `Category: ${attraction.category}`,
-  ].filter(Boolean).join('. ')
-  return buddyChatHref(prompt)
-}
-
-async function getAttractions() {
-  try {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('bahamas_attractions')
-      .select('id, name, category, island, description, image_url, tags')
-      .order('created_at', { ascending: false })
-      .limit(50)
-    if (error) return null
-    return data as Attraction[]
-  } catch {
-    return null
-  }
+function complexityTone(complexity: IslandFit["complexity"]): string {
+  if (complexity === "Easy") return "bg-palm-50 text-palm-700";
+  if (complexity === "Moderate") return "bg-gold-50 text-gold-700";
+  return "bg-brand-50 text-brand-700";
 }
 
 export default async function DestinationsPage({
   searchParams,
 }: {
-  searchParams: { category?: string; island?: string }
+  searchParams: DestinationSearchParams;
 }) {
-  const dbAttractions = await getAttractions()
-  const hasLiveAttractions = Boolean(dbAttractions?.length)
-  const usingFallbackAttractions = !hasLiveAttractions
-  const allAttractions: Attraction[] = hasLiveAttractions ? dbAttractions! : FALLBACK_ATTRACTIONS
-
-  const requestedCategory = searchParams.category ?? 'All'
-  const activeCategory = ALL_CATEGORIES.includes(requestedCategory) ? requestedCategory : 'All'
-  const activeIsland = searchParams.island ?? ''
-
-  const islandSet = new Set(allAttractions.map(a => a.island).filter(Boolean) as string[])
-  const allIslands = Array.from(islandSet).sort()
-
-  const filtered = allAttractions.filter(a => {
-    const matchCategory = activeCategory === 'All' || a.category === activeCategory
-    const matchIsland = !activeIsland || a.island === activeIsland
-    return matchCategory && matchIsland
-  })
-
-  function buildFilterUrl(overrides: Record<string, string | undefined>) {
-    const params = new URLSearchParams()
-    const merged = {
-      category: activeCategory,
-      island: activeIsland,
-      ...overrides,
-    }
-    for (const [key, value] of Object.entries(merged)) {
-      if (value && value !== 'All') params.set(key, value)
-    }
-    const qs = params.toString()
-    return qs ? `/destinations?${qs}` : '/destinations'
-  }
-
-  const activeFilters = [
-    activeCategory !== 'All' ? { label: 'Category', value: activeCategory, href: buildFilterUrl({ category: undefined }) } : null,
-    activeIsland ? { label: 'Island', value: activeIsland, href: buildFilterUrl({ island: undefined }) } : null,
-  ].filter((item): item is { label: string; value: string; href: string } => Boolean(item))
-
-  const renderFilterControls = () => (
-    <>
-      <FilterGroup label="Category" description="Choose the kind of place or experience.">
-        {ALL_CATEGORIES.map((category) => (
-          <FilterChip
-            key={category}
-            href={buildFilterUrl({ category: category === 'All' ? undefined : category })}
-            active={activeCategory === category}
-            tone={category === 'Beach' ? 'gold' : 'brand'}
-          >
-            {category}
-          </FilterChip>
-        ))}
-      </FilterGroup>
-
-      {allIslands.length > 0 && (
-        <FilterGroup label="Island" description="Filter destinations by island.">
-          <FilterChip href={buildFilterUrl({ island: undefined })} active={!activeIsland}>
-            All islands
-          </FilterChip>
-          {allIslands.map((island) => (
-            <FilterChip
-              key={island}
-              href={buildFilterUrl({ island })}
-              active={activeIsland === island}
-            >
-              {island}
-            </FilterChip>
-          ))}
-        </FilterGroup>
-      )}
-    </>
-  )
+  const activeStyle = activeStyleFrom(searchParams.style);
+  const activeIsland = findIsland(searchParams.island);
+  const filteredIslands = activeIsland
+    ? [activeIsland]
+    : activeStyle.id === "all"
+      ? ISLAND_FITS
+      : ISLAND_FITS.filter((island) => island.styles.includes(activeStyle.id));
+  const comparisonIslands = filteredIslands.slice(0, 7);
 
   return (
     <div className="min-h-screen bg-white">
-      <CompactPageHeader
-        eyebrow="Explore the Bahamas"
-        title={activeIsland ? `Discover ${activeIsland}` : '700+ Islands to Discover'}
-        subtitle="From Nassau's buzz to hidden sandbars, find your perfect Bahamas escape."
-        crumbs={[
-          { href: '/', label: 'Home' },
-          { label: 'Destinations' },
-        ]}
-        actions={(
-          <>
-            <Link href="/explore" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white hover:bg-brand-700">
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
-              Open Explore
+      <section className="border-b border-gray-200 bg-white">
+        <div className="mx-auto max-w-6xl px-4 py-8">
+          <nav
+            aria-label="Breadcrumb"
+            className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-500"
+          >
+            <Link href="/" className="hover:text-night">
+              Home
             </Link>
-            <Link href={buddyChatHref('Help me choose a Bahamas destination')} className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night hover:border-gray-400 hover:bg-gray-50">
-              Ask Buddy
-            </Link>
-          </>
-        )}
-      />
+            <span className="text-gray-300">/</span>
+            <span className="text-night">Destinations</span>
+          </nav>
 
-      <main className="max-w-6xl mx-auto px-4 py-10">
-        <ResultFilterPanel
-          ariaLabel="Filter destinations"
-          eyebrow="Filter destinations"
-          title={`${filtered.length} destination${filtered.length !== 1 ? 's' : ''} found`}
-          description="Narrow places by category and island while keeping the cards and actions visible."
-          activeFilters={activeFilters}
-          clearHref="/destinations"
-          emptyLabel="Showing all destinations"
-          mobileSummary="Filter destinations"
-          desktopGridClassName="md:grid-cols-2"
-        >
-          {renderFilterControls()}
-        </ResultFilterPanel>
+          <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-night shadow-card sm:rounded-3xl">
+            <Image
+              src={HERO_IMAGE}
+              alt="Traveler comparing Bahamas islands from an island overlook"
+              fill
+              priority
+              className="object-cover object-center"
+              sizes="(max-width: 1024px) 100vw, 1152px"
+            />
+            <div
+              className="absolute inset-0 bg-gradient-to-b from-night/88 via-night/50 to-night/78 sm:bg-gradient-to-r sm:from-night/86 sm:via-night/44 sm:to-night/18"
+              aria-hidden="true"
+            />
 
-        <div className="mb-6">
-          <p className="inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
-            Results
-          </p>
-          <p className="mt-1 text-sm font-semibold text-gray-500">
-            {filtered.length} destination{filtered.length !== 1 ? 's' : ''}
-            {activeCategory !== 'All' ? ` in ${activeCategory}` : ''}
-            {activeIsland ? ` on ${activeIsland}` : ''}
-          </p>
-        </div>
-
-        {filtered.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-lg font-medium text-gray-600">No destinations found</p>
-            <p className="text-sm mt-1">Try a different filter or island.</p>
-            <Link href="/destinations" className="inline-block mt-4 text-night hover:text-gray-700 text-sm font-medium">
-              Clear filters
-            </Link>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map(attraction => {
-              const detailHref = destinationDetailHref(attraction)
-              const exploreHref = destinationExploreHref(attraction)
-              const addHref = destinationAddHref(attraction)
-              const askBuddyHref = destinationAskBuddyHref(attraction)
-              const addLabel = isIslandDestination(attraction) ? 'Start trip' : 'Add to trip'
-
-              return (
-                <article
-                  key={attraction.id}
-                  className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
-                >
-                  <ImageWithSourcePolicy
-                    src={attraction.image_url}
-                    alt={attraction.name}
-                    title={attraction.name}
-                    eyebrow={attraction.category}
-                    description="Destination details are available. Place image is not available yet."
-                    className="aspect-video"
-                    imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
-                    tone="neutral"
-                    priority={usingFallbackAttractions}
+            <div className="relative z-10 flex min-h-[38rem] flex-col justify-between p-5 sm:min-h-[34rem] sm:p-8 lg:p-10">
+              <div className="max-w-2xl">
+                <p className="mb-3 inline-flex items-center gap-2 text-xs font-bold uppercase text-white">
+                  Island finder
+                </p>
+                <h1 className="text-4xl font-bold leading-tight text-white ">
+                  {activeIsland
+                    ? `Is ${activeIsland.name} right for your trip?`
+                    : "Find the right Bahamas island for your trip."}
+                </h1>
+                <p className="mt-4 max-w-xl text-base font-semibold leading-7 text-white/90 ">
+                  Compare islands by trip style, access, pace, and planning
+                  complexity. Attractions and restaurants come later; first,
+                  choose the island that fits the trip.
+                </p>
+                <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                  <Link
+                    href={askBuddyHref(activeIsland ?? undefined)}
+                    className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white shadow-soft transition-colors hover:bg-brand-700"
                   >
-                    <div className="absolute top-3 left-3 inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1 text-xs font-semibold text-night backdrop-blur-sm">
-                      <span className="text-gold-500" aria-hidden="true">
-                        <CategoryIcon category={attraction.category} />
-                      </span>
-                      {attraction.category}
-                    </div>
-                  </ImageWithSourcePolicy>
+                    Ask Buddy to choose
+                  </Link>
+                  <Link
+                    href="#island-comparison"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-white/45 bg-white/95 px-5 py-3 text-sm font-bold text-night shadow-soft transition-colors hover:bg-white"
+                  >
+                    Compare islands
+                  </Link>
+                </div>
+              </div>
 
-                  <div className="p-5 flex flex-col flex-1">
-                    {attraction.island && (
-                      <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-gray-500">
-                        <span className="text-gold-500" aria-hidden="true">
-                          <PinIcon />
-                        </span>
-                        <span>{attraction.island}</span>
-                      </div>
-                    )}
-                    <h2 className="text-lg font-bold text-gray-900 mb-2">{attraction.name}</h2>
-                    <p className="text-sm text-gray-500 leading-relaxed line-clamp-2 mb-4 flex-1">
-                      {attraction.description}
+              <div className="mt-10 grid gap-3 sm:grid-cols-3 lg:max-w-4xl">
+                {[
+                  [
+                    activeIsland ? activeIsland.region : "Island scope",
+                    activeIsland
+                      ? activeIsland.tripLength
+                      : `${filteredIslands.length} Bahamas islands`,
+                    activeIsland
+                      ? activeIsland.access
+                      : "No general destination sprawl.",
+                  ],
+                  [
+                    "Decision first",
+                    "Fit before places",
+                    "Start with access, pace, and days before choosing every stop.",
+                  ],
+                  [
+                    "Honest tradeoffs",
+                    activeIsland ? activeIsland.complexity : "Clear matches",
+                    activeIsland
+                      ? activeIsland.notFor
+                      : "What is great, what is inconvenient, and who each island is for.",
+                  ],
+                ].map(([eyebrow, title, body]) => (
+                  <div
+                    key={`${eyebrow}-${title}`}
+                    className="rounded-2xl border border-white/25 bg-white/92 p-4 shadow-soft backdrop-blur-md"
+                  >
+                    <p className="text-xs font-bold uppercase text-brand-700">
+                      {eyebrow}
                     </p>
-
-                    {attraction.tags && attraction.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1.5 mb-4">
-                        {attraction.tags.slice(0, 3).map(tag => (
-                          <span key={tag} className="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-charcoal">
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-
-                    <div className="mt-auto grid grid-cols-2 gap-2">
-                      <Link
-                        href={detailHref}
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
-                      >
-                        View details
-                      </Link>
-                      <Link
-                        href={addHref}
-                        className="inline-flex items-center justify-center rounded-xl bg-brand-600 px-3 py-2.5 text-center text-xs font-semibold text-white transition-colors hover:bg-brand-700"
-                      >
-                        <span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
-                        {addLabel}
-                      </Link>
-                      <Link
-                        href={exploreHref}
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
-                      >
-                        Explore places
-                      </Link>
-                      <Link
-                        href={askBuddyHref}
-                        className="inline-flex items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-xs font-semibold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
-                      >
-                        Ask Buddy
-                      </Link>
-                    </div>
+                    <p className="mt-1 text-base font-bold leading-tight text-night">
+                      {title}
+                    </p>
+                    <p className="mt-2 line-clamp-3 text-xs font-semibold leading-5 text-charcoal">
+                      {body}
+                    </p>
                   </div>
-                </article>
-              )
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {DECISION_STEPS.map((step) => (
+              <div
+                key={step.title}
+                className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-sm font-bold text-brand-700">
+                    {step.step}
+                  </span>
+                  <h2 className="text-base font-bold text-night">
+                    {step.title}
+                  </h2>
+                </div>
+                <p className="mt-3 text-sm font-medium leading-6 text-charcoal">
+                  {step.body}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <main className="mx-auto max-w-6xl px-4 py-10">
+        <section aria-labelledby="trip-style-title">
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2
+                id="trip-style-title"
+                className="text-2xl font-bold text-night"
+              >
+                What kind of trip are you planning?
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-charcoal">
+                Use these filters to compare islands by the way the trip should
+                feel.
+              </p>
+            </div>
+            {activeIsland && (
+              <Link
+                href={clearIslandHref(activeStyle)}
+                className="text-sm font-bold text-brand-700 hover:text-brand-800"
+              >
+                Show all matching islands
+              </Link>
+            )}
+          </div>
+          <div
+            className="flex gap-2 overflow-x-auto pb-2"
+            aria-label="Trip style filters"
+          >
+            {TRIP_STYLES.map((style) => {
+              const isActive = activeStyle.id === style.id;
+              return (
+                <Link
+                  key={style.id}
+                  href={styleHref(style.id, activeIsland)}
+                  aria-current={isActive ? "page" : undefined}
+                  className={`inline-flex shrink-0 items-center rounded-full border px-4 py-2 text-sm font-bold transition-colors ${
+                    isActive
+                      ? "border-night bg-white text-night shadow-soft"
+                      : "border-gray-200 bg-white text-charcoal hover:border-gray-300 hover:bg-gray-50"
+                  }`}
+                >
+                  {style.label}
+                </Link>
+              );
             })}
           </div>
-        )}
+        </section>
 
-        <div className="mt-16 rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-          <h2 className="mb-2 text-2xl font-bold text-night">Ready to plan your Bahamas trip?</h2>
-          <p className="mb-6 text-gray-600">Download Baha Buddy and get AI-powered itineraries in seconds.</p>
-          <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <a
-              href="https://apps.apple.com/app/baha-buddy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+        <section className="mt-10" aria-labelledby="island-matches-title">
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase text-gray-500">
+                {filteredIslands.length} island
+                {filteredIslands.length !== 1 ? "s" : ""} matched
+              </p>
+              <h2
+                id="island-matches-title"
+                className="mt-1 text-2xl font-bold text-night"
+              >
+                {activeIsland
+                  ? activeIsland.name
+                  : activeStyle.id === "all"
+                    ? "Island matches to compare"
+                    : `${activeStyle.label} island matches`}
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-charcoal">
+                {activeStyle.summary}
+              </p>
+            </div>
+            <Link
+              href="/explore"
+              className="inline-flex min-h-11 w-fit items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
-              <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
-              Download on iOS
-            </a>
-            <a
-              href="https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white px-6 py-3 text-sm font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
-            >
-              Download on Android
-            </a>
+              Browse activities in Explore
+            </Link>
           </div>
-        </div>
+
+          {filteredIslands.length === 0 ? (
+            <div className="rounded-2xl border border-gray-200 bg-white p-8 text-center shadow-sm">
+              <h3 className="text-lg font-bold text-night">
+                No island match found
+              </h3>
+              <p className="mt-2 text-sm font-medium text-charcoal">
+                Try a different style, or ask Buddy to compare the closest
+                island fits.
+              </p>
+              <Link
+                href={askBuddyHref()}
+                className="mt-5 inline-flex rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white hover:bg-brand-700"
+              >
+                Ask Buddy to choose
+              </Link>
+            </div>
+          ) : (
+            <div className="grid gap-5">
+              {filteredIslands.map((island, index) => {
+                const flightsHref = islandFlightsHref(island);
+                return (
+                  <article
+                    key={island.slug}
+                    className="group overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
+                  >
+                    <div className="grid lg:grid-cols-[0.82fr_1.18fr]">
+                      <div className="relative min-h-72 overflow-hidden bg-gray-100 lg:h-full">
+                        <Image
+                          src={island.imageSrc}
+                          alt={`${island.name} trip planning scene`}
+                          fill
+                          priority={index < 2}
+                          className="object-cover transition-transform duration-500 group-hover:scale-105"
+                          sizes="(max-width: 1024px) 100vw, 440px"
+                        />
+                        <div className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-night shadow-soft backdrop-blur-sm">
+                          {island.region}
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col p-5 sm:p-6">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="max-w-2xl">
+                            <h3 className="text-2xl font-bold text-night">
+                              {island.name}
+                            </h3>
+                            <p className="mt-2 text-sm font-medium leading-6 text-charcoal">
+                              {island.summary}
+                            </p>
+                          </div>
+                          <span
+                            className={`shrink-0 whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${complexityTone(island.complexity)}`}
+                          >
+                            {island.complexity}
+                          </span>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {island.bestFor.map((fit) => (
+                            <span
+                              key={fit}
+                              className="rounded-full bg-gray-100 px-3 py-1 text-xs font-bold text-charcoal"
+                            >
+                              {fit}
+                            </span>
+                          ))}
+                        </div>
+
+                        <dl className="mt-5 grid gap-4 text-sm sm:grid-cols-2">
+                          <div className="rounded-xl bg-gray-50 p-4">
+                            <dt className="font-bold text-night">Access</dt>
+                            <dd className="mt-2 font-medium leading-6 text-charcoal">
+                              {island.access}
+                            </dd>
+                          </div>
+                          <div className="rounded-xl bg-gray-50 p-4">
+                            <dt className="font-bold text-night">
+                              Best length
+                            </dt>
+                            <dd className="mt-2 font-medium text-charcoal">
+                              {island.tripLength}
+                            </dd>
+                          </div>
+                          <div className="rounded-xl bg-gray-50 p-4">
+                            <dt className="font-bold text-night">Signature</dt>
+                            <dd className="mt-2 font-medium leading-6 text-charcoal">
+                              {island.signature.join(", ")}
+                            </dd>
+                          </div>
+                          <div className="rounded-xl bg-gray-50 p-4">
+                            <dt className="font-bold text-night">Not if</dt>
+                            <dd className="mt-2 font-medium leading-6 text-charcoal">
+                              {island.notFor}
+                            </dd>
+                          </div>
+                        </dl>
+
+                        <div className="mt-6 grid gap-2 sm:grid-cols-2">
+                          <Link
+                            href={startTripHref(island)}
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-600 px-3 py-2.5 text-center text-sm font-bold text-white transition-colors hover:bg-brand-700"
+                          >
+                            Start trip
+                          </Link>
+                          <Link
+                            href={islandGuideHref(island)}
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                          >
+                            View island guide
+                          </Link>
+                          <Link
+                            href={islandExploreHref(island)}
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                          >
+                            Explore places
+                          </Link>
+                          <Link
+                            href={flightsHref ?? askBuddyHref(island)}
+                            className="inline-flex min-h-11 items-center justify-center rounded-xl border border-gray-300 bg-white px-3 py-2.5 text-center text-sm font-bold text-gray-600 transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+                          >
+                            {flightsHref ? "Check flights" : "Ask Buddy"}
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        <section
+          id="island-comparison"
+          className="mt-16"
+          aria-labelledby="island-comparison-title"
+        >
+          <div className="mb-6">
+            <p className="text-xs font-bold uppercase text-gray-500">
+              Compare islands
+            </p>
+            <h2
+              id="island-comparison-title"
+              className="mt-1 text-2xl font-bold text-night"
+            >
+              At-a-glance island fit
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-charcoal">
+              Use this as the decision layer before opening detailed guides or
+              asking Buddy to assemble the full plan.
+            </p>
+          </div>
+
+          <div className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm md:block">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead className="bg-gray-50 text-xs font-bold uppercase text-gray-500">
+                <tr>
+                  <th scope="col" className="w-44 px-4 py-3">
+                    Island
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Best fit
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Access
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Pace
+                  </th>
+                  <th scope="col" className="px-4 py-3">
+                    Planning
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {comparisonIslands.map((island) => (
+                  <tr key={island.slug} className="align-top">
+                    <th
+                      scope="row"
+                      className="px-4 py-4 text-sm font-bold text-night"
+                    >
+                      {island.name}
+                      <span className="mt-1 block text-xs font-semibold text-gray-500">
+                        {island.tripLength}
+                      </span>
+                    </th>
+                    <td className="px-4 py-4 font-medium leading-6 text-charcoal">
+                      {island.bestFor.join(", ")}
+                    </td>
+                    <td className="px-4 py-4 font-medium leading-6 text-charcoal">
+                      {island.access}
+                    </td>
+                    <td className="px-4 py-4 font-medium text-charcoal">
+                      {island.pace}
+                    </td>
+                    <td className="px-4 py-4">
+                      <span
+                        className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${complexityTone(island.complexity)}`}
+                      >
+                        {island.complexity}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="grid gap-4 md:hidden">
+            {comparisonIslands.map((island) => (
+              <article
+                key={island.slug}
+                className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-base font-bold text-night">
+                    {island.name}
+                  </h3>
+                  <span
+                    className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${complexityTone(island.complexity)}`}
+                  >
+                    {island.complexity}
+                  </span>
+                </div>
+                <p className="mt-2 text-sm font-medium leading-6 text-charcoal">
+                  {island.bestFor.join(", ")}
+                </p>
+                <p className="mt-2 text-xs font-bold uppercase text-gray-500">
+                  {island.tripLength} / {island.pace}
+                </p>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-16 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase text-brand-700">
+                Still deciding?
+              </p>
+              <h2 className="mt-2 text-2xl font-bold text-night">
+                Let Buddy narrow it down.
+              </h2>
+              <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-charcoal">
+                Tell Buddy your dates, travelers, budget, island ideas, and
+                must-haves. Buddy will recommend the island first, then build
+                the stay, flight, transport, food, and activity plan around it.
+              </p>
+            </div>
+            <Link
+              href={askBuddyHref()}
+              className="inline-flex min-h-11 w-fit items-center justify-center rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
+            >
+              Ask Buddy to choose
+            </Link>
+          </div>
+        </section>
       </main>
 
       <Footer />
       <ChatWidget />
     </div>
-  )
+  );
 }

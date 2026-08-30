@@ -58,10 +58,10 @@ export default function ExploreSection() {
     <section className="py-24 bg-slate-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-brand-600 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-600 text-sm font-semiboldst uppercase mb-3">
             Curated Collections
           </p>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
             Explore by Vibe
           </h2>
           <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">

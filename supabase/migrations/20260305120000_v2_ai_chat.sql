@@ -1,6 +1,6 @@
 -- Baha Buddy V2 — AI Chat Schema Migration
 -- Idempotent: safe to run on existing DB.
--- Adds: ai_usage_log, card_type 'mixed', google_places/users/trip_activities columns, views.
+-- Adds: ai_usage_log, card_type 'mixed', cached-source place/user/trip_activity compatibility columns, views.
 
 -- ============================================
 -- AI Usage Log (Cost Tracking)
@@ -70,7 +70,7 @@ END $$;
 
 
 -- ============================================
--- Google Places — Add V2 rich card columns
+-- Cached/source place inventory — add V2 rich card columns
 -- ============================================
 
 DO $$

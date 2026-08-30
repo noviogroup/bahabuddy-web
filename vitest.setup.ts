@@ -1,6 +1,29 @@
 import '@testing-library/jest-dom/vitest';
-import { afterEach, beforeEach } from 'vitest';
+import { afterEach, beforeEach, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
+import React from 'react';
+
+vi.mock('server-only', () => ({}));
+
+vi.mock('next/image', () => ({
+  default: React.forwardRef<HTMLImageElement, React.ImgHTMLAttributes<HTMLImageElement> & {
+    fill?: boolean;
+    priority?: boolean;
+    unoptimized?: boolean;
+  }>(function MockNextImage({ fill, priority: _priority, unoptimized, ...props }, ref) {
+    const source = typeof props.src === 'string' ? props.src : '';
+    const renderedSource = !unoptimized && source.startsWith('/')
+      ? `/_next/image?url=${encodeURIComponent(source)}&w=3840&q=75`
+      : source;
+
+    return React.createElement('img', {
+      ...props,
+      ref,
+      'data-nimg': fill ? 'fill' : '1',
+      src: renderedSource,
+    });
+  }),
+}));
 
 beforeEach(() => {
   const store = new Map<string, string>();

@@ -74,7 +74,14 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
   // Refs for the party-type radio tiles, used for arrow-key roving focus.
   const partyTileRefs = useRef<Array<HTMLButtonElement | null>>([])
 
+  const clearStatusOnEdit = () => {
+    if (status.type !== 'idle') {
+      setStatus({ type: 'idle' })
+    }
+  }
+
   const toggleInterest = (slug: InterestSlug) => {
+    clearStatusOnEdit()
     setInterests(prev =>
       prev.includes(slug) ? prev.filter(s => s !== slug) : [...prev, slug],
     )
@@ -103,6 +110,7 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
         return
     }
     e.preventDefault()
+    clearStatusOnEdit()
     setPartyType(PARTY_TYPES[next].value)
     partyTileRefs.current[next]?.focus()
   }
@@ -119,6 +127,18 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!isDirty || isPending) return
+
+    const validationError = validateProfileDraft({
+      displayName,
+      partySize,
+      childrenCount,
+      partyType,
+      interests,
+    })
+    if (validationError) {
+      setStatus({ type: 'error', message: validationError })
+      return
+    }
 
     const payload: UpdateProfileInput = {
       display_name:   displayName,
@@ -143,7 +163,7 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
   }
 
   return (
-    <form onSubmit={onSubmit} className="space-y-8" aria-label="Edit profile">
+    <form onSubmit={onSubmit} className="space-y-8" aria-label="Edit profile" noValidate>
       {/* ── About you ──────────────────────────────────────────────── */}
       <Section title="About you" hint="How Buddy refers to you in chat.">
         <Field label="Display name" htmlFor="display_name">
@@ -151,7 +171,10 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
             id="display_name"
             type="text"
             value={displayName}
-            onChange={e => setDisplayName(e.target.value)}
+            onChange={e => {
+              clearStatusOnEdit()
+              setDisplayName(e.target.value)
+            }}
             maxLength={80}
             required
             aria-required="true"
@@ -165,7 +188,10 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
               id="city"
               type="text"
               value={city}
-              onChange={e => setCity(e.target.value)}
+              onChange={e => {
+                clearStatusOnEdit()
+                setCity(e.target.value)
+              }}
               placeholder="Miami"
               className={INPUT_CLS}
             />
@@ -175,7 +201,10 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
               id="country"
               type="text"
               value={country}
-              onChange={e => setCountry(e.target.value)}
+              onChange={e => {
+                clearStatusOnEdit()
+                setCountry(e.target.value)
+              }}
               placeholder="United States"
               className={INPUT_CLS}
             />
@@ -188,7 +217,7 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
         <div>
           <label
             id={`${partyGroupId}-label`}
-            className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5"
+            className="block text-xs font-semibold text-gray-700 uppercase mb-1.5"
           >
             Travel party
           </label>
@@ -207,7 +236,10 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
                   role="radio"
                   aria-checked={selected}
                   tabIndex={selected ? 0 : -1}
-                  onClick={() => setPartyType(opt.value)}
+                  onClick={() => {
+                    clearStatusOnEdit()
+                    setPartyType(opt.value)
+                  }}
                   onKeyDown={(e) => onPartyKeyDown(e, idx)}
                   className={cn(
                     'px-3 py-3 rounded-baha-md border-2 text-sm font-semibold transition-all duration-200',
@@ -232,7 +264,10 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
               min={1}
               max={20}
               value={partySize}
-              onChange={e => setPartySize(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              onChange={e => {
+                clearStatusOnEdit()
+                setPartySize(Math.max(1, parseInt(e.target.value, 10) || 1))
+              }}
               className={INPUT_CLS}
             />
           </Field>
@@ -244,7 +279,10 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
                 min={0}
                 max={10}
                 value={childrenCount}
-                onChange={e => setChildrenCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                onChange={e => {
+                  clearStatusOnEdit()
+                  setChildrenCount(Math.max(0, parseInt(e.target.value, 10) || 0))
+                }}
                 className={INPUT_CLS}
               />
             </Field>
@@ -314,12 +352,12 @@ export default function ProfileForm({ initial }: ProfileFormProps) {
           disabled={!isDirty || isPending}
           aria-disabled={!isDirty || isPending}
           className={cn(
-            'inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700',
+            'inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700',
             'disabled:cursor-not-allowed disabled:bg-brand-600 disabled:opacity-40',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2',
           )}
         >
-          {!isPending && <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />}
+
           {isPending ? 'Saving...' : 'Save changes'}
         </button>
       </div>
@@ -365,7 +403,7 @@ function Field({
 }) {
   return (
     <div>
-      <label htmlFor={htmlFor} className="block text-xs font-semibold text-gray-700 uppercase tracking-wide mb-1.5">
+      <label htmlFor={htmlFor} className="block text-xs font-semibold text-gray-700 uppercase mb-1.5">
         {label}
       </label>
       {children}
@@ -377,4 +415,27 @@ function arraysEqualUnordered<T>(a: T[], b: T[]): boolean {
   if (a.length !== b.length) return false
   const set = new Set(a)
   return b.every(x => set.has(x))
+}
+
+function validateProfileDraft({
+  displayName,
+  partySize,
+  childrenCount,
+  partyType,
+  interests,
+}: {
+  displayName: string
+  partySize: number
+  childrenCount: number
+  partyType: string
+  interests: string[]
+}): string | null {
+  const trimmedName = displayName.trim()
+  if (!trimmedName || trimmedName.length > 80) return 'Display name must be 1-80 characters.'
+  if (partySize < 1 || partySize > 20) return 'Party size must be between 1 and 20.'
+  if (partyType === 'family' && (childrenCount < 0 || childrenCount > 10)) {
+    return 'Children count must be between 0 and 10.'
+  }
+  if (!Array.isArray(interests)) return 'Invalid interests payload.'
+  return null
 }

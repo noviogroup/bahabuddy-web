@@ -7,7 +7,7 @@ const FEATURES = [
   {
     title: 'Live Flight Search',
     description:
-      'Compare live LiteAPI fares to Bahamas airports, verify the offer, then book into your trip when you are ready.',
+      'Compare live fares to Bahamas airports, verify the offer, then book into your trip when you are ready.',
   },
   {
     title: 'Stays with Context',
@@ -27,7 +27,7 @@ const FEATURES = [
   {
     title: 'Guided on Island',
     description:
-      'Use the mobile app for your trip timeline, map context, guided days, and Buddy support while traveling.',
+      'Keep your timeline, map context, guided days, and Buddy support with you while traveling.',
   },
 ]
 
@@ -36,10 +36,10 @@ export default function AppFeaturesSection() {
     <section className="py-24 bg-stone-50">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-14">
-          <p className="text-brand-600 text-sm font-semibold tracking-widest uppercase mb-3">
+          <p className="text-brand-600 text-sm font-semiboldst uppercase mb-3">
             Everything You Need
           </p>
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 tracking-tight">
+          <h2 className="text-4xl font-bold text-gray-900 mb-4">
             One App for Your Entire Bahamas Trip
           </h2>
           <p className="text-lg text-gray-500 max-w-xl mx-auto leading-relaxed">

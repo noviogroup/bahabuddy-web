@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { callTravelProvider, getProviderErrorResponse } from '@/lib/travel-booking/provider'
 import { createClient } from '@/lib/supabase/server'
+import { normalizeFlightAncillaries, normalizeFlightSeatMaps } from '@/lib/flight-seat-map'
 
 type JsonRecord = Record<string, unknown>
 
@@ -37,6 +38,8 @@ export async function POST(request: Request) {
       publishable_key: stringValue(payment.publishableKey ?? payment.publishable_key ?? prebook.publishableKey ?? prebook.publishable_key),
       price: numberValue(price.amount ?? prebook.amount ?? prebook.total),
       currency: stringValue(price.currency ?? prebook.currency, 'USD'),
+      seat_maps: normalizeFlightSeatMaps(prebook),
+      ancillaries: normalizeFlightAncillaries(prebook),
       raw: result.data,
     }, { status: result.status })
   } catch (error) {

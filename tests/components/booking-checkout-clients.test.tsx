@@ -114,7 +114,7 @@ describe('StayGuestBookingClient', () => {
 
     const continueButton = screen.getByRole('button', { name: /continue to pay/i })
     expect(continueButton).toHaveClass('bg-brand-600')
-    expect(continueButton.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(continueButton.querySelector('.bg-gold-400')).toBeNull()
 
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'traveler@example.com' } })
     fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Valdez' } })
@@ -125,7 +125,7 @@ describe('StayGuestBookingClient', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Pay and confirm hotel' })).toBeInTheDocument())
     const payButton = screen.getByRole('button', { name: 'Pay and confirm hotel' })
     expect(payButton).toHaveClass('bg-brand-600')
-    expect(payButton.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(payButton.querySelector('.bg-gold-400')).toBeNull()
 
     expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(fetchMock.mock.calls[0][0]).toBe('/api/trips/trip-1/items')
@@ -200,7 +200,7 @@ describe('StayGuestBookingClient', () => {
       const payButton = await screen.findByRole('button', { name: 'Pay and confirm hotel' })
       fireEvent.click(payButton)
 
-      expect(await screen.findByText(/Payment and provider booking succeeded, but Baha Buddy could not save the local booking record/i)).toBeInTheDocument()
+      expect(await screen.findByText(/Payment succeeded, but this booking needs support before it can be shown as confirmed/i)).toBeInTheDocument()
       expect(window.location.href).toBe('')
       expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/booking/hotels/book')
     } finally {
@@ -222,7 +222,7 @@ describe('FlightOfferBookingClient', () => {
       '/dashboard/trips/new?returnTo=%2Fflights%2Foffer-123%2Fbook&source=flight',
     )
     expect(screen.getByRole('link', { name: 'Create trip' })).toHaveClass('bg-brand-600')
-    expect(screen.getByRole('link', { name: 'Create trip' }).querySelector('.bg-gold-400')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Create trip' }).querySelector('.bg-gold-400')).toBeNull()
     expect(screen.getByRole('link', { name: 'Back to flights' })).toHaveAttribute('href', '/flights')
     expect(fetchMock).not.toHaveBeenCalled()
   })
@@ -239,7 +239,7 @@ describe('FlightOfferBookingClient', () => {
     expect(screen.getByText('Search again')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Search current fares' })).toHaveAttribute('href', '/flights')
     expect(screen.getByRole('link', { name: 'Search current fares' })).toHaveClass('bg-brand-600')
-    expect(screen.getByRole('link', { name: 'Search current fares' }).querySelector('.bg-gold-400')).toBeTruthy()
+    expect(screen.getByRole('link', { name: 'Search current fares' }).querySelector('.bg-gold-400')).toBeNull()
     expect(screen.queryByRole('button', { name: /verify fare and continue/i })).not.toBeInTheDocument()
     expect(screen.queryByLabelText(/email/i)).not.toBeInTheDocument()
     expect(fetchMock).not.toHaveBeenCalled()
@@ -254,40 +254,179 @@ describe('FlightOfferBookingClient', () => {
           route: 'MIA to NAS',
           airline: 'Bahamasair',
           airlineCode: 'UP',
+          flightNumber: 'UP 221',
           departure: '10:00 AM',
           arrival: '11:00 AM',
           duration: '1h',
           stops: 'Direct',
           price: 345,
+          baseFare: 280,
+          taxes: 65,
+          fees: 0,
           currency: 'USD',
           passengers: 2,
           cabinClass: 'Economy',
           fareBrand: 'Main Cabin',
+          aircraft: 'Boeing 737-800',
           refundable: true,
           carryOn: true,
           checkedBags: 1,
+          baggageAllowances: [
+            { type: 'carry_on', pieces: 1, weightKg: 10, dimensions: '55 × 40 × 23 cm' },
+            { type: 'checked', pieces: 1, weightKg: 23, dimensions: '90 × 75 × 43 cm' },
+          ],
         }}
       />,
     )
 
     expect(screen.getByRole('heading', { name: 'Bahamasair (UP)' })).toBeInTheDocument()
-    expect(screen.getByText('$345.00')).toBeInTheDocument()
+    expect(screen.getByText('Flight UP 221')).toBeInTheDocument()
+    expect(screen.getByAltText('Bahamasair logo')).toHaveClass('object-contain')
+    expect(screen.getAllByText('$345.00').length).toBeGreaterThanOrEqual(1)
     expect(screen.getAllByText('MIA to NAS').length).toBeGreaterThanOrEqual(2)
     expect(screen.getByText('10:00 AM')).toBeInTheDocument()
     expect(screen.getByText('11:00 AM')).toBeInTheDocument()
     expect(screen.getByText('1h')).toBeInTheDocument()
     expect(screen.getByText('Direct')).toBeInTheDocument()
     expect(screen.getAllByText('Main Cabin').length).toBeGreaterThanOrEqual(2)
-    expect(screen.getByText('Carry-on + 1 checked')).toBeInTheDocument()
+    expect(screen.getByText('Boeing 737-800')).toBeInTheDocument()
+    expect(screen.getByText('1 × 10 kg carry-on · 55 × 40 × 23 cm + 1 × 23 kg checked bag · 90 × 75 × 43 cm')).toBeInTheDocument()
     expect(screen.getByText('Refundable')).toBeInTheDocument()
     expect(screen.getByText('2 travelers')).toBeInTheDocument()
 
+    const mainFareBreakdown = screen.getByRole('region', { name: 'Selected fare breakdown' })
+    expect(within(mainFareBreakdown).getByText('Base fare')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('$280.00')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('Taxes')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('$65.00')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('Fees')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('$0.00')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('Total')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText('$345.00')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).queryByText(/line items are unavailable/i)).not.toBeInTheDocument()
+
     const statusRail = screen.getByRole('complementary', { name: 'Flight checkout status' })
+    expect(within(statusRail).getByText('Checkout progress')).toBeInTheDocument()
     expect(within(statusRail).getByRole('heading', { name: 'Traveler details' })).toBeInTheDocument()
-    expect(within(statusRail).getByText('Live search result attached')).toBeInTheDocument()
+    expect(within(statusRail).getByText('2 of 5')).toBeInTheDocument()
+    expect(within(statusRail).getByText('Fare selected')).toBeInTheDocument()
+    expect(within(statusRail).getByText('Fare details attached')).toBeInTheDocument()
+    expect(within(statusRail).getByText('Trip selected')).toBeInTheDocument()
     expect(within(statusRail).getByText('Ready to save into My Trip')).toBeInTheDocument()
-    expect(within(statusRail).getByText(/Confirmed only after payment, provider booking, local booking, and trip item reconcile/i)).toBeInTheDocument()
+    expect(within(statusRail).getByText('Payment')).toBeInTheDocument()
+    expect(within(statusRail).getByText('Add-ons')).toBeInTheDocument()
+    expect(within(statusRail).getByText('Next step after add-ons')).toBeInTheDocument()
     expect(within(statusRail).getByText('Fare snapshot')).toBeInTheDocument()
+    expect(within(statusRail).queryByText('OK')).not.toBeInTheDocument()
+    expect(within(statusRail).queryByText('Provider prebook')).not.toBeInTheDocument()
+    expect(within(statusRail).getAllByText('Fare selected').length).toBeGreaterThan(0)
+    const railFareBreakdown = within(statusRail).getByRole('region', { name: 'Checkout rail fare breakdown' })
+    expect(within(railFareBreakdown).getByText('$280.00')).toBeInTheDocument()
+    expect(within(railFareBreakdown).getByText('$65.00')).toBeInTheDocument()
+    expect(within(railFareBreakdown).getByText('$0.00')).toBeInTheDocument()
+    expect(within(railFareBreakdown).getByText('$345.00')).toBeInTheDocument()
+    expect(screen.queryByText(/LiteAPI verifies/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/Provider prebook/i)).not.toBeInTheDocument()
+    const travelerPrivacy = screen.getByRole('complementary', {
+      name: 'Traveler data privacy disclosure',
+    })
+    expect(within(travelerPrivacy).getByText('How we use traveler data')).toBeInTheDocument()
+    expect(within(travelerPrivacy).getByText(/passport details to verify and fulfill/i)).toBeInTheDocument()
+    expect(within(travelerPrivacy).getByRole('link', { name: 'Read the Privacy Policy' })).toHaveAttribute('href', '/privacy')
+  })
+
+  test('shows provider line items as unavailable instead of inventing a breakdown', () => {
+    render(
+      <FlightOfferBookingClient
+        offerId="offer-without-breakdown"
+        trips={[{ id: 'trip-1', name: 'Summer Bahamas' }]}
+        summary={basicFlightSummary}
+      />,
+    )
+
+    const mainFareBreakdown = screen.getByRole('region', { name: 'Selected fare breakdown' })
+    expect(within(mainFareBreakdown).getAllByText('Unavailable')).toHaveLength(3)
+    expect(within(mainFareBreakdown).getByText('$345.00')).toBeInTheDocument()
+    expect(within(mainFareBreakdown).getByText(/Provider fare line items are unavailable/i)).toBeInTheDocument()
+
+    const statusRail = screen.getByRole('complementary', { name: 'Flight checkout status' })
+    const railFareBreakdown = within(statusRail).getByRole('region', { name: 'Checkout rail fare breakdown' })
+    expect(within(railFareBreakdown).getAllByText('Unavailable')).toHaveLength(3)
+    expect(within(railFareBreakdown).getByText('$345.00')).toBeInTheDocument()
+  })
+
+  test('shows outbound and return legs when the selected fare is round trip', () => {
+    render(
+      <FlightOfferBookingClient
+        offerId="offer-roundtrip"
+        trips={[{ id: 'trip-1', name: 'Summer Bahamas' }]}
+        summary={{
+          route: 'MIA to NAS',
+          airline: 'American Airlines',
+          airlineCode: 'AA',
+          price: 404,
+          currency: 'USD',
+          passengers: 1,
+          tripType: 'round_trip',
+          legs: [
+            {
+              direction: 'OUTBOUND',
+              route: 'MIA to NAS',
+              departure: '4:50 PM',
+              arrival: '5:54 PM',
+              duration: '2h 15m',
+              stops: 'Direct',
+            },
+            {
+              direction: 'INBOUND',
+              route: 'NAS to MIA',
+              departure: '11:10 AM',
+              arrival: '12:18 PM',
+              duration: '2h 8m',
+              stops: 'Direct',
+            },
+          ],
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Round trip')).toBeInTheDocument()
+    expect(screen.getByText('Outbound')).toBeInTheDocument()
+    expect(screen.getByText('Return')).toBeInTheDocument()
+    expect(screen.getByText('4:50 PM')).toBeInTheDocument()
+    expect(screen.getByText('11:10 AM')).toBeInTheDocument()
+    expect(screen.getByText('NAS to MIA')).toBeInTheDocument()
+    expect(screen.getByAltText('American Airlines logo')).toBeInTheDocument()
+  })
+
+  test('prefills editable Traveler 1 contact and country from profile defaults', () => {
+    render(
+      <FlightOfferBookingClient
+        offerId="offer-123"
+        trips={[{ id: 'trip-1', name: 'Summer Bahamas' }]}
+        summary={basicFlightSummary}
+        profileDefaults={{
+          firstName: 'Valdez',
+          lastName: 'Williams',
+          email: 'valdez@noviogroup.com',
+          phoneCountryCode: '+1',
+          phoneNumber: '+12425551212',
+          countryCode: 'BS',
+        }}
+      />,
+    )
+
+    expect(screen.getByText(/Traveler 1 profile loaded/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/email/i)).toHaveValue('valdez@noviogroup.com')
+    expect(screen.getByLabelText(/phone country code/i)).toHaveValue('1')
+    expect(screen.getByLabelText(/phone number/i)).toHaveValue('2425551212')
+    expect(screen.getByLabelText(/first name/i)).toHaveValue('Valdez')
+    expect(screen.getByLabelText(/last name/i)).toHaveValue('Williams')
+    expect(screen.getByLabelText(/nationality/i)).toHaveValue('BS')
+    expect(screen.getByLabelText(/passport issue country/i)).toHaveValue('BS')
+
+    fireEvent.change(screen.getByLabelText(/phone number/i), { target: { value: '2425559999' } })
+    expect(screen.getByLabelText(/phone number/i)).toHaveValue('2425559999')
   })
 
   test('starts LiteAPI prebook with traveler/passport details, then saves the flight to the trip', async () => {
@@ -306,6 +445,44 @@ describe('FlightOfferBookingClient', () => {
           arrival_at: '2026-08-01T11:00:00Z',
           price: 345,
           currency: 'USD',
+          seat_maps: [{
+            segment_key: 'segment-1',
+            segment_label: 'MIA to NAS',
+            seats: [{
+              service_id: 'seat-12a',
+              segment_key: 'segment-1',
+              name: 'Seat 12A',
+              row: 12,
+              column: 'A',
+              seat_number: '12A',
+              seat_type: 'standard',
+              position: 'window',
+              available: true,
+              price: 25,
+              currency: 'USD',
+            }],
+          }],
+          ancillaries: [{
+            service_id: 'bag-23kg',
+            category: 'baggage',
+            name: 'Checked bag up to 23 kg',
+            description: 'One additional checked bag',
+            segment_key: 'segment-1',
+            segment_label: 'MIA to NAS',
+            available: true,
+            price: 45,
+            currency: 'USD',
+          }],
+        })
+      }
+      if (url === '/api/booking/flights/prebook/flight-prebook-1/services') {
+        return mockJsonResponse({
+          prebook_id: 'flight-prebook-1',
+          transaction_id: 'txn-with-services',
+          client_secret: 'cs_flight_with_services',
+          publishable_key: 'pk_test_1',
+          price: 370,
+          currency: 'USD',
         })
       }
       return mockJsonResponse({ error: `Unhandled ${url}` }, { status: 500 })
@@ -320,10 +497,11 @@ describe('FlightOfferBookingClient', () => {
       />,
     )
 
+    expect(screen.getByRole('option', { name: 'Non-binary / X' })).toHaveValue('X')
     await waitFor(() => expect(screen.getByRole('button', { name: /verify fare and continue/i })).toBeEnabled())
     const verifyButton = screen.getByRole('button', { name: /verify fare and continue/i })
     expect(verifyButton).toHaveClass('bg-brand-600')
-    expect(verifyButton.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(verifyButton.querySelector('.bg-gold-400')).toBeNull()
 
     fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'traveler@example.com' } })
     fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Valdez' } })
@@ -337,12 +515,32 @@ describe('FlightOfferBookingClient', () => {
     fireEvent.change(screen.getByLabelText(/passport expiry/i), { target: { value: '2031-01-01' } })
     fireEvent.click(screen.getByRole('button', { name: /verify fare and continue/i }))
 
+    fireEvent.click(await screen.findByRole('button', { name: '12A, $25' }))
+    expect(screen.getByText('Extra baggage')).toBeInTheDocument()
+    expect(screen.getByText('Checked bag up to 23 kg')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Valdez' }))
+    expect(screen.getByText('1 traveler service')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Continue to payment' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Pay and confirm flight' })).toBeInTheDocument())
     const payButton = screen.getByRole('button', { name: 'Pay and confirm flight' })
     expect(payButton).toHaveClass('bg-brand-600')
-    expect(payButton.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(payButton.querySelector('.bg-gold-400')).toBeNull()
+    const paymentPrivacy = screen.getByRole('complementary', {
+      name: 'Payment data privacy disclosure',
+    })
+    expect(within(paymentPrivacy).getByText('Your data at payment')).toBeInTheDocument()
+    expect(within(paymentPrivacy).getByText(/Card details are handled securely by Stripe/i)).toBeInTheDocument()
+    expect(within(paymentPrivacy).getByRole('link', { name: 'Read the Privacy Policy' })).toHaveAttribute('href', '/privacy')
+    expect(payButton).toBeDisabled()
+    expect(screen.getByRole('link', { name: 'Terms & Conditions' })).toHaveAttribute('href', '/terms')
+    expect(screen.getByRole('link', { name: 'Carrier fare rules' })).toHaveAttribute('href', '#carrier-fare-rules')
+    expect(screen.getByText('Bahamasair fare rules')).toBeInTheDocument()
+    expect(screen.getAllByText(/Non-refundable/i).length).toBeGreaterThanOrEqual(1)
 
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    fireEvent.click(screen.getByRole('checkbox', { name: /I agree to the booking terms/i }))
+    expect(payButton).toBeEnabled()
+
+    expect(fetchMock).toHaveBeenCalledTimes(3)
     expect(fetchMock.mock.calls[0][0]).toBe('/api/booking/flights/prebook')
     expect(requestBody(fetchMock.mock.calls[0])).toMatchObject({
       offerId: 'offer-123',
@@ -376,6 +574,13 @@ describe('FlightOfferBookingClient', () => {
       airline: 'Bahamasair',
       price: 345,
       currency: 'USD',
+    })
+    expect(fetchMock.mock.calls[2][0]).toBe('/api/booking/flights/prebook/flight-prebook-1/services')
+    expect(requestBody(fetchMock.mock.calls[2])).toEqual({
+      selectedServices: [
+        { passengerIndex: 0, serviceId: 'seat-12a', quantity: 1 },
+        { passengerIndex: 0, serviceId: 'bag-23kg', quantity: 1 },
+      ],
     })
     expect(stripeMocks.loadStripe).toHaveBeenCalledWith('pk_test_1')
   })
@@ -423,13 +628,14 @@ describe('FlightOfferBookingClient', () => {
     fireEvent.change(screen.getByLabelText('Traveler 2 first name'), { target: { value: 'Avery' } })
     fireEvent.change(screen.getByLabelText('Traveler 2 last name'), { target: { value: 'Williams' } })
     fireEvent.change(screen.getByLabelText('Traveler 2 date of birth'), { target: { value: '1990-05-03' } })
-    fireEvent.change(screen.getByLabelText('Traveler 2 gender'), { target: { value: 'F' } })
+    fireEvent.change(screen.getByLabelText('Traveler 2 gender'), { target: { value: 'X' } })
     fireEvent.change(screen.getByLabelText('Traveler 2 nationality'), { target: { value: 'us' } })
     fireEvent.change(screen.getByLabelText('Traveler 2 passport number'), { target: { value: 'B7654321' } })
     fireEvent.change(screen.getByLabelText('Traveler 2 passport issue country'), { target: { value: 'us' } })
     fireEvent.change(screen.getByLabelText('Traveler 2 passport expiry'), { target: { value: '2032-04-01' } })
     fireEvent.click(screen.getByRole('button', { name: /verify fare and continue/i }))
 
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue to payment' }))
     await waitFor(() => expect(screen.getByRole('button', { name: 'Pay and confirm flight' })).toBeInTheDocument())
 
     expect(requestBody(fetchMock.mock.calls[0])).toMatchObject({
@@ -455,7 +661,7 @@ describe('FlightOfferBookingClient', () => {
           firstName: 'Avery',
           lastName: 'Williams',
           birthday: '1990-05-03',
-          gender: 'F',
+          gender: 'X',
           nationality: 'US',
           documentNumber: 'B7654321',
           documentIssueCountry: 'US',
@@ -543,7 +749,9 @@ describe('FlightOfferBookingClient', () => {
       fireEvent.change(screen.getByLabelText(/passport expiry/i), { target: { value: '2031-01-01' } })
       fireEvent.click(screen.getByRole('button', { name: /verify fare and continue/i }))
 
+      fireEvent.click(await screen.findByRole('button', { name: 'Continue to payment' }))
       const payButton = await screen.findByRole('button', { name: 'Pay and confirm flight' })
+      fireEvent.click(screen.getByRole('checkbox', { name: /I agree to the booking terms/i }))
       fireEvent.click(payButton)
 
       await waitFor(() => expect(window.location.href).toBe('/flights/offer-123/confirmation?tripId=trip-1&bookingId=booking-1'))
@@ -609,10 +817,12 @@ describe('FlightOfferBookingClient', () => {
       fireEvent.change(screen.getByLabelText(/passport expiry/i), { target: { value: '2031-01-01' } })
       fireEvent.click(screen.getByRole('button', { name: /verify fare and continue/i }))
 
+      fireEvent.click(await screen.findByRole('button', { name: 'Continue to payment' }))
       const payButton = await screen.findByRole('button', { name: 'Pay and confirm flight' })
+      fireEvent.click(screen.getByRole('checkbox', { name: /I agree to the booking terms/i }))
       fireEvent.click(payButton)
 
-      expect(await screen.findByText(/Payment and provider booking succeeded, but Baha Buddy could not save the local booking record/i)).toBeInTheDocument()
+      expect(await screen.findByText(/Payment succeeded, but this booking needs support before it can be shown as confirmed/i)).toBeInTheDocument()
       expect(window.location.href).toBe('')
       expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/booking/flights/book')
     } finally {
@@ -625,7 +835,7 @@ describe('FlightBookingConfirmationClient', () => {
   test.each([
     ['confirmed' as const, 'Flight booking confirmed', 'DEMO123', true],
     ['pending' as const, 'Payment received, booking pending', 'Pending', false],
-    ['provider_failed' as const, 'Payment received, provider booking failed', 'Pending', false],
+    ['provider_failed' as const, 'Payment received, booking needs support', 'Pending', false],
   ])('renders demo %s booking state without loading the booking API', async (demoState, heading, providerReference, expectsReceiptEmail) => {
     const fetchMock = vi.fn()
     vi.stubGlobal('fetch', fetchMock)
@@ -640,7 +850,7 @@ describe('FlightBookingConfirmationClient', () => {
     )
 
     expect(await screen.findByRole('heading', { name: heading })).toBeInTheDocument()
-    expect(screen.getByText('Non-payment fixture')).toBeInTheDocument()
+    expect(screen.getByText('No payment needed')).toBeInTheDocument()
     expect(screen.getAllByText(providerReference).length).toBeGreaterThan(0)
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('href', '/dashboard')
     const receiptEmailNotice = screen.queryByText('We sent your receipt, itinerary, and booking reference to your email.')
@@ -653,12 +863,19 @@ describe('FlightBookingConfirmationClient', () => {
   })
 
   test('shows confirmed copy only when booking return is reconciled', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    })
     const fetchMock = vi.fn(() => mockJsonResponse({
       tripId: 'trip-1',
       tripItemId: 'flight-item-1',
       bookingId: 'booking-1',
       provider: 'flight_liteapi',
       providerReference: 'PNR123',
+      airline: 'Bahamasair',
+      departureAt: '2026-08-20T13:00:00.000Z',
       paymentStatus: 'paid',
       providerStatus: 'confirmed',
       amount: 345,
@@ -677,14 +894,24 @@ describe('FlightBookingConfirmationClient', () => {
     )
 
     expect(await screen.findByRole('heading', { name: 'Flight booking confirmed' })).toBeInTheDocument()
-    expect(screen.getByText('Your payment, provider booking, local booking record, and trip item are reconciled.')).toBeInTheDocument()
-    expect(screen.getByText('LiteAPI flights')).toBeInTheDocument()
+    expect(screen.getByText('Your payment and flight booking are confirmed.')).toBeInTheDocument()
+    expect(screen.getByText('Flight partner')).toBeInTheDocument()
     expect(screen.getByText('$345')).toBeInTheDocument()
-    expect(screen.getByText('Confirmation rule')).toBeInTheDocument()
+    expect(screen.getAllByText('Confirmation').length).toBeGreaterThan(0)
     expect(screen.getByText('Payment: paid')).toBeInTheDocument()
-    expect(screen.getByText('Provider: confirmed')).toBeInTheDocument()
-    expect(screen.getByText('Trip record: Reconciled')).toBeInTheDocument()
-    expect(screen.getByText('Support context')).toBeInTheDocument()
+    expect(screen.getByText('Airline: confirmed')).toBeInTheDocument()
+    expect(screen.getByText('Booking: Reconciled')).toBeInTheDocument()
+    expect(screen.getByText('Support details')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Check in 24 hours before departure' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Bahamasair check-in' })).toHaveAttribute(
+      'href',
+      'https://book.bahamasair.com/web/ICIPNRSearch.xhtml',
+    )
+    expect(screen.getByText('Your booking reference / PNR')).toBeInTheDocument()
+    expect(screen.getAllByText('PNR123').length).toBeGreaterThan(0)
+    fireEvent.click(screen.getByRole('button', { name: 'Copy booking reference PNR123' }))
+    expect(await screen.findByText('Copied')).toBeInTheDocument()
+    expect(writeText).toHaveBeenCalledWith('PNR123')
     expect(fetchMock).toHaveBeenCalledWith('/api/trips/trip-1/bookings/booking-1', { cache: 'no-store' })
     expect(screen.getByRole('link', { name: 'View trip' })).toHaveAttribute('href', '/trip/trip-1?booking=booking-1')
     expect(screen.getByRole('link', { name: 'View trip' })).toHaveClass('bg-brand-600')
@@ -719,7 +946,7 @@ describe('FlightBookingConfirmationClient', () => {
 
     expect(await screen.findByRole('heading', { name: 'Payment received, booking pending' })).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Flight booking confirmed' })).not.toBeInTheDocument()
-    expect(screen.getByText('Trip record: Needs review')).toBeInTheDocument()
+    expect(screen.getByText('Booking: Needs review')).toBeInTheDocument()
     expect(screen.getByText('Do not duplicate the booking yet.')).toBeInTheDocument()
   })
 

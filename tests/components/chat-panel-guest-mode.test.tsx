@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import ChatPanel from '@/components/dashboard/ChatPanel'
 
 const chatPanelMocks = vi.hoisted(() => ({
@@ -21,6 +21,11 @@ describe('ChatPanel guest mode', () => {
   beforeEach(() => {
     chatPanelMocks.search = ''
     chatPanelMocks.from.mockReset()
+    vi.restoreAllMocks()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
   })
 
   test('lets public visitors chat without loading private conversation history', () => {
@@ -44,5 +49,35 @@ describe('ChatPanel guest mode', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('Message Baha Buddy')).toHaveValue('Help me compare Exuma stays')
     })
+  })
+
+  test('auto-starts a marked Buddy handoff query once', async () => {
+    chatPanelMocks.search = 'q=Help+me+plan+around+Grand+Isle&start=1'
+    const encoder = new TextEncoder()
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      body: new ReadableStream({
+        start(controller) {
+          controller.enqueue(encoder.encode('data: {"type":"text_delta","delta":"I can help with Grand Isle."}\n\n'))
+          controller.enqueue(encoder.encode('data: {"type":"done"}\n\n'))
+          controller.close()
+        },
+      }),
+    })
+    vi.stubGlobal('fetch', fetchMock)
+
+    render(<ChatPanel mode="standalone" guestMode />)
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(screen.getByText('Help me plan around Grand Isle')).toBeInTheDocument()
+    expect(await screen.findByText('I can help with Grand Isle.')).toBeInTheDocument()
+    expect(screen.getByLabelText('Message Baha Buddy')).toHaveValue('')
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/chat',
+      expect.objectContaining({
+        method: 'POST',
+        body: expect.stringContaining('"message":"Help me plan around Grand Isle"'),
+      }),
+    )
   })
 })

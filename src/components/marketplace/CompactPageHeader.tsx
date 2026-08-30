@@ -25,14 +25,14 @@ export default function CompactPageHeader({
 }: CompactPageHeaderProps) {
   return (
     <section className="border-b border-gray-200 bg-white">
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-6xl px-4 py-5 sm:py-6">
         {crumbs && crumbs.length > 0 && (
           <nav aria-label="Breadcrumb" className="mb-3 flex flex-wrap items-center gap-2 text-xs font-semibold text-gray-500">
             {crumbs.map((crumb, index) => (
               <span key={`${crumb.label}-${index}`} className="inline-flex items-center gap-2">
                 {index > 0 && <span className="text-gray-300">/</span>}
                 {crumb.href ? (
-                  <Link href={crumb.href} className="hover:text-night">
+                  <Link href={crumb.href} className="inline-flex min-h-11 items-center rounded-lg pr-1 hover:text-night focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-300">
                     {crumb.label}
                   </Link>
                 ) : (
@@ -42,24 +42,23 @@ export default function CompactPageHeader({
             ))}
           </nav>
         )}
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="max-w-3xl">
             {eyebrow && (
-              <p className="mb-2 inline-flex items-center gap-2 text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">
-                <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              <p className="mb-2 inline-flex items-center gap-2 text-xs font-semibold uppercase text-gray-500">
                 {eyebrow}
               </p>
             )}
-            <h1 className="text-3xl font-extrabold tracking-tight text-night md:text-4xl">
+            <h1 className="text-3xl font-bold leading-tight text-night">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-charcoal md:text-base">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-charcoal">
                 {subtitle}
               </p>
             )}
           </div>
-          {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
+          {actions && <div className="flex w-full flex-wrap gap-2 md:w-auto [&>*]:min-h-11 [&>*]:flex-1 [&>*]:items-center [&>*]:justify-center md:[&>*]:flex-none">{actions}</div>}
         </div>
         {children && <div className="mt-5">{children}</div>}
       </div>

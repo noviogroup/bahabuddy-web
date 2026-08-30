@@ -11,13 +11,17 @@ import { FALLBACK_IMAGE } from '@/lib/baha-images'
 import { buddyChatHref } from '@/lib/buddy-chat'
 import {
   getHotelById,
+  getHotelReviews,
+  getLiveHotelPhotoUrls,
   getSimilarHotels,
   hotelHeroPhotoUrl,
-  hotelPhotoCaption,
-  hotelPhotoUrl,
   hotelPhotoUrls,
+  uniqueHotelPhotoUrls,
+  type HotelReview,
 } from '@/lib/hotels'
 import AvailabilityWidget from '@/components/stays/AvailabilityWidget'
+import ExpandableReviewText from '@/components/stays/ExpandableReviewText'
+import StayPhotoGallery, { StayMorePhotosGrid } from '@/components/stays/StayPhotoGallery'
 import StayDetailActions from '@/components/stays/StayDetailActions'
 import { readStaySearchParams } from '@/lib/stay-search-params'
 
@@ -49,17 +53,129 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 }
 
+function formatReviewDate(value: string | null): string | null {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric' }).format(date)
+}
+
+function StayReviewsSection({
+  hotelName,
+  reviewScore,
+  reviewCount,
+  reviews,
+}: {
+  hotelName: string
+  reviewScore: number | null
+  reviewCount: number | null
+  reviews: HotelReview[]
+}) {
+  if ((reviewScore == null || reviewScore <= 0) && reviews.length === 0) return null
+
+  const hasWrittenReviews = reviews.length > 0
+  const reviewCountLabel = reviewCount != null && reviewCount > 0
+    ? `${reviewCount.toLocaleString()} review${reviewCount === 1 ? '' : 's'}`
+    : 'Provider review count pending'
+
+  return (
+    <section aria-labelledby="guest-reviews" className="space-y-4">
+      <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="text-xs font-bold uppercase text-brand-700">
+              Guest reviews
+            </p>
+            <h2 id="guest-reviews" className="mt-1 text-2xl font-bold text-night">
+              What guests are saying
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-charcoal">
+              Read recent guest notes, then compare live rooms and rules before saving this stay.
+            </p>
+          </div>
+
+          {reviewScore != null && reviewScore > 0 && (
+            <div className="shrink-0 rounded-baha-lg border border-brand-100 bg-brand-50 px-5 py-4">
+              <p className="text-xs font-bold uppercase text-brand-700">Guest rating</p>
+              <p className="mt-1 text-3xl font-bold text-night">{reviewScore.toFixed(1)}</p>
+              <p className="text-sm font-semibold text-charcoal">{reviewCountLabel}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {hasWrittenReviews ? (
+        <div className="grid gap-3 md:grid-cols-2">
+          {reviews.map((review) => {
+            const dateLabel = formatReviewDate(review.time)
+
+            return (
+              <article key={`${review.authorName}-${review.time ?? review.text.slice(0, 16)}`} className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="text-sm font-bold text-night">{review.authorName}</h3>
+                    {dateLabel && (
+                      <p className="mt-0.5 text-xs font-semibold text-gray-500">{dateLabel}</p>
+                    )}
+                  </div>
+                  <span className="rounded-full bg-gold-100 px-3 py-1 text-xs font-bold text-night">
+                    {review.rating.toFixed(1)}
+                  </span>
+                </div>
+                <ExpandableReviewText
+                  text={review.text}
+                  className="text-sm leading-6 text-charcoal"
+                />
+              </article>
+            )
+          })}
+        </div>
+      ) : (
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold text-night">Aggregate score available</p>
+            <p className="mt-2 text-sm leading-6 text-charcoal">
+              {hotelName} currently shows {reviewScore != null && reviewScore > 0 ? `a ${reviewScore.toFixed(1)} guest rating` : 'a provider rating'} from {reviewCountLabel.toLowerCase()}.
+            </p>
+          </div>
+          <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold text-night">Written comments pending</p>
+            <p className="mt-2 text-sm leading-6 text-charcoal">
+              The provider record does not include readable guest comments yet, so Baha Buddy is not showing invented quotes.
+            </p>
+          </div>
+          <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+            <p className="text-sm font-bold text-night">Best next check</p>
+            <p className="mt-2 text-sm leading-6 text-charcoal">
+              Review live room rules, cancellation policy, taxes, and total price before saving this stay to your trip.
+            </p>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default async function StayDetailPage({ params, searchParams = {} }: PageProps) {
   const hotel = await getHotelById(params.hotelId)
   if (!hotel) notFound()
 
   const staySearch = readStaySearchParams(searchParams)
-  const similar = await getSimilarHotels(hotel)
-  const photos = hotel.photos ?? []
-  const photoUrls = hotelPhotoUrls(hotel)
-  const heroUrl = hotelHeroPhotoUrl(hotel) ?? FALLBACK_IMAGE
+  const cachedPhotoUrls = hotelPhotoUrls(hotel)
+  const livePhotoPromise = cachedPhotoUrls.length < 8
+    ? getLiveHotelPhotoUrls(hotel.id)
+    : Promise.resolve([])
+  const [similar, reviews, livePhotoUrls] = await Promise.all([
+    getSimilarHotels(hotel),
+    getHotelReviews(hotel.id),
+    livePhotoPromise,
+  ])
+  const photoUrls = uniqueHotelPhotoUrls(cachedPhotoUrls, livePhotoUrls)
+  const heroUrl = photoUrls[0] ?? hotelHeroPhotoUrl(hotel) ?? FALLBACK_IMAGE
   const galleryUrls = photoUrls.length > 0 ? photoUrls : [heroUrl]
-  const galleryPreview = galleryUrls.slice(0, 5)
+  const photoCountLabel = galleryUrls.length > 1
+    ? `${galleryUrls.length} hotel photos`
+    : 'Live hotel gallery'
 
   const planPrompt = `Tell me about ${hotel.name}${hotel.island ? ` in ${hotel.island}` : ''}, Bahamas`
   const addPrompt = `Help me plan a Bahamas trip around ${hotel.name}`
@@ -114,14 +230,13 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
           <>
             <Link
               href="#availability"
-              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700"
+              className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
             >
-              <span className="mr-2 inline-block h-1.5 w-1.5 rounded-full bg-gold-400 align-middle" aria-hidden="true" />
               Check rates
             </Link>
             <Link
               href={buddyChatHref(planPrompt)}
-              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+              className="rounded-full border border-gray-300 bg-white px-5 py-2.5 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
               Ask Buddy
             </Link>
@@ -130,54 +245,53 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
       />
 
       <main className="max-w-6xl mx-auto px-4 py-8">
-        <section aria-label={`${hotel.name} photo gallery`} className="mb-8 grid gap-3 md:grid-cols-[2fr_1fr]">
-          <div className="relative aspect-[16/10] overflow-hidden rounded-baha-xl bg-stone-100 md:aspect-[16/9]">
-            <Image
-              src={galleryPreview[0] ?? heroUrl}
-              alt={hotel.name}
-              fill
-              className="object-cover"
-              priority
-              sizes="(max-width: 768px) 100vw, 66vw"
-              unoptimized
-            />
-            <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-              {hotel.star_rating != null && hotel.star_rating > 0 && (
-                <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-extrabold text-charcoal shadow-sm backdrop-blur-sm">
-                  {hotel.star_rating}-star
-                </span>
-              )}
-              {hotel.review_score != null && hotel.review_score > 0 && (
-                <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-extrabold text-night shadow-soft backdrop-blur-sm">
-                  Rating {hotel.review_score.toFixed(1)}
-                </span>
-              )}
-            </div>
-          </div>
+        <section aria-label={`${hotel.name} photo gallery`} className="mb-8">
+          <StayPhotoGallery
+            hotelName={hotel.name}
+            galleryUrls={galleryUrls}
+            heroUrl={heroUrl}
+            photoCountLabel={photoCountLabel}
+          />
 
-          <div className="grid grid-cols-2 gap-3">
-            {galleryPreview.slice(1, 5).map((url, idx) => (
-              <div key={url} className="relative min-h-28 overflow-hidden rounded-baha-lg bg-stone-100">
-                <Image
-                  src={url}
-                  alt={`${hotel.name} photo ${idx + 2}`}
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 768px) 50vw, 16vw"
-                  unoptimized
-                />
-              </div>
+          <nav aria-label="Stay detail sections" className="mt-5 flex gap-2 overflow-x-auto border-b border-gray-200 pb-2 text-sm font-bold text-charcoal">
+            {[
+              ['Overview', '#overview'],
+              ['Reviews', '#guest-reviews'],
+              ['Rooms', '#availability'],
+              ['Location', '#location'],
+              ['Policies', '#stay-facts'],
+            ].map(([label, href]) => (
+              <Link
+                key={href}
+                href={href}
+                className="shrink-0 rounded-full px-4 py-2 transition-colors hover:bg-brand-50 hover:text-brand-700 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-2"
+              >
+                {label}
+              </Link>
             ))}
-          </div>
+          </nav>
+        </section>
+
+        <section id="availability" className="scroll-mt-24 mb-10">
+          <AvailabilityWidget
+            hotelId={hotel.id}
+            hotelName={hotel.name}
+            initialCheckin={staySearch.checkin || undefined}
+            initialCheckout={staySearch.checkout || undefined}
+            initialAdults={staySearch.adults}
+            initialChildren={staySearch.children}
+            initialRooms={staySearch.rooms}
+            roomImageUrls={galleryUrls}
+          />
         </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           <div className="lg:col-span-2 space-y-10">
-            <section className="grid gap-3 rounded-baha-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
+            <section id="overview" className="scroll-mt-24 grid gap-3 rounded-baha-xl border border-gray-200 bg-white p-4 shadow-sm sm:grid-cols-3">
               {hotel.review_score != null && hotel.review_score > 0 && (
                 <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-gray-500">Guest rating</p>
-                  <p className="mt-1 text-lg font-extrabold text-night">Rating {hotel.review_score.toFixed(1)}</p>
+                  <p className="text-xs font-bold uppercase text-gray-500">Guest rating</p>
+                  <p className="mt-1 text-lg font-bold text-night">Rating {hotel.review_score.toFixed(1)}</p>
                   {hotel.review_count != null && hotel.review_count > 0 && (
                     <p className="text-xs font-semibold text-gray-500">{hotel.review_count.toLocaleString()} reviews</p>
                   )}
@@ -185,17 +299,24 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
               )}
               {hotel.property_type_name && (
                 <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-gray-500">Type</p>
-                  <p className="mt-1 text-lg font-extrabold text-night">{hotel.property_type_name}</p>
+                  <p className="text-xs font-bold uppercase text-gray-500">Type</p>
+                  <p className="mt-1 text-lg font-bold text-night">{hotel.property_type_name}</p>
                 </div>
               )}
               {hotel.island && (
                 <div>
-                  <p className="text-xs font-extrabold uppercase tracking-[0.14em] text-gray-500">Island</p>
-                  <p className="mt-1 text-lg font-extrabold text-night">{hotel.island}</p>
+                  <p className="text-xs font-bold uppercase text-gray-500">Island</p>
+                  <p className="mt-1 text-lg font-bold text-night">{hotel.island}</p>
                 </div>
               )}
             </section>
+
+            <StayReviewsSection
+              hotelName={hotel.name}
+              reviewScore={hotel.review_score}
+              reviewCount={hotel.review_count}
+              reviews={reviews}
+            />
 
             {/* Description */}
             {hotel.description && (
@@ -208,27 +329,10 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
             )}
 
             {/* Photo gallery */}
-            {photoUrls.length > 5 && (
-              <section>
+            {galleryUrls.length > 5 && (
+              <section id="more-photos" className="scroll-mt-24">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">More photos</h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {photos.slice(5, 14).map((photo, idx) => {
-                    const url = hotelPhotoUrl(photo)
-                    if (!url) return null
-                    return (
-                      <div key={url} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100">
-                        <Image
-                          src={url}
-                          alt={hotelPhotoCaption(photo) || `${hotel.name} - photo ${idx + 1}`}
-                          fill
-                          className="object-cover hover:scale-105 transition-transform duration-500"
-                          sizes="(max-width: 768px) 50vw, 33vw"
-                          unoptimized
-                        />
-                      </div>
-                    )
-                  })}
-                </div>
+                <StayMorePhotosGrid hotelName={hotel.name} galleryUrls={galleryUrls} />
               </section>
             )}
 
@@ -238,8 +342,7 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Amenities</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {hotel.amenities.map((amenity) => (
-                    <div key={amenity} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                      <span className="h-2 w-2 shrink-0 rounded-full bg-gray-400" aria-hidden="true" />
+                    <div key={amenity} className="rounded-xl bg-gray-50 p-3">
                       <span className="text-sm font-medium text-gray-700">{amenity}</span>
                     </div>
                   ))}
@@ -249,7 +352,7 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
 
             {/* Map */}
             {hotel.latitude != null && hotel.longitude != null && (
-              <section>
+              <section id="location" className="scroll-mt-24">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Location</h2>
                 <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-video">
                   <iframe
@@ -267,7 +370,7 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
           </div>
 
           {/* Sidebar */}
-          <aside className="space-y-6">
+          <aside className="space-y-6 lg:sticky lg:top-24 lg:self-start">
             <StayDetailActions
               hotelId={hotel.id}
               hotelName={hotel.name}
@@ -278,58 +381,45 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
               reviewScore={hotel.review_score}
             />
 
-            {/* Availability Widget */}
-            <div id="availability" className="scroll-mt-24">
-              <AvailabilityWidget
-                hotelId={hotel.id}
-                hotelName={hotel.name}
-                initialCheckin={staySearch.checkin || undefined}
-                initialCheckout={staySearch.checkout || undefined}
-                initialAdults={staySearch.adults}
-                initialChildren={staySearch.children}
-                initialRooms={staySearch.rooms}
-              />
-            </div>
-
             {/* Details card */}
-            <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100 space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider">Details</h3>
+            <div id="stay-facts" className="scroll-mt-24 space-y-4 rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
+              <h3 className="text-sm font-bold uppercase text-brand-700">Stay facts</h3>
 
               {hotel.island && (
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Location</p>
-                  <p className="text-sm text-gray-700 font-medium">{hotel.island}, Bahamas</p>
+                  <p className="text-xs font-semibold text-gray-500">Location</p>
+                  <p className="text-sm font-semibold text-night">{hotel.island}, Bahamas</p>
                 </div>
               )}
 
               {hotel.address && (
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Address</p>
-                  <p className="text-sm text-gray-700">{hotel.address}</p>
+                  <p className="text-xs font-semibold text-gray-500">Address</p>
+                  <p className="text-sm leading-6 text-charcoal">{hotel.address}</p>
                 </div>
               )}
 
               {hotel.star_rating != null && hotel.star_rating > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Star rating</p>
-                  <p className="text-sm text-gray-700 font-medium">{hotel.star_rating} Star</p>
+                  <p className="text-xs font-semibold text-gray-500">Star rating</p>
+                  <p className="text-sm font-semibold text-night">{hotel.star_rating} Star</p>
                 </div>
               )}
 
               {hotel.property_type_name && (
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Property type</p>
-                  <p className="text-sm text-gray-700 font-medium">{hotel.property_type_name}</p>
+                  <p className="text-xs font-semibold text-gray-500">Property type</p>
+                  <p className="text-sm font-semibold text-night">{hotel.property_type_name}</p>
                 </div>
               )}
 
               {hotel.review_score != null && hotel.review_score > 0 && (
                 <div>
-                  <p className="text-xs text-gray-400 font-medium">Guest rating</p>
+                  <p className="text-xs font-semibold text-gray-500">Guest rating</p>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-night">Rating {hotel.review_score.toFixed(1)}</span>
                     {hotel.review_count != null && hotel.review_count > 0 && (
-                      <span className="text-xs text-gray-400">({hotel.review_count.toLocaleString()} reviews)</span>
+                      <span className="text-xs font-semibold text-gray-500">({hotel.review_count.toLocaleString()} reviews)</span>
                     )}
                   </div>
                 </div>

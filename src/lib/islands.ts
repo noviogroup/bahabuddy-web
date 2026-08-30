@@ -1,10 +1,9 @@
 /**
  * Islands data layer — server-only, DB-driven.
  *
- * Purpose: replace the static `BahaImages` Unsplash constants with
- * real imagery from the `islands` table. Per Valdez's directive
- * ("use the images from island table and relevant tables"), every
- * island-level hero on the web app should flow through here.
+ * Purpose: provide one island-level image resolver for the web app.
+ * Approved Sanity destination imagery takes precedence so marketing,
+ * marketplace, and trip surfaces stay visually synced without a release.
  *
  * Architecture:
  *   - React `cache()` dedupes the fetch within a single request, so
@@ -13,114 +12,97 @@
  *   - Server-only: callers must be Server Components (or server
  *     actions / route handlers). Client Components receive resolved
  *     URLs as props from their server parent.
- *   - Fallback chain: DB row → seed-matching static URL → bahamasHero.
- *     The static fallbacks live here so SSG / preview builds without
- *     DB access still render real Bahamas tourism photography (not
- *     gradient placeholders).
+ *   - Fallback chain: approved Sanity asset → approved partner/official
+ *     tourism fallback → legacy canonical DB image → generic Bahamas hero.
  *
- * Mobile parity: the static fallbacks below are the exact same URLs
- * the V2 Flutter app uses in `lib/core/constants/baha_images.dart`
- * AND that the V2 `seed_islands_deals_attractions.sql` writes into
- * `islands.hero_image_url`. One visual library across surfaces.
+ * Keep the temporary fallback catalog aligned with
+ * `DestinationFallbackImages` in `baha-images.ts`.
  *
- * Companion: `src/lib/place-photos.ts` handles google_places imagery.
+ * Companion: `src/lib/place-photos.ts` handles cached place imagery.
  */
 
-import 'server-only'
-import { cache } from 'react'
-import { createClient } from '@/lib/supabase/server'
+import "server-only";
+import { cache } from "react";
+import { createClient } from "@/lib/supabase/server";
+import { fetchDestinations } from "@/lib/sanity/queries";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
 export interface IslandRecord {
-  slug: string
-  name: string
-  description: string
-  /** Renderable image URL. Already falls back through the static map
-   *  if the DB row's hero_image_url is null. */
-  heroImageUrl: string
-  airportCodes: string[]
-  highlights: string[]
-  vibeTags: string[]
-  bestFor: string[]
-  avgFlightTimeFromMiamiHours: number | null
+  slug: string;
+  name: string;
+  description: string;
+  /** Renderable image URL from approved editorial or canonical sources. */
+  heroImageUrl: string;
+  airportCodes: string[];
+  highlights: string[];
+  vibeTags: string[];
+  bestFor: string[];
+  avgFlightTimeFromMiamiHours: number | null;
 }
 
-// ─── Static fallbacks ───────────────────────────────────────────────────────
-// Exact mirror of `seed_islands_deals_attractions.sql` (the URLs the seed
-// writes into islands.hero_image_url). Used when the DB row is missing
-// hero_image_url, or when the DB is unreachable at SSG/build time.
+// ─── Official tourism fallbacks ─────────────────────────────────────────────
+const tourism = (path: string) =>
+  `https://tempo.cdn.tambourine.com/windsong/media/${path}`;
 
 const HERO_FALLBACKS: Record<string, string> = {
-  'nassau-paradise-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
-  'the-exumas':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-exumas-islands-img-5f7654f77ef66.jpg',
-  'eleuthera-harbour-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
-  'abacos':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-the-abacos-islands-img-5f765543ac3d5.jpg',
-  'andros':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-andros-islands-img-5f7654cd43acd.jpg',
-  'grand-bahama':
-    'https://tempo.cdn.tambourine.com/windsong/media/freeport-5ebc543630edb.jpg',
-  'bimini':
-    'https://tempo.cdn.tambourine.com/windsong/media/bimini-5ebc1e784e5d8.jpg',
-  'cat-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-cat-island-islands-img-5f7654e4e23d5.jpg',
-  'long-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-long-island-islands-img-5f765510d841f.jpg',
-  'inagua':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-inagua-islands-img-5f7655086ab3b.jpg',
-  'berry-islands':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-berry-island-islands-img-6012d69fdc9a7.jpg',
-  'san-salvador':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-san-salvador-islands-img-5f76553c25e7a.jpg',
-  'rum-cay':
-    'https://tempo.cdn.tambourine.com/windsong/media/rum-cay-5ebc565c679de.jpg',
-  'mayaguana':
-    'https://tempo.cdn.tambourine.com/windsong/media/mayaguana-5ebc565aa3f78.jpg',
-  'acklins-crooked-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-acklins-crooked-island-islands-img-6577398613c5c.jpg',
-  'ragged-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-ragged-island-islands-img-5f76552b68017.jpg',
+  "nassau-paradise-island": "https://travprocdn.imgix.net/1839/1763488599-1763488599.jpg?quality=82&fm=webp",
+  "the-exumas": "https://travprocdn.imgix.net/1839/1763488870-1763488870.jpg?quality=82&fm=webp",
+  "eleuthera-harbour-island": "https://travprocdn.imgix.net/1839/1763488736-1763488736.jpg?quality=82&fm=webp",
+  abacos: tourism("bmot-the-abacos-islands-img-5f765543ac3d5.jpg"),
+  andros: tourism("bmot-andros-islands-img-5f7654cd43acd.jpg"),
+  "grand-bahama": "https://travprocdn.imgix.net/1839/1690388649-1690388649.jpg?quality=82&fm=webp",
+  bimini: "https://travprocdn.imgix.net/1839/1619894845-1619894845.jpg?quality=82&fm=webp",
+  "cat-island": tourism("bmot-cat-island-islands-img-5f7654e4e23d5.jpg"),
+  "long-island": "https://travprocdn.imgix.net/1839/1763489614-1763489614.jpg?quality=82&fm=webp",
+  inagua: tourism("bmot-inagua-islands-img-5f7655086ab3b.jpg"),
+  "berry-islands": "https://travprocdn.imgix.net/1839/1763489090-1763489090.jpg?quality=82&fm=webp",
+  "san-salvador": tourism("bmot-san-salvador-islands-img-5f76553c25e7a.jpg"),
+  "rum-cay": tourism("rum-cay-5ebc565c679de.jpg"),
+  mayaguana: tourism("mayaguana-5ebc565aa3f78.jpg"),
+  "acklins-crooked-island": "https://travprocdn.imgix.net/1839/1763489907-1763489907.jpg?quality=82&fm=webp",
+  "ragged-island": tourism("bmot-ragged-island-islands-img-5f76552b68017.jpg"),
   // Sibling slugs that share an island record (per island-config.ts).
-  'paradise-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-nassau-islands-img-5f7655231dcf7.jpg',
-  'harbour-island':
-    'https://tempo.cdn.tambourine.com/windsong/media/bmot-eleuthera-islands-img-5f7654ecd18bf.jpg',
-}
-
-const TAMBOURINE_MEDIA = 'https://tempo.cdn.tambourine.com/windsong/media'
+  "paradise-island": tourism("bmot-nassau-islands-img-5f7655231dcf7.jpg"),
+  "harbour-island": tourism("bmot-eleuthera-islands-img-5f7654ecd18bf.jpg"),
+};
 
 /**
- * Full-size mainsite heroes from bahamas.com (1500×643 cache crops or
- * ~955×990 mainsite hero art). The `*-islands-img-*` URLs in HERO_FALLBACKS
- * are 364×453 card thumbnails — too small for the landing-page rotator.
+ * Approved display assets for large island hero contexts. Kept separate
+ * from HERO_FALLBACKS so callers can still ask for a landing-sized visual.
  */
 const LANDING_HERO_DISPLAY: Record<string, string> = {
-  'nassau-paradise-island': `${TAMBOURINE_MEDIA}/bmot-nassau-mainsite-hero-image-5f580752c8dea.jpg`,
-  'the-exumas': `${TAMBOURINE_MEDIA}/cache/bmot-exumas-mainsite-hotels-2-5fe101c22ed8d-1500x643.jpg`,
-  'eleuthera-harbour-island': `${TAMBOURINE_MEDIA}/bmot-eleuthera-mainsite-hero-image-header-5f5b63531385f.jpg`,
-  andros: `${TAMBOURINE_MEDIA}/bmot-andros-mainsite-hero-image-5f58b4ed5500b.jpg`,
-  'grand-bahama': `${TAMBOURINE_MEDIA}/cache/bmot-freeport-mainsite-hotels-5f5a852ccea69-1500x643.jpg`,
-  bimini: `${TAMBOURINE_MEDIA}/bmot-bimini-mainsite-hero-image-1-5f57ab583161b.jpg`,
-  'long-island': `${TAMBOURINE_MEDIA}/bmot-long-island-mainsite-hero-image-5f5f7fbea0c26.jpg`,
-  abacos: `${TAMBOURINE_MEDIA}/cache/bmot-abacos-mainsite-hotels-5f5a3da5c6e6a-1500x643.jpg`,
-}
+  "nassau-paradise-island": HERO_FALLBACKS["nassau-paradise-island"],
+  "the-exumas": HERO_FALLBACKS["the-exumas"],
+  "eleuthera-harbour-island": HERO_FALLBACKS["eleuthera-harbour-island"],
+  "harbour-island": HERO_FALLBACKS["harbour-island"],
+  andros: HERO_FALLBACKS.andros,
+  "grand-bahama": HERO_FALLBACKS["grand-bahama"],
+  bimini: HERO_FALLBACKS.bimini,
+  "long-island": HERO_FALLBACKS["long-island"],
+  abacos: HERO_FALLBACKS.abacos,
+  "cat-island": HERO_FALLBACKS["cat-island"],
+  inagua: HERO_FALLBACKS.inagua,
+  "berry-islands": HERO_FALLBACKS["berry-islands"],
+  "san-salvador": HERO_FALLBACKS["san-salvador"],
+  "paradise-island": HERO_FALLBACKS["paradise-island"],
+};
 
-/** Prefer full-size landing hero; fall back to DB / card thumbnail URL. */
-export function resolveLandingHeroImageUrl(slug: string, fallback: string): string {
-  return LANDING_HERO_DISPLAY[slug] ?? fallback
+/** Preserve an approved/editorial URL; use the landing fallback only if empty. */
+export function resolveLandingHeroImageUrl(
+  slug: string,
+  fallback: string,
+): string {
+  return fallback || LANDING_HERO_DISPLAY[slug] || BAHAMAS_HERO_FALLBACK;
 }
 
 /** Generic Bahamas hero — final fallback when even the slug is unknown. */
 export const BAHAMAS_HERO_FALLBACK =
-  'https://tempo.cdn.tambourine.com/windsong/media/cache/bahamas-goombay-summer-1-62bdd276c186d-1500x643.png'
+  "https://tempo.cdn.tambourine.com/windsong/media/cache/bahamas-goombay-summer-1-62bdd276c186d-1500x643.png";
 
 /** Generic lifestyle / hero — used when no island context is available. */
 export const BAHAMAS_LIFESTYLE_FALLBACK =
-  'https://tempo.cdn.tambourine.com/windsong/media/goombay-summer-2023-intro-64b04840c1ccc.png'
+  "https://tempo.cdn.tambourine.com/windsong/media/goombay-summer-2023-intro-64b04840c1ccc.png";
 
 // ─── DB fetchers ────────────────────────────────────────────────────────────
 
@@ -133,73 +115,90 @@ export const BAHAMAS_LIFESTYLE_FALLBACK =
  */
 export const getIslands = cache(async (): Promise<IslandRecord[]> => {
   try {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('islands')
-      .select(
-        'slug, name, description, hero_image_url, airport_codes, highlights, vibe_tags, best_for, avg_flight_time_from_miami_hours',
-      )
-      .order('name', { ascending: true })
+    const supabase = await createClient();
+    const [{ data, error }, destinations] = await Promise.all([
+      supabase
+        .from("islands")
+        .select(
+          "slug, name, description, hero_image_url, airport_codes, highlights, vibe_tags, best_for, avg_flight_time_from_miami_hours",
+        )
+        .order("name", { ascending: true }),
+      fetchDestinations().catch(() => null),
+    ]);
 
     if (error || !data) {
-      if (error) console.warn('[islands] getIslands failed', error.message)
-      return []
+      if (error) console.warn("[islands] getIslands failed", error.message);
+      return [];
     }
 
-    return data.map(row => ({
+    const approvedByIsland = new Map(
+      (destinations ?? [])
+        .filter((destination) => destination.islandId && destination.imageUrl)
+        .map((destination) => [destination.islandId as string, destination.imageUrl as string]),
+    );
+
+    return data.map((row) => ({
       slug: row.slug,
       name: row.name,
       description: row.description,
-      heroImageUrl: row.hero_image_url ?? HERO_FALLBACKS[row.slug] ?? BAHAMAS_HERO_FALLBACK,
+      heroImageUrl:
+        approvedByIsland.get(row.slug) ??
+        HERO_FALLBACKS[row.slug] ??
+        row.hero_image_url ??
+        BAHAMAS_HERO_FALLBACK,
       airportCodes: row.airport_codes ?? [],
       highlights: row.highlights ?? [],
       vibeTags: row.vibe_tags ?? [],
       bestFor: row.best_for ?? [],
       avgFlightTimeFromMiamiHours: row.avg_flight_time_from_miami_hours ?? null,
-    }))
+    }));
   } catch (err) {
     // Next.js throws errors with digest='DYNAMIC_SERVER_USAGE' as a
     // control-flow signal when a route that called cookies() is being
     // prerendered. Re-throw so Next.js handles it (falls back to dynamic
     // rendering); don't log it as if it were a real error.
     if (
-      err && typeof err === 'object'
-        && 'digest' in err
-        && typeof (err as { digest?: unknown }).digest === 'string'
-        && (err as { digest: string }).digest.startsWith('DYNAMIC_SERVER_USAGE')
+      err &&
+      typeof err === "object" &&
+      "digest" in err &&
+      typeof (err as { digest?: unknown }).digest === "string" &&
+      (err as { digest: string }).digest.startsWith("DYNAMIC_SERVER_USAGE")
     ) {
-      throw err
+      throw err;
     }
-    console.warn('[islands] getIslands threw', err)
-    return []
+    console.warn("[islands] getIslands threw", err);
+    return [];
   }
-})
+});
 
 /**
  * Fetch a single island by slug. Resolves sibling slugs (e.g.
  * `paradise-island` → `nassau-paradise-island`) via the fallback map
  * — so callers can pass either the URL slug or the DB slug.
  */
-export const getIsland = cache(async (slug: string): Promise<IslandRecord | null> => {
-  const all = await getIslands()
-  if (all.length === 0) return null
-  return all.find(i => i.slug === slug) ?? null
-})
+export const getIsland = cache(
+  async (slug: string): Promise<IslandRecord | null> => {
+    const all = await getIslands();
+    if (all.length === 0) return null;
+    return all.find((i) => i.slug === slug) ?? null;
+  },
+);
 
 /**
  * Resolve a hero image URL for an island slug. Fallback chain:
- *   1. DB row's `hero_image_url`
- *   2. Static `HERO_FALLBACKS[slug]` (mirrors the seed)
- *   3. `BAHAMAS_HERO_FALLBACK` (generic Bahamas photo)
+ *   1. Approved Sanity destination image
+ *   2. Approved partner/official tourism `HERO_FALLBACKS[slug]`
+ *   3. Legacy DB row's `hero_image_url`
+ *   4. `BAHAMAS_HERO_FALLBACK` (generic Bahamas photo)
  *
  * Always returns a real renderable URL — never null. Callers can
  * pass the result straight to `next/image`.
  */
 export const getIslandHero = cache(async (slug: string): Promise<string> => {
-  const island = await getIsland(slug)
-  if (island?.heroImageUrl) return island.heroImageUrl
-  return HERO_FALLBACKS[slug] ?? BAHAMAS_HERO_FALLBACK
-})
+  const island = await getIsland(slug);
+  if (island?.heroImageUrl) return island.heroImageUrl;
+  return HERO_FALLBACKS[slug] ?? BAHAMAS_HERO_FALLBACK;
+});
 
 /**
  * Batch helper: given a list of slugs, return a slug → hero URL map.
@@ -209,22 +208,23 @@ export const getIslandHero = cache(async (slug: string): Promise<string> => {
 export async function getIslandHeroes(
   slugs: readonly string[],
 ): Promise<Record<string, string>> {
-  const all = await getIslands()
-  const byDbSlug = new Map(all.map(i => [i.slug, i.heroImageUrl]))
-  const out: Record<string, string> = {}
+  const all = await getIslands();
+  const byDbSlug = new Map(all.map((i) => [i.slug, i.heroImageUrl]));
+  const out: Record<string, string> = {};
   for (const slug of slugs) {
-    out[slug] = byDbSlug.get(slug) ?? HERO_FALLBACKS[slug] ?? BAHAMAS_HERO_FALLBACK
+    out[slug] =
+      byDbSlug.get(slug) ?? HERO_FALLBACKS[slug] ?? BAHAMAS_HERO_FALLBACK;
   }
-  return out
+  return out;
 }
 
 // ─── Landing-page hero slides ───────────────────────────────────────────────
 
 export interface IslandHeroSlide {
-  slug: string
-  name: string
-  tagline: string
-  image: string
+  slug: string;
+  name: string;
+  tagline: string;
+  image: string;
 }
 
 /**
@@ -242,22 +242,22 @@ export async function getIslandHeroSlides(): Promise<IslandHeroSlide[]> {
   // Lazy import to avoid pulling island-config (and its BahaImages
   // dependency tree) into the cached module graph eagerly. island-config
   // is sync metadata; we just want the curated order and taglines.
-  const { ISLAND_CONFIGS } = await import('@/lib/island-config')
+  const { ISLAND_CONFIGS } = await import("@/lib/island-config");
 
-  const heroes = await getIslandHeroes(ISLAND_CONFIGS.map(c => c.slug))
-  const seen = new Set<string>()
-  const slides: IslandHeroSlide[] = []
+  const heroes = await getIslandHeroes(ISLAND_CONFIGS.map((c) => c.slug));
+  const seen = new Set<string>();
+  const slides: IslandHeroSlide[] = [];
 
   for (const config of ISLAND_CONFIGS) {
-    const image = resolveLandingHeroImageUrl(config.slug, heroes[config.slug])
-    if (seen.has(image)) continue
-    seen.add(image)
+    const image = resolveLandingHeroImageUrl(config.slug, heroes[config.slug]);
+    if (seen.has(image)) continue;
+    seen.add(image);
     slides.push({
       slug: config.slug,
       name: config.name,
       tagline: config.tagline,
       image,
-    })
+    });
   }
-  return slides
+  return slides;
 }

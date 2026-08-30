@@ -26,7 +26,7 @@ describe('PlanWithBuddyCTA', () => {
     expect(askBuddy).toHaveClass('text-brand-700')
     expect(askBuddy).not.toHaveClass('bg-night')
     expect(askBuddy).not.toHaveClass('hover:bg-gray-900')
-    expect(askBuddy.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(askBuddy.querySelector('.bg-gold-400')).not.toBeInTheDocument()
 
     const primaryPrompt = buddyPromptFromHref(
       askBuddy.getAttribute('href'),

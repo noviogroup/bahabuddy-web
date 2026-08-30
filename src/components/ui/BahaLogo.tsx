@@ -66,7 +66,7 @@ export default function BahaLogo({
     layout === 'pillWordmark' ? (
       <span className="inline-flex items-center gap-0.5">
         <span className="inline-flex shrink-0 items-center justify-center">{img}</span>
-        <span className="whitespace-nowrap text-[15px] font-semibold tracking-tight text-brand-600">
+        <span className="whitespace-nowrap text-sm font-semibold text-brand-600">
           Baha Buddy
         </span>
       </span>

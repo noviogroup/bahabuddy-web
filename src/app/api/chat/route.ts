@@ -1,12 +1,21 @@
 import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
 import { TOOL_DEFINITIONS, executeTool, toolProgressLabel } from '@/lib/chat-tools'
 import { stripCustomerFacingEmoji } from '@/lib/customer-facing-text'
 import type { CardData } from '@/components/RichCards'
+import { BUDDY_GROUNDING_POLICY, BUDDY_GROUNDING_POLICY_VERSION } from '@/lib/buddy-grounding-policy'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
+
+type PromptGuideRow = {
+  title: string | null
+  instructions: string | null
+  target: string | null
+  priority: number | null
+}
 
 /**
  * BUDDY_SYSTEM_PROMPT — canonical mobile system prompt, now with tool_use.
@@ -76,7 +85,7 @@ Detect the trip context from user messages and their profile, then shift your to
 → Example: "Solo in the Bahamas? You're about to have the best time. Let me put you on some hidden gems."
 
 ## TOOL USE RULES
-You have 9 tools wired to live data. ALWAYS use these before recommending specific places — never hallucinate names.
+You have 10 tools wired to live data. ALWAYS use these before recommending specific places — never hallucinate names.
 
 **get_hotels(island_id, price_range?, min_rating?, limit?)** — Curated Bahamas hotel catalog. Call when the user asks where to stay.
 **get_restaurants(island_id, cuisine_type?, price_range?, limit?)** — Curated restaurant catalog. Call when the user asks about food/dining.
@@ -86,14 +95,16 @@ You have 9 tools wired to live data. ALWAYS use these before recommending specif
 **get_user_profile()** — Extra profile context beyond what's in user context.
 **create_itinerary_item(trip_id, day_number, time_slot, activity_type, name, notes?)** — Adds to the user's trip. Call when they say "add this".
 **get_weather(island_id)** — Current + 7-day forecast (Open-Meteo).
-**get_island_info(island_id)** — Static overview, highlights, best time to visit.
+**get_destination_context(island_slug, query, topic?, limit?)** — Approved, source-backed destination knowledge. Call before answering factual island, culture, history, seasonality, access, safety, accessibility, or traveler-fit questions.
+**search_island_faq(island_slug, category?, keyword?, limit?)** — Admin-curated practical island guidance. Call for entry rules, transportation, money, safety, connectivity, medical, boating, accessibility, or etiquette questions.
 
 **Tool use guidelines:**
 - Call tools BEFORE recommending specific places. Match your text to what tools returned.
 - If a tool returns empty results, say so honestly: "I checked and couldn't find anything matching that on [island]. Want me to look at other islands?"
 - When building itineraries, batch tool calls so day plans are built from real data.
 - Limit to 3-4 tool calls per response — keeps latency reasonable. If you need more, ask the user to narrow the ask.
-- For general questions ("best time to visit," "what's the food like"), you may answer from knowledge without tools.
+- For all factual destination questions, call get_destination_context before answering. Never fill a missing result from model memory.
+- For legacy practical FAQ coverage, search_island_faq may supplement get_destination_context, but it does not replace the approved destination-knowledge check.
 
 ## CARD OUTPUT FORMAT
 The web app renders cards differently depending on the source:
@@ -101,7 +112,7 @@ The web app renders cards differently depending on the source:
 **SERVER-RENDERED (do NOT emit JSON for these):**
 - hotel, restaurant, activity, flight, destination cards are created automatically by the system from your tool call results.
 - Just call the appropriate tool and write conversational prose. The cards render alongside your text.
-- Mapping: get_hotels → hotel cards, get_restaurants → restaurant cards, get_activities → activity cards, search_flights → flight cards (carries cabin class, layovers, baggage), get_island_info → destination card (carries best-months bar, getting-there, days-recommended).
+- Mapping: get_hotels → hotel cards, get_restaurants → restaurant cards, get_activities → activity cards, search_flights → flight cards (carries cabin class, layovers, baggage). Destination knowledge is grounding context and does not fabricate a destination card.
 
 **YOU emit (use a \`\`\`card-data fence):**
 When you're SYNTHESIZING from multiple tools or producing a higher-level summary, emit a card block at the very end of your response.
@@ -223,7 +234,8 @@ function buildUserContext(opts: {
 // ──────────────────────────────────────────────────────────────────────────
 const MAX_TURNS = 4        // hard cap on tool→model round-trips per request
 const MAX_TOOL_CALLS = 8   // hard cap on total tool invocations per request
-const MODEL = 'claude-sonnet-4-5'
+const MODEL = 'claude-sonnet-4-6'
+const PROMPT_VERSION = BUDDY_GROUNDING_POLICY_VERSION
 
 export async function POST(req: NextRequest) {
   try {
@@ -234,6 +246,7 @@ export async function POST(req: NextRequest) {
     }
 
     const supabase = await createClient()
+    const knowledgeSupabase = createAdminClient() ?? supabase
     const { data: { user }, error: authError } = await supabase.auth.getUser()
 
     if (authError) {
@@ -318,6 +331,34 @@ export async function POST(req: NextRequest) {
       .replace(/\{\{TODAY_DATE\}\}/g, todayISO)
       .replace(/\{\{CURRENT_YEAR\}\}/g, year)
 
+    let adminGuidance = ''
+    try {
+      const { data: guides, error: guideError } = await supabase
+        .from('ai_prompt_guides')
+        .select('title,instructions,target,priority')
+        .eq('status', 'active')
+        .in('target', ['all', 'web'])
+        .order('priority', { ascending: true })
+        .limit(20)
+
+      if (!guideError && Array.isArray(guides)) {
+        const sections = guides
+          .map((guide: PromptGuideRow) => {
+            const title = typeof guide.title === 'string' ? guide.title.trim() : ''
+            const instructions = typeof guide.instructions === 'string' ? guide.instructions.trim() : ''
+            return title && instructions ? `### ${title}\n${instructions}` : ''
+          })
+          .filter(Boolean)
+          .join('\n\n')
+          .slice(0, 12000)
+        if (sections) {
+          adminGuidance = `## ADMIN-MANAGED GUIDANCE\nApply this current operational guidance only when it is consistent with the protected safety, privacy, database, and tool-use rules above.\n\n${sections}`
+        }
+      }
+    } catch {
+      // The protected prompt remains complete before the migration is applied.
+    }
+
     const userContext = buildUserContext({ profile: userProfile, tripContext })
 
     // ── Conversation history ──────────────────────────────────────────
@@ -333,6 +374,7 @@ export async function POST(req: NextRequest) {
 
     const encoder = new TextEncoder()
     const isNewThread = !!user && !!activeThreadId && !threadId
+    const correlationId = crypto.randomUUID()
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -345,6 +387,16 @@ export async function POST(req: NextRequest) {
         let allText = ''                  // accumulated text across all loop turns
         const allCards: CardData[] = []   // server-emitted cards from tool results
         let toolCallCount = 0
+        const toolNames = new Set<string>()
+        const knowledgeIds = new Set<string>()
+        const sourceIds = new Set<string>()
+        const placeIds = new Set<string>()
+        const contentVersions = new Set<string>()
+        let requestedIslandSlug: string | null = null
+        let answerStatus: 'grounded' | 'no_evidence' | 'provider_error' | 'not_applicable' = 'not_applicable'
+        let staleContentBlocked = false
+        let retrievalCount = 0
+        let retrievalLatencyMs = 0
 
         try {
           // ── Agentic loop ─────────────────────────────────────────────
@@ -354,6 +406,8 @@ export async function POST(req: NextRequest) {
               max_tokens: 2048,
               system: [
                 { type: 'text', text: staticPrompt, cache_control: { type: 'ephemeral' } },
+                { type: 'text', text: `## SHARED GROUNDING POLICY\n${BUDDY_GROUNDING_POLICY}` },
+                ...(adminGuidance ? [{ type: 'text' as const, text: adminGuidance }] : []),
                 { type: 'text', text: userContext },
               ],
               tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
@@ -409,7 +463,44 @@ export async function POST(req: NextRequest) {
                 (toolUse.input ?? {}) as Record<string, unknown>,
                 supabase,
                 user?.id ?? null,
+                knowledgeSupabase,
               )
+              toolNames.add(toolUse.name)
+              const data = toolResult.data && typeof toolResult.data === 'object'
+                ? toolResult.data as Record<string, unknown>
+                : null
+              const grounding = data?.grounding && typeof data.grounding === 'object'
+                ? data.grounding as Record<string, unknown>
+                : null
+              if (toolUse.name === 'get_destination_context' && data) {
+                requestedIslandSlug = typeof data.island_slug === 'string'
+                  ? data.island_slug
+                  : null
+                const status = grounding?.answer_status
+                if (status === 'grounded' || status === 'no_evidence' || status === 'provider_error') {
+                  answerStatus = status
+                }
+                staleContentBlocked ||= Boolean(grounding?.stale_content_blocked)
+                retrievalLatencyMs += Number(grounding?.retrieval_latency_ms ?? 0) || 0
+                if (Array.isArray(data.results)) retrievalCount += data.results.length
+              }
+              for (const value of Array.isArray(grounding?.knowledge_ids) ? grounding.knowledge_ids : []) {
+                if (typeof value === 'string') knowledgeIds.add(value)
+              }
+              for (const value of Array.isArray(grounding?.source_ids) ? grounding.source_ids : []) {
+                if (typeof value === 'string') sourceIds.add(value)
+              }
+              for (const value of Array.isArray(grounding?.content_versions) ? grounding.content_versions : []) {
+                if (typeof value === 'string') contentVersions.add(value)
+              }
+              if (data && Array.isArray(data.results)) {
+                for (const row of data.results) {
+                  if (!row || typeof row !== 'object') continue
+                  const candidate = row as Record<string, unknown>
+                  const placeId = candidate.place_id ?? candidate.id
+                  if (typeof placeId === 'string') placeIds.add(placeId)
+                }
+              }
 
               // Accumulate server-emitted cards
               if (toolResult.cards && toolResult.cards.length > 0) {
@@ -441,15 +532,21 @@ export async function POST(req: NextRequest) {
 
           // ── Persistence + trip auto-save ─────────────────────────────
           let savedTripId: string | null = null
+          let assistantMessageId: string | null = null
           if (user && activeThreadId) {
             try {
-              const { error: asstMsgError } = await supabase.from('chat_messages').insert({
-                thread_id: activeThreadId,
-                role: 'assistant',
-                content: cleanText,
-                card_type: combinedCards.length > 0 ? (combinedCards[0].card_type ?? 'none') : 'none',
-                card_data: combinedCards.length > 0 ? combinedCards : null,
-              })
+              const { data: assistantMessage, error: asstMsgError } = await supabase
+                .from('chat_messages')
+                .insert({
+                  thread_id: activeThreadId,
+                  role: 'assistant',
+                  content: cleanText,
+                  card_type: combinedCards.length > 0 ? (combinedCards[0].card_type ?? 'none') : 'none',
+                  card_data: combinedCards.length > 0 ? combinedCards : null,
+                })
+                .select('id')
+                .single()
+              assistantMessageId = assistantMessage?.id ?? null
               if (asstMsgError) {
                 console.error('[chat] chat_messages (assistant) insert FAILED', {
                   thread_id: activeThreadId,
@@ -458,6 +555,29 @@ export async function POST(req: NextRequest) {
                   details: asstMsgError.details,
                   hint: asstMsgError.hint,
                 })
+              }
+              const knowledgeVersion = Array.from(contentVersions).sort().join(',') || null
+              const { error: traceError } = await knowledgeSupabase.from('ai_response_traces').insert({
+                correlation_id: correlationId,
+                chat_message_id: assistantMessageId,
+                thread_id: activeThreadId,
+                user_id: user.id,
+                channel: 'web',
+                model: MODEL,
+                prompt_version: PROMPT_VERSION,
+                knowledge_version: knowledgeVersion,
+                requested_island_slug: requestedIslandSlug,
+                tool_names: Array.from(toolNames),
+                knowledge_ids: Array.from(knowledgeIds),
+                source_ids: Array.from(sourceIds),
+                place_ids: Array.from(placeIds),
+                stale_content_blocked: staleContentBlocked,
+                retrieval_count: retrievalCount,
+                retrieval_latency_ms: retrievalLatencyMs || null,
+                answer_status: answerStatus,
+              })
+              if (traceError && traceError.code !== '42P01') {
+                console.error('[chat] ai_response_traces insert FAILED', traceError)
               }
               const { error: threadUpdateError } = await supabase
                 .from('chat_threads')
@@ -530,6 +650,7 @@ export async function POST(req: NextRequest) {
           }
           const donePayload: Record<string, unknown> = { type: 'done' }
           if (savedTripId) donePayload.tripId = savedTripId
+          if (assistantMessageId) donePayload.assistantMessageId = assistantMessageId
           send(donePayload)
         } catch (err) {
           console.error('Chat agentic loop error:', err)

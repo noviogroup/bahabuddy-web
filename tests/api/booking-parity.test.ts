@@ -25,6 +25,7 @@ import { POST as hotelPrebook } from '@/app/api/booking/hotels/prebook/route'
 import { POST as hotelBook } from '@/app/api/booking/hotels/book/route'
 import { POST as flightVerify } from '@/app/api/booking/flights/verify/route'
 import { POST as flightPrebook } from '@/app/api/booking/flights/prebook/route'
+import { POST as attachFlightServices } from '@/app/api/booking/flights/prebook/[prebookId]/services/route'
 import { POST as flightBook } from '@/app/api/booking/flights/book/route'
 
 type User = { id: string } | null
@@ -264,6 +265,8 @@ describe('hotel booking APIs', () => {
             name: 'Ocean King',
             offerId: 'rate-abc',
             offerRetailRate: { amount: 420, currency: 'USD' },
+            images: [{ url: 'https://static.cupid.travel/hotels/ocean-king-room.jpg' }],
+            hotelImages: [{ url: 'https://static.cupid.travel/hotels/property-pool.jpg' }],
             rates: [{
               name: 'Ocean King',
               maxOccupancy: 2,
@@ -306,6 +309,7 @@ describe('hotel booking APIs', () => {
           rate_id: 'rate-abc',
           total_price: 420,
           refundable: true,
+          image_urls: ['https://static.cupid.travel/hotels/ocean-king-room.jpg'],
         }],
       }],
     })
@@ -605,6 +609,46 @@ describe('flight booking APIs', () => {
     })
   })
 
+  test('attaches selected seats and returns the provider replacement payment session', async () => {
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }))
+    mocks.callTravelProvider.mockResolvedValue({
+      status: 200,
+      data: {
+        data: [{
+          prebookId: 'flight-prebook-1',
+          price: { amount: 525, currency: 'USD' },
+          payment: {
+            transactionId: 'txn-with-seat',
+            clientSecret: 'secret-with-seat',
+            publishableKey: 'pk-1',
+          },
+        }],
+      },
+    })
+
+    const response = await attachFlightServices(
+      jsonRequest({
+        selectedServices: [{ passengerIndex: 0, serviceId: 'seat-12a', quantity: 1 }],
+      }),
+      { params: { prebookId: 'flight-prebook-1' } },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(mocks.callTravelProvider).toHaveBeenCalledWith(
+      '/flights/prebooks/flight-prebook-1/services',
+      { selectedServices: [{ passengerIndex: 0, serviceId: 'seat-12a', quantity: 1 }] },
+    )
+    expect(body).toMatchObject({
+      prebook_id: 'flight-prebook-1',
+      transaction_id: 'txn-with-seat',
+      client_secret: 'secret-with-seat',
+      publishable_key: 'pk-1',
+      price: 525,
+      currency: 'USD',
+    })
+  })
+
   test('requires auth before flight provider booking', async () => {
     mocks.createClient.mockResolvedValue(clientWithAuth(null))
 
@@ -718,7 +762,7 @@ describe('flight booking APIs', () => {
           airline: 'Bahamasair',
           booking_reference: 'flight-booking-1',
           price: 540,
-          duffel_offer_id: 'offer-123',
+          provider_offer_id: 'offer-123',
           stripe_payment_intent_id: 'pi_flight_1',
         }),
       }),
@@ -798,6 +842,74 @@ describe('flight booking APIs', () => {
 })
 
 describe('booking return API', () => {
+  test('returns airline check-in context for a reconciled flight', async () => {
+    const booking = {
+      id: 'booking-flight-1',
+      trip_id: 'trip-1',
+      user_id: 'user-1',
+      booking_type: 'flight',
+      type: 'flight',
+      provider: 'liteapi',
+      status: 'confirmed',
+      amount: 540,
+      currency: 'usd',
+      paid_at: '2026-08-01T10:00:00Z',
+      stripe_payment_intent_id: 'pi_flight_1',
+      booking_ref: 'UP1234',
+      booking_reference: 'UP1234',
+      external_reference: 'UP1234',
+      financial_metadata: { source_surface: 'web' },
+      raw_response: {},
+    }
+    let flightSelect: ReturnType<typeof vi.fn> | null = null
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      if (table === 'bookings') return selectMaybeSingle(booking)
+      if (table === 'trip_flights') {
+        const query = {
+          select: vi.fn(() => query),
+          eq: vi.fn(() => query),
+          order: vi.fn(() => query),
+          limit: vi.fn().mockResolvedValue({
+            data: [{
+              id: 'flight-item-1',
+              booking_reference: 'UP1234',
+              stripe_payment_intent_id: 'pi_flight_1',
+              airline: 'Bahamasair',
+              departure_at: '2026-08-20T13:00:00.000Z',
+            }],
+            error: null,
+          }),
+        }
+        flightSelect = query.select
+        return query
+      }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+
+    const response = await getBookingReturn(
+      new Request('http://localhost.test/api'),
+      { params: { id: 'trip-1', bookingId: 'booking-flight-1' } },
+    )
+    const body = await response.json()
+
+    expect(response.status).toBe(200)
+    expect(flightSelect).toHaveBeenCalledWith(
+      'id, booking_reference, stripe_payment_intent_id, airline, departure_at',
+    )
+    expect(body).toMatchObject({
+      tripItemId: 'flight-item-1',
+      provider: 'flight_liteapi',
+      providerReference: 'UP1234',
+      airline: 'Bahamasair',
+      departureAt: '2026-08-20T13:00:00.000Z',
+      paymentStatus: 'paid',
+      providerStatus: 'confirmed',
+      reconciled: true,
+    })
+  })
+
   test('only reports reconciled when payment, provider reference, and trip item align', async () => {
     const booking = {
       id: 'booking-1',

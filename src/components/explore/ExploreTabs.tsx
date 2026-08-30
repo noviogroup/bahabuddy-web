@@ -154,12 +154,11 @@ function DiscoverGrid({ articles }: { articles: DiscoverArticle[] }) {
                 alt={article.title}
                 title={article.title}
                 eyebrow={article.category}
-                description="Article details are available. Editorial image is not available yet."
                 className="h-44"
                 imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
                 tone="island"
               >
-                <span className="absolute top-3 left-3 z-10 rounded-full bg-white/95 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-night">
+                <span className="absolute top-3 left-3 z-10 rounded-full bg-white/95 px-2.5 py-1 text-xs font-bold uppercase text-night">
                   {article.category}
                 </span>
                 <span className="absolute bottom-3 right-3 z-10 bg-black/40 backdrop-blur-sm text-white text-xs font-medium px-2 py-1 rounded-full">
@@ -180,13 +179,13 @@ function DiscoverGrid({ articles }: { articles: DiscoverArticle[] }) {
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <Link
                   href={articleHref}
-                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
                 >
                   Read article
                 </Link>
                 <Link
                   href={startTripHref}
-                  className="inline-flex items-center justify-center rounded-full bg-brand-600 px-3 py-2 text-xs font-extrabold text-white transition-colors hover:bg-brand-700"
+                  className="inline-flex items-center justify-center rounded-full bg-brand-600 px-3 py-2 text-xs font-bold text-white transition-colors hover:bg-brand-700"
                 >
                   Start trip
                 </Link>
@@ -303,18 +302,18 @@ function SocialVideoCard({ video }: { video: SocialVideo }) {
       {/* Content stack at the bottom */}
       <div className="absolute inset-x-3 bottom-3 text-white">
         <div className="flex items-center gap-2 mb-1.5">
-          <span className="bg-white/25 backdrop-blur-sm text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded">
+          <span className="bg-white/25 backdrop-blur-sm text-xs font-semibold uppercase px-1.5 py-0.5 rounded">
             {video.platformLabel}
           </span>
-          <span className="text-[11px] text-white/80">{video.viewsLabel}</span>
+          <span className="text-xs text-white/80">{video.viewsLabel}</span>
         </div>
         <h3 className="text-sm font-semibold leading-snug line-clamp-2">
           {video.title}
         </h3>
-        <p className="text-[11px] text-white/70 mt-0.5">{video.creator}</p>
+        <p className="text-xs text-white/70 mt-0.5">{video.creator}</p>
         <Link
           href={planHref}
-          className="mt-2.5 inline-flex items-center rounded-full bg-white px-3 py-1.5 text-[11px] font-semibold text-night transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
+          className="mt-2.5 inline-flex items-center rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-night transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
         >
           Start from video
         </Link>
@@ -354,7 +353,7 @@ function TravelerStoryCard({ story }: { story: TravelerStory }) {
           <p className="text-sm font-semibold text-night truncate">{story.name}</p>
           <p className="text-xs text-gray-500 truncate">{story.trip}</p>
         </div>
-        <span className={`${story.partyToneClass} text-[11px] font-semibold uppercase tracking-wide px-2 py-1 rounded-full flex-shrink-0`}>
+        <span className={`${story.partyToneClass} text-xs font-semibold uppercase px-2 py-1 rounded-full flex-shrink-0`}>
           {story.partyTypeLabel}
         </span>
       </header>
@@ -403,7 +402,7 @@ function ShareYourTripPanel() {
         className="inline-flex cursor-not-allowed items-center gap-2 rounded-full bg-gray-200 px-5 py-2.5 text-sm font-semibold text-gray-500 opacity-80"
       >
         Upload Content
-        <span className="rounded bg-white px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-gray-500">
+        <span className="rounded bg-white px-1.5 py-0.5 text-xs uppercase text-gray-500">
           Soon
         </span>
       </button>

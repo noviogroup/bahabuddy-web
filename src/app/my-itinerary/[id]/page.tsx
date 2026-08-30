@@ -34,11 +34,10 @@ export default async function MyItineraryPage({ params }: PageProps) {
         ]}
         actions={(
           <>
-            <Link href={createTripHref} className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white transition-colors hover:bg-brand-700">
-              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+            <Link href={createTripHref} className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700">
               Create related trip
             </Link>
-            <Link href="/nassau-cruise-itineraries" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="/nassau-cruise-itineraries" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               Browse guided days
             </Link>
           </>
@@ -46,15 +45,12 @@ export default async function MyItineraryPage({ params }: PageProps) {
       >
         <div className="flex flex-wrap gap-2 text-xs font-bold text-charcoal">
           <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Order reference {id}
           </span>
           <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Mobile Live Guide handoff
           </span>
           <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
             Ship-return buffer
           </span>
         </div>
@@ -63,8 +59,8 @@ export default async function MyItineraryPage({ params }: PageProps) {
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-6">
           <div className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Current status</p>
-            <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-night">Baha Buddy is preparing the usable trip view.</h2>
+            <p className="text-xs font-bold uppercase text-gray-500">Current status</p>
+            <h2 className="mt-3 text-2xl font-bold text-night">Baha Buddy is preparing the usable trip view.</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-charcoal">
               The order is captured, and this web route is reserved for the itinerary handoff. The traveler-facing plan should show stops, timing, walking guidance, and return-to-ship reminders once the generated itinerary is attached.
             </p>
@@ -86,15 +82,14 @@ export default async function MyItineraryPage({ params }: PageProps) {
               },
             ].map((item) => (
               <article key={item.title} className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-                <span className="mb-4 block h-2 w-10 rounded-full bg-gold-400" aria-hidden="true" />
-                <h3 className="text-lg font-extrabold text-night">{item.title}</h3>
+                <h3 className="text-lg font-bold text-night">{item.title}</h3>
                 <p className="mt-2 text-sm leading-6 text-charcoal">{item.body}</p>
               </article>
             ))}
           </div>
 
           <div className="rounded-baha-xl border border-gray-200 bg-gray-50 p-6">
-            <h2 className="text-xl font-extrabold text-night">What the traveler should see next</h2>
+            <h2 className="text-xl font-bold text-night">What the traveler should see next</h2>
             <div className="mt-4 grid gap-3 text-sm text-charcoal md:grid-cols-2">
               {[
                 'Confirmed stops with photos and source details',
@@ -102,8 +97,7 @@ export default async function MyItineraryPage({ params }: PageProps) {
                 'Meal, beach, culture, shopping, and transport notes',
                 'A clear action to open the same day in the mobile app',
               ].map((item) => (
-                <div key={item} className="flex gap-3 rounded-baha-lg bg-white p-3 ring-1 ring-gray-200">
-                  <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-brand-600" aria-hidden="true" />
+                <div key={item} className="rounded-baha-lg border-l-2 border-brand-200 bg-white p-3 ring-1 ring-gray-200">
                   <span>{item}</span>
                 </div>
               ))}
@@ -113,31 +107,30 @@ export default async function MyItineraryPage({ params }: PageProps) {
 
         <aside className="space-y-4">
           <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Order reference</p>
-            <p className="mt-3 break-all text-lg font-extrabold text-night">{id}</p>
+            <p className="text-xs font-bold uppercase text-gray-500">Order reference</p>
+            <p className="mt-3 break-all text-lg font-bold text-night">{id}</p>
             <p className="mt-3 text-sm leading-6 text-charcoal">
               Use this reference when matching the web handoff to the paid guided itinerary record.
             </p>
           </div>
 
           <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Next action</p>
-            <h2 className="mt-3 text-xl font-extrabold text-night">Create the trip shell now.</h2>
+            <p className="text-xs font-bold uppercase text-gray-500">Next action</p>
+            <h2 className="mt-3 text-xl font-bold text-night">Create the trip shell now.</h2>
             <p className="mt-2 text-sm leading-6 text-charcoal">
               This gives the traveler a place to save lodging, flights, and guided stops while the itinerary record is reconciled.
             </p>
-            <Link href={createTripHref} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-brand-700">
-              <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+            <Link href={createTripHref} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700">
               Create related trip
             </Link>
           </div>
 
           <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Support</p>
+            <p className="text-xs font-bold uppercase text-gray-500">Support</p>
             <p className="mt-3 text-sm leading-6 text-charcoal">
               Need to adjust the day? Use the guided day library first, then contact support with the order reference if the route needs manual help.
             </p>
-            <Link href="/contact" className="mt-4 inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="/contact" className="mt-4 inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               Contact support
             </Link>
           </div>

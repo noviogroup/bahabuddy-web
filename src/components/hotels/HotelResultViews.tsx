@@ -86,7 +86,7 @@ function hotelPreviewReason(data: CardData): string {
     return `${data.chain} option to compare against independent Bahamas stays.`
   }
 
-  return `Useful stay preview to compare location, rating, and nightly price before opening details.`
+  return `Compare location, rating, and nightly price.`
 }
 
 function getHotelDisplay(data: CardData): HotelDisplay {
@@ -135,8 +135,6 @@ function HotelPhoto({
       alt={title}
       title={title}
       eyebrow="Stay"
-      description="Stay details are available. Provider photo is not available yet."
-      pendingLabel="Photo pending"
       className={className}
       imageClassName="object-cover transition-transform duration-500 group-hover:scale-105"
       sizes="(max-width: 640px) 100vw, 320px"
@@ -182,7 +180,7 @@ function HotelInfoBlock({
           {hotel.amenities.slice(0, 3).map(a => (
             <span
               key={a}
-              className="text-[11px] bg-gray-100 text-charcoal rounded-full px-2 py-0.5"
+              className="text-xs bg-gray-100 text-charcoal rounded-full px-2 py-0.5"
             >
               {a}
             </span>
@@ -208,7 +206,7 @@ function PriceTag({
     return (
       <p className="text-white mt-2 leading-tight">
         {hotel.priceIsEstimate && (
-          <span className="text-white/70 text-[11px] font-medium uppercase tracking-wide block">
+          <span className="text-white/70 text-xs font-medium uppercase block">
             From
           </span>
         )}
@@ -221,7 +219,7 @@ function PriceTag({
   return (
     <div className="text-left sm:text-right shrink-0 sm:pl-2 w-full sm:w-auto">
       {hotel.priceIsEstimate && (
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 block">
+        <span className="text-xs font-semibold uppercase text-gray-400 block">
           From
         </span>
       )}
@@ -249,7 +247,7 @@ function HotelListCard({ data }: { data: CardData }) {
         <div className="flex-1 min-w-0 space-y-2">
           <HotelInfoBlock hotel={hotel} variant="list" />
           <div className="rounded-xl border border-gray-200 bg-white px-3 py-2">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.14em] text-gray-500">
+            <p className="text-xs font-bold uppercase text-gray-500">
               Why Buddy picked this
             </p>
             <p className="mt-1 line-clamp-2 text-xs font-semibold leading-5 text-charcoal">

@@ -2,7 +2,9 @@ import { NextResponse } from 'next/server'
 import { resolveAirportCode } from '@/lib/airports'
 import { resolveAirlineLogoUrl } from '@/lib/airline-logos'
 import { callTravelProvider, getProviderErrorResponse } from '@/lib/travel-booking/provider'
+import { aircraftDetailsForSegments } from '@/lib/flight-aircraft'
 import type { CardData } from '@/components/RichCards'
+import type { FlightBaggageSummary } from '@/lib/flight-checkout-summary'
 
 export async function POST(request: Request) {
   try {
@@ -67,6 +69,7 @@ function shapeFlightCards(response: unknown, requestedPassengers = 1): CardData[
       const journey = asRecord(journeyValue)
       const segments = recordList(journey.segments)
       const outbound = segments.filter((segment) => segment.direction !== 'INBOUND')
+      const inbound = segments.filter((segment) => segment.direction === 'INBOUND')
       const shownSegments = outbound.length > 0 ? outbound : segments
       const first = shownSegments[0] ?? {}
       const last = shownSegments[shownSegments.length - 1] ?? first
@@ -77,6 +80,7 @@ function shapeFlightCards(response: unknown, requestedPassengers = 1): CardData[
       const passengerTotal = numberValue(passengerCounts.adults, requestedPassengers) +
         numberValue(passengerCounts.children) +
         numberValue(passengerCounts.infants)
+      const flightNumbers = flightNumbersFromSegments(shownSegments)
 
       for (const offer of offers) {
         const display = asRecord(asRecord(offer.pricing).display)
@@ -85,6 +89,7 @@ function shapeFlightCards(response: unknown, requestedPassengers = 1): CardData[
         const airlineName = stringValue(carrier.marketingName, stringValue(carrier.operatingName, 'Airline'))
         const airlineCode = stringValue(carrier.marketingCode, stringValue(carrier.operatingCode, stringValue(carrier.iataCode)))
         const providerLogoUrl = stringValue(carrier.logoUrl, stringValue(carrier.logo_url))
+        const aircraft = aircraftDetailsForSegments(segments, offer.segmentAmenities)
         cards.push({
           card_type: 'flight',
           offer_id: stringValue(offer.offerId),
@@ -92,16 +97,26 @@ function shapeFlightCards(response: unknown, requestedPassengers = 1): CardData[
           route: `${stringValue(first.originCode)} to ${stringValue(last.destinationCode)}`,
           airline: airlineName,
           airline_code: airlineCode,
+          flight_number: flightNumbers[0],
+          flight_numbers: flightNumbers,
           airline_logo_url: resolveAirlineLogoUrl({
             providerLogoUrl,
             airlineCode,
             airlineName,
           }),
+          aircraft: aircraft.types.join(' · ') || undefined,
+          aircraft_types: aircraft.types,
+          aircraft_codes: aircraft.codes,
           departure: formatFlightTime(first.departureTime),
           arrival: formatFlightTime(last.arrivalTime),
           duration: formatDuration(numberValue(duration.minutes)),
           stops: shownSegments.length <= 1 ? 'Direct' : `${shownSegments.length - 1} stop${shownSegments.length > 2 ? 's' : ''}`,
+          trip_type: inbound.length > 0 ? 'round_trip' : 'one_way',
+          flight_legs: flightLegsFromSegments(segments, offer.segmentAmenities),
           price: numberValue(display.total),
+          base_fare: optionalNumberValue(display.base),
+          taxes: optionalNumberValue(display.taxes),
+          fees: optionalNumberValue(display.fees),
           currency: stringValue(display.currency, 'USD'),
           cabin_class: stringValue(fare.family, 'Economy'),
           fare_brand: stringValue(fare.brandName, stringValue(fare.name, stringValue(fare.family))),
@@ -139,6 +154,12 @@ function numberValue(value: unknown, fallback = 0): number {
   return typeof value === 'number' && Number.isFinite(value) ? value : Number(value) || fallback
 }
 
+function optionalNumberValue(value: unknown): number | undefined {
+  if (value === null || value === undefined || value === '') return undefined
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) && number >= 0 ? number : undefined
+}
+
 function formatFlightTime(value: unknown): string {
   if (typeof value !== 'string' || !value) return ''
   const date = new Date(value)
@@ -152,7 +173,7 @@ function formatDuration(minutes: number): string {
   return hours > 0 ? `${hours}h ${remainder}m` : `${remainder}m`
 }
 
-function baggageSummary(value: unknown): { carry_on?: boolean; checked?: number } {
+function baggageSummary(value: unknown): FlightBaggageSummary {
   const baggage = asRecord(value)
   const included = recordList(baggage.included)
   const checkedPieces = included.reduce((total, bag) => {
@@ -164,11 +185,45 @@ function baggageSummary(value: unknown): { carry_on?: boolean; checked?: number 
   const carryOnIncluded = baggage.hasCarryOnBag === true ||
     included.some((bag) => /cabin|carry/i.test(`${stringValue(bag.description)} ${stringValue(bag.bagType)}`))
   const providerChecked = baggage.hasCheckedBag === true && checkedPieces === 0 ? 1 : checkedPieces
+  const allowances = included.flatMap((bag) => {
+    const description = stringValue(bag.description)
+    const bagType = stringValue(bag.bagType)
+    const type: 'carry_on' | 'checked' | undefined = /cabin|carry|hand/i.test(`${bagType} ${description}`)
+      ? 'carry_on'
+      : /checked|hold/i.test(`${bagType} ${description}`)
+        ? 'checked'
+        : undefined
+    const pieces = positiveNumber(bag.pieces)
+    const weightKg = positiveNumber(bag.weightKg)
+    const dimensions = baggageDimensions(description)
+    if (!type && !description) return []
+    return [{
+      ...(type ? { type } : {}),
+      ...(pieces ? { pieces } : {}),
+      ...(weightKg ? { weightKg } : {}),
+      ...(dimensions ? { dimensions } : {}),
+      ...(description ? { description } : {}),
+      ...(stringValue(bag.passengerType) ? { passengerType: stringValue(bag.passengerType) } : {}),
+    }]
+  })
 
   return {
     ...(carryOnIncluded ? { carry_on: true } : {}),
     ...(providerChecked > 0 ? { checked: providerChecked } : {}),
+    ...(allowances.length > 0 ? { allowances } : {}),
   }
+}
+
+function positiveNumber(value: unknown): number | undefined {
+  const number = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(number) && number > 0 ? number : undefined
+}
+
+function baggageDimensions(value: string): string | undefined {
+  const match = value.match(/(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*[x×]\s*(\d+(?:[.,]\d+)?)\s*(cm|in|inches?)\b/i)
+  if (!match) return undefined
+  const unit = match[4].toLowerCase().startsWith('c') ? 'cm' : 'in'
+  return `${match[1].replace(',', '.')} × ${match[2].replace(',', '.')} × ${match[3].replace(',', '.')} ${unit}`
 }
 
 function layoversFromSegments(segments: Record<string, unknown>[]) {
@@ -185,6 +240,77 @@ function layoversFromSegments(segments: Record<string, unknown>[]) {
     }
   }
   return layovers
+}
+
+function flightLegsFromSegments(
+  segments: Record<string, unknown>[],
+  segmentAmenities: unknown,
+) {
+  if (segments.length === 0) return []
+
+  const outbound = segments.filter((segment) => segment.direction !== 'INBOUND')
+  const inbound = segments.filter((segment) => segment.direction === 'INBOUND')
+  const groups = [
+    { direction: 'OUTBOUND', segments: outbound.length > 0 ? outbound : inbound.length > 0 ? [] : segments },
+    { direction: 'INBOUND', segments: inbound },
+  ].filter((group) => group.segments.length > 0)
+
+  return groups.map((group) => {
+    const first = group.segments[0] ?? {}
+    const last = group.segments[group.segments.length - 1] ?? first
+    const flightNumbers = flightNumbersFromSegments(group.segments)
+    const aircraft = aircraftDetailsForSegments(group.segments, segmentAmenities)
+    return {
+      direction: group.direction,
+      route: `${stringValue(first.originCode)} to ${stringValue(last.destinationCode)}`,
+      flight_number: flightNumbers.join(' · '),
+      departure: formatFlightTime(first.departureTime),
+      arrival: formatFlightTime(last.arrivalTime),
+      duration: legDuration(first.departureTime, last.arrivalTime),
+      stops: group.segments.length <= 1 ? 'Direct' : `${group.segments.length - 1} stop${group.segments.length > 2 ? 's' : ''}`,
+      aircraft: aircraft.types.join(' · ') || undefined,
+    }
+  })
+}
+
+function flightNumbersFromSegments(segments: Record<string, unknown>[]): string[] {
+  const numbers: string[] = []
+  for (const segment of segments) {
+    const carrier = asRecord(segment.carrier)
+    const carrierCode = stringValue(
+      carrier.marketingCode,
+      stringValue(carrier.operatingCode, stringValue(carrier.iataCode)),
+    )
+    const rawNumber = stringValue(
+      carrier.marketingFlightNumber,
+      stringValue(
+        carrier.operatingFlightNumber,
+        stringValue(segment.flightNumber, stringValue(segment.flight_number, stringValue(carrier.flightNumber))),
+      ),
+    )
+    const number = formatFlightNumber(carrierCode, rawNumber)
+    if (number && !numbers.includes(number)) numbers.push(number)
+  }
+  return numbers
+}
+
+function formatFlightNumber(carrierCode: string, value: string): string {
+  const number = value.trim().toUpperCase().replace(/\s+/g, ' ')
+  if (!number) return ''
+  if (carrierCode && /^\d+[A-Z]?$/.test(number)) {
+    return `${carrierCode.trim().toUpperCase()} ${number}`
+  }
+  const coded = number.match(/^([A-Z][A-Z0-9]|[0-9][A-Z])\s*(\d+[A-Z]?)$/)
+  return coded ? `${coded[1]} ${coded[2]}` : number
+}
+
+function legDuration(departureValue: unknown, arrivalValue: unknown): string {
+  if (typeof departureValue !== 'string' || typeof arrivalValue !== 'string') return ''
+  const departure = new Date(departureValue)
+  const arrival = new Date(arrivalValue)
+  if (Number.isNaN(departure.getTime()) || Number.isNaN(arrival.getTime())) return ''
+  const minutes = Math.max(0, Math.round((arrival.getTime() - departure.getTime()) / 60000))
+  return minutes > 0 ? formatDuration(minutes) : ''
 }
 
 function layoverDuration(arrivalValue: unknown, departureValue: unknown): string {

@@ -35,6 +35,35 @@ function supabaseWithUser(user: { id: string } | null) {
   }
 }
 
+function supabaseWithFlightProfile(
+  user: {
+    id: string
+    email?: string | null
+    phone?: string | null
+    user_metadata?: Record<string, unknown> | null
+  },
+  profile: { display_name?: string | null; email?: string | null; country?: string | null } | null,
+) {
+  const tripsQuery = {
+    select: vi.fn(() => tripsQuery),
+    eq: vi.fn(() => tripsQuery),
+    order: vi.fn(() => tripsQuery),
+    limit: vi.fn().mockResolvedValue({ data: [{ id: 'trip-1', name: 'Summer Bahamas' }], error: null }),
+  }
+  const profileQuery = {
+    select: vi.fn(() => profileQuery),
+    eq: vi.fn(() => profileQuery),
+    maybeSingle: vi.fn().mockResolvedValue({ data: profile, error: null }),
+  }
+
+  return {
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user }, error: null }),
+    },
+    from: vi.fn((table: string) => (table === 'users' ? profileQuery : tripsQuery)),
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
 })
@@ -119,6 +148,44 @@ describe('booking route auth guards', () => {
     expect(redirectUrl).toContain('lite-offer%253D%253D')
     expect(redirectUrl).toContain('route%3DMIA%2Bto%2BNAS')
     expect(redirectUrl).not.toContain('lite-offer%25253D%25253D')
+  })
+
+  test('passes flight traveler defaults from profile and auth data into checkout', async () => {
+    const supabase = supabaseWithFlightProfile(
+      {
+        id: 'user-1',
+        email: 'auth@example.com',
+        phone: '+12425551212',
+        user_metadata: { display_name: 'Valdez Williams' },
+      },
+      {
+        display_name: null,
+        email: 'valdez@noviogroup.com',
+        country: 'The Bahamas',
+      },
+    )
+    routeMocks.createClient.mockResolvedValue(supabase)
+
+    const result = await FlightOfferBookPage({
+      params: { offerId: 'lite-offer-123' },
+      searchParams: {
+        route: 'MIA to NAS',
+        price: '404',
+        currency: 'USD',
+      },
+    })
+    const props = (result as { props: { profileDefaults: unknown } }).props
+
+    expect(props.profileDefaults).toMatchObject({
+      firstName: 'Valdez',
+      lastName: 'Williams',
+      email: 'valdez@noviogroup.com',
+      phoneCountryCode: '1',
+      phoneNumber: '2425551212',
+      countryCode: 'BS',
+    })
+    expect(supabase.from).toHaveBeenCalledWith('trips')
+    expect(supabase.from).toHaveBeenCalledWith('users')
   })
 
   test('redirects unauthenticated flight confirmation to login with return URL', async () => {

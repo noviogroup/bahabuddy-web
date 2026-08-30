@@ -13,7 +13,7 @@ describe('IslandQuiz direct actions', () => {
 
     const startQuiz = screen.getByRole('button', { name: /start the quiz/i })
     expect(startQuiz).toHaveClass('bg-brand-600')
-    expect(startQuiz.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(startQuiz.querySelector('.bg-gold-400')).not.toBeInTheDocument()
 
     fireEvent.click(startQuiz)
     choose('Brunch at the hottest new spot')
@@ -28,7 +28,7 @@ describe('IslandQuiz direct actions', () => {
     const startTrip = screen.getByRole('link', { name: 'Start my Nassau trip' })
     const startTripUrl = new URL(startTrip.getAttribute('href') ?? '', 'https://bahabuddy.test')
     expect(startTrip).toHaveClass('bg-brand-600')
-    expect(startTrip.querySelector('.bg-gold-400')).toBeInTheDocument()
+    expect(startTrip.querySelector('.bg-gold-400')).not.toBeInTheDocument()
     expect(startTripUrl.pathname).toBe('/dashboard/trips/new')
     expect(startTripUrl.searchParams.get('returnTo')).toBe('/explore/quiz')
     expect(startTripUrl.searchParams.get('source')).toBe('island_quiz')

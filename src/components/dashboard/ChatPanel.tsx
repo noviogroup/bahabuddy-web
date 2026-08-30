@@ -53,7 +53,7 @@
 import { useId, useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { RichCardRenderer, parseCardsFromContent, type CardData } from '../RichCards'
+import { RichCardRenderer, parseCardsFromContent, providerOfferIdFromCard, type CardData } from '../RichCards'
 import ConversationSidebar, { type Conversation } from '../ConversationSidebar'
 import TripContextChips from '../trip/TripContextChips'
 import { createClient } from '@/lib/supabase/client'
@@ -125,13 +125,14 @@ function buildTripItemPayload(card: CardData): Record<string, unknown> | null {
 
   if (card.card_type === 'flight') {
     const routeParts = (card.route ?? '').split(/\s+to\s+|[→>-]/i).map(part => part.trim()).filter(Boolean)
+    const offerId = providerOfferIdFromCard(card)
     return {
       itemType: 'flight',
-      sourceId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
+      sourceId: offerId,
       sourceType: 'chat_card',
       name: card.route ?? `${card.airline ?? 'Flight'} option`,
-      provider: card.offer_id || card.provider_offer_id ? 'liteapi' : card.duffel_offer_id ? 'duffel' : 'liteapi',
-      providerOfferId: card.duffel_offer_id ?? card.offer_id ?? card.provider_offer_id,
+      provider: 'liteapi',
+      providerOfferId: offerId,
       origin: routeParts[0],
       destination: routeParts[1],
       airline: card.airline,
@@ -171,6 +172,13 @@ function buildTripItemPayload(card: CardData): Record<string, unknown> | null {
   return null
 }
 
+function cardSourceId(card: CardData): string | undefined {
+  if (card.card_type === 'flight') {
+    return providerOfferIdFromCard(card) ?? undefined
+  }
+  return card.place_id ?? card.product_code
+}
+
 export default function ChatPanel({
   mode = 'standalone',
   userEmail,
@@ -180,6 +188,8 @@ export default function ChatPanel({
   const searchParams = useSearchParams()
   const supabase = useMemo(() => createClient(), [])
   const isDocked = mode === 'docked'
+  const chatHeaderTitle = guestMode ? 'Guest chat' : 'Baha Buddy'
+  const chatHeaderSubtitle = guestMode ? 'Public planning preview' : 'Your Bahamas travel guide'
 
   // Stable IDs for label/control associations.
   const textareaIdStandalone = useId()
@@ -191,7 +201,7 @@ export default function ChatPanel({
   const [messages, setMessages] = useState<Message[]>([GREETING])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [threadMenuOpen, setThreadMenuOpen] = useState(false)
   /** Active tool progress label, e.g. "Searching hotels…". Cleared on tool_complete. */
   const [activeTool, setActiveTool] = useState<string | null>(null)
@@ -202,11 +212,24 @@ export default function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const autoStartedRef = useRef<string | null>(null)
 
   useEffect(() => {
     const q = searchParams?.get('q')
-    if (q) setInput(q)
+    const shouldAutoStart = searchParams?.get('start') === '1'
+    if (q && !shouldAutoStart) setInput(q)
   }, [searchParams])
+
+  useEffect(() => {
+    if (isDocked) return
+
+    const media = window.matchMedia('(min-width: 768px)')
+    const syncSidebar = () => setSidebarOpen(media.matches)
+    syncSidebar()
+    media.addEventListener('change', syncSidebar)
+
+    return () => media.removeEventListener('change', syncSidebar)
+  }, [isDocked])
 
   /** Trip-scoped chat: when ?trip=<id> is present, render the
    *  TripContextChips strip above the message log. The chips own
@@ -244,7 +267,7 @@ export default function ChatPanel({
   }, [tripIdParam, supabase, guestMode])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [messages])
 
   useEffect(() => {
@@ -279,7 +302,7 @@ export default function ChatPanel({
 
     const { data } = await supabase
       .from('chat_threads')
-      .select('id, title, last_message_preview, updated_at')
+      .select('id, last_message_preview, updated_at')
       .order('updated_at', { ascending: false })
       .limit(50)
     if (data) setThreads(data as Conversation[])
@@ -295,6 +318,9 @@ export default function ChatPanel({
     setMessages([GREETING])
     setInput('')
     setThreadMenuOpen(false)
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
     abortRef.current?.abort()
     setTransient(null)
     setActiveTool(null)
@@ -327,6 +353,9 @@ export default function ChatPanel({
       setMessages([GREETING])
     }
     setInput('')
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSidebarOpen(false)
+    }
   }, [supabase, guestMode])
 
   const sendQuery = useCallback(async (text: string) => {
@@ -502,6 +531,25 @@ export default function ChatPanel({
 
   const sendMessage = useCallback(() => sendQuery(input), [input, sendQuery])
 
+  useEffect(() => {
+    const q = searchParams?.get('q')?.trim()
+    const shouldAutoStart = searchParams?.get('start') === '1'
+    if (!q || !shouldAutoStart || loading) return
+
+    const key = `${tripIdParam ?? ''}:${q}`
+    if (autoStartedRef.current === key) return
+    autoStartedRef.current = key
+    setInput('')
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('start')
+      window.history.replaceState(window.history.state, '', url.toString())
+    }
+
+    void sendQuery(q)
+  }, [loading, searchParams, sendQuery, tripIdParam])
+
   const addCardToTrip = useCallback(async (card: CardData, tripId: string) => {
     if (guestMode) {
       setMessages(prev => [
@@ -531,7 +579,7 @@ export default function ChatPanel({
       track('trip_item_added_from_chat_card', {
         trip_id: tripId,
         card_type: card.card_type,
-        source_id: card.place_id ?? card.product_code ?? card.duffel_offer_id ?? card.offer_id,
+        source_id: cardSourceId(card),
       })
 
       setMessages(prev => [
@@ -580,16 +628,26 @@ export default function ChatPanel({
   // ── Render: standalone (full-screen) ─────────────────────────────────────
   if (!isDocked) {
     return (
-      <div className="flex h-screen bg-white overflow-hidden">
+      <div className="relative flex h-screen bg-white overflow-hidden">
         {sidebarOpen && (
-          <ConversationSidebar
-            conversations={threads}
-            loading={threadsLoading}
-            activeId={activeThreadId}
-            onSelect={selectConversation}
-            onNew={startNewConversation}
-            guestMode={guestMode}
-          />
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-20 bg-night/35 md:hidden"
+              aria-label="Close conversation sidebar"
+              onClick={() => setSidebarOpen(false)}
+            />
+            <div className="fixed inset-y-0 left-0 z-30 md:static md:z-auto">
+              <ConversationSidebar
+                conversations={threads}
+                loading={threadsLoading}
+                activeId={activeThreadId}
+                onSelect={selectConversation}
+                onNew={startNewConversation}
+                guestMode={guestMode}
+              />
+            </div>
+          </>
         )}
 
         <div className="flex flex-col flex-1 min-w-0">
@@ -609,8 +667,8 @@ export default function ChatPanel({
             <div className="flex items-center gap-2.5 flex-1 min-w-0">
               <BuddyAvatar size="sm" state={buddyState} />
               <div className="flex flex-col min-w-0">
-                <span className="text-night font-bold text-sm leading-tight">Baha Buddy</span>
-                <span className="text-gray-500 text-xs leading-tight hidden sm:block">Your Bahamas travel guide</span>
+                <span className="text-night font-bold text-sm leading-tight">{chatHeaderTitle}</span>
+                <span className="text-gray-500 text-xs leading-tight hidden sm:block">{chatHeaderSubtitle}</span>
               </div>
             </div>
 
@@ -650,8 +708,9 @@ export default function ChatPanel({
                 <BuddyAvatar size="xl" state="idle" />
                 <h1 className="text-2xl font-bold text-night mt-5 mb-2">Baha Buddy</h1>
                 <p className="text-gray-600 text-sm max-w-md mb-8 leading-relaxed">
-                  Your personal AI travel guide for the Bahamas. Ask me about islands, restaurants,
-                  activities, or let me plan your perfect trip.
+                  {guestMode
+                    ? 'Ask Buddy about islands, hotels, food, flights, and tours. Sign in when you want to save plans, add items to a trip, or book.'
+                    : 'Your personal AI travel guide for the Bahamas. Ask me about islands, restaurants, activities, or let me plan your perfect trip.'}
                 </p>
                 <ul role="list" className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full max-w-md">
                   {SUGGESTED_PROMPTS.map(prompt => (
@@ -965,7 +1024,7 @@ interface MessageRowProps {
 
 function MessageRow({ msg, loading, isLast, activeTool, onSendMessage, activeTripId, onAddCardToTrip, compact }: MessageRowProps) {
   const isUser = msg.role === 'user'
-  const showThinkingDots = !isUser && loading && isLast && msg.content === '' && !activeTool
+  const showThinkingState = !isUser && loading && isLast && msg.content === '' && !activeTool
   const showToolLabel = !isUser && loading && isLast && !!activeTool
 
   return (
@@ -982,18 +1041,15 @@ function MessageRow({ msg, loading, isLast, activeTool, onSendMessage, activeTri
           isUser
             ? 'bg-user-bubble text-white rounded-baha-lg rounded-br-sm'
             : 'bg-buddy-bubble text-night rounded-baha-lg rounded-bl-sm',
-          compact && 'text-[13px] px-3 py-2.5',
+          compact && 'text-sm px-3 py-2.5',
         )}
       >
         {msg.content}
-        {showThinkingDots && (
-          <span className="inline-flex gap-1 items-center h-4" aria-hidden="true">
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '0ms' }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '150ms' }} />
-            <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '300ms' }} />
+        {showThinkingState && (
+          <span role="status" aria-live="polite" className="text-xs font-semibold text-gray-500">
+            Buddy is thinking
           </span>
         )}
-        {showThinkingDots && <span className="sr-only">Buddy is thinking…</span>}
       </div>
 
       {/* Tool progress pill — appears under the streaming bubble while a tool runs.
@@ -1004,11 +1060,6 @@ function MessageRow({ msg, loading, isLast, activeTool, onSendMessage, activeTri
           aria-live="polite"
           className="mt-1.5 flex items-center gap-2 bg-brand-50 text-brand-700 rounded-full pl-2 pr-3 py-1 text-xs animate-fade-in motion-reduce:animate-none"
         >
-          <span className="inline-flex gap-0.5 items-center" aria-hidden="true">
-            <span className="w-1 h-1 bg-brand-500 rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '0ms' }} />
-            <span className="w-1 h-1 bg-brand-500 rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '150ms' }} />
-            <span className="w-1 h-1 bg-brand-500 rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '300ms' }} />
-          </span>
           <span className="font-medium">{activeTool}</span>
         </div>
       )}

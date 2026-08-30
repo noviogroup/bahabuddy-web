@@ -31,6 +31,7 @@ describe('public marketplace shell brand layout', () => {
     expect(logoImage?.getAttribute('src')).toContain('baha-logo-mark.svg')
     expect(logoImage?.getAttribute('src')).not.toContain('logo.png')
     expect(logoImage?.className).not.toMatch(/bg-|border|gradient|ring|rounded/)
+    expect(logoImage).toHaveStyle({ height: '34px' })
 
     expect(screen.getByRole('link', { name: 'Start planning' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('link', { name: 'Start planning' })).toHaveClass('text-white')
@@ -39,9 +40,18 @@ describe('public marketplace shell brand layout', () => {
 
     const nav = screen.getByRole('navigation', { name: 'Travel products' })
     expect(nav).toHaveClass('bg-brand-600')
+    expect(nav).toHaveClass('hidden')
+    expect(nav).toHaveClass('lg:block')
+    const mobileMenuTrigger = container.querySelector('summary[aria-label="Open travel menu"]')
+    expect(mobileMenuTrigger).toHaveClass('min-h-11')
+    expect(mobileMenuTrigger?.closest('details')).toHaveClass('lg:hidden')
+    const mobileNav = screen.getByRole('navigation', { name: 'Mobile travel products' })
+    expect(within(mobileNav).getByRole('link', { name: 'Stays' })).toHaveAttribute('href', '/stays')
+    expect(within(mobileNav).getByRole('link', { name: 'Flights' })).toHaveAttribute('href', '/flights')
     const primaryLinks = Array.from(nav.querySelectorAll<HTMLAnchorElement>('a[data-nav-level="primary"]'))
     const productLabels = primaryLinks.map((link) => link.textContent?.trim())
     expect(productLabels).toEqual([
+      'Search',
       'Stays',
       'Flights',
       'Explore',
@@ -54,6 +64,9 @@ describe('public marketplace shell brand layout', () => {
 
     const stays = within(nav).getByRole('link', { name: 'Stays' })
     expect(stays).toHaveClass('text-white/90')
+    expect(stays).toHaveClass('text-sm')
+    expect(stays).toHaveClass('px-3')
+    expect(stays).toHaveClass('py-2.5')
     expect(stays.querySelector('.text-gold-400')).toBeInTheDocument()
 
     const explore = within(nav).getByRole('link', { name: 'Explore' })
@@ -88,13 +101,31 @@ describe('public marketplace shell brand layout', () => {
   })
 
   test('authenticated header keeps account actions on the white account row', () => {
-    const { container } = render(<MarketplacePublicHeader userEmail="traveler@example.com" />)
+    const { container } = render(
+      <MarketplacePublicHeader userEmail="valdez@noviogroup.com" displayName="Valdez Williams" />,
+    )
     const header = container.querySelector('header')
 
     expect(header).toHaveClass('bg-white')
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveClass('text-white')
-    expect(screen.getByRole('link', { name: 'Profile for traveler@example.com' })).toHaveClass('border-brand-200')
+    const profileLink = screen.getByRole('link', { name: 'Profile for Valdez Williams' })
+    expect(profileLink).toHaveClass('text-gray-600')
+    expect(profileLink).toHaveClass('truncate')
+    expect(profileLink).not.toHaveClass('rounded-full')
+    expect(profileLink).not.toHaveClass('bg-brand-50')
+    expect(profileLink).not.toHaveClass('border-brand-200')
+    expect(profileLink).toHaveTextContent('Hi, Valdez Williams')
+    const mobileTripsLink = screen.getByRole('link', { name: 'My trips dashboard' })
+    expect(mobileTripsLink).toHaveClass('sm:hidden')
+    expect(mobileTripsLink).toHaveClass('min-h-11')
+  })
+
+  test('authenticated header derives a readable profile name from email when needed', () => {
+    render(<MarketplacePublicHeader userEmail="valdez.williams@noviogroup.com" />)
+
+    expect(screen.getByRole('link', { name: 'Profile for Valdez Williams' })).toBeInTheDocument()
+    expect(screen.getByText('Hi, Valdez Williams')).toBeInTheDocument()
   })
 
   test('Baha logo keeps caller classes on the outer shell, not behind the mark', () => {

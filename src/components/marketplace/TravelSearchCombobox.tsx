@@ -236,11 +236,11 @@ export default function TravelSearchCombobox({
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={cx('relative overflow-visible', open && 'z-[80]')}>
       {name && <input type="hidden" name={name} value={value} />}
       <span
         className={cx(
-          'pointer-events-none absolute left-2.5 top-1/2 z-10 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full transition-colors',
+          'pointer-events-none absolute left-2.5 top-1/2 z-10 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg transition-colors',
           dark
             ? 'border border-white/15 bg-white/10 text-gold-300'
             : 'border border-gray-200 bg-brand-50 text-brand-700',
@@ -273,7 +273,7 @@ export default function TravelSearchCombobox({
         autoComplete="off"
         className={dark
           ? cx(
-              'h-11 w-full rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-extrabold text-white outline-none transition-all placeholder:text-white/45 hover:border-white/45 hover:bg-white/15 focus:border-white/70 focus:bg-white/15 focus:ring-4 focus:ring-white/10',
+              'h-11 w-full rounded-xl border border-white/25 bg-white/10 px-3 text-sm font-semibold text-white outline-none transition-all placeholder:text-white/45 hover:border-white/45 hover:bg-white/15 focus:border-white/70 focus:bg-white/15 focus:ring-4 focus:ring-white/10',
               'pl-12 pr-12',
               className,
             )
@@ -305,7 +305,7 @@ export default function TravelSearchCombobox({
           id={listboxId}
           role="listbox"
           className={cx(
-            'absolute left-0 z-40 mt-2 min-w-full overflow-hidden rounded-[1.35rem] shadow-2xl sm:min-w-[24rem]',
+            'absolute left-0 z-[90] mt-2 min-w-full overflow-hidden rounded-[1.35rem] shadow-2xl sm:min-w-[24rem]',
             dark
               ? 'border border-white/20 bg-night/95 shadow-black/40 ring-1 ring-white/10 backdrop-blur-xl'
               : 'border border-gray-200 bg-white shadow-gray-950/10 ring-1 ring-black/5',
@@ -317,7 +317,7 @@ export default function TravelSearchCombobox({
           )}>
             <div className="min-w-0">
               <p className={cx(
-                'text-[11px] font-extrabold uppercase tracking-[0.16em]',
+                'text-xs font-semibold uppercase',
                 dark ? 'text-white/60' : 'text-gray-500',
               )}>
                 Airport search
@@ -330,7 +330,7 @@ export default function TravelSearchCombobox({
               </p>
             </div>
             <span className={cx(
-              'hidden shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.12em] sm:inline-flex',
+              'hidden shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold uppercase sm:inline-flex',
               dark ? 'border-white/15 bg-white/10 text-white/65' : 'border-gray-200 bg-white text-gray-500',
             )}>
               Type to filter
@@ -372,7 +372,7 @@ export default function TravelSearchCombobox({
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className={cx(
-                        'block truncate text-sm font-extrabold',
+                        'block truncate text-sm font-semibold',
                         dark ? 'text-white' : 'text-night',
                       )}>
                         {customOptionLabel(item.value)}
@@ -411,7 +411,7 @@ export default function TravelSearchCombobox({
                   )}
                 >
                   <span className={cx(
-                    'mt-0.5 inline-flex min-w-12 justify-center rounded-full border px-2.5 py-1 text-[11px] font-extrabold shadow-sm',
+                    'mt-0.5 inline-flex min-w-12 justify-center rounded-full border px-2.5 py-1 text-xs font-semibold shadow-sm',
                     selected
                       ? dark
                         ? 'border-white/25 bg-white text-night'
@@ -424,7 +424,7 @@ export default function TravelSearchCombobox({
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className={cx(
-                      'block truncate text-sm font-extrabold',
+                      'block truncate text-sm font-semibold',
                       dark ? 'text-white' : 'text-night',
                     )}>
                       {option.label}
@@ -441,7 +441,7 @@ export default function TravelSearchCombobox({
                   {selected && (
                     <span
                       className={cx(
-                        'mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
+                        'mt-1 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md',
                         dark ? 'bg-gold-300 text-night' : 'bg-gold-400 text-night',
                       )}
                       aria-hidden="true"

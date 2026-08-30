@@ -66,7 +66,7 @@ export default function EmptySlot({
         className,
       )}
     >
-      <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-full bg-gray-100 transition-colors group-hover:bg-brand-100">
+      <span className="shrink-0 inline-flex items-center justify-center w-7 h-7 rounded-md bg-gray-100 transition-colors group-hover:bg-brand-100">
         {icon ?? DEFAULT_ICON}
       </span>
       <span className="flex flex-col items-start text-left flex-1 min-w-0">

@@ -44,7 +44,7 @@ describe('TravelOriginPrompt', () => {
     })
     const useOriginButton = screen.getByRole('button', { name: 'Use origin' })
     expect(useOriginButton).toHaveClass('bg-brand-600')
-    expect(useOriginButton.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(useOriginButton.querySelector('.bg-gold-400')).toBeNull()
     fireEvent.click(useOriginButton)
 
     expect(JSON.parse(window.localStorage.getItem(TRAVEL_ORIGIN_STORAGE_KEY) ?? '{}')).toMatchObject({
@@ -112,8 +112,13 @@ describe('TravelOriginPrompt', () => {
     expect(analyticsMock.track).not.toHaveBeenCalled()
   })
 
-  test('does not show on checkout and booking mutation routes', () => {
+  test('does not show on stays or checkout and booking mutation routes', () => {
     for (const pathname of [
+      '/stays',
+      '/stays?island=Nassau',
+      '/stays/lp6558fbc7',
+      '/search?q=resort',
+      '/explore/island/the-exumas',
       '/flights/offer-123/book',
       '/flights/offer-123/confirmation',
       '/stays/lp6558fbc7/guests',

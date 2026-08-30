@@ -1,7 +1,7 @@
 # Web Public Nav, Logo, And Readiness Review - June 21, 2026
 
 Review time: June 21, 2026
-Updated: June 21, 2026, 12:05 EDT
+Updated: June 23, 2026, 17:47 EDT
 Scope: public marketplace header, footer navigation, logo treatment, and launch-readiness language
 
 ## What Changed
@@ -53,7 +53,8 @@ Public web is validation-ready for the current UI/booking slice, not fully launc
 - live LiteAPI flight booking lifecycle
 - Stripe/webhook reconciliation
 - canonical `bookings` rows appearing in Admin
-- `trips` RLS hardening
+- deployed booking-runtime readiness proof through the protected web route
+- live trips RLS, share/invite, web trip-list, and mobile simulator trip visibility are now documented; physical-device invite smoke remains
 - visual QA across public web, authenticated web, admin, and mobile
 - production secrets and provider configuration review
 

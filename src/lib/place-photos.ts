@@ -1,22 +1,22 @@
 /**
- * Place photos — resolve google_places photo references to renderable URLs.
+ * Place photos — resolve Supabase cached place imagery to renderable URLs.
  *
- * `google_places.photos` is JSONB: an array of
- * `{ reference: string, width: number, height: number }` records as
- * returned by the Google Places Details API. The `reference` (a.k.a.
- * `photo_reference`) is NOT an image URL — it's a token you exchange
- * for an image via the Google Places Photo API.
+ * Place source photo JSON is cached by the backend enrichment pipeline in the
+ * source-table `photos` schema field: an array of `{ reference: string,
+ * width: number, height: number }` records as originally returned by source
+ * provider detail payloads. The `reference` (a.k.a. `photo_reference`) is NOT
+ * an image URL.
  *
  * Resolution chain (in order):
  *
- *   1. `google_place_photos.storage_url` — if the sync job has cached
- *      the photo into Supabase Storage, we serve that directly. No
- *      egress, no API key, no rate limits.
+ *   1. Cached place photo storage URL — if the sync job has cached the photo
+ *      into Supabase Storage, we serve that directly. No egress, no API key,
+ *      no rate limits.
  *
- *   2. `/api/place-photo?ref=<photo_reference>&w=<width>` — our own
- *      Next.js route handler that proxies to Google's Photo API
- *      server-side, keeping the API key out of the client. Cacheable
- *      via Next's fetch cache + CDN headers.
+ *   2. `/api/place-photo?ref=<photo_reference>&w=<width>` — server-side
+ *      fallback resolver for cached photo references. This keeps provider
+ *      keys out of the client and should be less preferred than cached
+ *      Supabase Storage URLs.
  *
  *   3. `null` — no photo available. Callers should render a brand
  *      gradient placeholder instead of a broken `<Image>`.
@@ -28,22 +28,23 @@
 
 import 'server-only'
 import { cache } from 'react'
+import { CACHED_PLACE_PHOTO_TABLE } from '@/lib/place-inventory'
 import { createClient } from '@/lib/supabase/server'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-/** Shape of a single entry in `google_places.photos` JSONB. */
-export interface GooglePhotoMeta {
+/** Shape of a single entry in cached place photo JSONB. */
+export interface CachedPlacePhotoMeta {
   reference: string
   width?: number
   height?: number
 }
 
-/** Minimum shape of a google_places row needed to resolve its primary
+/** Minimum shape of a cached place row needed to resolve its primary
  *  photo. Callers can pass full rows or a hand-built subset. */
 export interface PhotoBearingPlace {
   id: string
-  photos?: GooglePhotoMeta[] | null
+  photos?: CachedPlacePhotoMeta[] | null
 }
 
 // ─── Storage URL lookup (cached) ────────────────────────────────────────────
@@ -67,7 +68,7 @@ const fetchCachedStorageUrls = cache(
     try {
       const supabase = await createClient()
       const { data, error } = await supabase
-        .from('google_place_photos')
+        .from(CACHED_PLACE_PHOTO_TABLE)
         .select('place_id, storage_url')
         .in('place_id', placeIds as string[])
         .not('storage_url', 'is', null)
@@ -99,7 +100,7 @@ const fetchCachedStorageUrls = cache(
  * resolution chain (cached storage → proxy route → null).
  *
  * @param place - place row containing `id` and optionally `photos`
- * @param width - target render width, drives Google Photo API sizing
+ * @param width - target render width for cached/proxied image resolution
  */
 export async function getPlacePhotoUrl(
   place: PhotoBearingPlace,

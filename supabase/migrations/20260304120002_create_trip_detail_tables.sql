@@ -24,7 +24,7 @@ CREATE INDEX IF NOT EXISTS idx_trip_accommodations_trip_id ON public.trip_accomm
 
 -- ---------------------------------------------------------------------------
 -- trip_flights
--- Flight bookings per trip (Duffel or manual).
+-- Flight bookings per trip (provider or manual).
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS public.trip_flights (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

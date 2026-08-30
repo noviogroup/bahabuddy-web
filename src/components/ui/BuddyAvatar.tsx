@@ -4,7 +4,7 @@
  * BuddyAvatar — the visual embodiment of Buddy on web.
  *
  * Uses /public/brand/buddy-avatar.png by default. State animations apply
- * over the image (breathing, pulse ring, thinking dots).
+ * over the image (breathing and pulse states).
  *
  * Mobile reference: lib/shared/widgets/buddy_avatar.dart (sizes + states)
  */
@@ -35,17 +35,6 @@ function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
 }
 
-/** Three-dot thinking indicator overlaid on the avatar when state === 'thinking'. */
-function ThinkingDots() {
-  return (
-    <div className="absolute -top-1 -right-1 flex items-center gap-0.5 bg-white rounded-full px-1.5 py-1 shadow-card">
-      <span className="w-1 h-1 bg-gray-500 rounded-full animate-buddy-think" style={{ animationDelay: '0ms' }} />
-      <span className="w-1 h-1 bg-gray-500 rounded-full animate-buddy-think" style={{ animationDelay: '150ms' }} />
-      <span className="w-1 h-1 bg-gray-500 rounded-full animate-buddy-think" style={{ animationDelay: '300ms' }} />
-    </div>
-  )
-}
-
 export default function BuddyAvatar({
   size = 'md',
   state = 'idle',
@@ -57,7 +46,7 @@ export default function BuddyAvatar({
   const stateClass: Record<State, string> = {
     idle:        'animate-breathe',
     listening:   'animate-buddy-pulse',
-    thinking:    '',
+    thinking:    'animate-buddy-pulse',
     excited:     'scale-110 transition-transform duration-300',
     presenting:  '',
     celebrating: 'scale-110 animate-buddy-pulse',
@@ -100,8 +89,6 @@ export default function BuddyAvatar({
           className="object-cover w-full h-full"
         />
       </div>
-
-      {state === 'thinking' && <ThinkingDots />}
     </div>
   )
 }

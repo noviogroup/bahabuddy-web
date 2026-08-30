@@ -1,5 +1,9 @@
 # Baha Buddy — Web Dashboard Parity (`bahabuddy-web`)
 
+> **Historical architecture journal.** This explains the parity rebuild and remains useful for design
+> decisions, but it is not the live launch-status source. Use `../docs/README.md` and the root command
+> center for current status.
+
 > **Goal:** Feature parity between the Flutter mobile app (`Baha-Buddy-V2/`) and the Next.js web dashboard (`bahabuddy-web/`). Mobile is canonical. Web is being upgraded — not rebuilt — phase by phase.
 
 > **NOT** pixel parity. The web has its own layout (sidebar + main + chat panel on desktop, drawer + overlay on mobile) but uses the same design system, the same Supabase backend, the same AI engine, and offers the same features.
@@ -148,7 +152,7 @@ Outside `bahabuddy-web/`, but newly relevant:
 | **Set `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`** | Valdez | Without it: graceful "not configured" screen |
 | **Verify Stripe webhook URL** | Valdez | `https://cxcfymhoncysyloutvkh.supabase.co/functions/v1/stripe-webhook` |
 | **Run `supabase/enable_trip_realtime.sql`** | Valdez | Idempotent |
-| **Set `DUFFEL_API_TOKEN`** on web | Valdez | Graceful degradation when absent |
+| **Set LiteAPI flight env vars** on web | Valdez | Graceful degradation when absent |
 | **Supabase Service Role Key rotation** | Valdez | Pre-existing P0 |
 | **Anthropic API key rotation** | Valdez | Pre-existing P0 |
 | **Domain-restrict Google Maps API key** | Valdez | Pre-existing P0 |
@@ -165,7 +169,7 @@ Outside `bahabuddy-web/`, but newly relevant:
 
 The mobile UX spec is explicit: every Explore card has both **"Read more"** (opens a detail view) and **"Plan this"** (opens chat with Buddy pre-loaded). The web shipped initially with only the chat funnel. Decision: cards in chat are previews → click goes to detail page; detail pages carry the chat affordance via the shared `PlanWithBuddyCTA` component.
 
-Stable identifiers come from `google_places.place_id` for hotel/restaurant/activity, and from `islands.slug` for destinations. `chat-tools.ts` threads `place_id` from every tool result into card data. `FlightCard` is intentionally non-linking (Duffel offers expire). DestinationCard goes to marketing `/explore/places/[island]`.
+Stable identifiers come from canonical Supabase inventory first, with cached/source place inventory as fallback enrichment for hotel/restaurant/activity cards, and from `islands.slug` for destinations. `chat-tools.ts` threads `place_id` from every tool result into card data. `FlightCard` is intentionally non-linking because LiteAPI provider offers expire. DestinationCard goes to marketing `/explore/places/[island]`.
 
 Article reader at `/explore/articles/[slug]` replaces the chat-funnel from Explore Discover. Article content lives in `lib/article-content.ts` keyed by slug. Session 13 made this the **fallback** layer: Sanity content (when present) takes precedence.
 
@@ -235,7 +239,7 @@ Detail-page smoke tests (Session 12, still valid):
 
 Environment (carried from Session 10):
 - [ ] `enable_trip_realtime.sql` run
-- [ ] `DUFFEL_API_TOKEN`, `ANTHROPIC_API_KEY` set
+- [ ] LiteAPI server keys and `ANTHROPIC_API_KEY` set
 - [ ] Stripe OFF / ON paths still work
 
 Performance (after build is green):

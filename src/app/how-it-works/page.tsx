@@ -1,12 +1,17 @@
 import type { Metadata } from 'next'
 import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
+import SanityManagedContentPage from '@/components/marketplace/SanityManagedContentPage'
+import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
   title: 'How Baha Buddy Works',
   description: 'How travelers use Baha Buddy to explore, plan, book, and travel in the Bahamas.',
 }
 
-export default function HowItWorksPage() {
+export default async function HowItWorksPage() {
+  const managedPage = await fetchContentPageByRoute('/how-it-works')
+  if (managedPage) return <SanityManagedContentPage page={managedPage} />
+
   return (
     <UtilityContentLayout
       activePath="/how-it-works"
@@ -30,9 +35,8 @@ export default function HowItWorksPage() {
       <section>
         <h2>Book directly</h2>
         <p>
-          Stay and flight booking flows use direct UI for search, rate or fare
-          verification, traveler details, payment, provider booking, and
-          confirmation.
+          Stay and flight booking flows keep search, traveler details, payment,
+          and confirmation in one trip flow.
         </p>
       </section>
       <section>

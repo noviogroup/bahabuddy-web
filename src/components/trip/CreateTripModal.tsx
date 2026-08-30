@@ -184,14 +184,14 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
           <div className="absolute bottom-0 left-0 right-0 p-5">
             {selectedIsland ? (
               <>
-                <p className="text-white/80 text-xs font-semibold uppercase tracking-widest">Your destination</p>
-                <p className="text-white text-2xl font-extrabold leading-tight drop-shadow">{selectedIsland.name}</p>
+                <p className="text-white/80 text-xs font-semibold uppercasest">Your destination</p>
+                <p className="text-white text-2xl font-bold leading-tight drop-shadow">{selectedIsland.name}</p>
                 <p className="text-white/90 text-xs mt-1 leading-relaxed line-clamp-2">{selectedIsland.tagline}</p>
               </>
             ) : (
               <>
-                <p className="text-white/80 text-xs font-semibold uppercase tracking-widest">Baha Buddy</p>
-                <p className="text-white text-2xl font-extrabold leading-tight drop-shadow">Your Bahamas, your way.</p>
+                <p className="text-white/80 text-xs font-semibold uppercasest">Baha Buddy</p>
+                <p className="text-white text-2xl font-bold leading-tight drop-shadow">Your Bahamas, your way.</p>
               </>
             )}
           </div>
@@ -199,7 +199,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
 
         {/* Form rail */}
         <div className="flex-1 min-w-0 overflow-y-auto p-6">
-          <h2 id={titleId} className="text-2xl font-extrabold text-night">Where to?</h2>
+          <h2 id={titleId} className="text-2xl font-bold text-night">Where to?</h2>
           <p className="text-sm text-gray-500 mt-1">Create the trip first, then add stays, flights, food, and tours directly.</p>
 
           {/* Destination */}
@@ -233,7 +233,7 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
                       {island.name}
                     </span>
                     {isActive && (
-                      <span className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-gold-400 text-night flex items-center justify-center shadow">
+                      <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-md bg-white text-brand-700 shadow-sm ring-1 ring-brand-200">
                         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
@@ -319,20 +319,12 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
             type="button"
             onClick={handleSubmit}
             disabled={!canSubmit}
-            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
+            className="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-3 font-bold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
           >
             {submitting ? (
-              <>
-                <span className="inline-flex gap-1 items-center" aria-hidden="true">
-                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '0ms' }} />
-                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '150ms' }} />
-                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-buddy-think motion-reduce:animate-none" style={{ animationDelay: '300ms' }} />
-                </span>
-                Creating your trip...
-              </>
+              <>Creating your trip</>
             ) : (
               <>
-                <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
                 Create trip
               </>
             )}

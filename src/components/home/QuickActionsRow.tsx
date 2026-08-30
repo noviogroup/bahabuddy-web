@@ -64,7 +64,7 @@ export default function QuickActionsRow() {
           <span className="w-11 h-11 rounded-full bg-brand-50 text-brand-600 group-hover:bg-brand-500 group-hover:text-white flex items-center justify-center transition-colors duration-200">
             {a.icon}
           </span>
-          <span className="text-xs md:text-sm font-semibold text-night text-center">{a.label}</span>
+          <span className="text-xs font-semibold text-night text-center">{a.label}</span>
         </Link>
       ))}
     </section>

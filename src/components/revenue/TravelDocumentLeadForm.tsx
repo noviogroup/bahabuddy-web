@@ -55,7 +55,7 @@ export default function TravelDocumentLeadForm() {
         <TravelSearchTextarea id="document-lead-notes" name="notes" rows={3} className="min-h-24" />
       </TravelSearchField>
 
-      <button type="submit" className="w-full rounded-full bg-gold-400 px-6 py-3 text-night font-extrabold hover:bg-gold-300 transition-colors">
+      <button type="submit" className="w-full rounded-full bg-gold-400 px-6 py-3 text-night font-bold hover:bg-gold-300 transition-colors">
         Submit travel-document request
       </button>
     </form>

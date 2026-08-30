@@ -11,9 +11,15 @@ const DEFAULT_ROUTES = [
   { name: 'trip-detail', path: null, waitForText: 'Dashboard', discover: 'first-trip' },
 ]
 
+const VIEWPORTS = [
+  { name: 'desktop', width: 1440, height: 1000 },
+  { name: 'mobile', width: 390, height: 844, isMobile: true },
+]
+
 const baseUrl = (process.env.BASE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 const stamp = process.env.SCREENSHOT_STAMP ?? new Date().toISOString().replace(/[:.]/g, '-')
 const outputDir = path.resolve(process.cwd(), '..', 'docs', 'visual-review', 'screenshots', stamp, 'web-auth')
+const settleMs = Number(process.env.SCREENSHOT_SETTLE_MS ?? '4000')
 const storageStatePath = process.env.SCREENSHOT_AUTH_STORAGE_STATE
   ? path.resolve(process.cwd(), process.env.SCREENSHOT_AUTH_STORAGE_STATE)
   : null
@@ -125,6 +131,32 @@ async function scrollForLazyImages(page) {
   await page.waitForTimeout(500)
 }
 
+async function waitForMedia(page) {
+  await page.evaluate(async () => {
+    await Promise.allSettled(
+      Array.from(document.images).map((image) => {
+        if (image.complete && image.naturalWidth > 0) return undefined
+        return image.decode?.().catch(() => undefined)
+      }),
+    )
+    await Promise.allSettled(
+      Array.from(document.querySelectorAll('video')).map(
+        (video) =>
+          new Promise((resolve) => {
+            if (video.readyState >= 2) {
+              resolve(undefined)
+              return
+            }
+            const done = () => resolve(undefined)
+            video.addEventListener('loadeddata', done, { once: true })
+            video.addEventListener('error', done, { once: true })
+            setTimeout(done, 2000)
+          }),
+      ),
+    )
+  })
+}
+
 async function discoverRoute(route, page) {
   if (route.path) return route
 
@@ -149,63 +181,80 @@ await assertServerReachable()
 await fs.mkdir(outputDir, { recursive: true })
 
 const browser = await chromium.launch({ headless: true })
-const contextOptions = {
-  viewport: { width: 1440, height: 1000 },
-  deviceScaleFactor: 1,
-}
-
-if (await fileExists(storageStatePath)) {
-  contextOptions.storageState = storageStatePath
-}
-
-const context = await browser.newContext(contextOptions)
-const page = await context.newPage()
-const authResult = await ensureAuthenticated(page, context)
 
 const captures = []
 const skipped = []
 const failures = []
+const authResults = []
 
-for (const inputRoute of routes) {
-  const route = await discoverRoute(inputRoute, page)
-  if (route.skipReason) {
-    skipped.push({ name: route.name, reason: route.skipReason })
-    continue
+for (const viewport of VIEWPORTS) {
+  const contextOptions = {
+    viewport: { width: viewport.width, height: viewport.height },
+    deviceScaleFactor: 1,
+    isMobile: viewport.isMobile ?? false,
   }
 
-  const url = `${baseUrl}${route.path}`
-  const filePath = path.join(outputDir, `${route.name}.png`)
-
-  try {
-    const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 })
-    await page.waitForLoadState('networkidle', { timeout: 12_000 }).catch(() => undefined)
-
-    if (page.url().includes('/login')) {
-      throw new Error(`Route redirected to login: ${route.path}`)
-    }
-
-    if (route.waitForText) {
-      await page.getByText(route.waitForText, { exact: false }).first().waitFor({ timeout: 20_000 }).catch(() => undefined)
-    }
-
-    await scrollForLazyImages(page)
-    await page.screenshot({ path: filePath, fullPage: true })
-
-    captures.push({
-      name: route.name,
-      path: route.path,
-      url,
-      status: response?.status() ?? null,
-      screenshot: path.relative(path.resolve(process.cwd(), '..'), filePath),
-    })
-  } catch (error) {
-    failures.push({
-      name: route.name,
-      path: route.path,
-      url,
-      error: error instanceof Error ? error.message : String(error),
-    })
+  if (await fileExists(storageStatePath)) {
+    contextOptions.storageState = storageStatePath
   }
+
+  const context = await browser.newContext(contextOptions)
+  const page = await context.newPage()
+
+  await page.addInitScript(() => {
+    window.localStorage.setItem('baha_travel_origin_prompt_dismissed', new Date().toISOString())
+  })
+
+  const authResult = await ensureAuthenticated(page, context)
+  authResults.push({ viewport: viewport.name, ...authResult })
+
+  for (const inputRoute of routes) {
+    const route = await discoverRoute(inputRoute, page)
+    if (route.skipReason) {
+      skipped.push({ viewport: viewport.name, name: route.name, reason: route.skipReason })
+      continue
+    }
+
+    const url = `${baseUrl}${route.path}`
+    const filePath = path.join(outputDir, `${viewport.name}-${route.name}.png`)
+
+    try {
+      const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45_000 })
+      await page.waitForLoadState('networkidle', { timeout: 12_000 }).catch(() => undefined)
+
+      if (page.url().includes('/login')) {
+        throw new Error(`Route redirected to login: ${route.path}`)
+      }
+
+      if (route.waitForText) {
+        await page.getByText(route.waitForText, { exact: false }).first().waitFor({ timeout: 20_000 }).catch(() => undefined)
+      }
+
+      await scrollForLazyImages(page)
+      await waitForMedia(page).catch(() => undefined)
+      await page.waitForTimeout(settleMs)
+      await page.screenshot({ path: filePath, fullPage: true })
+
+      captures.push({
+        viewport: viewport.name,
+        name: route.name,
+        path: route.path,
+        url,
+        status: response?.status() ?? null,
+        screenshot: path.relative(path.resolve(process.cwd(), '..'), filePath),
+      })
+    } catch (error) {
+      failures.push({
+        viewport: viewport.name,
+        name: route.name,
+        path: route.path,
+        url,
+        error: error instanceof Error ? error.message : String(error),
+      })
+    }
+  }
+
+  await context.close()
 }
 
 await browser.close()
@@ -213,9 +262,10 @@ await browser.close()
 const manifest = {
   capturedAt: new Date().toISOString(),
   baseUrl,
-  authenticated: authResult.authenticated,
-  usedLogin: authResult.usedLogin,
+  authResults,
   outputDir: path.relative(path.resolve(process.cwd(), '..'), outputDir),
+  routeCount: routes.length,
+  viewports: VIEWPORTS.map(({ name, width, height }) => ({ name, width, height })),
   captures,
   skipped,
   failures,

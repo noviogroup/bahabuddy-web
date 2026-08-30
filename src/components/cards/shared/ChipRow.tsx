@@ -61,8 +61,8 @@ export function ChipRow({
   const overflow = max && normalized.length > max ? normalized.length - max : 0
 
   const sizeClass = size === 'sm'
-    ? 'text-[10px] px-2 py-0.5'
-    : 'text-[11px] px-2.5 py-1'
+    ? 'text-xs px-2 py-0.5'
+    : 'text-xs px-2.5 py-1'
 
   const justify = align === 'center' ? 'justify-center' : 'justify-start'
 
@@ -76,9 +76,6 @@ export function ChipRow({
             key={`${chip.label}-${i}`}
             className={`inline-flex items-center gap-1 rounded-full font-medium ${sizeClass} ${TONE_CLASSES[tone]}`}
           >
-            {isFeatured && (
-              <span className="w-1.5 h-1.5 rounded-full bg-palm-500" aria-hidden="true" />
-            )}
             {chip.icon}
             <span>{chip.label}</span>
           </span>

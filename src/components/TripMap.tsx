@@ -135,7 +135,7 @@ export default function TripMap({ markers }: Props) {
         marker.addListener('click', () => {
           infoWindow.setContent(`
             <div style="font-family:Figtree, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;padding:4px 2px;max-width:200px">
-              <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:${color};margin-bottom:2px">${typeLabel}</div>
+              <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:${color};margin-bottom:2px">${typeLabel}</div>
               <div style="font-size:14px;font-weight:700;margin-bottom:2px">${m.label}</div>
               ${m.detail ? `<div style="font-size:12px;color:#555">${m.detail}</div>` : ''}
             </div>
@@ -163,12 +163,12 @@ export default function TripMap({ markers }: Props) {
       {/* Legend */}
       <div className="flex flex-wrap gap-3 mb-3 text-xs">
         {(['activity', 'hotel', 'airport'] as const).map((type) => (
-          <span key={type} className="flex items-center gap-1.5">
-            <span
-              className="w-3 h-3 rounded-full inline-block"
-              style={{ background: TYPE_COLORS[type] }}
-            />
-            <span className="text-gray-600 capitalize">{type === 'activity' ? 'Activities' : type === 'hotel' ? 'Hotels' : 'Airports'}</span>
+          <span
+            key={type}
+            className="font-semibold"
+            style={{ color: TYPE_COLORS[type] }}
+          >
+            {type === 'activity' ? 'Activities' : type === 'hotel' ? 'Hotels' : 'Airports'}
           </span>
         ))}
       </div>
@@ -210,10 +210,15 @@ export default function TripMap({ markers }: Props) {
       {activeMarker && (
         <div className="mt-3 p-3 bg-white rounded-xl border border-gray-200 flex items-start justify-between gap-3">
           <div>
-            <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COLORS[activeMarker.type] }} aria-hidden="true" />
+            <span
+              className="mr-2 text-xs font-bold uppercase"
+              style={{ color: TYPE_COLORS[activeMarker.type] }}
+            >
+              {TYPE_LABELS[activeMarker.type]}
+            </span>
             <span className="font-semibold text-sm text-gray-900">{activeMarker.label}</span>
             {activeMarker.detail && (
-              <p className="text-xs text-gray-500 mt-0.5 ml-6">{activeMarker.detail}</p>
+              <p className="text-xs text-gray-500 mt-0.5">{activeMarker.detail}</p>
             )}
           </div>
           <button

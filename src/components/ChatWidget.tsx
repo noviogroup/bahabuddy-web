@@ -8,6 +8,8 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   cards?: CardData[]
+  id?: string
+  feedback?: 'helpful' | 'not_helpful'
 }
 
 interface TripContext {
@@ -117,13 +119,17 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
               })
             } else if (parsed.type === 'done') {
               const { text, cards } = parseCardsFromContent(fullText)
-              if (cards.length > 0) {
-                setMessages(prev => {
-                  const updated = [...prev]
-                  updated[updated.length - 1] = { role: 'assistant', content: text, cards }
-                  return updated
-                })
-              }
+              setMessages(prev => {
+                const updated = [...prev]
+                updated[updated.length - 1] = {
+                  ...updated[updated.length - 1],
+                  role: 'assistant',
+                  content: text,
+                  cards: cards.length > 0 ? cards : updated[updated.length - 1].cards,
+                  id: typeof parsed.assistantMessageId === 'string' ? parsed.assistantMessageId : undefined,
+                }
+                return updated
+              })
             }
           } catch {
             // skip malformed lines
@@ -138,7 +144,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
             const updated = [...prev]
             const last = updated[updated.length - 1]
             if (!last.cards) {
-              updated[updated.length - 1] = { role: 'assistant', content: text, cards }
+              updated[updated.length - 1] = { ...last, role: 'assistant', content: text, cards }
             }
             return updated
           })
@@ -170,12 +176,26 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
     }
   }
 
+  const submitFeedback = async (index: number, rating: 'helpful' | 'not_helpful') => {
+    const message = messages[index]
+    if (!message?.id || message.feedback) return
+    const response = await fetch('/api/chat/feedback', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message_id: message.id, rating }),
+    })
+    if (!response.ok) return
+    setMessages(current => current.map((item, itemIndex) =>
+      itemIndex === index ? { ...item, feedback: rating } : item,
+    ))
+  }
+
   return (
     <>
       {/* Floating button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all duration-200 hover:scale-105 ${
+        className={`fixed bottom-6 right-6 z-50 h-14 w-14 items-center justify-center rounded-full shadow-lg transition-all duration-200 hover:scale-105 ${open ? 'flex' : 'hidden sm:flex'} ${
           open ? 'bg-night hover:bg-gray-900 text-white' : 'bg-white border border-gray-200 hover:shadow-md p-0.5'
         }`}
         aria-label={open ? 'Close chat' : 'Chat with Baha Buddy'}
@@ -213,10 +233,8 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                 }`}>
                   {msg.content}
                   {msg.role === 'assistant' && loading && i === messages.length - 1 && msg.content === '' && (
-                    <span className="inline-flex gap-1 items-center h-4">
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span role="status" aria-live="polite" className="text-xs font-semibold text-gray-500">
+                      Buddy is thinking
                     </span>
                   )}
                 </div>
@@ -225,6 +243,13 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                     {msg.cards.map((card, ci) => (
                       <RichCardRenderer key={ci} cardData={card} onSendMessage={(q) => sendQuery(q)} />
                     ))}
+                  </div>
+                )}
+                {msg.role === 'assistant' && msg.id && !loading && (
+                  <div className="mt-1 flex items-center gap-1 pl-1 text-xs text-gray-500">
+                    <span>Was this helpful?</span>
+                    <button type="button" onClick={() => submitFeedback(i, 'helpful')} disabled={Boolean(msg.feedback)} className={`rounded px-1.5 py-0.5 hover:bg-gray-100 disabled:cursor-default ${msg.feedback === 'helpful' ? 'bg-gray-100 font-semibold text-night' : ''}`}>Yes</button>
+                    <button type="button" onClick={() => submitFeedback(i, 'not_helpful')} disabled={Boolean(msg.feedback)} className={`rounded px-1.5 py-0.5 hover:bg-gray-100 disabled:cursor-default ${msg.feedback === 'not_helpful' ? 'bg-gray-100 font-semibold text-night' : ''}`}>No</button>
                   </div>
                 )}
               </div>

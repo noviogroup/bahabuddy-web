@@ -122,15 +122,14 @@ export default async function CheckoutSuccessPage({
             {trip && (
               <Link
                 href={`/trip/${trip.id}`}
-                className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white transition-colors hover:bg-brand-700"
+                className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700"
               >
-                <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
                 View trip
               </Link>
             )}
             <Link
               href="/profile/bookings"
-              className="inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+              className="inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
             >
               All bookings
             </Link>
@@ -139,7 +138,7 @@ export default async function CheckoutSuccessPage({
       >
         <div className="flex flex-wrap gap-2 text-xs font-bold text-charcoal">
           <StatusChip label="Payment" value={copy.statusLabel} tone={copy.tone} />
-          <StatusChip label="Booking record" value={booking?.status ?? 'Checking'} tone={bookingTone(booking?.status ?? null, outcome)} />
+          <StatusChip label="Booking" value={booking?.status ?? 'Checking'} tone={bookingTone(booking?.status ?? null, outcome)} />
           <StatusChip label="Trip" value={trip?.name ?? 'Pending'} tone={trip ? 'good' : 'warn'} />
         </div>
       </CompactPageHeader>
@@ -148,23 +147,21 @@ export default async function CheckoutSuccessPage({
         <OutcomeDetails outcome={outcome} booking={booking} trip={trip} paymentIntentId={paymentIntentId} />
         <aside className="space-y-4">
           <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <span className="mb-4 block h-2 w-10 rounded-full bg-gold-400" aria-hidden="true" />
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Next step</p>
-            <h2 className="mt-3 text-xl font-extrabold text-night">{copy.nextTitle}</h2>
+            <p className="text-xs font-bold uppercase text-gray-500">Next step</p>
+            <h2 className="mt-3 text-xl font-bold text-night">{copy.nextTitle}</h2>
             <p className="mt-2 text-sm leading-6 text-charcoal">{copy.nextBody}</p>
             <div className="mt-5 flex flex-col gap-3">
               {trip && (
                 <Link
                   href={`/trip/${trip.id}`}
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-extrabold text-white transition-colors hover:bg-brand-700"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-700"
                 >
-                  <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
                   Open trip review
                 </Link>
               )}
               <Link
                 href="/profile/bookings"
-                className="inline-flex w-full justify-center rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+                className="inline-flex w-full justify-center rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
               >
                 Review all bookings
               </Link>
@@ -172,11 +169,11 @@ export default async function CheckoutSuccessPage({
           </div>
 
           <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Support context</p>
+            <p className="text-xs font-bold uppercase text-gray-500">Support details</p>
             <div className="mt-4 space-y-3 text-sm text-charcoal">
-              <StatusFact label="Payment intent" value={paymentIntentId || 'Not available'} />
-              <StatusFact label="Booking ID" value={booking?.id ?? 'Pending'} />
-              <StatusFact label="Trip ID" value={effectiveTripId || 'Pending'} />
+              <StatusFact label="Payment reference" value={paymentIntentId || 'Not available'} />
+              <StatusFact label="Booking" value={booking?.id ?? 'Pending'} />
+              <StatusFact label="Trip" value={effectiveTripId || 'Pending'} />
             </div>
           </div>
         </aside>
@@ -215,8 +212,8 @@ function OutcomeDetails({
   return (
     <div className="space-y-5">
       <div className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
-        <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500">Booking status</p>
-        <h2 className="mt-3 text-2xl font-extrabold tracking-tight text-night">{statusHeadline(outcome)}</h2>
+        <p className="text-xs font-bold uppercase text-gray-500">Booking status</p>
+        <h2 className="mt-3 text-2xl font-bold text-night">{statusHeadline(outcome)}</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-charcoal">{statusBody(outcome)}</p>
       </div>
 
@@ -224,7 +221,7 @@ function OutcomeDetails({
         <StatusFact label="Outcome" value={outcomeCopy(outcome, trip).statusLabel} />
         <StatusFact label="Trip" value={trip?.name ?? 'Pending'} />
         <StatusFact label="Booking type" value={booking ? booking.booking_type.replaceAll('_', ' ') : 'Pending'} />
-        <StatusFact label="Booking record" value={booking?.status ?? 'Checking'} />
+        <StatusFact label="Booking" value={booking?.status ?? 'Checking'} />
         {booking?.amount != null && (
           <StatusFact label="Amount paid" value={formatAmount(booking.amount, booking.currency ?? 'USD')} />
         )}
@@ -235,9 +232,9 @@ function OutcomeDetails({
       </div>
 
       <div className="rounded-baha-xl border border-gray-200 bg-gray-50 p-5">
-        <p className="text-xs font-extrabold uppercase tracking-[0.16em] text-gray-500">Confirmation rule</p>
+        <p className="text-xs font-bold uppercase text-gray-500">Confirmation</p>
         <p className="mt-2 text-sm font-semibold leading-6 text-charcoal">
-          Baha Buddy only treats this as confirmed when the canonical booking row is confirmed. If payment is still processing or the webhook has not reconciled, avoid duplicate purchases and check All bookings.
+          Baha Buddy shows confirmed only after payment and booking checks finish. Avoid duplicate purchases and check All bookings if the status is still processing.
         </p>
       </div>
     </div>
@@ -248,7 +245,7 @@ function outcomeCopy(outcome: Outcome, trip: TripRow | null) {
   if (outcome === 'succeeded') {
     return {
       title: 'Payment confirmed',
-      subtitle: trip ? `${trip.name} is ready for trip review.` : 'Your booking payment and booking record are confirmed.',
+      subtitle: trip ? `${trip.name} is ready for trip review.` : 'Your payment and booking are confirmed.',
       statusLabel: 'Confirmed',
       tone: 'good' as const,
       nextTitle: 'Review the booking in your trip.',
@@ -257,12 +254,12 @@ function outcomeCopy(outcome: Outcome, trip: TripRow | null) {
   }
   if (outcome === 'processing') {
     return {
-      title: 'Payment received, booking still reconciling',
-      subtitle: 'Stripe returned successfully, but the booking row is not confirmed yet. Baha Buddy will not mark this booking confirmed until the system state catches up.',
-      statusLabel: 'Reconciling',
+      title: 'Payment received, booking still checking',
+      subtitle: 'Payment returned successfully, but the booking is not confirmed yet.',
+      statusLabel: 'Checking',
       tone: 'warn' as const,
-      nextTitle: 'Wait for the booking record to confirm.',
-      nextBody: 'Do not purchase again while this is reconciling. Check All bookings or return to the trip after the provider and booking records update.',
+      nextTitle: 'Wait for the booking to confirm.',
+      nextBody: 'Do not purchase again while this is checking. Check All bookings or return to the trip after the booking updates.',
     }
   }
   if (outcome === 'failed') {
@@ -272,23 +269,23 @@ function outcomeCopy(outcome: Outcome, trip: TripRow | null) {
       statusLabel: 'Failed',
       tone: 'bad' as const,
       nextTitle: 'Return to the trip before retrying.',
-      nextBody: 'Use the trip or bookings page to confirm there is no active booking before attempting another payment.',
+      nextBody: 'Check the trip or bookings page before trying another payment.',
     }
   }
   return {
     title: 'Checking your booking status',
-    subtitle: 'Baha Buddy cannot find a confirmed booking record yet. This can happen while Stripe and the booking webhook are still processing.',
+    subtitle: 'Baha Buddy cannot find a confirmed booking yet. This can happen while payment and booking checks finish.',
     statusLabel: 'Checking',
     tone: 'warn' as const,
     nextTitle: 'Check bookings before taking action.',
-    nextBody: 'Use All bookings as the source of truth before making another purchase.',
+    nextBody: 'Check All bookings before making another purchase.',
   }
 }
 
 function statusHeadline(outcome: Outcome): string {
   switch (outcome) {
     case 'succeeded':
-      return 'Canonical booking record confirmed.'
+      return 'Booking confirmed.'
     case 'processing':
       return 'Payment status is still catching up.'
     case 'failed':
@@ -301,34 +298,26 @@ function statusHeadline(outcome: Outcome): string {
 function statusBody(outcome: Outcome): string {
   switch (outcome) {
     case 'succeeded':
-      return 'The booking row is confirmed, so it is safe to continue into the trip and review the saved booking.'
+      return 'Your booking is confirmed. Open the trip to review the saved details.'
     case 'processing':
-      return 'The Stripe redirect alone is not enough to call the booking confirmed. Wait for the booking row to reconcile before treating the trip item as booked.'
+      return 'Payment returned successfully, but the booking is still checking. Wait before treating it as confirmed.'
     case 'failed':
       return 'The checkout did not complete successfully. No confirmed booking should be shown for this attempt.'
     default:
-      return 'Refresh later or open All bookings to check whether the booking row has appeared.'
+      return 'Refresh later or open All bookings to check the latest status.'
   }
 }
 
 function StatusChip({
   label,
   value,
-  tone,
 }: {
   label: string
   value: string
   tone: 'good' | 'warn' | 'bad'
 }) {
-  const dotClass = tone === 'good'
-    ? 'bg-palm-500'
-    : tone === 'bad'
-      ? 'bg-coral-500'
-      : 'bg-gold-400'
-
   return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
-      <span className={`h-1.5 w-1.5 rounded-full ${dotClass}`} aria-hidden="true" />
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1">
       {label}: {value}
     </span>
   )
@@ -337,8 +326,8 @@ function StatusChip({
 function StatusFact({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm">
-      <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-gray-500">{label}</p>
-      <p className="mt-1 break-words text-sm font-extrabold text-night">{value}</p>
+      <p className="text-xs font-bold uppercase text-gray-500">{label}</p>
+      <p className="mt-1 break-words text-sm font-bold text-night">{value}</p>
     </div>
   )
 }

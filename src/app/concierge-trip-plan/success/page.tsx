@@ -39,10 +39,10 @@ export default function ConciergeSuccessPage({
         ]}
         actions={(
           <>
-            <Link href="/dashboard" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-extrabold text-white transition-colors hover:bg-brand-700">
+            <Link href="/dashboard" className="rounded-full bg-brand-600 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-brand-700">
               Dashboard
             </Link>
-            <Link href="/concierge-trip-plan" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-extrabold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
+            <Link href="/concierge-trip-plan" className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-night transition-colors hover:border-gray-400 hover:bg-gray-50">
               View Concierge
             </Link>
           </>
@@ -53,11 +53,10 @@ export default function ConciergeSuccessPage({
         <div className="rounded-baha-xl bg-white border border-gray-200 p-6 lg:p-8 shadow-sm">
           <div className="grid md:grid-cols-[0.8fr_1.2fr] gap-8">
             <div>
-              <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase tracking-wide">
-                <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
+              <p className="inline-flex items-center gap-2 text-sm font-bold text-brand-700 uppercase">
                 Required next step
               </p>
-              <h2 className="mt-3 text-3xl font-extrabold text-night">Send your trip details</h2>
+              <h2 className="mt-3 text-3xl font-bold text-night">Send your trip details</h2>
               <p className="mt-4 text-charcoal leading-relaxed">
                 This form gives the Baha Buddy team the dates, group size, budget, island interests,
                 and special notes needed to prepare your itinerary.

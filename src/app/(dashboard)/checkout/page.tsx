@@ -152,8 +152,8 @@ export default async function CheckoutPage({
         <svg className="absolute -right-8 -top-8 h-36 w-36 text-gray-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16l7-3V7a2 2 0 0 1 4 0v6l7 3v2l-7-2v3l2 1.5V22l-4-1-4 1v-1.5L10 19v-3l-7 2v-2Z" />
         </svg>
-        <p className="text-xs font-bold uppercase tracking-widest text-charcoal">Checkout</p>
-        <h1 className="mt-1 text-2xl font-extrabold text-night sm:text-3xl">{tripRecord.name}</h1>
+        <p className="text-xs font-bold uppercasest text-charcoal">Checkout</p>
+        <h1 className="mt-1 text-2xl font-bold text-night">{tripRecord.name}</h1>
         {(tripRecord.date_start || tripRecord.date_end) && (
           <p className="mt-1 text-sm text-charcoal">
             {fmtRange(tripRecord.date_start, tripRecord.date_end)}
@@ -161,10 +161,10 @@ export default async function CheckoutPage({
         )}
         <div className="mt-6 flex items-end justify-between border-t border-gray-200 pt-4">
           <div>
-            <p className="text-xs uppercase tracking-wide text-charcoal">{labelFor(bookingType)}</p>
+            <p className="text-xs uppercase text-charcoal">{labelFor(bookingType)}</p>
             <p className="mt-1 text-sm text-charcoal">{description ?? 'Baha Buddy booking'}</p>
           </div>
-          <p className="text-3xl font-extrabold text-night sm:text-4xl">{formatAmount(amountCents)}</p>
+          <p className="text-3xl font-bold text-night">{formatAmount(amountCents)}</p>
         </div>
       </section>
 
@@ -186,8 +186,7 @@ export default async function CheckoutPage({
           </svg>
           PCI-DSS secured by Stripe
         </span>
-        <span>•</span>
-        <span>Card never touches Baha Buddy servers</span>
+        <span>Card details never touch Baha Buddy servers</span>
       </div>
     </main>
   )

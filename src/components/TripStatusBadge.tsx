@@ -28,47 +28,41 @@ function cn(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ')
 }
 
-const STATUS_STYLES: Record<TripStatus, { bg: string; text: string; ring: string; dot: string; label: string }> = {
+const STATUS_STYLES: Record<TripStatus, { bg: string; text: string; ring: string; label: string }> = {
   draft: {
     bg: 'bg-gray-100',
     text: 'text-gray-700',
     ring: 'ring-gray-200',
-    dot: 'bg-gray-400',
     label: 'Draft',
   },
   planned: {
     bg: 'bg-brand-50',
     text: 'text-brand-700',
     ring: 'ring-brand-200',
-    dot: 'bg-brand-500',
     label: 'Planned',
   },
   booked: {
     bg: 'bg-palm-50',
     text: 'text-palm-700',
     ring: 'ring-palm-200',
-    dot: 'bg-palm-500',
     label: 'Booked',
   },
   active: {
     bg: 'bg-coral-50',
     text: 'text-coral-700',
     ring: 'ring-coral-200',
-    dot: 'bg-coral-500',
     label: 'Active',
   },
   completed: {
     bg: 'bg-gold-50',
     text: 'text-gold-700',
     ring: 'ring-gold-200',
-    dot: 'bg-gold-500',
     label: 'Completed',
   },
   cancelled: {
     bg: 'bg-coral-50',
     text: 'text-coral-800',
     ring: 'ring-coral-200',
-    dot: 'bg-coral-500',
     label: 'Cancelled',
   },
 }
@@ -81,17 +75,13 @@ export default function TripStatusBadge({ status, size = 'sm' }: TripStatusBadge
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full ring-1 font-semibold',
+        'inline-flex items-center rounded-full ring-1 font-semibold',
         style.bg,
         style.text,
         style.ring,
         size === 'sm' ? 'px-2.5 py-0.5 text-xs' : 'px-3 py-1 text-sm',
       )}
     >
-      <span
-        className={cn('rounded-full', style.dot, size === 'sm' ? 'w-1.5 h-1.5' : 'w-2 h-2')}
-        aria-hidden="true"
-      />
       {style.label}
     </span>
   )

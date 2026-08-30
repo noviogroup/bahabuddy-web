@@ -1,41 +1,40 @@
-'use client'
+"use client";
 
-import Image from 'next/image'
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import Image from "next/image";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
-type ImageTone = 'brand' | 'stay' | 'restaurant' | 'activity' | 'deal' | 'island' | 'neutral'
+type ImageTone =
+  "brand" | "stay" | "restaurant" | "activity" | "deal" | "island" | "neutral";
 
 type ImageWithSourcePolicyProps = {
-  src?: string | null
-  alt: string
-  title: string
-  eyebrow: string
-  description?: string
-  className?: string
-  imageClassName?: string
-  sizes?: string
-  priority?: boolean
-  unoptimized?: boolean
-  pendingLabel?: string
-  tone?: ImageTone
-  style?: CSSProperties
-  children?: ReactNode
-}
+  src?: string | null;
+  alt: string;
+  title: string;
+  eyebrow: string;
+  className?: string;
+  imageClassName?: string;
+  sizes?: string;
+  priority?: boolean;
+  unoptimized?: boolean;
+  tone?: ImageTone;
+  style?: CSSProperties;
+  children?: ReactNode;
+};
 
 const TONE_CLASS: Record<ImageTone, string> = {
-  brand: 'from-gray-50 via-white to-gray-100 text-charcoal',
-  stay: 'from-gray-50 via-white to-gray-100 text-charcoal',
-  restaurant: 'from-gray-50 via-white to-gray-100 text-charcoal',
-  activity: 'from-gray-50 via-white to-gray-100 text-charcoal',
-  deal: 'from-gray-50 via-white to-gray-100 text-charcoal',
-  island: 'from-gray-50 via-white to-gray-100 text-charcoal',
-  neutral: 'from-gray-50 via-white to-gray-100 text-charcoal',
-}
+  brand: "from-gray-50 via-white to-gray-100 text-charcoal",
+  stay: "from-gray-50 via-white to-gray-100 text-charcoal",
+  restaurant: "from-gray-50 via-white to-gray-100 text-charcoal",
+  activity: "from-gray-50 via-white to-gray-100 text-charcoal",
+  deal: "from-gray-50 via-white to-gray-100 text-charcoal",
+  island: "from-brand-100 via-brand-50 to-gold-50 text-charcoal",
+  neutral: "from-gray-50 via-white to-gray-100 text-charcoal",
+};
 
 function validImageUrl(value: string | null | undefined): string | null {
-  const url = value?.trim()
-  if (!url || !/^https?:\/\//i.test(url)) return null
-  return url
+  const url = value?.trim();
+  if (!url || (!/^https?:\/\//i.test(url) && !url.startsWith("/"))) return null;
+  return url;
 }
 
 export default function ImageWithSourcePolicy({
@@ -43,29 +42,34 @@ export default function ImageWithSourcePolicy({
   alt,
   title,
   eyebrow,
-  description = 'Real item data is available. Photo is not available yet.',
-  className = 'h-48',
-  imageClassName = 'object-cover transition-transform duration-500 group-hover:scale-105',
-  sizes = '(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw',
+  className = "h-48",
+  imageClassName = "object-cover transition-transform duration-500 group-hover:scale-105",
+  sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
   priority = false,
   unoptimized = true,
-  pendingLabel = 'Image pending',
-  tone = 'brand',
+  tone = "brand",
   style,
   children,
 }: ImageWithSourcePolicyProps) {
-  const [failed, setFailed] = useState(false)
-  const imageSrc = validImageUrl(src)
-  const hasImage = Boolean(imageSrc && !failed)
+  const [failed, setFailed] = useState(false);
+  const imageSrc = validImageUrl(src);
+  const hasImage = Boolean(imageSrc && !failed);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [imageSrc]);
 
   return (
-    <div className={`relative overflow-hidden bg-gradient-to-br ${TONE_CLASS[tone]} ${className}`} style={style}>
+    <div
+      className={`relative overflow-hidden bg-gradient-to-br ${TONE_CLASS[tone]} ${className}`}
+      style={style}
+    >
       {hasImage ? (
         <Image
           src={imageSrc as string}
           alt={alt}
           fill
-          loading={priority ? 'eager' : 'lazy'}
+          loading={priority ? "eager" : "lazy"}
           priority={priority}
           className={imageClassName}
           sizes={sizes}
@@ -73,26 +77,37 @@ export default function ImageWithSourcePolicy({
           onError={() => setFailed(true)}
         />
       ) : (
-        <div className="absolute inset-0 flex flex-col justify-between p-4 text-night">
-          <div className="flex justify-end">
-            <span className="rounded-full bg-white/85 px-3 py-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-charcoal shadow-soft">
-              {pendingLabel}
-            </span>
-          </div>
+        <div className="absolute inset-0 flex flex-col justify-end p-4 text-night">
+          {tone === "island" && (
+            <svg
+              aria-hidden="true"
+              viewBox="0 0 800 240"
+              className="absolute inset-x-0 bottom-0 h-full w-full text-brand-300 opacity-45"
+              preserveAspectRatio="none"
+            >
+              <path
+                d="M-40 118 C120 42 250 188 410 112 C555 44 675 160 840 84"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="10"
+              />
+              <path
+                d="M-40 170 C120 94 250 240 410 164 C555 96 675 212 840 136"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="6"
+              />
+            </svg>
+          )}
           <div>
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] opacity-90">
-              {eyebrow}
-            </p>
-            <p className="mt-1 max-w-[14rem] text-lg font-extrabold leading-tight">
+            <p className="text-xs font-bold uppercase opacity-90">{eyebrow}</p>
+            <p className="mt-1 max-w-[14rem] text-lg font-bold leading-tight">
               {title}
-            </p>
-            <p className="mt-1 max-w-[15rem] text-xs font-semibold leading-5 text-charcoal/70">
-              {description}
             </p>
           </div>
         </div>
       )}
       {children}
     </div>
-  )
+  );
 }

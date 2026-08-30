@@ -111,14 +111,14 @@ describe('dashboard checkout success compact layout', () => {
     const { container } = render(page)
 
     expect(screen.getByRole('heading', { name: 'Payment confirmed' })).toBeInTheDocument()
-    expect(screen.getByText('Canonical booking record confirmed.')).toBeInTheDocument()
+    expect(screen.getByText('Booking confirmed.')).toBeInTheDocument()
     expect(screen.getByText('Payment: Confirmed')).toBeInTheDocument()
-    expect(screen.getByText('Booking record: confirmed')).toBeInTheDocument()
+    expect(screen.getByText('Booking: confirmed')).toBeInTheDocument()
     expect(screen.getByText('Trip: Summer Bahamas')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View trip' })).toHaveAttribute('href', '/trip/trip-1')
     expect(screen.getByRole('link', { name: 'View trip' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('link', { name: 'Open trip review' })).toHaveAttribute('href', '/trip/trip-1')
-    expect(screen.getByText('Confirmation rule')).toBeInTheDocument()
+    expect(screen.getAllByText('Confirmation').length).toBeGreaterThan(0)
     expect(mocks.trackView).toHaveBeenCalledWith(
       expect.objectContaining({
         event: 'booking_completed',
@@ -144,10 +144,10 @@ describe('dashboard checkout success compact layout', () => {
     })
     const { container } = render(page)
 
-    expect(screen.getByRole('heading', { name: 'Payment received, booking still reconciling' })).toBeInTheDocument()
-    expect(screen.getByText('Payment: Reconciling')).toBeInTheDocument()
-    expect(screen.getByText('Booking record: pending')).toBeInTheDocument()
-    expect(screen.getByText('Wait for the booking record to confirm.')).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: 'Payment received, booking still checking' })).toBeInTheDocument()
+    expect(screen.getByText('Payment: Checking')).toBeInTheDocument()
+    expect(screen.getByText('Booking: pending')).toBeInTheDocument()
+    expect(screen.getByText('Wait for the booking to confirm.')).toBeInTheDocument()
     expect(screen.queryByRole('heading', { name: 'Payment confirmed' })).not.toBeInTheDocument()
     expect(mocks.trackView).not.toHaveBeenCalled()
     expectNoLegacySuccessChrome(container)

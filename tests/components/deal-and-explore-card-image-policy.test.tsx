@@ -9,7 +9,7 @@ vi.mock('@/components/StoreBadgeLinks', () => ({
 }))
 
 describe('deal and explore card image policy', () => {
-  test('live deal cards without provider media show image pending instead of guessed fallback art', () => {
+  test('live deal cards without media show branded fallback context instead of guessed fallback art', () => {
     render(
       <DealsSection
         deals={[
@@ -31,14 +31,14 @@ describe('deal and explore card image policy', () => {
       />,
     )
 
-    expect(screen.getByText('Image pending')).toBeInTheDocument()
-    expect(screen.getByText('Deal details are available. Provider image is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Image pending')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Hotel').length).toBeGreaterThan(0)
     expect(screen.queryByAltText('Cable Beach dining credit')).not.toBeInTheDocument()
     expect(screen.getByText('From $299/night')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Check stays' })).toHaveAttribute('href', '/stays?island=Nassau')
   })
 
-  test('public explore article cards without editorial media show image pending with preview copy', () => {
+  test('public explore article cards without editorial media show branded fallback context', () => {
     const articles: DiscoverArticle[] = [
       {
         slug: 'andros-blue-holes',
@@ -53,8 +53,8 @@ describe('deal and explore card image policy', () => {
 
     render(<ExploreTabs articles={articles} socialVideos={[]} travelerStories={[]} />)
 
-    expect(screen.getByText('Image pending')).toBeInTheDocument()
-    expect(screen.getByText('Article details are available. Editorial image is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Image pending')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Adventure').length).toBeGreaterThan(0)
     expect(screen.queryByAltText('Andros blue holes for first-time visitors')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Read article' })).toHaveAttribute(
       'href',
@@ -95,7 +95,7 @@ describe('deal and explore card image policy', () => {
     expect(startTripHref).not.toContain('/dashboard/chat')
   })
 
-  test('homepage destination cards without live place media show image pending', () => {
+  test('homepage destination cards without live place media show branded fallback context', () => {
     render(
       <DestinationShowcase
         attractions={[
@@ -112,8 +112,8 @@ describe('deal and explore card image policy', () => {
       />,
     )
 
-    expect(screen.getByText('Image pending')).toBeInTheDocument()
-    expect(screen.getByText('Destination details are available. Place image is not available yet.')).toBeInTheDocument()
+    expect(screen.queryByText('Image pending')).not.toBeInTheDocument()
+    expect(screen.getAllByText('Nature').length).toBeGreaterThan(0)
     expect(screen.queryByAltText('Andros blue holes')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Plan this trip →' })).toBeInTheDocument()
   })

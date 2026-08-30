@@ -1,5 +1,7 @@
 # Baha Buddy Web — Changelog
 
+> **Historical session log.** Current launch status lives in the root go-live command center.
+
 Session-by-session record of changes to `bahabuddy-web/`. Newest first.
 
 For task-level status tracking, see `WORKPLAN.md`. For architecture, see `PROGRESS.md`. For the performance pass that's still to run, see `PERF-AUDIT.md`.
@@ -247,12 +249,12 @@ See `PROGRESS.md` § Architecture decision #26 for the full rationale.
 - **`loading.tsx`** — Skeleton mirroring the article reader layout.
 
 **Hotel / Activity / Restaurant detail** (`src/app/(dashboard)/{hotels,activities,restaurants}/[id]/`)
-- Server components. Each queries `google_places` with the right type filter. Hero, identifying metadata, "About …" prose section, type-specific chips (amenities / vibe tags / cuisine), and a `PlanWithBuddyCTA` panel. 404 inside the shell when `place_id` isn't found.
+- Server components. Each reads Supabase cached/source place inventory with the right type filter. Hero, identifying metadata, "About …" prose section, type-specific chips (amenities / vibe tags / cuisine), and a `PlanWithBuddyCTA` panel. 404 inside the shell when the stable place id isn't found.
 
 ### Code — file updates
 
 **`src/components/RichCards.tsx` — rewritten for the chat-vs-detail split**
-- `CardData` exposes `place_id` (Google place identifier) and `island_id` (kebab-case slug).
+- `CardData` exposes `place_id` (stable Baha Buddy place/source identifier) and `island_id` (kebab-case slug).
 - New `CardShell` helper centralizes the "wrap in `<Link>` if href, else plain `<div>`" logic.
 - HotelCard / RestaurantCard / ActivityCard each link to `/{type}/[place_id]`. DestinationCard links to `/explore/places/[island-slug]`. FlightCard intentionally non-linking.
 
@@ -323,7 +325,7 @@ Foundation work. Theme tokens, fonts, 7 UI primitives. Responsive dashboard shel
 
 - **Mobile is canonical.** Web mirrors mobile, doesn't reinvent. Schema, Edge Functions, auth, design language all shared.
 - **Server components by default.** `'use client'` is the exception, applied only where state or browser APIs are needed.
-- **Graceful degradation everywhere.** Stripe off → checkout shows friendly screen. Sanity off → hardcoded content. Duffel off → Buddy says "flights unavailable." No env var should crash the app.
+- **Graceful degradation everywhere.** Stripe off → checkout shows friendly screen. Sanity off → hardcoded content. LiteAPI off → Buddy says live travel inventory is unavailable. No env var should crash the app.
 - **A11y is part of done.** New components ship with focus rings, aria-labels, motion-reduce, role semantics. Old components get audited and lifted (D.9).
 - **Comments document the why.** Headers explain choices that aren't obvious from the code. Hot spots (system prompt, model routing, agentic loop limits) link back to the mobile reference.
 - **Chat is the action layer; detail pages are the content layer.** (Session 12 / decision §26.) Cards in chat are previews; clicking opens a detail page. Detail pages carry the chat handoff via the shared `PlanWithBuddyCTA` panel.

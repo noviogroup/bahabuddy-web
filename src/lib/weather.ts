@@ -69,6 +69,12 @@ export const WEATHER_ISLANDS: Record<string, WeatherIslandLocation> = {
   abacos: { id: 'abacos', name: 'The Abacos', lat: 26.35, lng: -77.15 },
   'cat-island': { id: 'cat-island', name: 'Cat Island', lat: 24.314, lng: -75.547 },
   'san-salvador': { id: 'san-salvador', name: 'San Salvador', lat: 24.057, lng: -74.474 },
+  inagua: { id: 'inagua', name: 'Inagua', lat: 20.975, lng: -73.667 },
+  'berry-islands': { id: 'berry-islands', name: 'The Berry Islands', lat: 25.625, lng: -77.833 },
+  'rum-cay': { id: 'rum-cay', name: 'Rum Cay', lat: 23.65, lng: -74.85 },
+  'acklins-crooked-island': { id: 'acklins-crooked-island', name: 'Acklins & Crooked Island', lat: 22.43, lng: -74.02 },
+  mayaguana: { id: 'mayaguana', name: 'Mayaguana', lat: 22.38, lng: -72.95 },
+  'ragged-island': { id: 'ragged-island', name: 'Ragged Island', lat: 22.22, lng: -75.73 },
 }
 
 const WEATHER_ISLAND_ALIASES: Record<string, string> = {
@@ -84,6 +90,7 @@ const WEATHER_ISLAND_ALIASES: Record<string, string> = {
   abacos: 'abacos',
   'the-exumas': 'exuma',
   exumas: 'exuma',
+  'eleuthera-harbour-island': 'eleuthera',
 }
 
 function normalizeKey(input: string): string {

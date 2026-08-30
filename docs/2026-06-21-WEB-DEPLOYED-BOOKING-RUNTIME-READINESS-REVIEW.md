@@ -1,7 +1,7 @@
 # Web Deployed Booking Runtime Readiness Review - June 21, 2026
 
 Review time: June 21, 2026, 18:25 EDT
-Updated: June 21, 2026, 19:58 EDT
+Updated: June 23, 2026, 17:47 EDT
 Scope: protected deployed-runtime readiness proof for web hotel and flight booking
 
 ## Executive Status
@@ -11,6 +11,8 @@ Web now has a non-destructive internal runtime endpoint that can prove whether a
 This does not create Stripe PaymentIntents, LiteAPI prebooks, LiteAPI bookings, canonical booking rows, trip items, or audit rows. It is a deployment safety gate.
 
 Current deployment status: local/source readiness is complete and the current code has been deployed to Netlify production. Netlify project `bahabuddy-web` now reports production deploy `6a3879a3d33124694477b840` as ready. The deployed readiness endpoint still has not been proven because site-level visitor password protection returns Netlify HTML `401` before requests reach `/api/internal/booking-readiness`.
+
+June 23 documentation audit: this remains an open launch gate. The route and verifier exist, but deployed runtime readiness is not proven until the hosted environment can be reached past visitor protection and returns redacted readiness with server-only booking env present.
 
 ## What Changed
 

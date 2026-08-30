@@ -123,18 +123,18 @@ export default function CreateTripPageClient({
             <div>
               <Link
                 href="/dashboard"
-                className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-extrabold uppercase tracking-[0.18em] text-white transition-colors hover:bg-white/20"
+                className="inline-flex items-center rounded-full bg-white/15 px-3 py-1 text-xs font-bold uppercase text-white transition-colors hover:bg-white/20"
               >
                 Dashboard
               </Link>
-              <h1 className="mt-4 text-3xl font-extrabold tracking-tight md:text-4xl">
+              <h1 className="mt-4 text-3xl font-bold">
                 Create a trip
               </h1>
-              <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/85 md:text-base">
+              <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-white/85">
                 Build the trip record first, then add stays, flights, restaurants, tours, and notes directly.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-extrabold">
+            <div className="flex flex-wrap gap-2 text-xs font-bold">
               <span className="rounded-full bg-white px-3 py-1.5 text-brand-700">Direct planning</span>
               <span className="rounded-full bg-white/15 px-3 py-1.5 text-white ring-1 ring-white/25">Buddy optional</span>
               <span className="rounded-full bg-white/15 px-3 py-1.5 text-white ring-1 ring-white/25">Canonical trip</span>
@@ -146,10 +146,10 @@ export default function CreateTripPageClient({
       <main className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
         <section className="rounded-baha-xl border border-sand-200 bg-white shadow-soft">
           <div className="border-b border-sand-200 px-5 py-4 sm:px-6">
-            <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-brand-700">
+            <p className="text-xs font-bold uppercase text-brand-700">
               Trip setup
             </p>
-            <h2 className="mt-1 text-2xl font-extrabold tracking-tight text-night">
+            <h2 className="mt-1 text-2xl font-bold text-night">
               Where are you going?
             </h2>
             <p className="mt-1 text-sm font-semibold text-gray-500">
@@ -159,7 +159,7 @@ export default function CreateTripPageClient({
 
           <div className="space-y-7 p-5 sm:p-6">
             <fieldset>
-              <legend className="text-sm font-extrabold text-night">Destination</legend>
+              <legend className="text-sm font-bold text-night">Destination</legend>
               <div className="mt-3 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">
                 {ISLAND_CONFIGS.map((island) => {
                   const isActive = island.slug === destinationSlug
@@ -184,7 +184,7 @@ export default function CreateTripPageClient({
                       />
                       <span className="absolute inset-0 bg-gradient-to-t from-night/80 via-night/20 to-transparent" aria-hidden="true" />
                       <span className="absolute inset-x-0 bottom-0 p-3">
-                        <span className="block text-sm font-extrabold leading-tight text-white drop-shadow">
+                        <span className="block text-sm font-bold leading-tight text-white drop-shadow">
                           {island.name}
                         </span>
                         <span className="mt-1 line-clamp-1 block text-xs font-semibold text-white/80">
@@ -192,7 +192,7 @@ export default function CreateTripPageClient({
                         </span>
                       </span>
                       {isActive && (
-                        <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-brand-600 text-white shadow-card">
+                        <span className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md bg-brand-600 text-white shadow-card">
                           <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </svg>
@@ -205,7 +205,7 @@ export default function CreateTripPageClient({
             </fieldset>
 
             <fieldset>
-              <legend className="text-sm font-extrabold text-night">Timing</legend>
+              <legend className="text-sm font-bold text-night">Timing</legend>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 <button
                   type="button"
@@ -217,7 +217,7 @@ export default function CreateTripPageClient({
                       : 'border-sand-200 bg-white text-night hover:border-brand-200'
                   }`}
                 >
-                  <span className="block text-sm font-extrabold">Flexible dates</span>
+                  <span className="block text-sm font-bold">Flexible dates</span>
                   <span className="mt-1 block text-xs font-semibold text-gray-500">
                     Good for early planning or open-ended trips.
                   </span>
@@ -232,7 +232,7 @@ export default function CreateTripPageClient({
                       : 'border-sand-200 bg-white text-night hover:border-brand-200'
                   }`}
                 >
-                  <span className="block text-sm font-extrabold">Specific dates</span>
+                  <span className="block text-sm font-bold">Specific dates</span>
                   <span className="mt-1 block text-xs font-semibold text-gray-500">
                     Best for live hotel and flight availability.
                   </span>
@@ -293,7 +293,7 @@ export default function CreateTripPageClient({
                   type="button"
                   onClick={() => handleSubmit('direct')}
                   disabled={!canSubmit}
-                  className="inline-flex flex-1 items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-sm font-extrabold text-white shadow-card transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
+                  className="inline-flex flex-1 items-center justify-center rounded-full bg-brand-600 px-6 py-3 text-sm font-bold text-white shadow-card transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2"
                 >
                   {submitting === 'direct' ? 'Creating trip...' : 'Create trip'}
                 </button>
@@ -302,7 +302,7 @@ export default function CreateTripPageClient({
                   onClick={() => handleSubmit('buddy')}
                   disabled={!canSubmit}
                   aria-label="Create trip, then ask Buddy"
-                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-extrabold text-night transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2 sm:flex-none"
+                  className="inline-flex items-center justify-center rounded-full border border-gray-300 bg-white px-5 py-3 text-sm font-bold text-night transition-colors hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus:ring-2 focus:ring-brand-300 focus:ring-offset-2 sm:flex-none"
                 >
                   {submitting === 'buddy' ? 'Creating trip, then opening Buddy...' : 'Create trip, then ask Buddy'}
                 </button>
@@ -324,10 +324,10 @@ export default function CreateTripPageClient({
               />
               <div className="absolute inset-0 bg-gradient-to-t from-night/80 via-night/10 to-transparent" aria-hidden="true" />
               <div className="absolute inset-x-0 bottom-0 p-5">
-                <p className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/75">
+                <p className="text-xs font-bold uppercase text-white/75">
                   Selected island
                 </p>
-                <h3 className="mt-1 text-2xl font-extrabold text-white">
+                <h3 className="mt-1 text-2xl font-bold text-white">
                   {selectedIsland?.name ?? 'The Bahamas'}
                 </h3>
               </div>
@@ -338,7 +338,7 @@ export default function CreateTripPageClient({
               </p>
 
               <div className="rounded-baha-lg border border-brand-100 bg-brand-50 p-4">
-                <p className="text-sm font-extrabold text-night">After creation</p>
+                <p className="text-sm font-bold text-night">After creation</p>
                 <ul className="mt-2 space-y-2 text-sm font-semibold text-gray-600">
                   <li>Create a draft trip in Supabase.</li>
                   <li>Add stays, flights, food, and tours directly.</li>
@@ -348,7 +348,7 @@ export default function CreateTripPageClient({
 
               {returningFromStay && (
                 <div className="rounded-baha-lg border border-palm/20 bg-palm/10 p-4">
-                  <p className="text-sm font-extrabold text-palm">Return path ready</p>
+                  <p className="text-sm font-bold text-palm">Return path ready</p>
                   <p className="mt-1 text-sm font-semibold leading-6 text-gray-600">
                     After the trip is created, you will return to the stay page so you can save it without sending a chat prompt.
                   </p>
@@ -357,7 +357,7 @@ export default function CreateTripPageClient({
 
               {returningFromEditorial && (
                 <div className="rounded-baha-lg border border-brand-100 bg-brand-50 p-4">
-                  <p className="text-sm font-extrabold text-brand-700">Guide context ready</p>
+                  <p className="text-sm font-bold text-brand-700">Guide context ready</p>
                   <p className="mt-1 text-sm font-semibold leading-6 text-gray-600">
                     The guide you opened is already in the trip notes. Create the trip first, then use Buddy only if you want help turning it into an itinerary.
                   </p>

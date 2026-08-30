@@ -66,14 +66,33 @@ describe('MarketingHeroSearch', () => {
     expect(document.querySelector('input[type="hidden"][name="m-flight-from"]')).toHaveValue('West Palm Beach')
   })
 
-  test('uses royal blue primary actions with gold accents', () => {
+  test('uses royal blue primary actions without decorative dots', () => {
     const { container } = render(<MarketingHeroSearch />)
 
-    const button = screen.getByRole('button', { name: /Start trip/i })
+    const button = screen.getByRole('button', { name: /Build My Trip/i })
 
     expect(button).toHaveClass('bg-brand-600')
-    expect(button.querySelector('.bg-gold-400')).toBeTruthy()
+    expect(button.querySelector('.bg-gold-400')).toBeNull()
     expect(container.querySelector('[role="tab"][aria-selected="true"] .text-gold-500')).toBeTruthy()
+  })
+
+  test('uses rounded white hero search panel surfaces', () => {
+    render(<MarketingHeroSearch />)
+
+    const tablist = screen.getByRole('tablist', { name: 'Search category' })
+    const panel = tablist.parentElement
+    const formArea = tablist.nextElementSibling
+
+    expect(panel).toHaveClass('rounded-[29px]')
+    expect(panel).toHaveClass('border-white')
+    expect(panel).toHaveClass('bg-white')
+    expect(tablist).toHaveClass('rounded-t-[29px]')
+    expect(tablist).toHaveClass('grid-cols-2')
+    expect(tablist).toHaveClass('min-[360px]:grid-cols-3')
+    expect(tablist).toHaveClass('sm:flex')
+    expect(formArea).toHaveClass('rounded-b-[29px]')
+    expect(formArea).toHaveClass('bg-white')
+    expect(formArea).not.toHaveClass('bg-offwhite')
   })
 
   test('routes public trip planning to direct trip creation instead of chat', () => {
@@ -90,7 +109,14 @@ describe('MarketingHeroSearch', () => {
 
     expect(screen.getByRole('form', { name: 'Create a trip with Baha Buddy' })).toBeInTheDocument()
     expect(screen.getByLabelText('Tell Baha Buddy what kind of Bahamas trip you want')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Start trip/i })).toHaveClass('bg-brand-600')
+    const planForm = screen.getByRole('form', { name: 'Create a trip with Baha Buddy' })
+    expect(planForm.firstElementChild).toHaveClass('flex-col')
+    expect(planForm.firstElementChild).toHaveClass('min-[480px]:flex-row')
+    const buildButton = screen.getByRole('button', { name: /Build My Trip/i })
+    expect(buildButton).toHaveClass('bg-brand-600')
+    expect(buildButton).toHaveClass('min-h-12')
+    expect(buildButton).toHaveClass('w-full')
+    expect(buildButton).toHaveClass('min-[480px]:w-auto')
   })
 
   test('uses saved travel origin as the homepage flight search default', async () => {

@@ -29,14 +29,14 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 export function travelInputClassName(className?: string) {
   return cx(
-    'h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-night outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100',
+    'h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-night outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100',
     className,
   )
 }
 
 export function travelSelectClassName(className?: string) {
   return cx(
-    'h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-night outline-none transition-all hover:border-gray-300 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100',
+    'h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-night outline-none transition-all hover:border-gray-300 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100',
     className,
   )
 }
@@ -85,7 +85,7 @@ function parseSelectOptions(children: ReactNode): ParsedSelectOption[] {
 
 export function travelTextareaClassName(className?: string) {
   return cx(
-    'min-h-32 w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-bold leading-6 text-night outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100',
+    'min-h-32 w-full resize-y rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium leading-6 text-night outline-none transition-all placeholder:text-gray-400 hover:border-gray-300 focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100',
     className,
   )
 }
@@ -106,12 +106,11 @@ export function TravelSearchField({
   return (
     <div className={cx('rounded-2xl border border-gray-200 bg-white p-2.5 shadow-sm', className)}>
       <div className="mb-2 flex items-end justify-between gap-3 px-1">
-        <label htmlFor={htmlFor} className="inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.16em] text-brand-700">
-          <span className="h-1.5 w-1.5 rounded-full bg-gold-400" aria-hidden="true" />
+        <label htmlFor={htmlFor} className="inline-flex items-center gap-2 text-xs font-semibold uppercase text-brand-700">
           {label}
         </label>
         {hint && (
-          <span className="truncate text-[11px] font-bold text-gray-400">
+          <span className="truncate text-xs font-medium text-gray-400">
             {hint}
           </span>
         )}
@@ -264,7 +263,7 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
   }
 
   return (
-    <div ref={rootRef} className="relative">
+    <div ref={rootRef} className={cx('relative overflow-visible', open && 'z-[80]')}>
       <select
         {...rest}
         ref={nativeSelectRef}
@@ -305,7 +304,7 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
         <span className="min-w-0 truncate">
           {selectedOption?.label || 'Select'}
         </span>
-        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm" aria-hidden="true">
+        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 shadow-sm" aria-hidden="true">
           <svg className={cx('h-4 w-4 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="none">
             <path d="M5 7.5 10 12l5-4.5" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
@@ -316,11 +315,11 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
         <div
           id={listboxId}
           role="listbox"
-          className="absolute left-0 z-40 mt-2 min-w-full overflow-hidden rounded-[1.25rem] border border-gray-200 bg-white shadow-2xl shadow-gray-950/10 ring-1 ring-black/5 sm:min-w-[16rem]"
+          className="absolute left-0 z-[90] mt-2 min-w-full overflow-hidden rounded-[1.25rem] border border-gray-200 bg-white shadow-2xl shadow-gray-950/10 ring-1 ring-black/5 sm:min-w-[16rem]"
         >
           <div className="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
-            <p className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-gray-500">
-              {field.label ? `Choose ${field.label}` : 'Choose option'}
+            <p className="text-xs font-semibold uppercase text-gray-500">
+              {visualLabel ? `Choose ${visualLabel}` : 'Choose option'}
             </p>
             <p className="mt-1 text-xs font-semibold leading-5 text-gray-500">
               Use the list below. Keyboard arrows and Enter are supported.
@@ -344,14 +343,14 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
                     chooseOption(option)
                   }}
                   className={cx(
-                    'flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-3 text-left text-sm font-extrabold transition-colors',
+                    'flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition-colors',
                     active ? 'bg-brand-50 text-night' : 'bg-white text-charcoal hover:bg-gray-50 hover:text-night',
                     option.disabled && 'cursor-not-allowed opacity-50',
                   )}
                 >
                   <span className="min-w-0 truncate">{option.label}</span>
                   {selected && (
-                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gold-400 text-night" aria-hidden="true">
+                    <span className="inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-brand-600 text-white" aria-hidden="true">
                       <svg className="h-3 w-3" viewBox="0 0 16 16" fill="none">
                         <path d="m3.5 8.2 2.8 2.8 6.2-6.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>

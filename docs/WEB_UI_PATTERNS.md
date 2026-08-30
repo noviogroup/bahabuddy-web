@@ -328,3 +328,12 @@ Partner tiers
 Application form
 Footer
 ```
+
+---
+
+## 11. Typography Hierarchy
+
+- Use Figtree through the shared `font-sans` stack.
+- Use the fixed Tailwind type scale for a stable hierarchy; avoid arbitrary and breakpoint-specific font sizes.
+- Use `font-bold` as the strongest standard emphasis and keep letter spacing at the font default.
+- Reserve uppercase labels for short navigation, status, and eyebrow copy.

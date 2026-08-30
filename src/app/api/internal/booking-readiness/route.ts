@@ -85,7 +85,7 @@ const SCHEMA_CHECKS: SchemaCheck[] = [
       'airline',
       'booking_reference',
       'price',
-      'duffel_offer_id',
+      'provider_offer_id',
       'stripe_payment_intent_id',
       'created_at',
       'updated_at',

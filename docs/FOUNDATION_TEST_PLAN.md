@@ -41,7 +41,7 @@ Recommended test data:
 - At least one flight attached to User A's trip.
 - At least one activity attached to User A's trip.
 - One hotel and one restaurant visible from TripAdvisor data.
-- One place visible from Google Places data.
+- One place visible from Supabase cached place inventory.
 
 ---
 
@@ -388,13 +388,13 @@ Expected result:
 - Same source data appears as web or intentional differences are documented.
 - Mobile handles empty photos/ratings gracefully.
 
-## 7.4 Google Places chat recommendation
+## 7.4 Cached Place Inventory Chat Recommendation
 
 Steps:
 
 1. Ask Buddy for hotels, restaurants, or attractions.
 2. Confirm recommendation cards display.
-3. Compare whether the recommended places match known Google/TripAdvisor data.
+3. Compare whether the recommended places match known Supabase cached/canonical inventory.
 
 Expected result:
 
@@ -407,7 +407,7 @@ Expected result:
 Before moving reads to canonical place views, verify:
 
 - TripAdvisor rows can be mapped to canonical places.
-- Google Places rows can be mapped to canonical places.
+- Cached source inventory rows can be mapped to canonical places.
 - Duplicate candidates are identified.
 - Existing `place_photos` and `place_reviews` can be preserved or remapped.
 
@@ -428,12 +428,12 @@ Expected result:
 - Flight search returns valid offers.
 - Selected offer can be saved to `trip_flights`.
 
-## 8.2 Duffel order flow
+## 8.2 LiteAPI flight booking lifecycle
 
 Steps:
 
 1. Proceed through a test booking flow.
-2. Confirm Duffel order creation or sandbox equivalent.
+2. Confirm LiteAPI provider booking or sandbox equivalent.
 3. Confirm booking reference is saved.
 4. Confirm `bookings` row is created if intended.
 
@@ -529,7 +529,7 @@ Test:
 - Messages are saved correctly.
 - Trip context does not leak across users.
 
-## 10.2 Google Places sync/photo functions
+## 10.2 Place Enrichment Sync/Photo Functions
 
 Test:
 
@@ -551,9 +551,8 @@ Test:
 Test:
 
 - Flight proxy.
-- Duffel create order.
-- Duffel order management.
-- Duffel webhook.
+- LiteAPI flight verify/prebook/book.
+- Historical non-LiteAPI order functions are deprecated and should not be expanded.
 - Hotels proxy.
 - Hotel order management.
 - Restaurant order management if still active.
@@ -576,7 +575,7 @@ Foundation is considered ready when:
 - `public.trips` RLS can be enabled without breaking core flows.
 - Trip sharing and invite flows work end-to-end or are explicitly paused.
 - Hotel and restaurant data works on both web and mobile.
-- Google Places and TripAdvisor usage are documented clearly.
+- Supabase cached inventory, TripAdvisor, and source/enrichment usage are documented clearly.
 - Admin can view core users/trips/bookings/usage.
 - Booking flows either work or are marked inactive until completed.
 - The team has a clear canonical places migration path.

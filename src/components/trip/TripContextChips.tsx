@@ -163,7 +163,7 @@ export default function TripContextChips({ tripId }: TripContextChipsProps) {
           label={islandConfig?.name ?? trip.islands?.[0] ?? 'Pick island'}
           leading={
             islandConfig ? (
-              <span className="relative w-5 h-5 rounded-full overflow-hidden ring-1 ring-white shrink-0">
+              <span className="relative w-5 h-5 rounded-md overflow-hidden ring-1 ring-white shrink-0">
                 <Image src={getIslandHeroImage(islandConfig)} alt="" fill sizes="20px" className="object-cover" />
               </span>
             ) : (
@@ -318,13 +318,12 @@ function SaveButton({ saving, disabled, onClick, label = 'Update' }: {
       type="button"
       onClick={onClick}
       disabled={saving || disabled}
-      className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-2.5 font-extrabold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
+      className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 py-2.5 font-bold text-white shadow-sm transition-colors hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-300"
     >
       {saving ? (
         'Saving...'
       ) : (
         <>
-          <span className="h-2 w-2 rounded-full bg-gold-400" aria-hidden="true" />
           {label}
         </>
       )}
@@ -599,11 +598,6 @@ function BudgetEditor({
                   active ? 'border-brand-600 bg-brand-50' : 'border-gray-200 bg-white hover:border-gray-400 hover:bg-gray-50'
                 }`}
               >
-                <span className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                  active ? 'border-brand-600' : 'border-gray-300'
-                }`} aria-hidden="true">
-                  {active && <span className="w-2 h-2 rounded-full bg-gold-400" />}
-                </span>
                 <span className="font-bold text-sm text-night w-12 shrink-0">{tier.symbol || '—'}</span>
                 <span className="text-sm text-night">{tier.label}</span>
               </button>

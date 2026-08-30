@@ -57,6 +57,8 @@ export async function GET(
     bookingId: booking.id,
     provider,
     providerReference,
+    airline: provider.startsWith('flight_') ? providerRow?.airline ?? null : null,
+    departureAt: provider.startsWith('flight_') ? providerRow?.departure_at ?? null : null,
     paymentStatus,
     providerStatus,
     amount: booking.amount ?? null,
@@ -94,6 +96,8 @@ type ProviderRow = {
   status?: string | null
   booking_reference?: string | null
   stripe_payment_intent_id?: string | null
+  airline?: string | null
+  departure_at?: string | null
 }
 
 async function loadBooking(
@@ -169,10 +173,10 @@ async function loadProviderRow(
     return pickProviderRow(data as unknown as ProviderRow[] | null, paymentIntentId, booking)
   }
 
-  if (kind === 'flight_liteapi' || kind === 'flight_duffel') {
+  if (kind === 'flight_liteapi') {
     const { data } = await supabase
       .from('trip_flights')
-      .select('id, booking_reference, stripe_payment_intent_id')
+      .select('id, booking_reference, stripe_payment_intent_id, airline, departure_at')
       .eq('trip_id', tripId)
       .order('created_at', { ascending: false })
       .limit(20)
@@ -201,7 +205,6 @@ function pickProviderRow(
 function providerForBooking(booking: BookingRecord): string {
   const raw = `${booking.provider ?? ''}:${booking.booking_type ?? booking.type ?? ''}`.toLowerCase()
   if (raw.includes('hotel') || raw.includes('accommodation') || raw.includes('liteapi:accommodation')) return 'hotel_liteapi'
-  if (raw.includes('duffel')) return 'flight_duffel'
   if (raw.includes('flight')) return 'flight_liteapi'
   return booking.provider ?? 'other'
 }

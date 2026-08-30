@@ -190,13 +190,6 @@ const ACCENT_RING: Record<NonNullable<CarouselCard['accent']>, string> = {
   palm:  'group-hover:ring-palm-400',
 }
 
-const ACCENT_DOT: Record<NonNullable<CarouselCard['accent']>, string> = {
-  brand: 'bg-brand-500',
-  gold:  'bg-gold-500',
-  coral: 'bg-coral-500',
-  palm:  'bg-palm-500',
-}
-
 export interface HomeCardCarouselProps {
   userState: UserState
   primaryTrip: Trip | null
@@ -221,7 +214,7 @@ export default function HomeCardCarousel({
 
   return (
     <section aria-label={heading}>
-      <h2 className="text-base md:text-lg font-bold text-night mb-3 px-5 md:px-6">{heading}</h2>
+      <h2 className="text-base font-bold text-night mb-3 px-5 md:px-6">{heading}</h2>
       <div
         className="flex gap-3 md:gap-4 px-5 md:px-6 overflow-x-auto pb-3 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none' }}
@@ -244,10 +237,7 @@ export default function HomeCardCarousel({
                 />
               </div>
               <div className="p-3">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${ACCENT_DOT[accent]}`} aria-hidden="true" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">{card.subtitle}</span>
-                </div>
+                <p className="mb-1 text-xs font-bold text-gray-500">{card.subtitle}</p>
                 <p className="text-sm font-bold text-night leading-tight line-clamp-2">{card.title}</p>
               </div>
             </Link>

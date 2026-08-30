@@ -1,8 +1,11 @@
 # Place Data Migration Plan
 
+> **Planning snapshot.** Row counts below were captured during the June audit and are not live
+> inventory telemetry. Re-query Supabase before using them for a migration or launch decision.
+
 ## Purpose
 
-This document defines how Baha Buddy should cleanly unify Google Places, TripAdvisor, legacy hotel/restaurant/activity tables, place photos, place reviews, and future partner data.
+This document defines how Baha Buddy should cleanly unify Supabase cached place inventory, provider-enriched source rows, TripAdvisor, legacy hotel/restaurant/activity tables, place photos, place reviews, and future partner data.
 
 The goal is to create one canonical Baha Buddy place layer without deleting useful source data.
 
@@ -16,9 +19,9 @@ Live Supabase inventory confirmed:
 
 | Table | Rows | Current role |
 |---|---:|---|
-| `google_places` | 476 | Cached Google Places data |
-| `google_place_reviews` | 1,724 | Cached Google reviews |
-| `google_place_photos` | 0 | Google photo references/cache |
+| `google_places` | 476 | Supabase cached/source place inventory; legacy schema compatibility name |
+| `google_place_reviews` | 1,724 | Cached source reviews |
+| `google_place_photos` | 0 | Cached source photo references/storage |
 | `tripadvisor_locations` | 331 | TripAdvisor hotel/restaurant data |
 | `place_photos` | 15 | Generic place photos, UUID-based |
 | `place_reviews` | 3 | Generic place reviews, UUID-based |
@@ -37,7 +40,7 @@ Baha Buddy has multiple data sources but no product-facing place source of truth
 Examples:
 
 - Web hotel and restaurant pages use `tripadvisor_locations`.
-- Chat/tooling still references `google_places`.
+- Chat/tooling isolates Supabase cached source inventory behind neutral cached-source constants.
 - Mobile TripAdvisor screens use `tripadvisor_locations`.
 - Legacy `hotels`, `restaurants`, and `activities` tables are empty.
 - Generic `place_photos` and `place_reviews` exist, but there is no canonical `places` table for them to belong to.
@@ -49,7 +52,7 @@ Examples:
 
 External services feed Baha Buddy. They do not define Baha Buddy.
 
-Google Places, TripAdvisor, Sanity, booking APIs, and partner/manual data should enrich the platform. The product-facing source of truth should be Baha Buddy's own canonical place records.
+Supabase cached source inventory, TripAdvisor, Sanity, booking APIs, and partner/manual data should enrich the platform. The product-facing source of truth should be Baha Buddy's own canonical place records.
 
 ---
 
@@ -155,9 +158,9 @@ Backfill rules:
 - Use TripAdvisor `location_id` as a source identifier, not the canonical place ID.
 - Copy rating, review count, TripAdvisor URL, address, island, latitude, longitude, photos, amenities, and cuisine/hotel metadata where available.
 
-## Phase 3: Backfill Google Places data
+## Phase 3: Backfill cached source place data
 
-Google Places currently has broader coverage and should enrich or add records.
+Supabase cached place inventory currently has broader coverage and should enrich or add canonical records.
 
 Backfill rules:
 
@@ -197,7 +200,7 @@ Read-path order:
 1. Web `/hotels` from `tripadvisor_locations` to `v_places_hotels`.
 2. Web `/restaurants` from `tripadvisor_locations` to `v_places_restaurants`.
 3. Mobile TripAdvisor hotel/restaurant providers to canonical views.
-4. Web chat tools from `google_places` to canonical place views.
+4. Web chat tools from source inventory tables to canonical place views.
 5. Mobile explore/place detail flows to canonical views.
 6. Admin Places module to canonical `places`.
 
