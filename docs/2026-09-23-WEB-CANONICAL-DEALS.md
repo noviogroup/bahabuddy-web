@@ -26,8 +26,12 @@ partner-offers updating state.
 - Full Vitest suite: **442 tests passed across 107 files**.
 - Focused canonical deal, public deals, stay deals, and media-policy checks:
   **13 tests passed**.
+- A clean Node 20 `npm ci` now passes with the repository npm peer policy; this
+  prevents the Sanity optional-peer resolver from failing before CI can run.
+- `npm run lint` and the exact CI `npm run test:coverage` command passed after
+  the clean install.
 - `npm run build`: passed, including Next.js lint, source type checking, and all
-  115 generated pages.
+  115 generated pages. The exact CI placeholder environment was used.
 - A standalone `npx tsc --noEmit` still reports existing test-only type errors
   in unrelated concierge, island mock, login, emoji, and typography test files.
   The production Next.js type/build gate is green.
