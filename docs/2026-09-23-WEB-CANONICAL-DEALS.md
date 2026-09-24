@@ -23,7 +23,11 @@ partner-offers updating state.
 
 ## Validation
 
-- Full Vitest suite: **442 tests passed across 107 files**.
+- Standalone-repository Vitest coverage suite: **442 tests passed across 107
+  files**, with two cross-repository parity checks explicitly skipped because a
+  standalone GitHub checkout does not contain the mobile app or root policy.
+- The same grounding contract passed all **7 checks** in the full local Baha
+  Buddy workspace, including mobile tool and canonical-policy parity.
 - Focused canonical deal, public deals, stay deals, and media-policy checks:
   **13 tests passed**.
 - A clean Node 20 `npm ci` now passes with the repository npm peer policy; this
