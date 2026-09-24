@@ -67,22 +67,34 @@ describe("public marketplace editorial pages neutral layout", () => {
       from: (table: string) =>
         new MockSupabaseQuery({
           data:
-            table === "bahamas_deals"
+            table === "deals"
               ? [
                   {
                     id: "deal-tour-1",
                     title: "Exuma Sandbar Day Tour",
-                    deal_type: "tour",
-                    island: "exuma",
-                    resort_name: null,
+                    deal_type: "tour_promotion",
                     description:
                       "A guided boat day across Exuma sandbars with snorkeling stops.",
-                    price_from_usd: 149,
-                    price_unit: "per_person",
-                    image_url: null,
-                    highlights: ["Boat day", "Snorkeling", "Sandbars"],
-                    tags: ["Tour"],
-                    valid_through: null,
+                    price_from: 149,
+                    image: null,
+                    active: true,
+                    starts_at: null,
+                    ends_at: null,
+                    places: {
+                      id: "exuma-marina",
+                      name: "Exuma Marina",
+                      category: "tour",
+                      island_name: "The Exumas",
+                      short_description: "Boat departures for the Exuma cays.",
+                      primary_image_url: null,
+                      gallery_images: [],
+                      amenities: ["Boat day", "Snorkeling", "Sandbars"],
+                    },
+                    partners: {
+                      id: "partner-1",
+                      name: "Exuma Boat Co.",
+                      island_name: "The Exumas",
+                    },
                   },
                 ]
               : [

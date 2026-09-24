@@ -1,15 +1,14 @@
-import { createClient } from '@/lib/supabase/server'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
-import { BahaImages } from '@/lib/baha-images'
 import TrackView from '@/components/TrackView'
 import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import { FilterChip, FilterGroup, ResultFilterPanel } from '@/components/marketplace/ResultFilterPanel'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import { buddyChatHref } from '@/lib/buddy-chat'
 import { dealActionLinks, dealIslandLabel } from '@/lib/deal-actions'
+import { getDeals, type Deal } from '@/lib/deals'
 
 export const metadata: Metadata = {
   title: 'Bahamas Deals & Packages | Baha Buddy',
@@ -21,30 +20,6 @@ export const metadata: Metadata = {
 }
 
 export const dynamic = 'force-dynamic'
-
-interface Deal {
-  id: string
-  title: string
-  deal_type: string
-  island: string | null
-  resort_name: string | null
-  description: string
-  price_from_usd: number | null
-  price_unit: string | null
-  image_url: string | null
-  highlights: string[]
-  tags: string[]
-  valid_through: string | null
-}
-
-const FALLBACK_DEALS: Deal[] = [
-  { id: '1', title: 'Nassau Beach Resort - Summer Escape', deal_type: 'accommodation', island: 'nassau', resort_name: 'British Colonial Hotel', description: 'Beachfront resort in the heart of Nassau with pools, watersports, and world-class dining.', price_from_usd: 189, price_unit: 'per_night', image_url: BahaImages.nassau, highlights: ['Beachfront', 'Pool', 'Watersports'], tags: ['Beach', 'Luxury'], valid_through: null },
-  { id: '2', title: 'Exuma Swimming Pigs Day Tour', deal_type: 'tour', island: 'exuma', resort_name: null, description: 'Full-day boat tour to Big Major Cay to swim with the famous swimming pigs, plus snorkeling at pristine reefs.', price_from_usd: 149, price_unit: 'per_person', image_url: BahaImages.exumas, highlights: ['Swimming Pigs', 'Snorkeling', 'Boat Tour'], tags: ['Tour', 'Family', 'Adventure'], valid_through: null },
-  { id: '3', title: '7-Night Island-Hopping Package', deal_type: 'package', island: null, resort_name: null, description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas. Flights and hotels included.', price_from_usd: 2299, price_unit: 'per_person', image_url: BahaImages.snorkeling, highlights: ['3 Islands', 'Flights Included', 'Hotels Included'], tags: ['Package', 'Adventure', 'Island-Hopping'], valid_through: null },
-  { id: '4', title: 'Harbour Island Pink Sand Experience', deal_type: 'accommodation', island: 'harbour-island', resort_name: 'Pink Sands Resort', description: 'Stay steps from the world-famous pink sand beach. Golf cart rental included.', price_from_usd: 450, price_unit: 'per_night', image_url: BahaImages.eleuthera, highlights: ['Pink Sand Beach', 'Golf Cart', 'Boutique'], tags: ['Luxury', 'Romantic', 'Boutique'], valid_through: null },
-  { id: '5', title: 'Abacos Sailing Charter', deal_type: 'activity', island: 'abacos', resort_name: null, description: 'Full-day private sailing charter through the Abacos Cays with a local captain. Includes snorkeling stop and lunch.', price_from_usd: 895, price_unit: 'per_charter', image_url: BahaImages.abacos, highlights: ['Private Charter', 'Lunch Included', 'Snorkeling'], tags: ['Sailing', 'Luxury', 'Adventure'], valid_through: null },
-  { id: '6', title: 'Long Island Dive Package', deal_type: 'package', island: 'long-island', resort_name: null, description: 'Dive Dean\'s Blue Hole, the deepest known blue hole in the world. 3-night package with accommodation and 5 dives included.', price_from_usd: 799, price_unit: 'per_person', image_url: BahaImages.exumas, highlights: ['Dean\'s Blue Hole', '5 Dives', 'Accommodation'], tags: ['Diving', 'Adventure', 'Remote'], valid_through: null },
-]
 
 const DEAL_TYPES = ['All', 'accommodation', 'tour', 'package', 'activity']
 
@@ -67,31 +42,12 @@ function formatPrice(price: number | null, unit: string | null): string {
   return `From $${price.toLocaleString()}${unit ? (units[unit] ?? '') : ''}`
 }
 
-async function getDeals() {
-  try {
-    const supabase = await createClient()
-    const { data, error } = await supabase
-      .from('bahamas_deals')
-      .select('id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through')
-      .eq('is_active', true)
-      .order('created_at', { ascending: false })
-      .limit(50)
-    if (error) return null
-    return data as Deal[]
-  } catch {
-    return null
-  }
-}
-
 export default async function DealsPage({
   searchParams,
 }: {
   searchParams: { type?: string }
 }) {
-  const dbDeals = await getDeals()
-  const hasLiveDeals = Boolean(dbDeals?.length)
-  const usingFallbackDeals = !hasLiveDeals
-  const allDeals: Deal[] = hasLiveDeals ? dbDeals! : FALLBACK_DEALS
+  const allDeals: Deal[] = await getDeals()
 
   const requestedType = searchParams.type ?? 'All'
   const activeType = DEAL_TYPES.includes(requestedType) ? requestedType : 'All'
@@ -204,7 +160,7 @@ export default async function DealsPage({
                     className="h-48"
                     imageClassName="object-cover group-hover:scale-105 transition-transform duration-500"
                     tone="neutral"
-                    priority={usingFallbackDeals}
+                    priority={false}
                   >
                     <div className={`absolute top-3 left-3 rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${typeConfig.badge}`}>
                       {typeConfig.label}
