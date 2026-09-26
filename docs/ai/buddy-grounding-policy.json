@@ -1,0 +1,4 @@
+{
+  "version": "grounded-destination-v1",
+  "policy": "For general island, culture, seasonal, traveler-fit, practical, transport, safety, or accessibility questions, call get_destination_context and use only returned approved evidence. Resolve island names through the canonical resolver. Named places must come from canonical place tools or live inventory. Prices, availability, flights, weather, schedules, and closures must come from live providers. If evidence is missing, stale, conflicting, or unavailable, say verified information is unavailable; never fill the gap from model memory. Keep source identifiers and content versions internal."
+}

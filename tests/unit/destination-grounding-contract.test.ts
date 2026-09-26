@@ -28,24 +28,29 @@ describe('all-island grounded destination contract', () => {
     expect(names).not.toContain('get_island_info')
   })
 
-  it('does not retain hardcoded destination knowledge objects in either runtime', () => {
-    const root = path.resolve(process.cwd(), '..')
-    const webTools = fs.readFileSync(path.join(root, 'bahabuddy-web/src/lib/chat-tools.ts'), 'utf8')
-    const mobileTools = fs.readFileSync(path.join(root, 'Baha-Buddy-V2/supabase/functions/claude-chat-proxy/tools.ts'), 'utf8')
-    for (const source of [webTools, mobileTools]) {
+  it('keeps the web runtime and any sibling mobile runtime free of hardcoded destination knowledge', () => {
+    const workspaceRoot = path.resolve(process.cwd(), '..')
+    const sources = [fs.readFileSync(path.join(process.cwd(), 'src/lib/chat-tools.ts'), 'utf8')]
+    const mobileToolsPath = path.join(workspaceRoot, 'Baha-Buddy-V2/supabase/functions/claude-chat-proxy/tools.ts')
+    if (fs.existsSync(mobileToolsPath)) sources.push(fs.readFileSync(mobileToolsPath, 'utf8'))
+
+    for (const source of sources) {
       expect(source).not.toContain('ISLAND_INFO')
       expect(source).not.toContain('get_island_info')
       expect(source).toContain('search_destination_knowledge')
     }
   })
 
-  it('keeps the web and mobile grounding policy on the canonical artifact version', () => {
-    const root = path.resolve(process.cwd(), '..')
-    const canonical = JSON.parse(fs.readFileSync(path.join(root, 'docs/ai/buddy-grounding-policy.json'), 'utf8'))
-    const mobileArtifact = fs.readFileSync(path.join(root, 'Baha-Buddy-V2/supabase/functions/_shared/buddy_grounding_policy.ts'), 'utf8')
+  it('keeps the web and any sibling mobile grounding policy on the canonical artifact version', () => {
+    const canonical = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'docs/ai/buddy-grounding-policy.json'), 'utf8'))
     expect(BUDDY_GROUNDING_POLICY_VERSION).toBe(canonical.version)
     expect(BUDDY_GROUNDING_POLICY).toBe(canonical.policy)
-    expect(mobileArtifact).toContain(`BUDDY_GROUNDING_POLICY_VERSION = '${canonical.version}'`)
-    expect(mobileArtifact).toContain(canonical.policy)
+
+    const mobileArtifactPath = path.resolve(process.cwd(), '../Baha-Buddy-V2/supabase/functions/_shared/buddy_grounding_policy.ts')
+    if (fs.existsSync(mobileArtifactPath)) {
+      const mobileArtifact = fs.readFileSync(mobileArtifactPath, 'utf8')
+      expect(mobileArtifact).toContain(`BUDDY_GROUNDING_POLICY_VERSION = '${canonical.version}'`)
+      expect(mobileArtifact).toContain(canonical.policy)
+    }
   })
 })
