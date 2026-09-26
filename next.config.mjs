@@ -26,13 +26,6 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.nassauparadiseisland.com',
       },
-      // Tourism-board partner training portal CDN. These URLs are
-      // temporary fallbacks until the approved originals are promoted
-      // into Sanity and served from cdn.sanity.io.
-      {
-        protocol: 'https',
-        hostname: 'travprocdn.imgix.net',
-      },
       // Provider photo fallback — when we don't proxy via
       // /api/place-photo, next/image may receive direct photo CDN
       // URLs. The maps.googleapis.com host issues redirects to these

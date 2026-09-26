@@ -75,6 +75,8 @@ describe('public marketplace shell brand layout', () => {
     expect(within(nav).getByRole('menuitem', { name: /Landmarks/i })).toHaveAttribute('href', '/explore/places?search=landmark+historic+site')
     expect(within(nav).getByRole('menuitem', { name: /Restaurants and food/i })).toHaveAttribute('href', '/explore/places?category=Dining')
     expect(within(nav).getByRole('menuitem', { name: /Tours and activities/i })).toHaveAttribute('href', '/explore/places?category=Activity&search=tour')
+    expect(within(nav).queryByText('Mobile-style discovery, community, and trip ideas.')).not.toBeInTheDocument()
+    expect(within(nav).queryByText('Tours, water days, wildlife, beaches, and island experiences.')).not.toBeInTheDocument()
 
     const destinations = within(nav).getByRole('link', { name: 'Destinations' })
     expect(destinations).toHaveAttribute('aria-current', 'page')
@@ -86,6 +88,8 @@ describe('public marketplace shell brand layout', () => {
     expect(within(nav).getByRole('menuitem', { name: /Long Island/i })).toHaveAttribute('href', '/explore/island/long-island')
     expect(within(nav).getByRole('menuitem', { name: /Cat Island/i })).toHaveAttribute('href', '/destinations?island=Cat+Island')
     expect(within(nav).getByRole('menuitem', { name: /Ragged Island/i })).toHaveAttribute('href', '/destinations?island=Ragged+Island')
+    expect(within(nav).queryByText('Dining, culture, easy arrival, and resort access.')).not.toBeInTheDocument()
+    expect(within(nav).queryByText('Far-south cays, fishing, and off-grid exploration.')).not.toBeInTheDocument()
   })
 
   test('public header active states follow traveler intent groups', () => {

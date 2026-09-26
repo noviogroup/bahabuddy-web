@@ -1,3 +1,5 @@
+import { TourismPartnerImages } from '@/lib/tourism-partner-images'
+
 /**
  * Baha Buddy — Bahamas photography catalog.
  *
@@ -9,12 +11,12 @@
  * This module remains in the codebase as a bridge — plenty of
  * Client Components still import `BahaImages.X` directly because
  * their server parents haven't been refactored to pass image URLs
- * as props. Island fallbacks now use captured tourism-partner originals
+ * as props. Island fallbacks now use local tourism-partner originals
  * where their destination identity is unambiguous, then official tourism
  * photography. Approved Sanity assets take precedence in server projections.
  *
  * Sources of URLs:
- *   - travprocdn.imgix.net — supplied tourism-partner originals
+ *   - /assets/tourism-partner — retained tourism-partner originals
  *   - tempo.cdn.tambourine.com  — Bahamas Tourism Authority CDN
  *   - www.nassauparadiseisland.com  — Nassau Paradise Island
  *     official tourism site
@@ -41,26 +43,29 @@ function marketplace(path: string): string {
 
 /**
  * Approved tourism-source fallbacks used only when Sanity has no approved
- * channel-enabled image. Captured partnership photos take precedence where
+ * channel-enabled image. Local partnership photos take precedence where
  * the source package identifies a single destination; remaining entries use
  * official Bahamas tourism photography rather than generated artwork.
  */
 export const DestinationFallbackImages = {
-  islandFinderHero: tambourine("cache/bahamas-goombay-summer-1-62bdd276c186d-1500x643.png"),
-  nassauParadiseIsland: "https://travprocdn.imgix.net/1839/1763488599-1763488599.jpg?quality=82&fm=webp",
+  islandFinderHero: TourismPartnerImages.essentials.welcome.src,
+  nassauParadiseIsland: TourismPartnerImages.islands.nassauParadiseIsland.src,
   paradiseIsland: tambourine("bmot-nassau-islands-img-5f7655231dcf7.jpg"),
-  exumas: "https://travprocdn.imgix.net/1839/1763488870-1763488870.jpg?quality=82&fm=webp",
-  eleuthera: "https://travprocdn.imgix.net/1839/1763488736-1763488736.jpg?quality=82&fm=webp",
+  exumas: TourismPartnerImages.islands.exumas.src,
+  eleuthera: TourismPartnerImages.islands.eleutheraHarbourIsland.src,
   harbourIsland: tambourine("bmot-eleuthera-islands-img-5f7654ecd18bf.jpg"),
   abacos: tambourine("bmot-the-abacos-islands-img-5f765543ac3d5.jpg"),
-  bimini: "https://travprocdn.imgix.net/1839/1619894845-1619894845.jpg?quality=82&fm=webp",
-  andros: tambourine("bmot-andros-islands-img-5f7654cd43acd.jpg"),
-  grandBahama: "https://travprocdn.imgix.net/1839/1690388649-1690388649.jpg?quality=82&fm=webp",
-  longIsland: "https://travprocdn.imgix.net/1839/1763489614-1763489614.jpg?quality=82&fm=webp",
-  catIsland: tambourine("bmot-cat-island-islands-img-5f7654e4e23d5.jpg"),
+  bimini: TourismPartnerImages.islands.bimini.src,
+  andros: TourismPartnerImages.islands.andros.src,
+  grandBahama: TourismPartnerImages.islands.grandBahama.src,
+  longIsland: TourismPartnerImages.islands.longIsland.src,
+  catIsland: TourismPartnerImages.islands.catIsland.src,
   sanSalvador: tambourine("bmot-san-salvador-islands-img-5f76553c25e7a.jpg"),
-  berryIslands: "https://travprocdn.imgix.net/1839/1763489090-1763489090.jpg?quality=82&fm=webp",
+  berryIslands: TourismPartnerImages.islands.berryIslands.src,
   inagua: tambourine("bmot-inagua-islands-img-5f7655086ab3b.jpg"),
+  rumCay: TourismPartnerImages.islands.rumCay.src,
+  mayaguana: TourismPartnerImages.islands.mayaguana.src,
+  acklinsCrookedIsland: TourismPartnerImages.islands.acklinsCrookedIsland.src,
 } as const;
 
 export const BahaImages = {
@@ -81,6 +86,9 @@ export const BahaImages = {
   sanSalvador: DestinationFallbackImages.sanSalvador,
   berryIslands: DestinationFallbackImages.berryIslands,
   inagua: DestinationFallbackImages.inagua,
+  rumCay: DestinationFallbackImages.rumCay,
+  mayaguana: DestinationFallbackImages.mayaguana,
+  acklinsCrookedIsland: DestinationFallbackImages.acklinsCrookedIsland,
 
   // ── Experiences ──────────────────────────────────────────────────────
   // These don't map 1:1 to an island row — they're hand-picked
@@ -88,15 +96,21 @@ export const BahaImages = {
   // should come from `bahamas_attractions` rows tagged by category
   // (snorkeling, sailing, swimming-pigs), but until that migration
   // ships these point at real BTA / NPI photos so the UI works.
-  sunsetSailing: tambourine(
-    "cache/bahamas-goombay-summer-1-62bdd276c186d-1500x643.png",
-  ),
+  sunsetSailing: TourismPartnerImages.essentials.traveling.src,
   swimmingPigs: tambourine("bmot-exumas-islands-img-5f7654f77ef66.jpg"),
   snorkeling: npi(
     "styles/portrait/public/images/2024-05/D80_6558%20%2B%206557_Hires.jpg",
   ),
   beach: npi("images/2025-04/people-relaxing.png"),
-  bahamasLifestyle: tambourine("goombay-summer-2023-intro-64b04840c1ccc.png"),
+  bahamasLifestyle: TourismPartnerImages.experiences.peopleToPeople.src,
+  cuisine: TourismPartnerImages.experiences.cuisine.src,
+  shopping: TourismPartnerImages.experiences.shopping.src,
+  festivals: TourismPartnerImages.experiences.festivalsEvents.src,
+  romance: TourismPartnerImages.romance.allure.src,
+  wedding: TourismPartnerImages.romance.wedding.src,
+  groupTravel: TourismPartnerImages.groupsEvents.overview.src,
+  diving: TourismPartnerImages.dive.alexKydd.src,
+  sharkDiving: TourismPartnerImages.dive.grandBahamaBimini.src,
   flight: tambourine(
     "cache/screenshot-2026-04-28-200148-69f14af22b990-1500x643.png",
   ),
@@ -105,43 +119,33 @@ export const BahaImages = {
   staysPool: marketplace("bahamas-stays-pool.jpg"),
   flightAerial: marketplace("bahamas-flight-aerial.jpg"),
   cruisePort: marketplace("nassau-cruise-port.jpg"),
-  travelerPlanning: "https://travprocdn.imgix.net/1839/1763489614-1763489614.jpg?quality=82&fm=webp",
-  travelerHere: "https://travprocdn.imgix.net/1839/1763488599-1763488599.jpg?quality=82&fm=webp",
+  travelerPlanning: TourismPartnerImages.essentials.traveling.src,
+  travelerHere: TourismPartnerImages.experiences.peopleToPeople.src,
   travelerCruise: marketplace("nassau-cruise-port.jpg"),
-  categoryStays: tambourine("bmot-windsong-mega-resorts-bahamar-hero-5f57a7c8df27f.jpg"),
-  categoryFlights: tambourine("cache/screenshot-2026-04-28-200148-69f14af22b990-1500x643.png"),
-  categoryThingsToDo: tambourine("cache/bmot-discover-your-adventure-you-and-me-5fd2779b1b3a7-424x389.jpg"),
-  categoryTransport: tambourine("cache/eleuthera-islandhopping-5fd15a0ee2b16-424x389.jpg"),
-  categoryRestaurants: tambourine("cache/nassau-conchshack-5fd15ae592ebe-424x389.jpg"),
-  categoryBoatCharters: tambourine("cache/bmot-stories-square10-boating-tips-5fb5a4a40ab5b-424x389.jpg"),
-  categoryIslandGuides: "https://travprocdn.imgix.net/1839/1763488870-1763488870.jpg?quality=82&fm=webp",
-  categoryEvents: tambourine("cache/discover-slider-junkanoo-5e41bffad44e5-optimized-424x389.jpg"),
-  categoryFamily: npi("images/2025-04/people-relaxing.png"),
-  categoryLuxury: tambourine("cache/bahamas-goombay-summer-1-62bdd276c186d-1500x643.png"),
+  categoryStays: TourismPartnerImages.essentials.accommodations.src,
+  categoryFlights: TourismPartnerImages.essentials.welcome.src,
+  categoryThingsToDo: TourismPartnerImages.experiences.naturalAttractions.src,
+  categoryTransport: TourismPartnerImages.essentials.traveling.src,
+  categoryRestaurants: TourismPartnerImages.experiences.cuisine.src,
+  categoryBoatCharters: TourismPartnerImages.essentials.traveling.src,
+  categoryIslandGuides: TourismPartnerImages.islands.outIslands.src,
+  categoryEvents: TourismPartnerImages.experiences.festivalsEvents.src,
+  categoryFamily: TourismPartnerImages.experiences.peopleToPeople.src,
+  categoryLuxury: TourismPartnerImages.romance.beachHammock.src,
   resortPool: tambourine(
     "bmot-windsong-mega-resorts-bahamar-hero-5f57a7c8df27f.jpg",
   ),
-  conchShack: tambourine("cache/nassau-conchshack-5fd15ae592ebe-424x389.jpg"),
-  junkanooParade: tambourine(
-    "cache/discover-slider-junkanoo-5e41bffad44e5-optimized-424x389.jpg",
-  ),
-  boatCharter: tambourine(
-    "cache/bmot-stories-square10-boating-tips-5fb5a4a40ab5b-424x389.jpg",
-  ),
-  waterAdventure: tambourine(
-    "cache/bmot-discover-your-adventure-you-and-me-5fd2779b1b3a7-424x389.jpg",
-  ),
+  conchShack: TourismPartnerImages.experiences.cuisine.src,
+  junkanooParade: TourismPartnerImages.experiences.festivalsEvents.src,
+  boatCharter: TourismPartnerImages.essentials.traveling.src,
+  waterAdventure: TourismPartnerImages.essentials.funFacts.src,
   coastalRoad: tambourine(
     "cache/eleuthera-queenhighway-5fd15a45afb96-424x389.jpg",
   ),
-  islandHopping: tambourine(
-    "cache/eleuthera-islandhopping-5fd15a0ee2b16-424x389.jpg",
-  ),
+  islandHopping: TourismPartnerImages.essentials.welcome.src,
 
   // ── Seasonal / editorial ─────────────────────────────────────────────
-  junkanoo: npi(
-    "styles/portrait/public/images/2025-04/250220_NPI_AQ1_9267.jpg",
-  ),
+  junkanoo: TourismPartnerImages.experiences.festivalsEvents.src,
 } as const;
 
 export type BahaImageKey = keyof typeof BahaImages;

@@ -25,6 +25,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { fetchDestinations } from "@/lib/sanity/queries";
+import { TourismPartnerImages } from "@/lib/tourism-partner-images";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -46,21 +47,21 @@ const tourism = (path: string) =>
   `https://tempo.cdn.tambourine.com/windsong/media/${path}`;
 
 const HERO_FALLBACKS: Record<string, string> = {
-  "nassau-paradise-island": "https://travprocdn.imgix.net/1839/1763488599-1763488599.jpg?quality=82&fm=webp",
-  "the-exumas": "https://travprocdn.imgix.net/1839/1763488870-1763488870.jpg?quality=82&fm=webp",
-  "eleuthera-harbour-island": "https://travprocdn.imgix.net/1839/1763488736-1763488736.jpg?quality=82&fm=webp",
+  "nassau-paradise-island": TourismPartnerImages.islands.nassauParadiseIsland.src,
+  "the-exumas": TourismPartnerImages.islands.exumas.src,
+  "eleuthera-harbour-island": TourismPartnerImages.islands.eleutheraHarbourIsland.src,
   abacos: tourism("bmot-the-abacos-islands-img-5f765543ac3d5.jpg"),
-  andros: tourism("bmot-andros-islands-img-5f7654cd43acd.jpg"),
-  "grand-bahama": "https://travprocdn.imgix.net/1839/1690388649-1690388649.jpg?quality=82&fm=webp",
-  bimini: "https://travprocdn.imgix.net/1839/1619894845-1619894845.jpg?quality=82&fm=webp",
-  "cat-island": tourism("bmot-cat-island-islands-img-5f7654e4e23d5.jpg"),
-  "long-island": "https://travprocdn.imgix.net/1839/1763489614-1763489614.jpg?quality=82&fm=webp",
+  andros: TourismPartnerImages.islands.andros.src,
+  "grand-bahama": TourismPartnerImages.islands.grandBahama.src,
+  bimini: TourismPartnerImages.islands.bimini.src,
+  "cat-island": TourismPartnerImages.islands.catIsland.src,
+  "long-island": TourismPartnerImages.islands.longIsland.src,
   inagua: tourism("bmot-inagua-islands-img-5f7655086ab3b.jpg"),
-  "berry-islands": "https://travprocdn.imgix.net/1839/1763489090-1763489090.jpg?quality=82&fm=webp",
+  "berry-islands": TourismPartnerImages.islands.berryIslands.src,
   "san-salvador": tourism("bmot-san-salvador-islands-img-5f76553c25e7a.jpg"),
-  "rum-cay": tourism("rum-cay-5ebc565c679de.jpg"),
-  mayaguana: tourism("mayaguana-5ebc565aa3f78.jpg"),
-  "acklins-crooked-island": "https://travprocdn.imgix.net/1839/1763489907-1763489907.jpg?quality=82&fm=webp",
+  "rum-cay": TourismPartnerImages.islands.rumCay.src,
+  mayaguana: TourismPartnerImages.islands.mayaguana.src,
+  "acklins-crooked-island": TourismPartnerImages.islands.acklinsCrookedIsland.src,
   "ragged-island": tourism("bmot-ragged-island-islands-img-5f76552b68017.jpg"),
   // Sibling slugs that share an island record (per island-config.ts).
   "paradise-island": tourism("bmot-nassau-islands-img-5f7655231dcf7.jpg"),

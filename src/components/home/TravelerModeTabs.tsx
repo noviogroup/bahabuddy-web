@@ -126,7 +126,7 @@ function StepIcon({ icon }: { icon: VisualStepIcon }) {
 
 function WidgetIcon({ icon }: { icon: VisualStepIcon }) {
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/45 text-brand-700 ring-1 ring-white/55 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700 ring-1 ring-brand-100 [&>svg]:h-4 [&>svg]:w-4" aria-hidden="true">
       <StepIcon icon={icon} />
     </span>
   )
@@ -144,7 +144,7 @@ function ProductCard({
   detail: string
 }) {
   return (
-    <div className="min-w-0 rounded-baha-md border border-white/45 bg-white/42 px-2.5 py-2 shadow-sm backdrop-blur-md">
+    <div className="min-w-0 rounded-baha-md border border-brand-100 bg-white px-2.5 py-2 shadow-sm">
       <div className="min-w-0">
         <div className="flex min-w-0 items-center gap-1.5">
           <WidgetIcon icon={icon} />
@@ -159,8 +159,8 @@ function ProductCard({
 
 function PlanningWidget() {
   return (
-    <div className="w-full max-w-[21.5rem] rounded-baha-xl border border-white/45 bg-white/44 p-3 shadow-soft backdrop-blur-lg">
-      <div className="flex items-center justify-between gap-3 border-b border-white/45 pb-2.5">
+    <div className="w-full rounded-baha-xl border border-brand-100 bg-brand-50/70 p-3">
+      <div className="flex items-center justify-between gap-3 border-b border-brand-100 pb-2.5">
         <div className="flex min-w-0 items-center gap-2.5">
           <BuddyAvatar size="sm" state="presenting" className="shrink-0" />
           <div className="min-w-0">
@@ -168,7 +168,7 @@ function PlanningWidget() {
             <p className="truncate text-sm font-bold text-night">Island, stay, flight matched</p>
           </div>
         </div>
-        <span className="rounded-full bg-white/55 px-2.5 py-1 text-xs font-black uppercase text-gold-700">
+        <span className="rounded-full bg-gold-50 px-2.5 py-1 text-xs font-black uppercase text-gold-700">
           Ready
         </span>
       </div>
@@ -184,8 +184,8 @@ function PlanningWidget() {
 
 function AlreadyHereWidget() {
   return (
-    <div className="w-full max-w-[21.5rem] rounded-baha-xl border border-white/45 bg-white/44 p-3 shadow-soft backdrop-blur-lg">
-      <div className="flex items-center justify-between gap-3 border-b border-white/45 pb-2.5">
+    <div className="w-full rounded-baha-xl border border-brand-100 bg-brand-50/70 p-3">
+      <div className="flex items-center justify-between gap-3 border-b border-brand-100 pb-2.5">
         <div>
           <p className="text-xs font-black uppercase text-brand-600">Nearby now</p>
           <p className="mt-1 text-sm font-bold text-night">Open places around you</p>
@@ -206,13 +206,13 @@ function AlreadyHereWidget() {
 
 function CruiseWidget() {
   return (
-    <div className="w-full max-w-[21.5rem] rounded-baha-xl border border-white/45 bg-white/44 p-3 shadow-soft backdrop-blur-lg">
-      <div className="flex items-center justify-between gap-3 border-b border-white/45 pb-2.5">
+    <div className="w-full rounded-baha-xl border border-brand-100 bg-brand-50/70 p-3">
+      <div className="flex items-center justify-between gap-3 border-b border-brand-100 pb-2.5">
         <div>
           <p className="text-xs font-black uppercase text-brand-600">Port-day route</p>
           <p className="mt-1 text-sm font-bold text-night">Built around return time</p>
         </div>
-        <div className="rounded-full bg-white/55 px-3 py-1.5 text-xs font-black uppercase text-gold-700">
+        <div className="rounded-full bg-gold-50 px-3 py-1.5 text-xs font-black uppercase text-gold-700">
           Buffer
         </div>
       </div>
@@ -233,13 +233,8 @@ function CruiseWidget() {
 }
 
 function TravelerModeVisual({ mode }: { mode: TravelerMode }) {
-  const widget =
-    mode.key === 'planning' ? <PlanningWidget />
-      : mode.key === 'here' ? <AlreadyHereWidget />
-        : <CruiseWidget />
-
   return (
-    <div className="relative min-h-[21rem] overflow-hidden bg-brand-50 sm:min-h-[24rem] lg:min-h-[24rem]">
+    <div data-testid="traveler-mode-photo" className="relative min-h-[21rem] overflow-hidden bg-brand-50 sm:min-h-[24rem] lg:min-h-[24rem]">
       <Image
         src={mode.image}
         alt={mode.imageAlt}
@@ -248,11 +243,14 @@ function TravelerModeVisual({ mode }: { mode: TravelerMode }) {
         sizes="(max-width: 1024px) 100vw, 620px"
         style={{ objectPosition: mode.imagePosition }}
       />
-      <div className="absolute inset-x-3 bottom-3 sm:inset-x-5 sm:bottom-5" aria-hidden="true">
-        {widget}
-      </div>
     </div>
   )
+}
+
+function TravelerModeWidget({ modeKey }: { modeKey: TravelerModeKey }) {
+  if (modeKey === 'planning') return <PlanningWidget />
+  if (modeKey === 'here') return <AlreadyHereWidget />
+  return <CruiseWidget />
 }
 
 const TRAVELER_MODES: TravelerMode[] = [
@@ -262,7 +260,7 @@ const TRAVELER_MODES: TravelerMode[] = [
     eyebrow: 'Before you fly',
     title: 'Pick the right island first.',
     image: BahaImages.travelerPlanning,
-    imageAlt: 'Traveler planning a Bahamas trip on a quiet beach',
+    imageAlt: 'Traveler relaxing on a boat between Bahamian islands',
     imagePosition: 'center 50%',
     primaryLabel: 'Start a trip',
     primaryHref: travelerModeTripHref('Plan a Bahamas trip with island fit, stays, flights, activities, food, transport, and backup timing.'),
@@ -277,7 +275,7 @@ const TRAVELER_MODES: TravelerMode[] = [
     eyebrow: 'In The Bahamas',
     title: 'Find what works today.',
     image: BahaImages.travelerHere,
-    imageAlt: 'Traveler walking Nassau waterfront near pastel buildings',
+    imageAlt: 'Bahamian host preparing food with a visiting family',
     imagePosition: 'center 50%',
     primaryLabel: 'Explore nearby',
     primaryHref: '/explore?mode=already-here',
@@ -361,7 +359,11 @@ export default function TravelerModeTabs() {
             <p className="text-xs font-black uppercase text-brand-700">{activeMode.eyebrow}</p>
             <h3 className="mt-3 max-w-xl text-3xl font-bold leading-tight text-night">{activeMode.title}</h3>
 
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-6" aria-hidden="true">
+              <TravelerModeWidget modeKey={activeMode.key} />
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
               <Link
                 href={activeMode.primaryHref}
                 className="inline-flex min-h-11 w-fit items-center justify-center whitespace-nowrap rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white shadow-soft hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"

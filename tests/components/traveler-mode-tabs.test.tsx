@@ -13,10 +13,13 @@ describe('TravelerModeTabs', () => {
     expect(screen.getByText('Island')).toBeInTheDocument()
     expect(screen.getByText('Stay')).toBeInTheDocument()
     expect(screen.getByText('Flight')).toBeInTheDocument()
-    expect(screen.getByRole('img', { name: 'Traveler planning a Bahamas trip on a quiet beach' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'Traveler relaxing on a boat between Bahamian islands' })).toHaveAttribute(
       'src',
-      expect.stringContaining('1763489614-1763489614.jpg'),
+      expect.stringContaining('%2Fassets%2Ftourism-partner%2F01-essentials%2F02-traveling-to-and-between-the-islands.webp'),
     )
+    const photo = screen.getByTestId('traveler-mode-photo')
+    expect(photo).not.toHaveTextContent('Trip draft')
+    expect(photo).not.toContainElement(screen.getByText('Trip draft'))
     expect(container.querySelectorAll('#traveler-mode-panel-planning svg[aria-hidden="true"]')).toHaveLength(3)
 
     const startTrip = screen.getByRole('link', { name: 'Start a trip' })
@@ -40,9 +43,9 @@ describe('TravelerModeTabs', () => {
       '/explore?mode=already-here',
     )
     expect(screen.getByRole('link', { name: 'Find restaurants' })).toHaveAttribute('href', '/restaurants')
-    expect(screen.getByRole('img', { name: 'Traveler walking Nassau waterfront near pastel buildings' })).toHaveAttribute(
+    expect(screen.getByRole('img', { name: 'Bahamian host preparing food with a visiting family' })).toHaveAttribute(
       'src',
-      expect.stringContaining('1763488599-1763488599.jpg'),
+      expect.stringContaining('%2Fassets%2Ftourism-partner%2F03-experiences%2F06-people-to-people-experience.webp'),
     )
   })
 

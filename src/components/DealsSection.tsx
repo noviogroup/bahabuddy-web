@@ -55,7 +55,7 @@ const FALLBACK_DEALS: Deal[] = [
     description: 'Visit Nassau, Exuma, and Eleuthera on this curated 7-night adventure through the best of the Bahamas.',
     price_from_usd: 2299,
     price_unit: 'per_person',
-    image_url: BahaImages.snorkeling,
+    image_url: BahaImages.islandHopping,
     highlights: ['3 Islands', 'Flights Included', 'Hotels Included'],
     tags: ['Package', 'Adventure', 'Island-Hopping'],
   },
