@@ -123,9 +123,7 @@ describe("HomepageStorySections direct actions", () => {
     expect(
       categoryImageSrcs.every(
         (src) =>
-          src.includes("tempo.cdn.tambourine.com") ||
-          src.includes("travprocdn.imgix.net") ||
-          src.includes("nassauparadiseisland.com"),
+          src.includes("/assets/tourism-partner/"),
       ),
     ).toBe(true);
     expect(categoryImageSrcs.join(" ")).not.toContain(
@@ -164,7 +162,9 @@ describe("HomepageStorySections direct actions", () => {
       }),
     ).toHaveAttribute(
       "src",
-      expect.stringContaining("travprocdn.imgix.net"),
+      expect.stringContaining(
+        "/assets/tourism-partner/02-islands/01-nassau-paradise-island.webp",
+      ),
     );
     expect(within(section as HTMLElement).queryByRole("list")).not.toBeInTheDocument();
     expect(

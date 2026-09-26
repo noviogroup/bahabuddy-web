@@ -9,7 +9,7 @@ import Link from 'next/link'
 
 export const metadata: Metadata = {
   title: 'Nassau Cruise Itineraries',
-  description: 'Choose a cruise-safe Nassau day plan with timing, stops, and return-to-ship guidance from Baha Buddy.',
+  description: 'Explore self-guided Nassau day plans with stops, suggested timing, and return-to-ship guidance from Baha Buddy.',
 }
 
 export default async function NassauCruiseItinerariesPage() {
@@ -24,7 +24,7 @@ export default async function NassauCruiseItinerariesPage() {
   return (
     <main className="min-h-screen bg-white">
       <CompactPageHeader
-        eyebrow="Nassau cruise day plans"
+        eyebrow="Self-guided Nassau day plans"
         title="Choose a smarter way to spend one day in Nassau."
         subtitle="Pick a ready-made plan built for cruise passengers with practical stops, clear timing, and a return-to-ship buffer."
         crumbs={[
@@ -45,25 +45,28 @@ export default async function NassauCruiseItinerariesPage() {
 
       <section className="mx-auto max-w-6xl px-4 py-10">
         {error && (
-          <div className="rounded-baha-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
-            Itineraries could not be loaded. Please try again soon.
+          <div role="alert" className="rounded-baha-lg border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700">
+            <p>Tours could not be loaded.</p>
+            <form action="/nassau-cruise-itineraries" method="get">
+              <button type="submit" className="mt-2 inline-flex min-h-11 items-center rounded-lg underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600">Try again</button>
+            </form>
           </div>
         )}
 
         {!error && plans.length === 0 && (
           <div className="rounded-baha-xl border border-gray-200 bg-white p-8 text-center shadow-sm">
-            <h2 className="text-2xl font-bold text-night">Itineraries are being prepared.</h2>
+            <h2 className="text-2xl font-bold text-night">No tours published yet</h2>
             <p className="mt-3 text-charcoal">
-              Admin should publish at least one guided day plan before this page goes live.
+              No self-guided tours are published for this view yet.
             </p>
           </div>
         )}
 
-        {plans.length > 0 && (
+        {!error && plans.length > 0 && (
           <div className="mb-6 rounded-baha-xl border border-gray-200 bg-white p-4 shadow-sm">
             <div className="grid gap-3 text-sm text-charcoal md:grid-cols-3">
               <div className="flex items-center gap-3">
-                Cruise-safe return buffer
+                Return-to-ship planning
               </div>
               <div className="flex items-center gap-3">
                 Clear timing and stop order
@@ -76,7 +79,7 @@ export default async function NassauCruiseItinerariesPage() {
         )}
 
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {!error && plans.map((plan) => (
             <GuidedDayCard key={plan.id} plan={plan} />
           ))}
         </div>

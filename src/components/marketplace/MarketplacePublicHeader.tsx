@@ -308,13 +308,10 @@ function DropdownMenuContent({
                 href={item.href}
                 role="menuitem"
                 data-nav-level="dropdown"
-                className="rounded-2xl px-3 py-2.5 transition-colors hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
+                className="flex min-h-10 items-center rounded-xl px-3 py-2 transition-colors hover:bg-brand-50 focus-visible:bg-brand-50 focus-visible:outline-none"
               >
                 <span className="flex items-center gap-2 text-sm font-semibold text-night">
                   {item.label}
-                </span>
-                <span className="mt-1 block text-xs font-semibold leading-5 text-charcoal">
-                  {item.description}
                 </span>
               </Link>
             ))}

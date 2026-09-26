@@ -48,7 +48,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Harbour Island',
     description: 'Famous for its charming pink sand beach and colorful colonial cottages. Golf carts are the main transport.',
-    image_url: BahaImages.bahamasLifestyle,
+    image_url: BahaImages.harbourIsland,
     tags: ['Pink Sand', 'Boutique', 'Romantic'],
   },
   {
@@ -66,7 +66,7 @@ const FALLBACK_ATTRACTIONS: Attraction[] = [
     category: 'Island',
     island: 'Paradise Island',
     description: 'Connected to Nassau by bridge, home to Atlantis Resort, casinos, and stunning white-sand beaches.',
-    image_url: BahaImages.snorkeling,
+    image_url: BahaImages.paradiseIsland,
     tags: ['Resorts', 'Atlantis', 'Family'],
   },
 ]
