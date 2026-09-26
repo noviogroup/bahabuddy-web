@@ -14,7 +14,7 @@ export default function SelfGuidedToursSection() {
           />
         </div>
         <div className="flex flex-col justify-center p-6 sm:p-8">
-          <p className="text-xs font-bold uppercase tracking-wide text-brand-700">Self-guided tours</p>
+          <p className="text-xs font-bold uppercase text-brand-700">Self-guided tours</p>
           <h2 id="self-guided-heading" className="mt-3 text-3xl font-bold leading-tight text-night">A little guidance. Your own pace.</h2>
           <p className="mt-4 text-base leading-7 text-charcoal">
             Explore Nassau with a plan you can make your own. See the stops, check the time you need, and choose what fits your day.
