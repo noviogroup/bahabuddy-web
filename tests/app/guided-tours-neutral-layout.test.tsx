@@ -7,7 +7,7 @@ import NassauCruiseItineraryDetailPage from '@/app/nassau-cruise-itineraries/[sl
 
 type QueryResult = {
   data: unknown
-  error: null
+  error: { message: string } | null
 }
 
 const supabaseMocks = vi.hoisted(() => ({
@@ -113,9 +113,24 @@ describe('guided tours public routes neutral layout', () => {
       'href',
       '/nassau-cruise-itineraries/nassau-family-day',
     )
-    expect(screen.getByText('Cruise-safe return buffer')).toBeInTheDocument()
+    expect(screen.getByText('Return-to-ship planning')).toBeInTheDocument()
     expect(screen.getByText('Nassau family day').closest('article')).toHaveClass('border-gray-200')
     expectNoDecorativeInnerPageChrome(container)
+  })
+
+  test('empty catalogue describes the current state without internal publishing instructions', async () => {
+    supabaseMocks.createClient.mockResolvedValue({ from: () => new MockSupabaseQuery({ data: [], error: null }) })
+    render(await NassauCruiseItinerariesPage())
+    expect(screen.getByText('No self-guided tours are published for this view yet.')).toBeInTheDocument()
+    expect(screen.queryByText(/Admin should|being prepared|check back soon/i)).not.toBeInTheDocument()
+  })
+
+  test('catalogue failure offers recovery and does not display stale results', async () => {
+    supabaseMocks.createClient.mockResolvedValue({ from: () => new MockSupabaseQuery({ data: [PLAN], error: { message: 'offline' } }) })
+    render(await NassauCruiseItinerariesPage())
+    expect(screen.getByRole('alert')).toHaveTextContent('Tours could not be loaded.')
+    expect(screen.getByRole('button', { name: 'Try again' }).closest('form')).toHaveAttribute('action', '/nassau-cruise-itineraries')
+    expect(screen.queryByText(PLAN.title)).not.toBeInTheDocument()
   })
 
   test('guided-tour detail uses compact header and neutral timeline/safety cards', async () => {

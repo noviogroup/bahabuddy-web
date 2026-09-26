@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import FeaturedExperiencesCarousel from "@/components/home/FeaturedExperiencesCarousel";
 import TravelerModeTabs from "@/components/home/TravelerModeTabs";
+import SelfGuidedToursSection from "@/components/home/SelfGuidedToursSection";
 import { BahaImages } from "@/lib/baha-images";
 
 const HANDOFF_POINTS = [
@@ -978,6 +979,7 @@ export default function HomepageStorySections({
       <TrustLine />
       <IslandFitSection destinationImages={destinationImages} />
       <TravelerModeTabs />
+      <SelfGuidedToursSection />
       <CategorySection />
       <DecisionSection image={BahaImages.nassau} />
       <FeaturedExperiencesSection />

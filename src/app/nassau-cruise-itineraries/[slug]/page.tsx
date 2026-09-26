@@ -8,6 +8,8 @@ import ReturnSafetyCard from '@/components/guided-day/ReturnSafetyCard'
 import { createClient } from '@/lib/supabase/server'
 import type { GuidedDayPlanDetail } from '@/lib/guided-day/types'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
+import TourCover from '@/components/guided-day/TourCover'
+import { tourDurationLabel } from '@/lib/guided-day/display'
 
 type PageProps = {
   params: Promise<{ slug: string }>
@@ -28,17 +30,18 @@ export default async function NassauCruiseItineraryDetailPage({ params }: PagePr
     .from('cruise_itinerary_detail')
     .select('*')
     .eq('slug', slug)
+    .eq('status', 'published')
     .maybeSingle()
 
   if (!data) notFound()
 
   const plan = data as GuidedDayPlanDetail
-  const hours = `${Math.round(plan.duration_min_minutes / 60)}-${Math.round(plan.duration_max_minutes / 60)} hours`
+  const hours = tourDurationLabel(plan.duration_min_minutes, plan.duration_max_minutes)
 
   return (
     <main className="min-h-screen bg-white">
       <CompactPageHeader
-        eyebrow="Cruise-safe Nassau itinerary"
+        eyebrow="Self-guided Nassau itinerary"
         title={plan.title}
         subtitle={plan.full_description ?? 'Follow a one-day Nassau plan with practical stops, timing, and return-to-ship guidance.'}
         crumbs={[
@@ -68,6 +71,9 @@ export default async function NassauCruiseItineraryDetailPage({ params }: PagePr
 
       <section className="mx-auto grid max-w-6xl gap-6 px-4 py-10 lg:grid-cols-[1fr_360px]">
         <div id="timeline" className="space-y-6">
+          <div className="overflow-hidden rounded-baha-xl">
+            <TourCover src={plan.hero_image_url} title={plan.title} sizes="(max-width: 1023px) 100vw, 66vw" />
+          </div>
           <GuidedDayTimeline stops={plan.stops || []} />
         </div>
         <aside className="space-y-6">
