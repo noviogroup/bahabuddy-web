@@ -9,6 +9,14 @@ vi.mock('@/components/StoreBadgeLinks', () => ({
 }))
 
 describe('deal and explore card image policy', () => {
+  test('empty deal inventory stays honest instead of inventing promotions', () => {
+    render(<DealsSection deals={[]} />)
+
+    expect(screen.getByText('Partner offers are being updated.')).toBeInTheDocument()
+    expect(screen.queryByText('Exuma Swimming Pigs Day Tour')).not.toBeInTheDocument()
+    expect(screen.queryByText('Long Island Dive Package')).not.toBeInTheDocument()
+  })
+
   test('live deal cards without media show branded fallback context instead of guessed fallback art', () => {
     render(
       <DealsSection

@@ -29,7 +29,7 @@
  *   5. Open-Meteo via `fetchIslandWeather` and LiteAPI flight search
  *      deep links — weather and flight intent.
  *
- *   6. Supabase `bahamas_deals` — current limited-time offers.
+ *   6. Admin-managed `deals`, with legacy offers as compatibility.
  *
  * Static generation: `generateStaticParams` emits the hardcoded
  * ISLAND_CONFIGS slugs at build time. Sanity-only slugs resolve
@@ -68,6 +68,7 @@ import PortableTextBody from "@/components/PortableTextBody";
 import TrackView from "@/components/TrackView";
 import ImageWithSourcePolicy from "@/components/marketplace/ImageWithSourcePolicy";
 import { dealActionLinks } from "@/lib/deal-actions";
+import { getIslandDeals, type Deal } from "@/lib/deals";
 import { islandFoodLinks } from "@/lib/island-context-links";
 import {
   formatCuisineLabel,
@@ -109,21 +110,6 @@ interface Attraction {
   amenities: string[] | null;
   short_description: string | null;
   enriched_at: string | null;
-}
-
-interface Deal {
-  id: string;
-  title: string;
-  deal_type: string;
-  island: string | null;
-  resort_name: string | null;
-  description: string;
-  price_from_usd: number | null;
-  price_unit: string | null;
-  image_url: string | null;
-  highlights: string[];
-  tags: string[];
-  valid_through: string | null;
 }
 
 interface Landmark {
@@ -273,23 +259,6 @@ async function getIslandAttractions(dbSlug: string): Promise<Attraction[]> {
       .eq("island", dbSlug)
       .limit(24);
     return (data as Attraction[]) ?? [];
-  } catch {
-    return [];
-  }
-}
-
-async function getIslandDeals(dbSlug: string): Promise<Deal[]> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("bahamas_deals")
-      .select(
-        "id, title, deal_type, island, resort_name, description, price_from_usd, price_unit, image_url, highlights, tags, valid_through",
-      )
-      .eq("island", dbSlug)
-      .eq("is_active", true)
-      .limit(6);
-    return (data as Deal[]) ?? [];
   } catch {
     return [];
   }
