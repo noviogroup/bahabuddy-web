@@ -125,8 +125,24 @@ describe('TourDetailPage approved lookup', () => {
         if (query.table === 'tour_stops') {
           return {
             data: [
-              { id: 's1', sequence: 1, name: 'Georgetown Market', description: 'Start here.', duration_sec: 600 },
-              { id: 's2', sequence: 2, name: 'Tropic of Cancer Beach', description: null, duration_sec: null },
+              {
+                id: 's1',
+                sequence: 1,
+                name: 'Exuma Stop 1 - Georgetown Market',
+                description: 'Airtable market history. More detail.',
+                duration_sec: 600,
+                traveler_summary: 'Browse straw work and fresh fruit at the Georgetown market.',
+                copy_status: 'approved',
+              },
+              {
+                id: 's2',
+                sequence: 2,
+                name: 'Tropic of Cancer Beach',
+                description: 'Walk the famous line. Then swim.',
+                duration_sec: null,
+                traveler_summary: 'Unreviewed summary.',
+                copy_status: 'draft',
+              },
             ],
             error: null,
           }
@@ -145,8 +161,16 @@ describe('TourDetailPage approved lookup', () => {
     expect(screen.getByTestId('tour-cta')).toHaveAttribute('data-tour-id', tourId)
     expect(screen.getByRole('heading', { name: 'Preview the first stops' })).toBeInTheDocument()
     expect(screen.getByText('Georgetown Market')).toBeInTheDocument()
+    expect(screen.getByText('Browse straw work and fresh fruit at the Georgetown market.')).toBeInTheDocument()
+    expect(screen.queryByText(/Airtable market history/)).not.toBeInTheDocument()
+    expect(screen.getByText('Walk the famous line.')).toBeInTheDocument()
+    expect(screen.queryByText('Unreviewed summary.')).not.toBeInTheDocument()
     expect(screen.getByText(/4 more stops/)).toBeInTheDocument()
     const stopsQuery = recording.queries.find((query) => query.table === 'tour_stops')
     expect(stopsQuery?.calls).toContainEqual({ method: 'lte', args: ['sequence', 2] })
+    expect(stopsQuery?.calls).toContainEqual({
+      method: 'select',
+      args: ['id, sequence, name, description, duration_sec, traveler_summary, copy_status'],
+    })
   })
 })

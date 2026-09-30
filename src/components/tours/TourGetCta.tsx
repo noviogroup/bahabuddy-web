@@ -8,9 +8,10 @@ import { createClient } from '@/lib/supabase/client'
 import {
   checkoutErrorMessage,
   classifyCheckoutError,
-  hasTourEntitlement,
+  getActiveTourEntitlement,
   resolveTourCta,
   tourLoginHref,
+  tourOwnershipLabel,
   tourPriceLabel,
 } from '@/lib/self-guided-tours'
 import { getStripeForPublishableKey } from '@/lib/stripe/client'
@@ -39,7 +40,7 @@ const SECONDARY_BUTTON =
  *
  *   signed out      → sign in / create account (returns to this tour)
  *   guest session   → create an account (entitlements must be portable)
- *   owned           → Owned + My tours / app instructions
+ *   owned           → Purchased / In My tours + My tours / app instructions
  *   free            → Add to my tours (rpc claim_free_self_tour)
  *   priced          → Stripe PaymentElement via stripe-payment (self_tour)
  */
@@ -49,6 +50,8 @@ export default function TourGetCta({ tourId, title, priceCents, currency }: Tour
   const [signedIn, setSignedIn] = useState(false)
   const [isAnonymous, setIsAnonymous] = useState(false)
   const [owned, setOwned] = useState<boolean | null>(null)
+  /** Entitlement source ('stripe' | 'free' | …) for the ownership badge. */
+  const [ownedSource, setOwnedSource] = useState<string | null>(null)
   const [effectivePrice, setEffectivePrice] = useState(priceCents)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,7 +61,9 @@ export default function TourGetCta({ tourId, title, priceCents, currency }: Tour
 
   const refreshOwnership = useCallback(async () => {
     try {
-      setOwned(await hasTourEntitlement(supabase, tourId))
+      const entitlement = await getActiveTourEntitlement(supabase, tourId)
+      setOwnedSource(entitlement?.source ?? null)
+      setOwned(entitlement !== null)
     } catch {
       // Unknown ownership should not block the CTA; the server re-checks.
       setOwned(false)
@@ -100,6 +105,7 @@ export default function TourGetCta({ tourId, title, priceCents, currency }: Tour
       }
       return
     }
+    setOwnedSource('free')
     setOwned(true)
     setNotice('Added to your tours.')
   }
@@ -156,7 +162,9 @@ export default function TourGetCta({ tourId, title, priceCents, currency }: Tour
         <h2 id="tour-get-heading" className="text-lg font-bold text-night">Get this tour</h2>
         <p className="text-lg font-bold text-night">
           {state === 'owned' ? (
-            <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-800">Owned</span>
+            <span className="rounded-full bg-emerald-50 px-3 py-1 text-sm text-emerald-800">
+              {tourOwnershipLabel({ source: ownedSource, priceCents: effectivePrice })}
+            </span>
           ) : (
             priceLabel
           )}

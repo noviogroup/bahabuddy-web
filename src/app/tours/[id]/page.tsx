@@ -23,6 +23,8 @@ import { islandDisplayName } from '@/lib/island-config'
 import {
   getCatalogTour,
   getPreviewStops,
+  previewStopName,
+  previewStopSummary,
   tourDurationLabel,
   tourPriceLabel,
   tourStopCountLabel,
@@ -173,17 +175,20 @@ export default async function TourDetailPage({ params }: PageProps) {
           <section aria-labelledby="tour-preview-heading" className="mt-6 rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
             <h2 id="tour-preview-heading" className="text-lg font-bold text-night">Preview the first stops</h2>
             <ol className="mt-4 space-y-4">
-              {previewStops.map((stop, index) => (
-                <li key={stop.id} className="flex gap-3">
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
-                    {index + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-night">{stop.name}</p>
-                    {stop.description && <p className="mt-1 text-sm text-charcoal">{stop.description}</p>}
-                  </div>
-                </li>
-              ))}
+              {previewStops.map((stop, index) => {
+                const summary = previewStopSummary(stop)
+                return (
+                  <li key={stop.id} className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-night">{previewStopName(stop.name)}</p>
+                      {summary && <p className="mt-1 line-clamp-2 text-sm text-charcoal">{summary}</p>}
+                    </div>
+                  </li>
+                )
+              })}
             </ol>
             {remainingStops > 0 && (
               <p className="mt-4 text-sm text-gray-600">

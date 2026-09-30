@@ -74,7 +74,7 @@ export default async function ToursPage() {
                       <div className="relative">
                         <TourCover src={tour.cover_image_url} title={tour.title} />
                         <div className="absolute right-3 top-3">
-                          <TourPriceBadge tourId={tour.id} priceLabel={tourPriceLabel(tour.price_cents, tour.currency)} />
+                          <TourPriceBadge tourId={tour.id} priceCents={tour.price_cents} priceLabel={tourPriceLabel(tour.price_cents, tour.currency)} />
                         </div>
                       </div>
                       <div className="p-4">

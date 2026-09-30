@@ -9,6 +9,7 @@ const TOUR_ID = '24600000-0000-4000-8000-000000000201'
 const mocks = vi.hoisted(() => ({
   user: null as null | { id: string; email?: string; is_anonymous?: boolean },
   entitled: false,
+  source: null as string | null,
   rpc: vi.fn(),
   checkoutProps: vi.fn(),
 }))
@@ -18,7 +19,7 @@ vi.mock('@/lib/supabase/client', () => ({
     const chain: Record<string, unknown> = {}
     for (const method of ['select', 'eq', 'is', 'limit']) chain[method] = () => chain
     chain.then = (resolve: (value: unknown) => unknown) =>
-      Promise.resolve({ data: mocks.entitled ? [{ id: 'ent-1' }] : [], error: null }).then(resolve)
+      Promise.resolve({ data: mocks.entitled ? [{ id: 'ent-1', source: mocks.source }] : [], error: null }).then(resolve)
     return {
       auth: { getUser: async () => ({ data: { user: mocks.user }, error: null }) },
       from: () => chain,
@@ -45,6 +46,7 @@ function renderCta(priceCents: number) {
 beforeEach(() => {
   mocks.user = null
   mocks.entitled = false
+  mocks.source = null
   mocks.rpc.mockReset()
   mocks.checkoutProps.mockReset()
 })
@@ -65,7 +67,7 @@ describe('TourGetCta', () => {
     expect(screen.getByText('Free')).toBeInTheDocument()
   })
 
-  test('free tour claims through claim_free_self_tour and flips to Owned', async () => {
+  test('free tour claims through claim_free_self_tour and flips to In My tours', async () => {
     mocks.user = { id: 'user-1', email: 'traveler@example.com' }
     mocks.rpc.mockResolvedValue({ data: { id: 'ent-1' }, error: null })
     renderCta(0)
@@ -73,16 +75,27 @@ describe('TourGetCta', () => {
     await userEvent.click(await screen.findByRole('button', { name: 'Add to my tours' }))
 
     expect(mocks.rpc).toHaveBeenCalledWith('claim_free_self_tour', { p_tour_id: TOUR_ID })
-    expect(await screen.findByText('Owned')).toBeInTheDocument()
+    expect(await screen.findByText('In My tours')).toBeInTheDocument()
+    expect(screen.queryByText('Owned')).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Go to My tours' })).toHaveAttribute('href', '/profile/tours')
   })
 
-  test('an existing entitlement shows Owned even for a priced tour', async () => {
+  test('an existing Stripe entitlement shows Purchased for a priced tour', async () => {
     mocks.user = { id: 'user-1' }
     mocks.entitled = true
+    mocks.source = 'stripe'
     renderCta(499)
-    expect(await screen.findByText('Owned')).toBeInTheDocument()
+    expect(await screen.findByText('Purchased')).toBeInTheDocument()
+    expect(screen.queryByText('Owned')).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Buy/ })).not.toBeInTheDocument()
+  })
+
+  test('an existing free entitlement shows In My tours', async () => {
+    mocks.user = { id: 'user-1' }
+    mocks.entitled = true
+    mocks.source = 'free'
+    renderCta(0)
+    expect(await screen.findByText('In My tours')).toBeInTheDocument()
   })
 
   test('guest sessions are asked to create an account', async () => {
@@ -123,7 +136,7 @@ describe('TourGetCta', () => {
 
     await userEvent.click(await screen.findByRole('button', { name: 'Buy for $4.99' }))
 
-    await waitFor(() => expect(screen.getByText('Owned')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('Purchased')).toBeInTheDocument())
     expect(screen.getByRole('status')).toHaveTextContent('already in your account')
   })
 

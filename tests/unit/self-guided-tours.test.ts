@@ -7,9 +7,12 @@ import {
   isFreeTour,
   pollForEntitlement,
   previewStopLimit,
+  previewStopName,
+  previewStopSummary,
   resolveTourCta,
   tourDurationLabel,
   tourLoginHref,
+  tourOwnershipLabel,
   tourPriceLabel,
   tourStopCountLabel,
 } from '@/lib/self-guided-tours'
@@ -153,5 +156,42 @@ describe('pollForEntitlement', () => {
     })
     await expect(pollForEntitlement({ check, ...clock, signal: controller.signal })).resolves.toBe('aborted')
     expect(check).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('tourOwnershipLabel', () => {
+  test('matches the app: Purchased for Stripe, In My tours for free claims and grants', () => {
+    expect(tourOwnershipLabel({ source: 'stripe', priceCents: 0 })).toBe('Purchased')
+    expect(tourOwnershipLabel({ source: 'free', priceCents: 499 })).toBe('In My tours')
+    expect(tourOwnershipLabel({ source: 'admin' })).toBe('In My tours')
+  })
+
+  test('unknown source falls back to the price', () => {
+    expect(tourOwnershipLabel({ source: null, priceCents: 499 })).toBe('Purchased')
+    expect(tourOwnershipLabel({ priceCents: 0 })).toBe('In My tours')
+  })
+})
+
+describe('preview stop copy', () => {
+  test('approved traveler_summary wins over the Airtable description', () => {
+    expect(
+      previewStopSummary({
+        description: 'Long Airtable story. Second sentence.',
+        traveler_summary: 'Start at Atlantis, the resort at the center of Paradise Island tourism.',
+        copy_status: 'approved',
+      }),
+    ).toBe('Start at Atlantis, the resort at the center of Paradise Island tourism.')
+  })
+
+  test('unapproved or missing copy falls back to the first description sentence', () => {
+    const description = 'Long Airtable story. Second sentence.\n\nTip: bring water.'
+    expect(previewStopSummary({ description, traveler_summary: 'Draft copy.', copy_status: 'draft' })).toBe('Long Airtable story.')
+    expect(previewStopSummary({ description, traveler_summary: null, copy_status: 'approved' })).toBe('Long Airtable story.')
+    expect(previewStopSummary({ description: null })).toBeNull()
+  })
+
+  test('stop names drop the Airtable "<Area> Stop <n> - " prefix', () => {
+    expect(previewStopName('Paradise Island Stop 1 - Atlantis Paradise Island')).toBe('Atlantis Paradise Island')
+    expect(previewStopName('Georgetown Market')).toBe('Georgetown Market')
   })
 })

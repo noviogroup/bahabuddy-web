@@ -44,6 +44,9 @@ export interface TourPreviewStop {
   name: string
   description: string | null
   duration_sec: number | null
+  /** Board-reviewed traveler copy; used only when copy_status is 'approved'. */
+  traveler_summary?: string | null
+  copy_status?: string | null
 }
 
 export interface TourEntitlementRow {
@@ -73,6 +76,42 @@ export function normalizePriceCents(value: unknown): number {
 
 export function isFreeTour(priceCents: unknown): boolean {
   return normalizePriceCents(priceCents) === 0
+}
+
+/**
+ * Ownership badge, matching the app: "Purchased" for a paid (Stripe)
+ * entitlement, "In My tours" for a free claim or grant. When the source is
+ * unknown, a priced tour reads as purchased.
+ */
+export function tourOwnershipLabel({ source, priceCents = 0 }: { source?: string | null; priceCents?: unknown }): string {
+  const value = source?.trim().toLowerCase()
+  if (value) return value === 'stripe' ? 'Purchased' : 'In My tours'
+  return isFreeTour(priceCents) ? 'In My tours' : 'Purchased'
+}
+
+/** Airtable stop names carry an "<Area> Stop <n> - " prefix the list number already shows. */
+const STOP_NAME_PREFIX = /^\s*(?:[^\-–—:|]{0,60}?\s)?stop\s*#?\s*\d+\s*[-–—:|]+\s*/i
+
+export function previewStopName(name: string): string {
+  const trimmed = name.trim()
+  const stripped = trimmed.replace(STOP_NAME_PREFIX, '').trim()
+  return stripped || trimmed
+}
+
+/**
+ * One-line summary for a preview stop: the approved traveler_summary, else
+ * the first sentence of the Airtable description.
+ */
+export function previewStopSummary(stop: Pick<TourPreviewStop, 'description' | 'traveler_summary' | 'copy_status'>): string | null {
+  const approved = stop.copy_status?.trim().toLowerCase() === 'approved'
+  const summary = stop.traveler_summary?.trim()
+  if (approved && summary) return summary
+  const paragraph = stop.description
+    ?.split(/\n+/)
+    .map((p) => p.trim())
+    .find((p) => p && !/^tip:/i.test(p))
+  if (!paragraph) return null
+  return paragraph.match(/^.*?[.!?](?=\s|$)/)?.[0].trim() || paragraph
 }
 
 /** "Free" for 0, otherwise the exact amount, e.g. "$4.99" / "$12.00". */
@@ -297,7 +336,7 @@ export async function getPreviewStops(
   if (limit === 0 || !isTourId(tour.id)) return []
   const { data, error } = await supabase
     .from('tour_stops')
-    .select('id, sequence, name, description, duration_sec')
+    .select('id, sequence, name, description, duration_sec, traveler_summary, copy_status')
     .eq('tour_id', tour.id)
     .lte('sequence', limit)
     .order('sequence', { ascending: true })
@@ -306,16 +345,29 @@ export async function getPreviewStops(
   return data as TourPreviewStop[]
 }
 
-/** Active (non-revoked) entitlement check for the signed-in user. */
-export async function hasTourEntitlement(supabase: SupabaseClient, tourId: string): Promise<boolean> {
+/**
+ * The signed-in user's active (non-revoked) entitlement for [tourId], with
+ * its source ('stripe' | 'free' | …) for the ownership badge. Null when none.
+ */
+export async function getActiveTourEntitlement(
+  supabase: SupabaseClient,
+  tourId: string,
+): Promise<{ source: string | null } | null> {
   const { data, error } = await supabase
     .from('tour_entitlements')
-    .select('id')
+    .select('id, source')
     .eq('tour_id', tourId)
     .is('revoked_at', null)
     .limit(1)
   if (error) throw new Error(error.message)
-  return Array.isArray(data) && data.length > 0
+  if (!Array.isArray(data) || data.length === 0) return null
+  const row = data[0] as { source?: unknown }
+  return { source: typeof row.source === 'string' ? row.source : null }
+}
+
+/** Active (non-revoked) entitlement check for the signed-in user. */
+export async function hasTourEntitlement(supabase: SupabaseClient, tourId: string): Promise<boolean> {
+  return (await getActiveTourEntitlement(supabase, tourId)) !== null
 }
 
 export async function getOwnedTourIds(supabase: SupabaseClient): Promise<string[]> {
@@ -325,6 +377,21 @@ export async function getOwnedTourIds(supabase: SupabaseClient): Promise<string[
     .is('revoked_at', null)
   if (error || !Array.isArray(data)) return []
   return (data as Array<{ tour_id: string }>).map((row) => row.tour_id)
+}
+
+/** tour_id → entitlement source for the signed-in user's active tours. */
+export async function getOwnedTourSources(supabase: SupabaseClient): Promise<Map<string, string | null>> {
+  const { data, error } = await supabase
+    .from('tour_entitlements')
+    .select('tour_id, source')
+    .is('revoked_at', null)
+  if (error || !Array.isArray(data)) return new Map()
+  return new Map(
+    (data as Array<{ tour_id: string; source?: unknown }>).map((row) => [
+      row.tour_id,
+      typeof row.source === 'string' ? row.source : null,
+    ]),
+  )
 }
 
 export async function getMyTourEntitlements(supabase: SupabaseClient): Promise<TourEntitlementRow[]> {
