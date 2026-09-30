@@ -114,3 +114,102 @@ export function isPaymentIntentError(
 ): result is CreatePaymentIntentError {
   return 'error' in result
 }
+
+// ─── Self-guided tours (booking_type 'self_tour') ──────────────────────
+//
+// Price, currency and user are server-authoritative inside stripe-payment;
+// the caller only names the tour. The entitlement is granted by
+// stripe-webhook after payment_intent.succeeded.
+
+export interface CreateSelfTourPaymentIntentInput {
+  tourId: string
+  accessToken: string
+  description?: string
+}
+
+export interface CreateSelfTourPaymentIntentResult {
+  paymentIntentClientSecret: string
+  paymentIntentId?: string
+  publishableKey?: string
+  amountCents?: number
+  currency?: string
+  bookingId?: string
+}
+
+export interface SelfTourPaymentIntentError {
+  error: string
+  status?: number
+  code?: string
+}
+
+export async function createSelfTourPaymentIntent(
+  input: CreateSelfTourPaymentIntentInput,
+): Promise<CreateSelfTourPaymentIntentResult | SelfTourPaymentIntentError> {
+  if (!SUPABASE_URL) return { error: 'Supabase URL not configured', status: 500 }
+  if (!input.accessToken) {
+    return { error: 'Missing access token — user must be signed in', status: 401 }
+  }
+
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/stripe-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${input.accessToken}`,
+      },
+      body: JSON.stringify({
+        booking_type: 'self_tour',
+        description: input.description,
+        metadata: { tour_id: input.tourId, source_surface: 'web' },
+      }),
+      cache: 'no-store',
+    })
+
+    const text = await response.text()
+    let json: {
+      payment_intent_client_secret?: string
+      payment_intent_id?: string
+      publishable_key?: string
+      amount_cents?: number
+      currency?: string
+      booking_id?: string
+      error?: string
+      code?: string
+    } = {}
+    try {
+      json = text ? JSON.parse(text) : {}
+    } catch {
+      json = { error: text }
+    }
+
+    if (!response.ok || json.error) {
+      if (response.status >= 500) console.error('[stripe-payment self_tour]', response.status, text)
+      return {
+        error: json.error || `Edge function returned ${response.status}`,
+        status: response.status,
+        code: json.code,
+      }
+    }
+    if (!json.payment_intent_client_secret) {
+      return { error: 'Edge function returned no client secret', status: 502 }
+    }
+
+    return {
+      paymentIntentClientSecret: json.payment_intent_client_secret,
+      paymentIntentId: json.payment_intent_id,
+      publishableKey: json.publishable_key || undefined,
+      amountCents: json.amount_cents,
+      currency: json.currency,
+      bookingId: json.booking_id,
+    }
+  } catch (err) {
+    console.error('[createSelfTourPaymentIntent]', err)
+    return { error: err instanceof Error ? err.message : 'Unknown payment setup error', status: 502 }
+  }
+}
+
+export function isSelfTourPaymentIntentError(
+  result: CreateSelfTourPaymentIntentResult | SelfTourPaymentIntentError,
+): result is SelfTourPaymentIntentError {
+  return 'error' in result
+}

@@ -20,6 +20,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
       { href: '/explore', label: 'Explore' },
       { href: '/guides', label: 'Guides' },
       { href: '/nassau-cruise-itineraries', label: 'Guided tours' },
+      { href: '/tours', label: 'Self-guided tours' },
       { href: '/deals', label: 'Deals' },
       { href: '/concierge-trip-plan', label: 'Concierge' },
     ],
@@ -56,6 +57,7 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
     links: [
       { href: '/dashboard', label: 'My trips' },
       { href: '/profile/bookings', label: 'My bookings' },
+      { href: '/profile/tours', label: 'My tours' },
       { href: '/help', label: 'Help center' },
       { href: `mailto:${SUPPORT_EMAIL}`, label: 'Contact support' },
       { href: '/how-it-works', label: 'Travel requirements' },
