@@ -17,9 +17,11 @@ import {
 } from '@/lib/tripadvisor/types'
 
 export const metadata: Metadata = {
-  title: 'Best Restaurants in the Bahamas | Baha Buddy',
+  title: 'Best Restaurants in the Bahamas',
   description:
     'Browse top-rated Bahamas restaurants across Nassau, Exuma, Eleuthera, and more. Cuisine, ratings, photos, and TripAdvisor reviews.',
+  // Filter/sort query strings all canonicalize to the unfiltered listing.
+  alternates: { canonical: '/restaurants' },
   openGraph: {
     title: 'Best Restaurants in the Bahamas | Baha Buddy',
     description:
@@ -193,13 +195,8 @@ export default async function RestaurantsPage({
         ...(r.cuisine_types && r.cuisine_types.length > 0 && {
           servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(', '),
         }),
-        ...(r.rating && {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: r.rating,
-            reviewCount: r.num_reviews ?? 0,
-          },
-        }),
+        // No aggregateRating: ratings are Tripadvisor's, and Google's review
+        // snippet rules forbid marking up ratings aggregated by other sites.
       },
     })),
   }

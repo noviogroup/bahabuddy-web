@@ -14,7 +14,7 @@ import {
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'My Bookings | Baha Buddy',
+  title: 'My Bookings',
   description: 'View all your flight and hotel bookings across your Bahamas trips.',
   robots: { index: false },
 }

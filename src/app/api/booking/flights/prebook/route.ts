@@ -5,6 +5,21 @@ import { normalizeFlightAncillaries, normalizeFlightSeatMaps } from '@/lib/fligh
 
 type JsonRecord = Record<string, unknown>
 
+const MAX_PASSENGERS = 9
+const MAX_FIELD_LENGTH = 120
+const CONTACT_FIELDS = ['firstName', 'lastName', 'email', 'phoneCountryCode', 'phoneNumber'] as const
+const PASSENGER_FIELDS = [
+  'firstName',
+  'lastName',
+  'birthday',
+  'gender',
+  'nationality',
+  'documentType',
+  'documentNumber',
+  'documentIssueCountry',
+  'documentExpiry',
+] as const
+
 export async function POST(request: Request) {
   try {
     const supabase = await createClient()
@@ -20,10 +35,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'offerId is required.' }, { status: 400 })
     }
 
-    const payload = {
-      ...body,
-      offerId,
-      usePaymentSdk: body.usePaymentSdk ?? true,
+    // Only known fields reach the provider. usePaymentSdk is always true: the
+    // flight book route relies on LiteAPI's payment-SDK transaction.
+    const payload: JsonRecord = { offerId, usePaymentSdk: true }
+    const contact = pickStrings(body.contact, CONTACT_FIELDS)
+    if (contact) payload.contact = contact
+    if (Array.isArray(body.passengers)) {
+      const passengers = body.passengers
+        .slice(0, MAX_PASSENGERS)
+        .map((passenger: unknown) => pickStrings(passenger, PASSENGER_FIELDS))
+        .filter(Boolean)
+      if (passengers.length > 0) payload.passengers = passengers
     }
 
     const result = await callTravelProvider('/flights/prebooks', payload)
@@ -40,7 +62,6 @@ export async function POST(request: Request) {
       currency: stringValue(price.currency ?? prebook.currency, 'USD'),
       seat_maps: normalizeFlightSeatMaps(prebook),
       ancillaries: normalizeFlightAncillaries(prebook),
-      raw: result.data,
     }, { status: result.status })
   } catch (error) {
     const response = getProviderErrorResponse(error)
@@ -49,6 +70,16 @@ export async function POST(request: Request) {
       { status: response.status }
     )
   }
+}
+
+function pickStrings(value: unknown, fields: readonly string[]): Record<string, string> | null {
+  const record = asRecord(value)
+  const picked: Record<string, string> = {}
+  for (const field of fields) {
+    const raw = record[field]
+    if (typeof raw === 'string' && raw.trim()) picked[field] = raw.trim().slice(0, MAX_FIELD_LENGTH)
+  }
+  return Object.keys(picked).length > 0 ? picked : null
 }
 
 function firstRecord(value: unknown): JsonRecord {

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
-import GuidePage from '@/app/guides/[slug]/page'
-import ArticlePage from '@/app/explore/articles/[slug]/page'
+import GuidePage, { generateMetadata as generateGuideMetadata } from '@/app/guides/[slug]/page'
+import ArticlePage, { generateMetadata as generateArticleMetadata } from '@/app/explore/articles/[slug]/page'
 
 const sanityMocks = vi.hoisted(() => ({
   fetchArticleBySlug: vi.fn(),
@@ -10,6 +10,8 @@ const sanityMocks = vi.hoisted(() => ({
 
 vi.mock('@/lib/sanity/queries', () => ({
   fetchArticleBySlug: sanityMocks.fetchArticleBySlug,
+  // The guide detail page uses the strict variant (throws on Sanity failure).
+  fetchArticleBySlugStrict: sanityMocks.fetchArticleBySlug,
   fetchAllArticleSlugs: sanityMocks.fetchAllArticleSlugs,
 }))
 
@@ -114,5 +116,33 @@ describe('editorial detail compact layout', () => {
 
     expect(screen.getAllByRole('link', { name: 'Ask Buddy' })[0]).toHaveClass('border-gray-300')
     expectNoOldArticleHero(container)
+  })
+
+  test('guide metadata is self-canonical and 404s for unknown slugs', async () => {
+    sanityMocks.fetchArticleBySlug.mockResolvedValue({
+      _id: 'guide-2', slug: 'meta-guide', title: 'Meta guide', excerpt: 'x', category: 'food_dining',
+      imageUrl: null, readTimeMinutes: 4, publishedAt: null, featured: false, body: [],
+    })
+    const metadata = await generateGuideMetadata({ params: { slug: 'meta-guide' } })
+    expect(metadata.alternates?.canonical).toBe('/guides/meta-guide')
+    expect(metadata.title).toBe('Meta guide — Bahamas Travel Guide')
+
+    sanityMocks.fetchArticleBySlug.mockResolvedValue(null)
+    await expect(generateGuideMetadata({ params: { slug: 'missing-guide' } })).rejects.toThrow('notFound')
+  })
+
+  test('guide page surfaces Sanity failures instead of caching a 404', async () => {
+    sanityMocks.fetchArticleBySlug.mockRejectedValue(new Error('sanity down'))
+    await expect(GuidePage({ params: { slug: 'flaky-guide' } })).rejects.toThrow('sanity down')
+  })
+
+  test('Sanity-backed explore articles canonicalize to /guides', async () => {
+    sanityMocks.fetchArticleBySlug.mockResolvedValue({
+      _id: 'guide-3', slug: 'dup-guide', title: 'Dup guide', excerpt: 'y', category: 'food_dining',
+      imageUrl: null, readTimeMinutes: 4, publishedAt: null, featured: false, body: [],
+    })
+    const metadata = await generateArticleMetadata({ params: { slug: 'dup-guide' } })
+    expect(metadata.alternates?.canonical).toBe('/guides/dup-guide')
+    expect(metadata.title).toBe('Dup guide')
   })
 })

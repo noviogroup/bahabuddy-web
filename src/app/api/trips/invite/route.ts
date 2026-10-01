@@ -1,4 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
+import { generateShareCode } from '@/lib/share-codes'
 import { NextRequest, NextResponse } from 'next/server'
 
 // POST /api/trips/invite — generate a collaborative invite link for a trip
@@ -29,14 +31,16 @@ export async function POST(req: NextRequest) {
     .eq('trip_id', tripId)
     .eq('share_type', 'collaborative')
     .gt('expires_at', now)
-    .maybeSingle()
+    .order('expires_at', { ascending: false })
+    .limit(1)
 
-  if (existing?.short_code) {
-    return NextResponse.json({ code: existing.short_code, isNew: false })
+  const existingCode = existing?.[0]?.short_code
+  if (existingCode) {
+    return NextResponse.json({ code: existingCode, isNew: false })
   }
 
   // Create new collaborative invite code (expires in 30 days)
-  const code = `inv-${Math.random().toString(36).slice(2, 9)}`
+  const code = `inv-${generateShareCode()}`
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
 
   const { data: created, error } = await supabase
@@ -51,7 +55,10 @@ export async function POST(req: NextRequest) {
     .select('short_code')
     .single()
 
-  if (error || !created) return NextResponse.json({ error: error?.message ?? 'Failed to create invite' }, { status: 500 })
+  if (error || !created) {
+    if (error) console.error('[POST /api/trips/invite]', error)
+    return NextResponse.json({ error: 'Failed to create invite' }, { status: 500 })
+  }
 
   return NextResponse.json({ code: created.short_code, isNew: true })
 }
@@ -68,12 +75,28 @@ export async function DELETE(req: NextRequest) {
   const { data: trip } = await supabase.from('trips').select('user_id').eq('id', tripId).single()
   if (!trip || trip.user_id !== user.id) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
-  const { error } = await supabase
+  // share_links has no DELETE RLS policy, so a user-scoped delete silently
+  // matches 0 rows. Ownership was verified above; run the revoke with the
+  // service role and report honestly how many links were actually removed.
+  const admin = createAdminClient()
+  if (!admin) {
+    return NextResponse.json({ error: 'Invite revocation is temporarily unavailable.' }, { status: 503 })
+  }
+
+  const { data: deleted, error } = await admin
     .from('share_links')
     .delete()
     .eq('trip_id', tripId)
     .eq('share_type', 'collaborative')
+    .select('id')
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+  if (error) {
+    console.error('[DELETE /api/trips/invite]', error)
+    return NextResponse.json({ error: 'Failed to revoke invite links.' }, { status: 500 })
+  }
+  const revoked = deleted?.length ?? 0
+  if (revoked === 0) {
+    return NextResponse.json({ error: 'No active invite link to revoke.', revoked: 0 }, { status: 404 })
+  }
+  return NextResponse.json({ success: true, revoked })
 }

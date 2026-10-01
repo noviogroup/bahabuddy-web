@@ -7,7 +7,7 @@ import { DestinationFallbackImages } from "@/lib/baha-images";
 import { buddyChatHref } from "@/lib/buddy-chat";
 
 export const metadata: Metadata = {
-  title: "Bahamas Island Finder | Baha Buddy",
+  title: "Bahamas Island Finder",
   description:
     "Compare Bahamas islands by trip style, access, pace, and planning complexity so Buddy can help you choose the right island.",
   openGraph: {

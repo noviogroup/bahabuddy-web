@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
@@ -7,7 +8,13 @@ import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 export const metadata: Metadata = {
   title: 'My Cruise Day Itinerary',
   description: 'View your Baha Buddy cruise day plan and continue to the mobile app for Live Guide mode.',
+  // Placeholder handoff route with no record lookup yet: never index it.
+  robots: { index: false, follow: false },
 }
+
+// References are opaque ids (uuid / provider ids). Anything else is a 404
+// rather than being echoed back on the page.
+const REFERENCE_PATTERN = /^[A-Za-z0-9_-]{6,64}$/
 
 type PageProps = {
   params: Promise<{ id: string }>
@@ -15,6 +22,7 @@ type PageProps = {
 
 export default async function MyItineraryPage({ params }: PageProps) {
   const { id } = await params
+  if (!REFERENCE_PATTERN.test(id)) notFound()
   const createTripHref = `/dashboard/trips/new?${new URLSearchParams({
     returnTo: `/my-itinerary/${id}`,
     source: 'guided_itinerary',
@@ -45,7 +53,7 @@ export default async function MyItineraryPage({ params }: PageProps) {
       >
         <div className="flex flex-wrap gap-2 text-xs font-bold text-charcoal">
           <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
-            Order reference {id}
+            Reference {id}
           </span>
           <span className="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1">
             Mobile Live Guide handoff
@@ -62,7 +70,7 @@ export default async function MyItineraryPage({ params }: PageProps) {
             <p className="text-xs font-bold uppercase text-gray-500">Current status</p>
             <h2 className="mt-3 text-2xl font-bold text-night">Baha Buddy is preparing the usable trip view.</h2>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-charcoal">
-              The order is captured, and this web route is reserved for the itinerary handoff. The traveler-facing plan should show stops, timing, walking guidance, and return-to-ship reminders once the generated itinerary is attached.
+              This page does not confirm a purchase. If you booked a guided day, your confirmation email is the record of your order. The traveler-facing plan will show stops, timing, walking guidance, and return-to-ship reminders once the generated itinerary is attached to this reference.
             </p>
           </div>
 
@@ -107,10 +115,10 @@ export default async function MyItineraryPage({ params }: PageProps) {
 
         <aside className="space-y-4">
           <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm">
-            <p className="text-xs font-bold uppercase text-gray-500">Order reference</p>
+            <p className="text-xs font-bold uppercase text-gray-500">Itinerary reference</p>
             <p className="mt-3 break-all text-lg font-bold text-night">{id}</p>
             <p className="mt-3 text-sm leading-6 text-charcoal">
-              Use this reference when matching the web handoff to the paid guided itinerary record.
+              Quote this reference with your booking confirmation if you contact support.
             </p>
           </div>
 

@@ -77,5 +77,6 @@ describe('public sitemap routes', () => {
     expect(urls).toContain('https://bahabuddy.test/guides/ultimate-nassau-guide')
     expect(urls).not.toContain('https://bahabuddy.test/dashboard')
     expect(urls).not.toContain('https://bahabuddy.test/profile')
+    expect(urls).not.toContain('https://bahabuddy.test/login')
   })
 })

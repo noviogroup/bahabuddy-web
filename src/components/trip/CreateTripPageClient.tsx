@@ -340,7 +340,7 @@ export default function CreateTripPageClient({
               <div className="rounded-baha-lg border border-brand-100 bg-brand-50 p-4">
                 <p className="text-sm font-bold text-night">After creation</p>
                 <ul className="mt-2 space-y-2 text-sm font-semibold text-gray-600">
-                  <li>Create a draft trip in Supabase.</li>
+                  <li>Save a draft trip to your account.</li>
                   <li>Add stays, flights, food, and tours directly.</li>
                   <li>Use Buddy when conversation adds planning value.</li>
                 </ul>

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Figtree } from 'next/font/google'
+import { LOGO_SRC } from '@/lib/brand'
 import AnalyticsProvider from '@/components/AnalyticsProvider'
 import GlobalPublicHeader from '@/components/GlobalPublicHeader'
 import TravelOriginPrompt from '@/components/TravelOriginPrompt'
@@ -46,20 +47,13 @@ export const metadata: Metadata = {
     title: 'Baha Buddy — Your AI Bahamas Travel Companion',
     description:
       'Plan your perfect Bahamas trip with AI. Discover 700+ islands, find deals, and book everything from one app.',
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'Baha Buddy — AI-Powered Bahamas Travel',
-      },
-    ],
+    // No explicit `images`: src/app/opengraph-image.tsx supplies the default
+    // share image. Declaring images here would disable the file convention.
   },
   twitter: {
+    // Title, description and image are inherited from each page's openGraph
+    // (and opengraph-image.tsx), so share cards match the page being shared.
     card: 'summary_large_image',
-    title: 'Baha Buddy — Your AI Bahamas Travel Companion',
-    description: 'Plan your perfect Bahamas trip with AI. 700+ islands, deals, flights & hotels.',
-    images: ['/og-image.png'],
   },
   robots: {
     index: true,
@@ -74,6 +68,41 @@ export const metadata: Metadata = {
   },
 }
 
+/**
+ * Sitewide Organization + WebSite structured data. Lives in the root layout
+ * (rather than the homepage) so the brand entity and sitelinks search box are
+ * declared once for the whole site.
+ */
+const siteStructuredData = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${siteUrl}/#organization`,
+      name: 'Baha Buddy',
+      url: siteUrl,
+      logo: new URL(LOGO_SRC, siteUrl).toString(),
+      parentOrganization: {
+        '@type': 'Organization',
+        name: 'Novio Group',
+        url: 'https://noviogroup.com',
+      },
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      name: 'Baha Buddy',
+      url: siteUrl,
+      publisher: { '@id': `${siteUrl}/#organization` },
+      potentialAction: {
+        '@type': 'SearchAction',
+        target: `${siteUrl}/search?q={search_term_string}`,
+        'query-input': 'required name=search_term_string',
+      },
+    },
+  ],
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -82,10 +111,23 @@ export default function RootLayout({
   return (
     <html lang="en" className={figtree.variable}>
       <body className="font-sans antialiased text-charcoal bg-offwhite">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-white focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-night focus:shadow-card focus:outline-none focus:ring-2 focus:ring-brand-500"
+        >
+          Skip to main content
+        </a>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(siteStructuredData) }}
+        />
         <AnalyticsProvider />
         <GlobalPublicHeader />
         <TravelOriginPrompt />
-        {children}
+        {/* Skip-link target. Wraps every route so the link always lands after the header. */}
+        <div id="main-content" tabIndex={-1} className="focus:outline-none">
+          {children}
+        </div>
       </body>
     </html>
   )

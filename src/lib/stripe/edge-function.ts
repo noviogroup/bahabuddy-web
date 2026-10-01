@@ -36,6 +36,8 @@ export interface CreatePaymentIntentInput {
 
 export interface CreatePaymentIntentResult {
   paymentIntentClientSecret: string
+  paymentIntentId?: string
+  bookingAttemptId?: string | null
   ephemeralKeySecret?: string
   customerId?: string
 }
@@ -80,31 +82,33 @@ export async function createPaymentIntent(
     if (!response.ok) {
       const text = await response.text()
       console.error('[stripe-payment edge fn]', response.status, text)
-      return { error: text || `Edge function returned ${response.status}`, status: response.status }
+      return { error: 'We could not start the payment right now. Please try again in a few minutes.', status: response.status >= 500 ? 502 : response.status }
     }
 
     const json = (await response.json()) as {
       payment_intent_client_secret?: string
+      payment_intent_id?: string
+      booking_attempt_id?: string | null
       ephemeral_key_secret?: string
       customer_id?: string
       error?: string
     }
 
-    if (json.error) {
-      return { error: json.error, status: response.status }
-    }
-    if (!json.payment_intent_client_secret) {
-      return { error: 'Edge function returned no client secret' }
+    if (json.error || !json.payment_intent_client_secret) {
+      console.error('[stripe-payment edge fn] unusable response', json.error ?? 'missing client secret')
+      return { error: 'We could not start the payment right now. Please try again in a few minutes.', status: 502 }
     }
 
     return {
       paymentIntentClientSecret: json.payment_intent_client_secret,
+      paymentIntentId: json.payment_intent_id,
+      bookingAttemptId: json.booking_attempt_id ?? null,
       ephemeralKeySecret: json.ephemeral_key_secret,
       customerId: json.customer_id,
     }
   } catch (err) {
     console.error('[createPaymentIntent]', err)
-    return { error: err instanceof Error ? err.message : 'Unknown payment setup error' }
+    return { error: 'We could not start the payment right now. Please try again in a few minutes.', status: 502 }
   }
 }
 

@@ -31,8 +31,10 @@ import {
   useRef,
   useEffect,
   useCallback,
+  useId,
   type ReactNode,
   type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -296,22 +298,29 @@ function CounterRow({ label, hint, min, value, onDec, onInc }: CounterRowProps) 
         <p className="text-xs text-gray-500 leading-tight">{hint}</p>
       </div>
       <div className="flex items-center gap-3">
+        {/* aria-disabled (not disabled) keeps keyboard focus on the button
+            when the count reaches its minimum, instead of dropping to <body>. */}
         <button
           type="button"
-          onClick={onDec}
-          disabled={atMin}
-          aria-label={`Decrease ${label}`}
-          className="w-8 h-8 rounded-full border border-gray-300 text-night hover:border-brand-500 hover:text-brand-600 disabled:opacity-30 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+          onClick={() => {
+            if (!atMin) onDec()
+          }}
+          aria-disabled={atMin}
+          aria-label={`Decrease ${label}, currently ${value}`}
+          className="w-8 h-8 rounded-full border border-gray-300 text-night hover:border-brand-500 hover:text-brand-600 aria-disabled:opacity-30 aria-disabled:cursor-not-allowed transition-colors flex items-center justify-center"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 12h12" />
           </svg>
         </button>
-        <span className="w-6 text-center text-sm font-semibold text-night tabular-nums">{value}</span>
+        <span className="w-6 text-center text-sm font-semibold text-night tabular-nums" aria-live="polite" aria-atomic="true">
+          <span className="sr-only">{label}: </span>
+          {value}
+        </span>
         <button
           type="button"
           onClick={onInc}
-          aria-label={`Increase ${label}`}
+          aria-label={`Increase ${label}, currently ${value}`}
           className="w-8 h-8 rounded-full border border-gray-300 text-night hover:border-brand-500 hover:text-brand-600 transition-colors flex items-center justify-center"
         >
           <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -450,6 +459,24 @@ export default function HeroSearchPanel() {
     }
   }
 
+  // ── Tabs keyboard pattern (roving tabindex + arrows / Home / End) ─────────
+  const tabsId = useId()
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([])
+  const tabDomId = (key: TabKey) => `${tabsId}-tab-${key}`
+  const panelDomId = `${tabsId}-panel`
+
+  function handleTabKeyDown(event: ReactKeyboardEvent<HTMLButtonElement>, index: number) {
+    let next: number | null = null
+    if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = (index + 1) % TABS.length
+    else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = (index - 1 + TABS.length) % TABS.length
+    else if (event.key === 'Home') next = 0
+    else if (event.key === 'End') next = TABS.length - 1
+    if (next === null) return
+    event.preventDefault()
+    setActiveTab(TABS[next].key)
+    tabRefs.current[next]?.focus()
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
@@ -459,14 +486,22 @@ export default function HeroSearchPanel() {
     >
       {/* Tab strip */}
       <div role="tablist" aria-label="Search category" className="grid grid-cols-2 items-stretch gap-1 overflow-hidden px-2 pt-2 min-[360px]:grid-cols-3 sm:flex sm:px-4 sm:pt-3">
-        {TABS.map(tab => {
+        {TABS.map((tab, index) => {
           const active = activeTab === tab.key
           return (
             <button
               key={tab.key}
+              ref={(element) => {
+                tabRefs.current[index] = element
+              }}
+              id={tabDomId(tab.key)}
+              type="button"
               role="tab"
               aria-selected={active}
+              aria-controls={panelDomId}
+              tabIndex={active ? 0 : -1}
               onClick={() => setActiveTab(tab.key)}
+              onKeyDown={(event) => handleTabKeyDown(event, index)}
               className={`group relative flex min-h-14 w-full items-center justify-center gap-2 px-2 py-3 text-sm font-semibold whitespace-nowrap transition-colors sm:min-h-0 sm:w-auto sm:px-4 ${
                 active ? 'text-brand-700' : 'text-gray-500 hover:text-night'
               }`}
@@ -491,7 +526,12 @@ export default function HeroSearchPanel() {
       </div>
 
       {/* Form area */}
-      <div className="border-t border-gray-100 p-4 sm:p-5">
+      <div
+        id={panelDomId}
+        role="tabpanel"
+        aria-labelledby={tabDomId(activeTab)}
+        className="border-t border-gray-100 p-4 sm:p-5"
+      >
         {activeTab === 'plan' && (
           <PlanForm
             value={planPrompt}

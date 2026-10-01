@@ -6,6 +6,8 @@ import 'react-day-picker/style.css'
 import './baha-date-picker.css'
 import { dateToIso, formatDateShort, isoToDate, startOfToday, todayIso } from '@/lib/date-utils'
 import { useCalendarMonths } from './useCalendarMonths'
+import { focusInitialCalendarDay } from './focusCalendarDay'
+import { useDialogFocus } from '../useDialogFocus'
 
 export interface BahaDatePickerProps {
   value: string
@@ -52,6 +54,7 @@ export default function BahaDatePicker({
   const id = idProp ?? autoId
   const rootRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
   const months = useCalendarMonths(1)
 
   const min = isoToDate(minDate ?? todayIso()) ?? startOfToday()
@@ -83,6 +86,15 @@ export default function BahaDatePicker({
     return () => document.removeEventListener('mousedown', onPointer)
   }, [layout, open])
 
+  // Escape closes; focus moves to the selected (or first enabled) day on open
+  // and returns to the trigger on close.
+  useDialogFocus({
+    open: layout === 'field' && open,
+    containerRef: popoverRef,
+    onClose: () => setOpen(false),
+    getInitialFocus: focusInitialCalendarDay,
+  })
+
   const calendar = (
     <DayPicker
       mode="single"
@@ -113,6 +125,8 @@ export default function BahaDatePicker({
   }
 
   const display = value ? formatDateShort(value) : placeholder
+  // Name = purpose + current value, so the chosen date is announced.
+  const triggerName = `${ariaLabel ?? label ?? placeholder}: ${value ? formatDateShort(value) : 'not set'}`
 
   return (
     <div ref={rootRef} id={id} className={`relative ${className}`}>
@@ -128,7 +142,7 @@ export default function BahaDatePicker({
         id={`${id}-trigger`}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={ariaLabel ?? label ?? placeholder}
+        aria-label={triggerName}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={`flex h-12 w-full items-center gap-2 rounded-xl border bg-white px-4 text-left text-sm font-semibold outline-none transition-all focus:border-gray-500 focus:bg-white focus:ring-4 focus:ring-gray-100 ${
@@ -144,6 +158,7 @@ export default function BahaDatePicker({
 
       {open && (
         <div
+          ref={popoverRef}
           role="dialog"
           aria-label={ariaLabel ?? label ?? 'Choose date'}
           className="absolute z-50 mt-2 left-0 right-0 sm:left-auto sm:min-w-[320px] rounded-baha-lg border border-gray-200 bg-white p-4 shadow-card-hover"

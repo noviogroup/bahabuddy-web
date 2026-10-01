@@ -3,15 +3,14 @@ import { redirect, notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import Link from 'next/link'
 import type { Trip } from '@/types/database'
-import { createPaymentIntent, isPaymentIntentError } from '@/lib/stripe/edge-function'
-import { isStripeConfigured, getStripe } from '@/lib/stripe/client'
-import CheckoutForm from '@/components/checkout/CheckoutForm'
+import { isStripeConfigured } from '@/lib/stripe/client'
+import CheckoutStarter from '@/components/checkout/CheckoutStarter'
 import TrackView from '@/components/TrackView'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Checkout | Baha Buddy',
+  title: 'Checkout',
   robots: { index: false },
 }
 
@@ -20,20 +19,17 @@ export const metadata = {
  *
  * Query params:
  *   - trip_id      (required): the trip being booked
- *   - amount       (required): payment amount in cents
- *   - type         (required): 'flight' | 'hotel' | 'activity' | 'full_trip'
+ *   - type         (required): 'full_trip' (stays and flights have their own checkouts)
  *   - description  (optional): receipt description
+ *   - amount       (ignored): the total is read from the stored trip estimate
  *
  * Flow:
  *   1. Auth check (handled by the (dashboard) route group layout)
- *   2. Verify the trip belongs to this user
- *   3. Call the stripe-payment Edge Function → clientSecret
- *   4. Render <CheckoutForm> with Stripe PaymentElement
- *   5. On submit, Stripe redirects to /dashboard/checkout/success
- *
- * Security caveat (matching mobile behavior): the amount is trusted from
- * the URL. A more robust design would compute the amount server-side
- * from a stored offer/quote. Phase 2 hardening.
+ *   2. Verify the trip belongs to this user and read its stored total
+ *   3. Render <CheckoutStarter>; the PaymentIntent is created (or reused) by
+ *      POST /api/booking/payments/checkout-intent only when the user clicks
+ *      "Continue to payment" — never during a GET render
+ *   4. On submit, Stripe redirects to /dashboard/checkout/success
  *
  * Graceful degradation:
  *   - If Stripe isn't configured → render setup-needed screen
@@ -41,7 +37,7 @@ export const metadata = {
  *   - If params are invalid → render error screen
  */
 
-const VALID_TYPES = new Set(['flight', 'hotel', 'activity', 'full_trip'])
+const VALID_TYPES = new Set(['full_trip'])
 
 interface SearchParams {
   trip_id?: string
@@ -62,21 +58,18 @@ export default async function CheckoutPage({
 
   // ── 1. Parse + validate params ────────────────────────────────────
   const tripId = searchParams.trip_id?.trim() ?? ''
-  const amountCents = Number(searchParams.amount ?? 0)
   const bookingType = (searchParams.type ?? '').trim()
   const description = searchParams.description?.trim() || undefined
 
   if (!tripId) {
     return <CheckoutError title="Missing trip" body="No trip was specified for checkout." />
   }
-  if (!Number.isFinite(amountCents) || amountCents < 50) {
-    return <CheckoutError title="Invalid amount" body={`The amount must be at least 50 cents (got ${amountCents}).`} />
-  }
   if (!VALID_TYPES.has(bookingType)) {
     return (
       <CheckoutError
-        title="Invalid booking type"
-        body={`Expected one of: flight, hotel, activity, full_trip. Got "${bookingType}".`}
+        title="Checkout not available"
+        body="Stays and flights are paid from their own booking pages. Open the item from your trip to continue."
+        tripId={tripId}
       />
     )
   }
@@ -88,48 +81,25 @@ export default async function CheckoutPage({
 
   const { data: trip } = await supabase
     .from('trips')
-    .select('id, name, user_id, status, hero_image_url, date_start, date_end')
+    .select('id, name, user_id, status, hero_image_url, date_start, date_end, budget_estimate')
     .eq('id', tripId)
     .single()
 
   if (!trip) notFound()
   if (trip.user_id !== user.id) notFound()
 
-  const tripRecord = trip as Pick<Trip, 'id' | 'name' | 'user_id' | 'status' | 'hero_image_url' | 'date_start' | 'date_end'>
+  const tripRecord = trip as Pick<Trip, 'id' | 'name' | 'user_id' | 'status' | 'hero_image_url' | 'date_start' | 'date_end' | 'budget_estimate'>
+  const amountCents = Math.round(Number(tripRecord.budget_estimate ?? 0) * 100)
+  if (!Number.isFinite(amountCents) || amountCents < 50) {
+    return <CheckoutError title="Trip total not ready" body="This trip does not have a bookable total yet." tripId={tripId} />
+  }
 
   // ── 3. Build return URL ───────────────────────────────────────────
   const hdrs = headers()
   const origin = inferOrigin(hdrs)
   const returnUrl = `${origin}/dashboard/checkout/success?trip_id=${encodeURIComponent(tripId)}`
 
-  // ── 4. Get user's access token from session for Edge Function call ─
-  const { data: { session } } = await supabase.auth.getSession()
-  if (!session?.access_token) {
-    // Session exists but no token — bounce to login. Rare edge case.
-    redirect('/login')
-  }
-
-  // ── 5. Create PaymentIntent via the Edge Function ─────────────────
-  const intentResult = await createPaymentIntent({
-    amount: amountCents,
-    tripId,
-    bookingType: bookingType as 'flight' | 'hotel' | 'activity' | 'full_trip',
-    description,
-    accessToken: session.access_token,
-  })
-
-  if (isPaymentIntentError(intentResult)) {
-    return (
-      <CheckoutError
-        title="Could not start checkout"
-        body={intentResult.error}
-        tripId={tripId}
-      />
-    )
-  }
-
-  // ── 6. Render the form ────────────────────────────────────────────
-  const stripePromise = getStripe()
+  // ── 4. Render the summary; payment starts on an explicit click ────
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-8">
@@ -152,7 +122,7 @@ export default async function CheckoutPage({
         <svg className="absolute -right-8 -top-8 h-36 w-36 text-gray-100" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
           <path strokeLinecap="round" strokeLinejoin="round" d="M3 16l7-3V7a2 2 0 0 1 4 0v6l7 3v2l-7-2v3l2 1.5V22l-4-1-4 1v-1.5L10 19v-3l-7 2v-2Z" />
         </svg>
-        <p className="text-xs font-bold uppercasest text-charcoal">Checkout</p>
+        <p className="text-xs font-bold uppercase text-charcoal">Checkout</p>
         <h1 className="mt-1 text-2xl font-bold text-night">{tripRecord.name}</h1>
         {(tripRecord.date_start || tripRecord.date_end) && (
           <p className="mt-1 text-sm text-charcoal">
@@ -169,12 +139,10 @@ export default async function CheckoutPage({
       </section>
 
       {/* Payment form */}
-      <CheckoutForm
-        stripePromise={stripePromise}
-        clientSecret={intentResult.paymentIntentClientSecret}
-        amountCents={amountCents}
-        currency="usd"
+      <CheckoutStarter
+        tripId={tripId}
         tripName={tripRecord.name}
+        amountCents={amountCents}
         returnUrl={returnUrl}
       />
 

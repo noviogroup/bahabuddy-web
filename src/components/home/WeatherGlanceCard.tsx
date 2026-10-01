@@ -134,7 +134,7 @@ export default function WeatherGlanceCard({ island = 'Nassau' }: WeatherGlanceCa
         <div className="flex items-center gap-4">
           <WeatherIcon condition={data.condition} />
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold text-gray-500 uppercaser">{island}</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase">{island}</p>
             <div className="flex items-baseline gap-2 mt-0.5">
               <span className="text-3xl font-bold text-night">
                 {loading ? '—' : `${data.tempF}°F`}

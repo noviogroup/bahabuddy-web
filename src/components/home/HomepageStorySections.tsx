@@ -264,14 +264,14 @@ const FEATURED_EXPERIENCES = [
     title: "Swimming Pigs Experience",
     island: "Exuma",
     category: "Boat tour",
-    href: "/guides/swimming-pigs-exuma-guide",
+    href: "/guides/swimming-pigs-exuma",
     image: BahaImages.swimmingPigs,
   },
   {
     title: "Nassau Snorkeling Tour",
     island: "Nassau",
     category: "Things to do",
-    href: "/explore?query=snorkeling",
+    href: "/explore/places?search=snorkeling&island=Nassau",
     image: BahaImages.snorkeling,
   },
   {

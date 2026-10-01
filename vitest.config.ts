@@ -20,13 +20,21 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
-      include: ['src/lib/**/*.{ts,tsx}', 'src/hooks/**/*.{ts,tsx}'],
+      include: [
+        'src/lib/**/*.{ts,tsx}',
+        'src/hooks/**/*.{ts,tsx}',
+        // Money paths: booking, payments, concierge checkout, Stripe webhooks.
+        'src/app/api/**/*.{ts,tsx}',
+      ],
       exclude: [
         'src/**/*.d.ts',
         'src/_archive/**',
         'src/lib/sanity/**', // CMS client — covered by E2E
         'src/lib/supabase/**', // Wraps env-bound clients
-        'src/lib/stripe/**', // Wraps env-bound clients
+        // src/lib/stripe/** is intentionally NOT excluded: the webhook
+        // signature verifier and concierge offer pricing are pure money-path
+        // logic. Thresholds are deferred until each money route has tests,
+        // otherwise CI would go red immediately.
       ],
     },
   },

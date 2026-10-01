@@ -36,7 +36,7 @@ export const CONCIERGE_OFFERS: Record<ConciergeOfferId, ConciergeOffer> = {
 }
 
 export function isConciergeOfferId(value: string): value is ConciergeOfferId {
-  return value in CONCIERGE_OFFERS
+  return Object.prototype.hasOwnProperty.call(CONCIERGE_OFFERS, value)
 }
 
 export function getConciergeOffer(offerId: string): ConciergeOffer | null {

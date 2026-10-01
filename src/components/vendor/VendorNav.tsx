@@ -13,6 +13,12 @@ const navItems = [
   { href: '/vendor/performance', label: 'Performance', icon: ChartIcon },
 ]
 
+/** Keeps the active partner on every vendor link (multi-partner users). */
+export function withPartnerId(href: string, partnerId?: string | null): string {
+  if (!partnerId) return href
+  return `${href}?${new URLSearchParams({ partner_id: partnerId }).toString()}`
+}
+
 function cn(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(' ')
 }
@@ -56,12 +62,14 @@ function ChartIcon({ className }: { className?: string }) {
 
 export function VendorSidebar({ membership }: { membership: VendorMembership }) {
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const partner = membership.partner
+  const partnerId = searchParams.get('partner_id') ?? membership.partner_id
 
   return (
     <aside className="flex w-full shrink-0 flex-col border-gray-200 bg-white md:min-h-screen md:w-64 md:border-r">
       <div className="bg-night px-5 py-6 text-white md:py-8">
-        <Link href="/vendor" className="text-xl font-bold leading-7">
+        <Link href={withPartnerId('/vendor', partnerId)} className="text-xl font-bold leading-7">
           Baha Buddy
         </Link>
         <div className="mt-8 text-sm font-semibold leading-5">Vendor Portal</div>
@@ -74,7 +82,8 @@ export function VendorSidebar({ membership }: { membership: VendorMembership }) 
           return (
             <Link
               key={item.href}
-              href={item.href}
+              href={withPartnerId(item.href, partnerId)}
+              aria-current={active ? 'page' : undefined}
               className={cn(
                 'inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold leading-5 transition-colors',
                 active
@@ -104,10 +113,17 @@ export function VendorSidebar({ membership }: { membership: VendorMembership }) 
   )
 }
 
-export function VendorPartnerSwitcher({ memberships }: { memberships: VendorMembership[] }) {
+export function VendorPartnerSwitcher({
+  memberships,
+  activePartnerId: resolvedPartnerId,
+}: {
+  memberships: VendorMembership[]
+  activePartnerId?: string
+}) {
   const router = useRouter()
+  const pathname = usePathname()
   const searchParams = useSearchParams()
-  const activePartnerId = searchParams.get('partner_id') ?? memberships[0]?.partner_id ?? ''
+  const activePartnerId = searchParams.get('partner_id') ?? resolvedPartnerId ?? memberships[0]?.partner_id ?? ''
 
   if (memberships.length <= 1) {
     const partner = memberships[0]?.partner
@@ -126,7 +142,8 @@ export function VendorPartnerSwitcher({ memberships }: { memberships: VendorMemb
         onChange={(event) => {
           const params = new URLSearchParams(searchParams.toString())
           params.set('partner_id', event.target.value)
-          router.push(`/vendor?${params.toString()}`)
+          // Stay on the current section; middleware remembers the partner.
+          router.push(`${pathname || '/vendor'}?${params.toString()}`)
         }}
         className="min-h-11 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold leading-5 text-night outline-none focus:border-brand-600 focus:ring-4 focus:ring-brand-50"
       >

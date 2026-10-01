@@ -90,7 +90,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (isIslandSlug(slug)) {
     const name = getIslandDisplayName(slug)
     return {
-      title: `Best Restaurants in ${name} Bahamas | Baha Buddy`,
+      title: `Best Restaurants in ${name} Bahamas`,
       description: `Top-rated restaurants in ${name}, Bahamas. Browse by cuisine, rating, and price level with TripAdvisor reviews.`,
       alternates: { canonical: `/restaurants/${slug}` },
       openGraph: {
@@ -101,16 +101,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   }
 
   const restaurant = await getRestaurantByLocationId(slug)
-  if (!restaurant) return {}
+  if (!restaurant) notFound()
   const cuisine = restaurant.cuisine_types?.[0]
   return {
-    title: `${restaurant.name}${cuisine ? ` — ${formatCuisineLabel(cuisine)}` : ''} in ${restaurant.island_name ?? 'Bahamas'} | Baha Buddy`,
+    title: `${restaurant.name}${cuisine ? ` — ${formatCuisineLabel(cuisine)}` : ''} in ${restaurant.island_name ?? 'Bahamas'}`,
     description: `${restaurant.name}${cuisine ? ` (${formatCuisineLabel(cuisine)})` : ''} in ${restaurant.island_name ?? 'the Bahamas'}. ${restaurant.rating ? `Rated ${restaurant.rating}/5` : ''} ${restaurant.num_reviews ? `(${restaurant.num_reviews} reviews)` : ''}`.trim(),
     alternates: { canonical: `/restaurants/${slug}` },
     openGraph: {
       title: `${restaurant.name} | Baha Buddy`,
       description: `${restaurant.name} restaurant in ${restaurant.island_name ?? 'the Bahamas'}`,
-      images: restaurant.photos?.[0]?.url ? [{ url: restaurant.photos[0].url }] : undefined,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(restaurant.photos?.[0]?.url ? { images: [{ url: restaurant.photos[0].url }] } : {}),
     },
   }
 }
@@ -183,13 +184,8 @@ function IslandListingPage({ slug, islandName, restaurants }: { slug: string; is
         '@type': 'Restaurant',
         name: r.name,
         ...(r.cuisine_types && { servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(', ') }),
-        ...(r.rating && {
-          aggregateRating: {
-            '@type': 'AggregateRating',
-            ratingValue: r.rating,
-            reviewCount: r.num_reviews ?? 0,
-          },
-        }),
+        // No aggregateRating: ratings are Tripadvisor's, and Google's review
+        // snippet rules forbid marking up ratings aggregated by other sites.
       },
     })),
   }
@@ -371,7 +367,8 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
     name: restaurant.name,
     ...(cuisines.length > 0 && { servesCuisine: cuisines.map(formatCuisineLabel).join(', ') }),
     ...(addr && { address: { '@type': 'PostalAddress', streetAddress: restaurant.address?.street1, addressLocality: restaurant.address?.city, addressRegion: restaurant.address?.state, addressCountry: restaurant.address?.country ?? 'BS' } }),
-    ...(restaurant.rating && { aggregateRating: { '@type': 'AggregateRating', ratingValue: restaurant.rating, bestRating: 5, reviewCount: restaurant.num_reviews ?? 0 } }),
+    // Tripadvisor ratings stay visible (with attribution) but are not marked
+    // up as this site's own AggregateRating.
     ...(restaurant.website && { url: restaurant.website }),
     ...(photos.length > 0 && { image: photos.map((p) => p.url) }),
   }
@@ -466,7 +463,7 @@ function RestaurantDetailPage({ restaurant, similar }: { restaurant: TripAdvisor
             />
 
             <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 uppercaser">Details</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercase">Details</h3>
               {restaurant.island_name && <div><p className="text-xs text-gray-400 font-medium">Location</p><p className="text-sm text-gray-700 font-medium">{restaurant.island_name}, Bahamas</p></div>}
               {addr && <div><p className="text-xs text-gray-400 font-medium">Address</p><p className="text-sm text-gray-700">{addr}</p></div>}
               {restaurant.price_level && <div><p className="text-xs text-gray-400 font-medium">Price level</p><PriceLevelDisplay level={restaurant.price_level} /></div>}

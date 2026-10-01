@@ -9,9 +9,8 @@ import {
  * Tests for chat-utils.
  *
  * parseCardsFromContent extracts JSON card fences embedded in Claude's
- * streamed prose. The fence shape is documented in chat-tools.ts —
- * the regex accepts both ```card-data and ```json fenced blocks
- * containing an object with card_type or cards.
+ * streamed prose. Only ```card-data fenced blocks containing an object
+ * with card_type or cards are parsed (the old ```json alias is gone).
  *
  * deriveTitleFromMessage powers the chat-thread sidebar — it must
  * never produce an empty string (would render as a blank thread row).
@@ -47,11 +46,11 @@ describe('parseCardsFromContent', () => {
     expect(result.text).toContain('It is on Paradise Island');
   });
 
-  test('also accepts ```json fences (legacy alias)', () => {
+  test('ignores ```json fences (only ```card-data is a card block)', () => {
     const input = '```json\n{"card_type":"flight","route":"MIA → NAS"}\n```';
     const result = parseCardsFromContent(input);
-    expect(result.cards).toHaveLength(1);
-    expect(result.cards[0].card_type).toBe('flight');
+    expect(result.cards).toHaveLength(0);
+    expect(result.text).toContain('MIA → NAS');
   });
 
   test('extracts multiple fences and preserves order', () => {

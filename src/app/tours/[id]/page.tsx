@@ -86,10 +86,10 @@ const DIFFICULTY_COLORS: Record<string, string> = {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const tour = await getTour(params.id)
-  if (!tour) return {}
+  if (!tour) notFound()
 
   return {
-    title: `${tour.title} — Self-Guided Tour | Baha Buddy`,
+    title: `${tour.title} — Self-Guided Tour`,
     description: `Explore ${tour.island} with this ${tour.theme ?? 'self-guided'} walking tour. ${tour.estimated_duration ? formatDuration(tour.estimated_duration) + ' estimated.' : ''}`,
   }
 }

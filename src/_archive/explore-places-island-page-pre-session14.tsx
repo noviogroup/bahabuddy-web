@@ -315,15 +315,15 @@ export default async function IslandDetailPage({ params }: PageProps) {
         {/* Quick stats */}
         <div className="grid grid-cols-3 gap-4 mb-10 bg-brand-50 rounded-2xl p-6">
           <div className="text-center">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Best Time</p>
+            <p className="text-xs text-gray-500 font-medium uppercaser mb-1">Best Time</p>
             <p className="text-sm md:text-base font-semibold text-gray-900">{bestTime}</p>
           </div>
           <div className="text-center border-x border-brand-100">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Vibe</p>
+            <p className="text-xs text-gray-500 font-medium uppercaser mb-1">Vibe</p>
             <p className="text-sm md:text-base font-semibold text-gray-900">{vibe}</p>
           </div>
           <div className="text-center">
-            <p className="text-xs text-gray-500 font-medium uppercase tracking-wider mb-1">Avg Trip</p>
+            <p className="text-xs text-gray-500 font-medium uppercaser mb-1">Avg Trip</p>
             <p className="text-sm md:text-base font-semibold text-gray-900">{tripLength}</p>
           </div>
         </div>

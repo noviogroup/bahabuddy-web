@@ -29,7 +29,7 @@ describe('IslandFilterSelect', () => {
     expect(container.querySelector('select:not(.sr-only)')).toBeNull()
     expect(screen.getByLabelText('Island')).toHaveValue('')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Island menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Island: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Exuma' }))
 
     expect(navigationMocks.push).toHaveBeenCalledWith('/destinations?category=Beach&island=Exuma')
@@ -44,7 +44,7 @@ describe('IslandFilterSelect', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Island menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Island: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'All islands' }))
 
     expect(navigationMocks.push).toHaveBeenCalledWith('/destinations?category=Nature')

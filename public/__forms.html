@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!--
+  Netlify Forms registration skeleton.
+
+  @netlify/plugin-nextjs v5 only detects Netlify Forms in static HTML under
+  public/. The real forms are rendered by App Router pages, so each form is
+  declared here with the same `name` and the same field names. Keep this file
+  in sync with:
+    - src/app/build-my-cruise-day/page.tsx            (baha-buddy-cruise-day-intake)
+    - src/app/concierge-trip-plan/success/page.tsx    (baha-buddy-paid-concierge-details)
+    - src/components/revenue/ConciergeInterestForm.tsx (baha-buddy-concierge-interest)
+    - src/components/revenue/PartnerApplicationForm.tsx (baha-buddy-partner-application)
+    - src/components/revenue/TravelDocumentLeadForm.tsx (baha-buddy-travel-document-lead)
+  tests/app/netlify-forms-skeleton.test.ts checks the names and fields match.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Baha Buddy forms</title>
+  </head>
+  <body>
+    <form name="baha-buddy-cruise-day-intake" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="baha-buddy-cruise-day-intake" />
+      <input name="bot-field" />
+      <input name="selected_itinerary" />
+      <input name="name" />
+      <input name="email" />
+      <input name="ship_name" />
+      <input name="visit_date" />
+      <input name="arrival_time" />
+      <input name="departure_time" />
+      <input name="group_size" />
+      <input name="budget_per_person" />
+      <textarea name="interests"></textarea>
+    </form>
+
+    <form name="baha-buddy-paid-concierge-details" data-netlify="true" hidden>
+      <input type="hidden" name="form-name" value="baha-buddy-paid-concierge-details" />
+      <input name="stripe_session_id" />
+      <input name="offer" />
+      <input name="name" />
+      <input name="email" />
+      <input name="travel_dates" />
+      <input name="group_size" />
+      <input name="budget_range" />
+      <input name="islands" />
+      <textarea name="notes"></textarea>
+    </form>
+
+    <form name="baha-buddy-concierge-interest" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="baha-buddy-concierge-interest" />
+      <input name="bot-field" />
+      <input name="name" />
+      <input name="email" />
+      <input name="offer" />
+      <input name="travel_dates" />
+      <input name="group_size" />
+      <input name="budget_range" />
+      <input name="trip_interests" />
+      <textarea name="notes"></textarea>
+    </form>
+
+    <form name="baha-buddy-partner-application" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="baha-buddy-partner-application" />
+      <input name="bot-field" />
+      <input name="business_name" />
+      <input name="category" />
+      <input name="island_service_area" />
+      <input name="contact_name" />
+      <input name="email" />
+      <input name="phone" />
+      <input name="website_or_social" />
+      <input name="interested_tier" />
+      <input name="booking_method" />
+      <textarea name="description"></textarea>
+    </form>
+
+    <form name="baha-buddy-travel-document-lead" data-netlify="true" netlify-honeypot="bot-field" hidden>
+      <input type="hidden" name="form-name" value="baha-buddy-travel-document-lead" />
+      <input name="bot-field" />
+      <input name="name" />
+      <input name="email" />
+      <input name="nationality" />
+      <input name="lead_type" />
+      <textarea name="notes"></textarea>
+    </form>
+  </body>
+</html>

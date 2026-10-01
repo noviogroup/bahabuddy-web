@@ -147,7 +147,7 @@ function InnerForm({
       </div>
 
       {error && (
-        <div className="rounded-baha-md bg-coral-50 border border-coral-200 px-4 py-3 text-sm text-coral-700">
+        <div role="alert" className="rounded-baha-md bg-coral-50 border border-coral-200 px-4 py-3 text-sm text-coral-700">
           <p className="font-semibold mb-0.5">Payment didn&apos;t go through</p>
           <p>{error}</p>
         </div>

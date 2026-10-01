@@ -6,9 +6,11 @@ import PlacesBrowser from '@/components/PlacesBrowser'
 import { getExplorePlaces } from '@/lib/places'
 
 export const metadata: Metadata = {
-  title: 'Browse Bahamas Places | Baha Buddy',
+  title: 'Browse Bahamas Places',
   description:
     'Search and filter 700+ Bahamas islands, beaches, restaurants, hotels, and activities. Find your perfect spot and plan your trip with AI.',
+  // Filter/sort query strings all canonicalize to the unfiltered listing.
+  alternates: { canonical: '/explore/places' },
   openGraph: {
     title: 'Browse Bahamas Places — Hotels, Restaurants & Beaches | Baha Buddy',
     description: 'Search and filter places across the Bahamas. Powered by Baha Buddy AI.',

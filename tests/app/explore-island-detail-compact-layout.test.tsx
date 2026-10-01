@@ -172,7 +172,7 @@ class MockSupabaseQuery {
 
   select = vi.fn(() => this)
   eq = vi.fn(() => this)
-  ['in'] = vi.fn(() => this)
+  'in' = vi.fn(() => this)
   limit = vi.fn(() => this)
   or = vi.fn(() => this)
   order = vi.fn(() => this)
@@ -235,7 +235,7 @@ describe('Explore island detail compact marketplace layout', () => {
     expect(screen.getByRole('link', { name: 'Browse stays' })).toHaveAttribute('href', expect.stringContaining('checkin='))
     expect(screen.getByRole('link', { name: 'Browse stays' })).toHaveAttribute('href', expect.stringContaining('checkout='))
     expect(screen.getByRole('link', { name: 'Things to do' })).toHaveAttribute('href', '/explore/places?island=The%20Exumas')
-    expect(screen.getByText('Live planning snapshot')).toBeInTheDocument()
+    expect(screen.getByText('Trip planning at a glance')).toBeInTheDocument()
     expect(screen.getByTestId('island-live-feeds')).toHaveClass('mt-5')
     expect(screen.getByText('Weather this week')).toBeInTheDocument()
     expect(screen.getByTestId('weather-forecast-strip')).toHaveClass('grid-cols-7')
@@ -248,7 +248,7 @@ describe('Explore island detail compact marketplace layout', () => {
     expect(screen.getByText(/3 nights/)).toBeInTheDocument()
     expect(screen.getByText('Check live rate')).toBeInTheDocument()
     expect(screen.queryByText('Cached rate pending')).not.toBeInTheDocument()
-    expect(screen.getByText('Restaurant feed is being enriched')).toBeInTheDocument()
+    expect(screen.getByText('More restaurants coming soon')).toBeInTheDocument()
     expect(screen.getByText('Marketplace footer')).toBeInTheDocument()
     expect(supabaseMocks.getStayStartingRates).toHaveBeenCalledWith(expect.objectContaining({
       hotelIds: ['rosewood-baha-mar', 'sls-at-baha-mar'],

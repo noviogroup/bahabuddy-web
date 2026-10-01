@@ -38,6 +38,9 @@ describe('FlightSearchClient marketplace layout', () => {
     const { container } = render(<FlightSearchClient />)
 
     await screen.findByText('No flights found')
+    // The always-mounted live region announces the empty outcome.
+    expect(screen.getByTestId('flight-search-status')).toHaveAttribute('role', 'status')
+    expect(screen.getByTestId('flight-search-status')).toHaveTextContent(/No flight options for .*No flights found/)
     const searchForm = screen.getByRole('form', { name: 'Flight search' })
     expect(searchForm).toBeInTheDocument()
     expect(searchForm).toHaveClass('bg-night')
@@ -71,9 +74,9 @@ describe('FlightSearchClient marketplace layout', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit travelers and cabin' }))
     expect(screen.getByRole('dialog', { name: 'Choose travelers and cabin' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Open Travelers menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Travelers: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: '2 travelers' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Cabin menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cabin: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Business' }))
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
     fireEvent.click(screen.getByRole('button', { name: /Search/ }))
@@ -135,7 +138,7 @@ describe('FlightSearchClient marketplace layout', () => {
     expect(screen.getByRole('listbox')).toBeInTheDocument()
     expect(screen.getByText('Choose Travelers')).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Open Travelers menu' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: /^Travelers: / })).toHaveFocus()
     })
   })
 

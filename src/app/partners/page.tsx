@@ -3,7 +3,7 @@ import UtilityContentLayout from '@/components/marketplace/UtilityContentLayout'
 import PartnerApplicationForm from '@/components/revenue/PartnerApplicationForm'
 
 export const metadata: Metadata = {
-  title: 'Partner with Baha Buddy',
+  title: { absolute: 'Partner with Baha Buddy' },
   description:
     'Invite hotels, tour operators, restaurants, transportation providers, and island stakeholders to join the Baha Buddy travel ecosystem.',
 }

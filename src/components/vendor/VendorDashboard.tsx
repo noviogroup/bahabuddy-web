@@ -2,6 +2,10 @@ import Link from 'next/link'
 import type { VendorDashboardData, VendorListing, VendorPerformance } from '@/lib/vendor-portal'
 import { StatusPill } from './VendorPortalShell'
 
+function partnerHref(href: string, partnerId?: string | null) {
+  return partnerId ? `${href}?${new URLSearchParams({ partner_id: partnerId }).toString()}` : href
+}
+
 function formatCurrency(value: number) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(value || 0)
 }
@@ -43,7 +47,7 @@ export function VendorMetrics({ performance, listingsCount }: { performance: Ven
   )
 }
 
-export function VendorLinkedListingsTable({ listings, compact = false }: { listings: VendorListing[]; compact?: boolean }) {
+export function VendorLinkedListingsTable({ listings, compact = false, partnerId }: { listings: VendorListing[]; compact?: boolean; partnerId?: string }) {
   const rows = compact ? listings.slice(0, 5) : listings
 
   return (
@@ -51,7 +55,7 @@ export function VendorLinkedListingsTable({ listings, compact = false }: { listi
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
         <h2 className="text-base font-bold leading-6 text-night">Linked listings</h2>
         {compact ? (
-          <Link href="/vendor/listings" className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold leading-5 text-brand-700 hover:bg-brand-50">
+          <Link href={partnerHref('/vendor/listings', partnerId)} className="rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold leading-5 text-brand-700 hover:bg-brand-50">
             View all listings
           </Link>
         ) : null}
@@ -127,18 +131,18 @@ export function PendingReviewList({ items }: { items: VendorDashboardData['pendi
   )
 }
 
-export function QuickActions() {
+export function QuickActions({ partnerId }: { partnerId?: string } = {}) {
   return (
     <div className="min-w-0 rounded-lg border border-gray-200 bg-white p-4 shadow-soft">
       <h2 className="text-base font-bold leading-6 text-night">Quick actions</h2>
       <div className="mt-4 grid gap-3">
-        <Link href="/vendor/profile" className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-bold leading-5 text-white hover:bg-brand-700">
+        <Link href={partnerHref('/vendor/profile', partnerId)} className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-4 text-sm font-bold leading-5 text-white hover:bg-brand-700">
           Submit profile update
         </Link>
-        <Link href="/vendor/media" className="inline-flex min-h-11 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold leading-5 text-night hover:bg-gray-50">
+        <Link href={partnerHref('/vendor/media', partnerId)} className="inline-flex min-h-11 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold leading-5 text-night hover:bg-gray-50">
           Upload photos
         </Link>
-        <Link href="/vendor/deals" className="inline-flex min-h-11 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold leading-5 text-night hover:bg-gray-50">
+        <Link href={partnerHref('/vendor/deals', partnerId)} className="inline-flex min-h-11 items-center rounded-lg border border-gray-200 bg-white px-4 text-sm font-bold leading-5 text-night hover:bg-gray-50">
           Propose deal
         </Link>
       </div>
@@ -151,10 +155,10 @@ export function VendorOverview({ data }: { data: VendorDashboardData }) {
     <div className="grid min-w-0 gap-6 xl:grid-cols-[1fr_20rem]">
       <div className="min-w-0 space-y-6">
         <VendorMetrics performance={data.performance} listingsCount={data.listings.length} />
-        <VendorLinkedListingsTable listings={data.listings} compact />
+        <VendorLinkedListingsTable listings={data.listings} compact partnerId={data.membership.partner_id} />
       </div>
       <div className="min-w-0 space-y-6">
-        <QuickActions />
+        <QuickActions partnerId={data.membership.partner_id} />
         <PendingReviewList items={data.pendingSubmissions} />
       </div>
     </div>

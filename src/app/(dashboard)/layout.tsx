@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
 import { DashboardShell } from '@/components/dashboard'
 import AnalyticsIdentify from '@/components/AnalyticsIdentify'
+import { getSafeRelativePath, PATHNAME_HEADER } from '@/lib/safe-redirect'
 
 /**
  * (dashboard) — authenticated layout group.
@@ -38,6 +40,9 @@ import AnalyticsIdentify from '@/components/AnalyticsIdentify'
  * there. Previously this check lived in /dashboard/page.tsx — moving it
  * here means /trip/[id] etc. also enforce the same gate, which prevents
  * users from deep-linking into a trip page before finishing setup.
+ * The current path (set by middleware as x-baha-pathname) is forwarded as
+ * ?next= / ?redirect= so login and onboarding return the user to where they
+ * were going (e.g. checkout). A missing users row counts as not onboarded.
  */
 export default async function DashboardGroupLayout({
   children,
@@ -46,23 +51,28 @@ export default async function DashboardGroupLayout({
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const currentPath = getSafeRelativePath(headers().get(PATHNAME_HEADER))
+  if (!user) {
+    redirect(currentPath ? `/login?redirect=${encodeURIComponent(currentPath)}` : '/login')
+  }
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileError } = await supabase
     .from('users')
     .select('onboarding_completed, display_name')
     .eq('id', user.id)
-    .single()
+    .maybeSingle()
 
-  if (profile && !profile.onboarding_completed) redirect('/onboarding')
+  // Missing row (signup trigger failed) is treated as not onboarded; the
+  // onboarding flow creates it. A transient read error does not gate.
+  if (!profileError && !profile?.onboarding_completed) {
+    redirect(currentPath && currentPath !== '/dashboard'
+      ? `/onboarding?next=${encodeURIComponent(currentPath)}`
+      : '/onboarding')
+  }
 
   return (
     <>
-      <AnalyticsIdentify
-        userId={user.id}
-        email={user.email ?? undefined}
-        displayName={profile?.display_name ?? undefined}
-      />
+      <AnalyticsIdentify userId={user.id} />
       <DashboardShell
         userEmail={user.email ?? undefined}
         displayName={profile?.display_name ?? undefined}

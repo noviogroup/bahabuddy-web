@@ -14,6 +14,7 @@ import TrackView from '@/components/TrackView'
 import { getIslandConfig } from '@/lib/island-config'
 import { getExplorePlaceById, getRelatedExplorePlaces } from '@/lib/places'
 import type { PublicPlace } from '@/lib/place-types'
+import { photoSourceLabel, toPublicPhotoUrl } from '@/lib/provider-photo-url'
 
 export const revalidate = 300
 
@@ -59,7 +60,14 @@ async function getPlacePhotos(placeId: string): Promise<PlacePhoto[]> {
       .eq('place_id', placeId)
       .order('sort_order', { ascending: true })
       .limit(12)
-    return (data as PlacePhoto[]) ?? []
+    // Provider photo URLs may embed a server-side API key; rewrite or drop
+    // them before they can reach public HTML.
+    return ((data as PlacePhoto[]) ?? []).flatMap((photo) => {
+      const url = toPublicPhotoUrl(photo.url)
+      const thumbnail = toPublicPhotoUrl(photo.thumbnail_url)
+      if (!url && !thumbnail) return []
+      return [{ ...photo, url: (url ?? thumbnail) as string, thumbnail_url: thumbnail }]
+    })
   } catch {
     return []
   }
@@ -85,7 +93,7 @@ async function getSimilarPlaces(place: PlaceDetail): Promise<SimilarPlace[]> {
     name: candidate.name,
     category: candidate.category,
     island: candidate.island,
-    image_url: candidate.image_url,
+    image_url: toPublicPhotoUrl(candidate.image_url),
     rating: candidate.rating,
     detail_href: candidate.detail_href,
   }))
@@ -97,16 +105,20 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const place = await getPlace(params.id)
-  if (!place) return {}
+  // Resolve 404 during metadata so the response status is a real 404 even
+  // though the root loading.tsx streams the page shell.
+  if (!place) notFound()
   const desc = place.short_description || place.description
+  const shareImage = toPublicPhotoUrl(place.image_url)
   return {
-    title: `${place.name} — ${place.island ?? 'Bahamas'} | Baha Buddy`,
+    title: `${place.name} — ${place.island ?? 'Bahamas'}`,
     description: desc.slice(0, 160),
     alternates: { canonical: place.detail_href ?? `/explore/places/${params.id}` },
     openGraph: {
       title: `${place.name} | Baha Buddy`,
       description: desc.slice(0, 160),
-      images: place.image_url ? [{ url: place.image_url }] : undefined,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(shareImage ? { images: [{ url: shareImage }] } : {}),
     },
   }
 }
@@ -182,7 +194,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
   const hasAmenities = amenities.length > 0
   const hasTravelerNotes = (place.pros?.length ?? 0) > 0 || (place.cons?.length ?? 0) > 0
   const tripItemType = categoryToTripItem(place.category)
-  const primaryImageUrl = place.image_url ?? photos[0]?.url ?? null
+  const primaryImageUrl = toPublicPhotoUrl(place.image_url) ?? photos[0]?.url ?? null
   const islandLabel = displayIslandName(place.island)
   const islandHref = islandDetailHref(place.island)
   const categoryLabel = formatLabel(place.category)
@@ -262,13 +274,13 @@ export default async function PlaceDetailPage({ params }: PageProps) {
           <div className="lg:col-span-2 space-y-10">
             <section><h2 className="text-xl font-bold text-gray-900 mb-3">About</h2><p className="text-gray-600 text-base leading-relaxed">{place.description}</p></section>
 
-            {photos.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{photos.map((photo, idx) => <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100"><Image src={photo.thumbnail_url || photo.url} alt={photo.caption || `${place.name} — photo ${idx + 1}`} fill className="object-cover hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 33vw" unoptimized />{photo.caption && <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3"><p className="text-white text-xs">{photo.caption}</p></div>}</div>)}</div></section>}
+            {photos.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Photos</h2><div className="grid grid-cols-2 md:grid-cols-3 gap-3">{photos.map((photo, idx) => <div key={photo.id} className="relative aspect-square rounded-2xl overflow-hidden bg-stone-100"><Image src={photo.thumbnail_url || photo.url} alt={photo.caption || `${place.name} — photo ${idx + 1}`} fill className="object-cover hover:scale-105 transition-transform duration-500" sizes="(max-width: 768px) 50vw, 33vw" unoptimized />{(photo.caption || photoSourceLabel(photo.source)) && <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent p-3">{photo.caption && <p className="text-white text-xs">{photo.caption}</p>}{photoSourceLabel(photo.source) && <p className="text-white/80 text-xs">Photo: {photoSourceLabel(photo.source)}</p>}</div>}</div>)}</div></section>}
 
             {hasAmenities && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Amenities</h2><div className="grid grid-cols-2 sm:grid-cols-3 gap-3">{amenities.map((amenity) => <div key={amenity} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl"><span className="text-sm font-medium text-gray-700 capitalize">{amenity}</span></div>)}</div></section>}
 
             {hasTravelerNotes && <section><h2 className="text-xl font-bold text-gray-900 mb-4">What travelers say</h2><div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{place.pros && place.pros.length > 0 && <div className="rounded-2xl p-5 border border-gray-200 bg-white shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">What works well</h3><ul className="space-y-2">{place.pros.map((pro, i) => <li key={i} className="flex items-start gap-2 text-sm text-charcoal">{pro}</li>)}</ul></div>}{place.cons && place.cons.length > 0 && <div className="rounded-2xl p-5 border border-gray-200 bg-white shadow-sm"><h3 className="text-sm font-bold text-gray-900 mb-3">Good to know</h3><ul className="space-y-2">{place.cons.map((con, i) => <li key={i} className="flex items-start gap-2 text-sm text-charcoal">{con}</li>)}</ul></div>}</div></section>}
 
-            {reviews.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Review scores</h2><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{reviews.map((r) => <div key={r.id} className="rounded-2xl border border-gray-200 bg-white p-5 text-center shadow-sm"><p className="text-xs font-semibold text-gray-400 uppercaser mb-2">{r.platform}</p>{r.rating != null && <p className="text-3xl font-bold text-gray-900">{r.rating.toFixed(1)}</p>}{r.review_count != null && <p className="text-xs text-gray-400 mt-1">{r.review_count} reviews</p>}{r.summary && <p className="text-sm text-gray-500 mt-3 leading-relaxed">{r.summary}</p>}</div>)}</div></section>}
+            {reviews.length > 0 && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Review scores</h2><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">{reviews.map((r) => <div key={r.id} className="rounded-2xl border border-gray-200 bg-white p-5 text-center shadow-sm"><p className="text-xs font-semibold text-gray-400 uppercase mb-2">{photoSourceLabel(r.platform) ?? r.platform} rating</p>{r.rating != null && <p className="text-3xl font-bold text-gray-900">{r.rating.toFixed(1)}</p>}{r.review_count != null && <p className="text-xs text-gray-400 mt-1">{r.review_count} reviews</p>}{r.summary && <p className="text-sm text-gray-500 mt-3 leading-relaxed">{r.summary}</p>}</div>)}</div></section>}
 
             {googleMapsEmbedKey && hasLocation && <section><h2 className="text-xl font-bold text-gray-900 mb-4">Location</h2><div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-video"><iframe title={`Map of ${place.name}`} width="100%" height="100%" style={{ border: 0 }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsEmbedKey)}&q=${place.latitude},${place.longitude}&zoom=14`} /></div><div className="mt-3"><a href={`https://www.google.com/maps/dir/?api=1&destination=${place.latitude},${place.longitude}`} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:text-brand-700 font-medium">Get directions</a></div></section>}
           </div>
@@ -308,7 +320,7 @@ export default async function PlaceDetailPage({ params }: PageProps) {
             />
 
             <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 uppercaser">Details</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercase">Details</h3>
               {place.island && <div><p className="text-xs text-gray-400 font-medium">Location</p>{islandHref ? <Link href={islandHref} className="text-sm text-brand-600 hover:text-brand-700 font-medium">{islandLabel ?? place.island}, Bahamas</Link> : <p className="text-sm text-gray-700 font-medium">{islandLabel ?? place.island}, Bahamas</p>}</div>}
               {place.phone && <div><p className="text-xs text-gray-400 font-medium">Phone</p><a href={`tel:${place.phone}`} className="text-sm text-gray-700 hover:text-brand-600">{place.phone}</a></div>}
               {place.website && <div><p className="text-xs text-gray-400 font-medium">Website</p><a href={place.website} target="_blank" rel="noopener noreferrer" className="text-sm text-brand-600 hover:text-brand-700 font-medium break-all">Visit website →</a></div>}
@@ -316,9 +328,9 @@ export default async function PlaceDetailPage({ params }: PageProps) {
               {place.tripadvisor_url && <div><p className="text-xs text-gray-400 font-medium">TripAdvisor</p><a href={place.tripadvisor_url} target="_blank" rel="noopener noreferrer" className="text-sm text-emerald-600 hover:text-emerald-700 font-medium inline-flex items-center gap-1 mt-1">View on TripAdvisor →</a></div>}
             </div>
 
-            {place.hours && Object.keys(place.hours).length > 0 && <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm"><h3 className="text-sm font-bold text-gray-900 uppercaser mb-3">Hours</h3><div className="space-y-2">{Object.entries(place.hours).map(([day, time]) => <div key={day} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{DAY_LABELS[day.toLowerCase()] ?? day}</span><span className="text-gray-700">{time}</span></div>)}</div></div>}
+            {place.hours && Object.keys(place.hours).length > 0 && <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm"><h3 className="text-sm font-bold text-gray-900 uppercase mb-3">Hours</h3><div className="space-y-2">{Object.entries(place.hours).map(([day, time]) => <div key={day} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{DAY_LABELS[day.toLowerCase()] ?? day}</span><span className="text-gray-700">{time}</span></div>)}</div></div>}
 
-            {place.tags && place.tags.length > 0 && <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm"><h3 className="text-sm font-bold text-gray-900 uppercaser mb-3">Tags</h3><div className="flex flex-wrap gap-2">{place.tags.map((tag) => <span key={tag} className="text-xs bg-white text-gray-600 rounded-full px-3 py-1 border border-gray-200 font-medium">{tag}</span>)}</div></div>}
+            {place.tags && place.tags.length > 0 && <div className="rounded-baha-xl border border-gray-200 bg-white p-5 shadow-sm"><h3 className="text-sm font-bold text-gray-900 uppercase mb-3">Tags</h3><div className="flex flex-wrap gap-2">{place.tags.map((tag) => <span key={tag} className="text-xs bg-white text-gray-600 rounded-full px-3 py-1 border border-gray-200 font-medium">{tag}</span>)}</div></div>}
           </aside>
         </div>
 

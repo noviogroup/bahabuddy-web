@@ -1,5 +1,9 @@
 import "server-only";
-import { createClient } from "@/lib/supabase/server";
+import { unstable_cache } from "next/cache";
+// Public catalog reads use the cookie-free anon client so /stays and
+// /stays/[hotelId] can be statically cached (ISR) and wrapped in
+// unstable_cache. Every table read here is public-RLS catalog data.
+import { createPublicClient as createClient } from "@/lib/supabase/public";
 import { callTravelProvider } from "@/lib/travel-booking/provider";
 import {
   getStayTypeFilterOptions,
@@ -176,6 +180,49 @@ function providerData(value: unknown): unknown {
   return record.data ?? value;
 }
 
+/** Display-only provider lookups must never hold SSR hostage. */
+export const DISPLAY_PROVIDER_TIMEOUT_MS = 4000;
+const HOTEL_PHOTO_CACHE_SECONDS = 60 * 60 * 24;
+const HOTEL_FILTER_OPTIONS_CACHE_SECONDS = 60 * 60 * 6;
+
+/**
+ * Rejects when `promise` has not settled within `ms`. callTravelProvider does
+ * not accept an AbortSignal yet, so this bounds how long a render waits; the
+ * underlying request is simply abandoned.
+ */
+export function withProviderTimeout<T>(
+  promise: Promise<T>,
+  ms = DISPLAY_PROVIDER_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Provider lookup timed out after ${ms}ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+// Throws on provider failure so unstable_cache never stores a transient
+// error as an empty gallery for 24 hours.
+const getCachedLiveHotelPhotoUrls = unstable_cache(
+  async (hotelId: string, limit: number): Promise<string[]> => {
+    const result = await withProviderTimeout(
+      callTravelProvider(
+        `/data/hotel?hotelId=${encodeURIComponent(hotelId)}`,
+        null,
+        { method: "GET" },
+      ),
+    );
+    return extractHotelImageUrls(providerData(result.data), limit);
+  },
+  ["hotel-live-photo-urls"],
+  { revalidate: HOTEL_PHOTO_CACHE_SECONDS, tags: ["hotels", "hotel-photos"] },
+);
+
 export async function getLiveHotelPhotoUrls(
   hotelId: string,
   limit = 30,
@@ -183,13 +230,7 @@ export async function getLiveHotelPhotoUrls(
   if (!hotelId) return [];
 
   try {
-    const result = await callTravelProvider(
-      `/data/hotel?hotelId=${encodeURIComponent(hotelId)}`,
-      null,
-      { method: "GET" },
-    );
-
-    return extractHotelImageUrls(providerData(result.data), limit);
+    return await getCachedLiveHotelPhotoUrls(hotelId, limit);
   } catch {
     return [];
   }
@@ -216,10 +257,12 @@ async function getLiveHotelReviews(
   if (!hotelId) return [];
 
   try {
-    const result = await callTravelProvider(
-      `/data/reviews?hotelId=${encodeURIComponent(hotelId)}&limit=${Math.max(limit, 5)}`,
-      null,
-      { method: "GET" },
+    const result = await withProviderTimeout(
+      callTravelProvider(
+        `/data/reviews?hotelId=${encodeURIComponent(hotelId)}&limit=${Math.max(limit, 5)}`,
+        null,
+        { method: "GET" },
+      ),
     );
     const data = providerData(result.data);
     const reviews = Array.isArray(data) ? data : [];
@@ -292,7 +335,7 @@ export async function getHotels(filters?: {
   sort?: "rating" | "stars";
 }): Promise<Hotel[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
     let query = supabase
       .from("hotels")
       .select(BROWSE_FIELDS)
@@ -360,7 +403,7 @@ export async function getHotels(filters?: {
 
 export async function getFeaturedStayHotels(limit = 6): Promise<Hotel[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("hotels")
       .select(BROWSE_FIELDS)
@@ -417,31 +460,45 @@ export async function getStayStartingRates(input: {
   ).slice(0, input.limit ?? 24);
   if (hotelIds.length === 0) return new Map();
 
-  const rates = new Map<string, HotelStartingRate>();
+  const chunks: string[][] = [];
   for (let i = 0; i < hotelIds.length; i += HOTEL_RATE_LOOKUP_CHUNK_SIZE) {
-    const chunk = hotelIds.slice(i, i + HOTEL_RATE_LOOKUP_CHUNK_SIZE);
-    try {
-      const result = await callTravelProvider("/hotels/rates", {
-        hotelIds: chunk,
-        checkin: input.checkin,
-        checkout: input.checkout,
-        occupancies: [
-          {
-            adults: Math.max(1, input.adults ?? 2),
-            ...(input.children && input.children > 0
-              ? { children: Array.from({ length: input.children }, () => 10) }
-              : {}),
-          },
-        ],
-        currency: (input.currency ?? "USD").toUpperCase(),
-        guestNationality: (input.guestNationality ?? "US").toUpperCase(),
-      });
+    chunks.push(hotelIds.slice(i, i + HOTEL_RATE_LOOKUP_CHUNK_SIZE));
+  }
 
-      for (const rate of shapeHotelStartingRates(result.data, nights)) {
-        rates.set(rate.hotelId, rate);
-      }
-    } catch {
-      continue;
+  // Chunks run in parallel (not back-to-back) and each is bounded by a
+  // timeout; a failed or slow chunk just leaves those hotels without a badge.
+  const settled = await Promise.allSettled(
+    chunks.map((chunk) =>
+      withProviderTimeout(
+        callTravelProvider("/hotels/rates", {
+          hotelIds: chunk,
+          checkin: input.checkin,
+          checkout: input.checkout,
+          occupancies: [
+            {
+              adults: Math.max(1, input.adults ?? 2),
+              ...(input.children && input.children > 0
+                ? {
+                    children: Array.from(
+                      { length: input.children },
+                      () => 10,
+                    ),
+                  }
+                : {}),
+            },
+          ],
+          currency: (input.currency ?? "USD").toUpperCase(),
+          guestNationality: (input.guestNationality ?? "US").toUpperCase(),
+        }),
+      ),
+    ),
+  );
+
+  const rates = new Map<string, HotelStartingRate>();
+  for (const outcome of settled) {
+    if (outcome.status !== "fulfilled") continue;
+    for (const rate of shapeHotelStartingRates(outcome.value.data, nights)) {
+      rates.set(rate.hotelId, rate);
     }
   }
 
@@ -531,16 +588,31 @@ function compareHotelsForFeatured(a: Hotel, b: Hotel): number {
   );
 }
 
-export async function getAmenityOptions(limit = 12): Promise<string[]> {
-  try {
-    const supabase = await createClient();
+// Filter facets change only when the hotel seeder runs, so they are cached
+// for hours instead of re-scanning the hotels table on every /stays request.
+// Loaders throw on Supabase errors so a transient failure is never cached.
+function hotelFacetCache<Args extends unknown[], T>(
+  key: string,
+  loader: (...args: Args) => Promise<T>,
+) {
+  return unstable_cache(loader, [key], {
+    revalidate: HOTEL_FILTER_OPTIONS_CACHE_SECONDS,
+    tags: ["hotels", "hotel-filter-options"],
+  });
+}
+
+const getCachedAmenityOptions = hotelFacetCache(
+  "hotel-amenity-options",
+  async (limit: number): Promise<string[]> => {
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("hotels")
       .select("amenities")
       .eq("is_active", true)
       .not("amenities", "is", null)
       .limit(500);
-    if (error || !data) return [];
+    if (error) throw error;
+    if (!data) return [];
 
     const counts = new Map<string, { label: string; count: number }>();
     for (const row of data as Array<{ amenities: unknown }>) {
@@ -563,6 +635,12 @@ export async function getAmenityOptions(limit = 12): Promise<string[]> {
       .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
       .slice(0, limit)
       .map((item) => item.label);
+  },
+);
+
+export async function getAmenityOptions(limit = 12): Promise<string[]> {
+  try {
+    return await getCachedAmenityOptions(limit);
   } catch {
     return [];
   }
@@ -570,7 +648,7 @@ export async function getAmenityOptions(limit = 12): Promise<string[]> {
 
 export async function getHotelById(hotelId: string): Promise<Hotel | null> {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from("hotels")
       .select("*")
@@ -588,7 +666,7 @@ export async function getHotelReviews(
   limit = 4,
 ): Promise<HotelReview[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data, error } = await supabase
       .from(CACHED_PLACE_REVIEW_TABLE)
       .select("author_name, rating, text, time")
@@ -641,7 +719,7 @@ export async function getSimilarHotels(
   if (!hotel.island) return [];
 
   try {
-    const supabase = await createClient();
+    const supabase = createClient();
     const { data } = await supabase
       .from("hotels")
       .select(BROWSE_FIELDS)
@@ -656,31 +734,39 @@ export async function getSimilarHotels(
   }
 }
 
-export async function getIslandOptions(): Promise<string[]> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
+const getCachedIslandOptions = hotelFacetCache(
+  "hotel-island-options",
+  async (): Promise<string[]> => {
+    const supabase = createClient();
+    const { data, error } = await supabase
       .from("hotels")
       .select("island")
       .eq("is_active", true)
       .not("island", "is", null);
+    if (error) throw error;
     if (!data) return [];
-    const unique = Array.from(
+    return Array.from(
       new Set(
         data
           .map((r) => stayIslandFilterLabel(r.island as string | null))
           .filter(Boolean),
       ),
     ).sort();
-    return unique;
+  },
+);
+
+export async function getIslandOptions(): Promise<string[]> {
+  try {
+    return await getCachedIslandOptions();
   } catch {
     return [];
   }
 }
 
-export async function getCityOptions(island?: string): Promise<string[]> {
-  try {
-    const supabase = await createClient();
+const getCachedCityOptions = hotelFacetCache(
+  "hotel-city-options",
+  async (island: string): Promise<string[]> => {
+    const supabase = createClient();
     let query = supabase
       .from("hotels")
       .select("city")
@@ -691,7 +777,8 @@ export async function getCityOptions(island?: string): Promise<string[]> {
       query = query.or(islandAliasOrFilter("island", island));
     }
 
-    const { data } = await query;
+    const { data, error } = await query;
+    if (error) throw error;
     if (!data) return [];
     return Array.from(
       new Set(
@@ -701,18 +788,26 @@ export async function getCityOptions(island?: string): Promise<string[]> {
           .filter(Boolean),
       ),
     ).sort();
+  },
+);
+
+export async function getCityOptions(island?: string): Promise<string[]> {
+  try {
+    return await getCachedCityOptions(island ?? "");
   } catch {
     return [];
   }
 }
 
-export async function getPropertyTypes(): Promise<string[]> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
+const getCachedPropertyTypes = hotelFacetCache(
+  "hotel-property-type-options",
+  async (): Promise<string[]> => {
+    const supabase = createClient();
+    const { data, error } = await supabase
       .from("hotels")
       .select("property_type_id, property_type_name")
       .eq("is_active", true);
+    if (error) throw error;
     if (!data) return [];
     const unique = Array.from(
       new Set(
@@ -727,6 +822,12 @@ export async function getPropertyTypes(): Promise<string[]> {
       ),
     ).sort();
     return getStayTypeFilterOptions(unique);
+  },
+);
+
+export async function getPropertyTypes(): Promise<string[]> {
+  try {
+    return await getCachedPropertyTypes();
   } catch {
     return getStayTypeFilterOptions([]);
   }

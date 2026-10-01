@@ -1,6 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { User } from '@supabase/supabase-js'
+import { cookies } from 'next/headers'
+import { VENDOR_PARTNER_COOKIE } from '@/lib/vendor-partner-cookie'
 
 export type VendorRole = 'owner' | 'editor' | 'viewer'
 export type VendorAccessStatus = 'active' | 'disabled'
@@ -59,6 +61,45 @@ export type VendorPortalState =
 export type VendorAccessResult =
   | { ok: true; user: User; membership: VendorMembership; memberships: VendorMembership[] }
   | { ok: false; status: 401 | 403 | 503; code: string; message: string; state?: VendorPortalState }
+
+const ROLE_RANK: Record<VendorRole, number> = { viewer: 0, editor: 1, owner: 2 }
+
+/** True when `role` is at least `minRole` (viewer < editor < owner). */
+export function vendorRoleAllows(role: VendorRole, minRole: VendorRole): boolean {
+  return ROLE_RANK[role] >= ROLE_RANK[minRole]
+}
+
+/** Roles that may submit profile, deal and photo changes. */
+export const VENDOR_SUBMIT_ROLE: VendorRole = 'editor'
+
+/**
+ * The remembered active partner (cookie set by middleware from ?partner_id=).
+ * Only a preference: callers still resolve it against active memberships.
+ */
+export function getPreferredVendorPartnerId(): string | null {
+  try {
+    return cookies().get(VENDOR_PARTNER_COOKIE)?.value ?? null
+  } catch {
+    return null // outside a request scope (tests, scripts)
+  }
+}
+
+/**
+ * Picks the membership for an explicit partner_id (strict: must be owned),
+ * otherwise the remembered partner if still active, otherwise the first.
+ */
+export function resolveVendorMembership(
+  memberships: VendorMembership[],
+  requestedPartnerId?: string | null,
+  preferredPartnerId?: string | null,
+): VendorMembership | null {
+  if (requestedPartnerId) return chooseVendorMembership(memberships, requestedPartnerId)
+  if (preferredPartnerId) {
+    const preferred = chooseVendorMembership(memberships, preferredPartnerId)
+    if (preferred) return preferred
+  }
+  return chooseVendorMembership(memberships)
+}
 
 export type VendorListing = {
   id: string
@@ -215,6 +256,7 @@ export async function getVendorPortalState(): Promise<VendorPortalState> {
 
 export async function requireActiveVendorAccess(
   requestedPartnerId?: string | null,
+  options: { minRole?: VendorRole } = {},
 ): Promise<VendorAccessResult> {
   const state = await getVendorPortalState()
   if (state.kind === 'unauthenticated') {
@@ -224,13 +266,23 @@ export async function requireActiveVendorAccess(
     return { ok: false, status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Vendor portal service configuration is unavailable.', state }
   }
 
-  const membership = chooseVendorMembership(state.memberships, requestedPartnerId)
+  const membership = resolveVendorMembership(state.memberships, requestedPartnerId, getPreferredVendorPartnerId())
   if (!membership) {
     return {
       ok: false,
       status: 403,
       code: 'VENDOR_ACCESS_REQUIRED',
       message: 'Active partner access is required for the vendor portal.',
+      state,
+    }
+  }
+
+  if (options.minRole && !vendorRoleAllows(membership.role, options.minRole)) {
+    return {
+      ok: false,
+      status: 403,
+      code: 'VENDOR_ROLE_FORBIDDEN',
+      message: 'Your partner role is view-only. Ask a partner owner or editor to submit changes.',
       state,
     }
   }

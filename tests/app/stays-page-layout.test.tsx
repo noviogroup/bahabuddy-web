@@ -204,14 +204,14 @@ describe("StaysPage marketplace layout", () => {
       within(searchForm).getByRole("button", { name: "Choose destination" }),
     ).toHaveTextContent("Paradise Island, Nassau");
     expect(
-      within(searchForm).queryByRole("button", { name: "Open Where to? menu" }),
+      within(searchForm).queryByRole("button", { name: /^Where to: / }),
     ).not.toBeInTheDocument();
     expect(
-      within(searchForm).queryByRole("button", { name: "Open Area menu" }),
+      within(searchForm).queryByRole("button", { name: /^Area: / }),
     ).not.toBeInTheDocument();
     expect(screen.getByLabelText("Stay type")).toHaveValue("Resort");
     expect(
-      within(searchForm).getByRole("button", { name: "Choose stay dates" }),
+      within(searchForm).getByRole("button", { name: /^Choose stay dates: / }),
     ).toHaveTextContent("Aug 1 – Aug 5");
     expect(
       within(searchForm).getByRole("button", {

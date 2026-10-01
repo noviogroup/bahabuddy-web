@@ -4,7 +4,7 @@ import SanityManagedContentPage from '@/components/marketplace/SanityManagedCont
 import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
-  title: 'About Baha Buddy',
+  title: { absolute: 'About Baha Buddy' },
   description:
     'Baha Buddy is an AI-powered Bahamas travel companion by Novio Group. Plan trips, compare stays and flights, and travel with local context.',
 }

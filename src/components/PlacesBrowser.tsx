@@ -442,9 +442,9 @@ function PlaceCard({ place }: { place: Place }) {
 
         {hasAmenities && (
           <div className="flex gap-1.5 mb-3">
-            {amenities.slice(0, 5).map((a) => (
+            {amenities.slice(0, 5).map((a, index) => (
               <span
-                key={a}
+                key={`${a}-${index}`}
                 title={a}
                 className="text-xs font-medium bg-gray-50 text-gray-600 rounded-md px-1.5 py-0.5 capitalize"
               >
@@ -461,8 +461,8 @@ function PlaceCard({ place }: { place: Place }) {
 
         {place.tags && place.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {place.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+            {place.tags.slice(0, 3).map((tag, index) => (
+              <span key={`${tag}-${index}`} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
                 {tag}
               </span>
             ))}

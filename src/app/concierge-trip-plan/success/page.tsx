@@ -7,9 +7,12 @@ import {
   TravelSearchTextarea,
 } from '@/components/marketplace/TravelSearchFields'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
+import { getCheckoutSessionPaymentState } from '@/lib/stripe/checkout-sessions'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Concierge Payment Confirmed',
+  title: 'Concierge Checkout',
   robots: { index: false },
 }
 
@@ -19,23 +22,33 @@ const offerLabels: Record<string, string> = {
   full_planning_support: 'Full Planning Support',
 }
 
-export default function ConciergeSuccessPage({
+export default async function ConciergeSuccessPage({
   searchParams,
 }: {
   searchParams?: { session_id?: string; offer?: string }
 }) {
   const offer = searchParams?.offer ? offerLabels[searchParams.offer] ?? 'Concierge Trip Plan' : 'Concierge Trip Plan'
+  // Never claim success from the URL alone; ask Stripe what actually happened.
+  const paymentState = await getCheckoutSessionPaymentState(searchParams?.session_id)
+  const confirmed = paymentState === 'paid'
+  const header = confirmed
+    ? { eyebrow: 'Payment confirmed', title: `Your ${offer} payment was successful.` }
+    : paymentState === 'unpaid'
+      ? { eyebrow: 'Payment not completed', title: `Your ${offer} payment has not gone through yet.` }
+      : { eyebrow: 'Payment processing', title: `We are confirming your ${offer} payment.` }
 
   return (
     <main className="min-h-screen bg-white">
       <CompactPageHeader
-        eyebrow="Payment confirmed"
-        title={`Your ${offer} payment was successful.`}
-        subtitle="The next step is to send the travel details needed to prepare your plan. Your Stripe confirmation should also be sent to the email used at checkout."
+        eyebrow={header.eyebrow}
+        title={header.title}
+        subtitle={confirmed
+          ? 'The next step is to send the travel details needed to prepare your plan. Your Stripe confirmation should also be sent to the email used at checkout.'
+          : 'You can send your travel details now. The team starts planning once Stripe confirms the payment, and a confirmation will be sent to the email used at checkout.'}
         crumbs={[
           { href: '/', label: 'Home' },
           { href: '/concierge-trip-plan', label: 'Concierge' },
-          { label: 'Payment confirmed' },
+          { label: header.eyebrow },
         ]}
         actions={(
           <>

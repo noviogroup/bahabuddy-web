@@ -75,7 +75,6 @@ export async function POST(request: Request) {
       bookingRecordId: persisted.bookingId,
       price: persisted.amount,
       currency: persisted.currency.toUpperCase(),
-      raw: result.data,
     }, { status: responseStatus })
   } catch (error) {
     const response = getProviderErrorResponse(error)

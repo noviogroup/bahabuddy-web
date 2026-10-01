@@ -298,7 +298,7 @@ describe("HomepageStorySections direct actions", () => {
       screen.getByRole("link", {
         name: "View details for Swimming Pigs Experience",
       }),
-    ).toHaveAttribute("href", "/guides/swimming-pigs-exuma-guide");
+    ).toHaveAttribute("href", "/guides/swimming-pigs-exuma");
   });
 
   test("partner ecosystem uses a visual wheel instead of plain partner boxes", () => {

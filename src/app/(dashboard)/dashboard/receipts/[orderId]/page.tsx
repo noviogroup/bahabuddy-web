@@ -55,7 +55,7 @@ export default async function ReceiptPage({ params }: { params: Params }) {
 
           <div className="grid sm:grid-cols-2 gap-4 text-sm text-charcoal mb-8"><div><span className="font-bold text-night">Order ID:</span> {order.id}</div><div><span className="font-bold text-night">Stripe session:</span> {order.stripe_checkout_session_id || '—'}</div><div><span className="font-bold text-night">Payment intent:</span> {order.stripe_payment_intent_id || '—'}</div><div><span className="font-bold text-night">Source:</span> {order.source || '—'}</div></div>
 
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-charcoal"><p className="font-bold text-night">Thank you for choosing Baha Buddy.</p><p className="mt-2 text-sm leading-relaxed">This receipt confirms your Concierge order payment and is linked to your Baha Buddy account.</p></div>
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-5 text-charcoal"><p className="font-bold text-night">Thank you for choosing Baha Buddy.</p><p className="mt-2 text-sm leading-relaxed">{paid ? 'This receipt confirms your Concierge order payment and is linked to your Baha Buddy account.' : 'No payment has been confirmed for this order yet. This summary is linked to your Baha Buddy account.'}</p></div>
         </div>
       </div>
 

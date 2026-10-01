@@ -15,16 +15,7 @@ type PageProps = {
   params: Promise<{ slug: string }>
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params
-  return {
-    title: `${slug.replaceAll('-', ' ')} | Nassau Cruise Itinerary`,
-    description: 'View a Baha Buddy Nassau cruise-day itinerary with stops, timing, and return-to-ship guidance.',
-  }
-}
-
-export default async function NassauCruiseItineraryDetailPage({ params }: PageProps) {
-  const { slug } = await params
+async function getPublishedPlan(slug: string): Promise<GuidedDayPlanDetail | null> {
   const supabase = await createClient()
   const { data } = await supabase
     .from('cruise_itinerary_detail')
@@ -32,6 +23,29 @@ export default async function NassauCruiseItineraryDetailPage({ params }: PagePr
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle()
+  return (data as GuidedDayPlanDetail | null) ?? null
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params
+  const plan = await getPublishedPlan(slug)
+  if (!plan) notFound()
+  const description = (plan.full_description ?? plan.short_description ?? '').trim()
+    || `Follow ${plan.title}, a self-guided Nassau cruise-day itinerary with stops, timing, and return-to-ship guidance.`
+  return {
+    title: `${plan.title} — Nassau Cruise Itinerary`,
+    description: description.slice(0, 160),
+    alternates: { canonical: `/nassau-cruise-itineraries/${plan.slug}` },
+    openGraph: {
+      title: `${plan.title} | Baha Buddy`,
+      description: description.slice(0, 160),
+    },
+  }
+}
+
+export default async function NassauCruiseItineraryDetailPage({ params }: PageProps) {
+  const { slug } = await params
+  const data = await getPublishedPlan(slug)
 
   if (!data) notFound()
 

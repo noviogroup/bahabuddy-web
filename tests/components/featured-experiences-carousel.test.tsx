@@ -9,14 +9,14 @@ const experiences: FeaturedExperience[] = [
     title: 'Swimming Pigs Experience',
     island: 'Exuma',
     category: 'Boat tour',
-    href: '/guides/swimming-pigs-exuma-guide',
+    href: '/guides/swimming-pigs-exuma',
     image: '/images/pigs.jpg',
   },
   {
     title: 'Nassau Snorkeling Tour',
     island: 'Nassau',
     category: 'Things to do',
-    href: '/explore?query=snorkeling',
+    href: '/explore/places?search=snorkeling&island=Nassau',
     image: '/images/snorkeling.jpg',
   },
   {
@@ -49,11 +49,11 @@ describe('FeaturedExperiencesCarousel', () => {
     expect(screen.getAllByTestId('featured-experience-card')).toHaveLength(3)
     expect(screen.getByRole('link', { name: 'View details for Swimming Pigs Experience' })).toHaveAttribute(
       'href',
-      '/guides/swimming-pigs-exuma-guide',
+      '/guides/swimming-pigs-exuma',
     )
     expect(screen.getByRole('link', { name: 'View details for Nassau Snorkeling Tour' })).toHaveAttribute(
       'href',
-      '/explore?query=snorkeling',
+      '/explore/places?search=snorkeling&island=Nassau',
     )
     expect(screen.getByRole('link', { name: 'View details for Family Beach Day' })).toHaveAttribute(
       'href',

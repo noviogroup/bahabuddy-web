@@ -1,11 +1,27 @@
+import { timingSafeEqual } from 'node:crypto'
 import { revalidatePath } from 'next/cache'
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function POST(req: NextRequest) {
-  const secret = req.headers.get('x-sanity-webhook-secret')
-  const expectedSecret = process.env.SANITY_REVALIDATE_SECRET
+// Sanity slugs are lowercase kebab-case; anything else is not revalidated.
+const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 
-  if (expectedSecret && secret !== expectedSecret) {
+function secretsMatch(provided: string, expected: string): boolean {
+  const a = Buffer.from(provided)
+  const b = Buffer.from(expected)
+  if (a.length !== b.length) return false
+  return timingSafeEqual(a, b)
+}
+
+export async function POST(req: NextRequest) {
+  const expectedSecret = process.env.SANITY_REVALIDATE_SECRET
+  const secret = req.headers.get('x-sanity-webhook-secret')
+
+  // Fail closed: an unset secret means the webhook is not configured, so no
+  // caller may purge ISR pages.
+  if (!expectedSecret) {
+    return NextResponse.json({ message: 'Revalidation is not configured' }, { status: 401 })
+  }
+  if (!secret || !secretsMatch(secret, expectedSecret)) {
     return NextResponse.json({ message: 'Invalid secret' }, { status: 401 })
   }
 
@@ -15,8 +31,9 @@ export async function POST(req: NextRequest) {
 
     if (_type === 'discoverArticle') {
       revalidatePath('/guides')
-      if (slug?.current) {
-        revalidatePath(`/guides/${slug.current}`)
+      const current = slug?.current
+      if (typeof current === 'string' && SLUG_PATTERN.test(current)) {
+        revalidatePath(`/guides/${current}`)
       }
     }
 

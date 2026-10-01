@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TravelSearchCombobox from '@/components/marketplace/TravelSearchCombobox'
 import { ORIGIN_AIRPORT_OPTIONS, resolveAirportCode } from '@/lib/airports'
+import { safeRelativePath } from '@/lib/safe-redirect'
 
 // ─── Step data ───────────────────────────────────────────────────────────────
 
@@ -32,11 +33,26 @@ const PARTY_TYPES = [
 interface Props {
   userId: string
   defaultName?: string
+  /** Post-onboarding destination (already sanitised server-side). */
+  next?: string
 }
 
-export default function OnboardingFlow({ userId, defaultName }: Props) {
+const FALLBACK_DISPLAY_NAME = 'Traveler'
+
+export default function OnboardingFlow({ userId, defaultName, next }: Props) {
   const router = useRouter()
   const [step, setStep] = useState(1)
+  const headingRef = useRef<HTMLHeadingElement>(null)
+  const isFirstRender = useRef(true)
+
+  // Move focus to the new step's heading so screen readers announce it.
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false
+      return
+    }
+    headingRef.current?.focus()
+  }, [step])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -74,13 +90,28 @@ export default function OnboardingFlow({ userId, defaultName }: Props) {
         updates.home_airport = resolveAirportCode(homeAirport) ?? homeAirport.trim().toUpperCase()
       }
 
-      const { error: dbError } = await supabase
+      const { data: updatedRows, error: dbError } = await supabase
         .from('users')
         .update(updates)
         .eq('id', userId)
+        .select('id')
 
       if (dbError) throw dbError
-      router.push('/dashboard')
+
+      // No profile row yet (signup trigger did not create one): create it so
+      // onboarding is not silently lost. display_name is NOT NULL.
+      if (!updatedRows || updatedRows.length === 0) {
+        const { error: insertError } = await supabase
+          .from('users')
+          .insert({
+            id: userId,
+            display_name: name.trim() || FALLBACK_DISPLAY_NAME,
+            ...updates,
+          })
+        if (insertError) throw insertError
+      }
+
+      router.push(safeRelativePath(next))
       router.refresh()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong. Please try again.')
@@ -93,15 +124,23 @@ export default function OnboardingFlow({ userId, defaultName }: Props) {
       {/* Progress */}
       <div className="px-4 pt-8 pb-0 max-w-lg mx-auto w-full">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-xs text-gray-400 font-medium">Step {step} of 3</span>
+          <span className="text-xs text-gray-600 font-medium">Step {step} of 3</span>
           <button
+            type="button"
             onClick={() => { void handleComplete() }}
-            className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            className="text-xs text-gray-600 hover:text-gray-800 underline-offset-2 hover:underline transition-colors"
           >
             Skip for now
           </button>
         </div>
-        <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+        <div
+          className="h-1.5 bg-gray-200 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-label="Onboarding progress"
+          aria-valuemin={1}
+          aria-valuemax={3}
+          aria-valuenow={step}
+        >
           <div
             className="h-full bg-brand-500 rounded-full transition-all duration-500"
             style={{ width: `${progress * 100}%` }}
@@ -112,10 +151,10 @@ export default function OnboardingFlow({ userId, defaultName }: Props) {
       {/* Steps */}
       <div className="flex-1 flex flex-col px-4 py-8 max-w-lg mx-auto w-full">
         {step === 1 && (
-          <Step1Name name={name} onChange={setName} onNext={() => setStep(2)} />
+          <Step1Name name={name} onChange={setName} onNext={() => setStep(2)} headingRef={headingRef} />
         )}
         {step === 2 && (
-          <Step2Interests interests={interests} onToggle={toggleInterest} onBack={() => setStep(1)} onNext={() => setStep(3)} />
+          <Step2Interests interests={interests} onToggle={toggleInterest} onBack={() => setStep(1)} onNext={() => setStep(3)} headingRef={headingRef} />
         )}
         {step === 3 && (
           <Step3Details
@@ -127,7 +166,14 @@ export default function OnboardingFlow({ userId, defaultName }: Props) {
             onComplete={handleComplete}
             saving={saving}
             error={error}
+            headingRef={headingRef}
           />
+        )}
+        {/* Save errors from "Skip for now" on steps 1-2 would otherwise be invisible. */}
+        {step !== 3 && error && (
+          <div role="alert" className="mt-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
+            {error}
+          </div>
         )}
       </div>
     </div>
@@ -136,22 +182,27 @@ export default function OnboardingFlow({ userId, defaultName }: Props) {
 
 // ─── Step 1: Name ─────────────────────────────────────────────────────────────
 
-function Step1Name({ name, onChange, onNext }: {
+type HeadingRef = React.RefObject<HTMLHeadingElement>
+
+function Step1Name({ name, onChange, onNext, headingRef }: {
   name: string
   onChange: (v: string) => void
   onNext: () => void
+  headingRef: HeadingRef
 }) {
   return (
     <div>
       <div className="text-center mb-10">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome to Baha Buddy!</h1>
-        <p className="text-gray-500">Let&apos;s personalize your Bahamas experience. First — what should we call you?</p>
+        <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-gray-900 mb-2 focus:outline-none">Welcome to Baha Buddy!</h1>
+        <p className="text-gray-600">Let&apos;s personalize your Bahamas experience. First — what should we call you?</p>
       </div>
 
       <div className="mb-8">
-        <label className="block text-sm font-semibold text-gray-700 mb-2">Your first name</label>
+        <label htmlFor="onb-name" className="block text-sm font-semibold text-gray-700 mb-2">Your first name</label>
         <input
+          id="onb-name"
           type="text"
+          autoComplete="given-name"
           value={name}
           onChange={(e) => onChange(e.target.value)}
           placeholder="e.g. Maria"
@@ -161,9 +212,10 @@ function Step1Name({ name, onChange, onNext }: {
       </div>
 
       <button
+        type="button"
         onClick={onNext}
         disabled={!name.trim()}
-        className="w-full bg-brand-500 disabled:bg-gray-200 disabled:text-gray-400 hover:bg-brand-600 text-white font-bold py-4 rounded-2xl text-base transition-colors"
+        className="w-full bg-brand-600 disabled:bg-gray-200 disabled:text-gray-500 hover:bg-brand-700 text-white font-bold py-4 rounded-2xl text-base transition-colors"
       >
         Continue →
       </button>
@@ -173,25 +225,28 @@ function Step1Name({ name, onChange, onNext }: {
 
 // ─── Step 2: Interests ────────────────────────────────────────────────────────
 
-function Step2Interests({ interests, onToggle, onBack, onNext }: {
+function Step2Interests({ interests, onToggle, onBack, onNext, headingRef }: {
   interests: string[]
   onToggle: (id: string) => void
   onBack: () => void
   onNext: () => void
+  headingRef: HeadingRef
 }) {
   return (
     <div>
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">What&apos;s your travel vibe?</h2>
-        <p className="text-gray-500 text-sm">Pick everything that resonates — we&apos;ll tailor your recommendations.</p>
+        <h2 ref={headingRef} tabIndex={-1} id="onb-interests-heading" className="text-2xl font-bold text-gray-900 mb-2 focus:outline-none">What&apos;s your travel vibe?</h2>
+        <p className="text-gray-600 text-sm">Pick everything that resonates — we&apos;ll tailor your recommendations.</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 mb-8">
+      <div className="grid grid-cols-2 gap-3 mb-8" role="group" aria-labelledby="onb-interests-heading">
         {INTERESTS.map((item) => {
           const selected = interests.includes(item.id)
           return (
             <button
               key={item.id}
+              type="button"
+              aria-pressed={selected}
               onClick={() => onToggle(item.id)}
               className={`flex items-center gap-3 p-3.5 rounded-xl border text-left transition-all ${
                 selected
@@ -214,14 +269,17 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
 
       <div className="flex gap-3">
         <button
+          type="button"
           onClick={onBack}
+          aria-label="Back"
           className="px-6 py-4 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-base hover:bg-gray-50 transition-colors"
         >
           ←
         </button>
         <button
+          type="button"
           onClick={onNext}
-          className="flex-1 bg-brand-500 hover:bg-brand-600 text-white font-bold py-4 rounded-2xl text-base transition-colors"
+          className="flex-1 bg-brand-600 hover:bg-brand-700 text-white font-bold py-4 rounded-2xl text-base transition-colors"
         >
           Continue →
         </button>
@@ -232,7 +290,7 @@ function Step2Interests({ interests, onToggle, onBack, onNext }: {
 
 // ─── Step 3: Party type + home airport ───────────────────────────────────────
 
-function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBack, onComplete, saving, error }: {
+function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBack, onComplete, saving, error, headingRef }: {
   partyType: string
   homeAirport: string
   onPartyType: (v: string) => void
@@ -241,21 +299,25 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
   onComplete: () => void
   saving: boolean
   error: string | null
+  headingRef: HeadingRef
 }) {
   return (
     <div>
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Who are you traveling with?</h2>
-        <p className="text-gray-500 text-sm">This helps Buddy find the right deals and activities for you.</p>
+        <h2 ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-gray-900 mb-2 focus:outline-none">Who are you traveling with?</h2>
+        <p className="text-gray-600 text-sm">This helps Buddy find the right deals and activities for you.</p>
       </div>
 
       {/* Party type */}
       <div className="mb-6">
-        <label className="block text-sm font-semibold text-gray-700 mb-3">Typical travel party</label>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
+        <p id="onb-party-label" className="block text-sm font-semibold text-gray-700 mb-3">Typical travel party</p>
+        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5" role="radiogroup" aria-labelledby="onb-party-label">
           {PARTY_TYPES.map((pt) => (
             <button
               key={pt.id}
+              type="button"
+              role="radio"
+              aria-checked={partyType === pt.id}
               onClick={() => onPartyType(pt.id)}
               className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
                 partyType === pt.id
@@ -274,7 +336,7 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
       {/* Home airport */}
       <div className="mb-8">
         <label htmlFor="home-airport" className="block text-sm font-semibold text-gray-700 mb-2">
-          Home airport <span className="text-gray-400 font-normal">(optional)</span>
+          Home airport <span className="text-gray-600 font-normal">(optional)</span>
         </label>
         <TravelSearchCombobox
           id="home-airport"
@@ -289,26 +351,29 @@ function Step3Details({ partyType, homeAirport, onPartyType, onHomeAirport, onBa
           helperText="Search by city, airport, or code"
           customOptionLabel={(query) => `Use "${query}" as home airport`}
         />
-        <p className="text-xs text-gray-400 mt-1.5">Search by city or airport. Baha Buddy saves the closest flight code for live Bahamas fare previews.</p>
+        <p className="text-xs text-gray-600 mt-1.5">Search by city or airport. Baha Buddy saves the closest flight code for live Bahamas fare previews.</p>
       </div>
 
       {error && (
-        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+        <div role="alert" className="mb-4 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700">
           {error}
         </div>
       )}
 
       <div className="flex gap-3">
         <button
+          type="button"
           onClick={onBack}
+          aria-label="Back"
           className="px-6 py-4 rounded-2xl border border-gray-200 text-gray-600 font-semibold text-base hover:bg-gray-50 transition-colors"
         >
           ←
         </button>
         <button
+          type="button"
           onClick={onComplete}
           disabled={saving}
-          className="flex-1 bg-brand-500 disabled:bg-brand-300 hover:bg-brand-600 text-white font-bold py-4 rounded-2xl text-base transition-colors"
+          className="flex-1 bg-brand-600 disabled:bg-brand-300 hover:bg-brand-700 text-white font-bold py-4 rounded-2xl text-base transition-colors"
         >
           {saving ? 'Saving…' : "Let's go!"}
         </button>

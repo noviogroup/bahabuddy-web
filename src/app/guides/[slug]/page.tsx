@@ -5,7 +5,7 @@ import Footer from '@/components/Footer'
 import PortableTextBody from '@/components/PortableTextBody'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
-import { fetchArticleBySlug, fetchAllArticleSlugs } from '@/lib/sanity/queries'
+import { fetchArticleBySlugStrict, fetchAllArticleSlugs } from '@/lib/sanity/queries'
 import { ARTICLE_CATEGORY_LABEL } from '@/lib/sanity/types'
 import { editorialBuddyHref, editorialTripHref } from '@/lib/editorial-planning-links'
 
@@ -33,6 +33,10 @@ import { editorialBuddyHref, editorialTripHref } from '@/lib/editorial-planning-
 
 export const revalidate = 3600
 
+// Strict fetch: a Sanity outage throws (ISR keeps serving the last good page)
+// instead of resolving null and caching a 404 for the revalidation window.
+const getGuide = (slug: string) => fetchArticleBySlugStrict(slug)
+
 export async function generateStaticParams() {
   const slugs = await fetchAllArticleSlugs()
   return slugs.map((slug) => ({ slug }))
@@ -43,15 +47,17 @@ export async function generateMetadata({
 }: {
   params: { slug: string }
 }): Promise<Metadata> {
-  const article = await fetchArticleBySlug(params.slug)
-  if (!article) return { title: 'Guide Not Found | Baha Buddy' }
+  const article = await getGuide(params.slug)
+  if (!article) notFound()
   return {
     title: `${article.title} — Bahamas Travel Guide`,
     description: article.excerpt,
+    alternates: { canonical: `/guides/${params.slug}` },
     openGraph: {
       title: article.title,
       description: article.excerpt,
-      images: article.imageUrl ? [{ url: article.imageUrl }] : undefined,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(article.imageUrl ? { images: [{ url: article.imageUrl }] } : {}),
     },
   }
 }
@@ -62,7 +68,7 @@ function formatReadTime(minutes: number | null): string {
 }
 
 export default async function GuidePage({ params }: { params: { slug: string } }) {
-  const article = await fetchArticleBySlug(params.slug)
+  const article = await getGuide(params.slug)
   if (!article) notFound()
 
   const categoryLabel = ARTICLE_CATEGORY_LABEL[article.category] ?? article.category
@@ -134,7 +140,7 @@ export default async function GuidePage({ params }: { params: { slug: string } }
           alt={article.title}
           title={article.title}
           eyebrow={categoryLabel}
-          className="mb-8 aspect-[16/7] min-h-[220px] rounded-baha-xl border border-gray-200 shadow-sm"
+          className="mb-8 aspect-[16/7] min-h-[220px] w-full rounded-baha-xl border border-gray-200 shadow-sm"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 896px"
           priority
@@ -155,7 +161,7 @@ export default async function GuidePage({ params }: { params: { slug: string } }
 
           {/* CTA */}
           <div className="mt-12 rounded-2xl border border-gray-200 bg-white p-6 text-night shadow-sm sm:p-8">
-            <p className="text-xs font-bold uppercasest text-gray-500 mb-2">
+            <p className="text-xs font-bold uppercase text-gray-500 mb-2">
               Ready to make it real?
             </p>
             <h3 className="text-xl font-bold mb-3">Start a trip from this guide</h3>

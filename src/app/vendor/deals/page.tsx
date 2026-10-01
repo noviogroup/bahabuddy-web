@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import { VendorDealSubmissionForm } from '@/components/vendor/VendorForms'
-import { fetchVendorListings, requireActiveVendorAccess } from '@/lib/vendor-portal'
+import { fetchVendorListings, requireActiveVendorAccess, VENDOR_SUBMIT_ROLE, vendorRoleAllows } from '@/lib/vendor-portal'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -16,7 +16,7 @@ export default async function VendorDealsPage({
 
   return (
     <div className="max-w-4xl">
-      <VendorDealSubmissionForm partnerId={access.membership.partner_id} listings={listings} />
+      <VendorDealSubmissionForm partnerId={access.membership.partner_id} listings={listings} canSubmit={vendorRoleAllows(access.membership.role, VENDOR_SUBMIT_ROLE)} />
     </div>
   )
 }

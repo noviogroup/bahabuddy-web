@@ -138,9 +138,9 @@ export default function TravelOriginPrompt() {
     <aside
       ref={promptRef}
       aria-label="Travel origin prompt"
-      className="fixed inset-x-3 bottom-3 z-50 rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur md:bottom-5 md:left-5 md:right-auto md:max-w-sm"
+      className="fixed inset-x-3 bottom-3 z-50 min-w-0 max-w-[calc(100vw-1.5rem)] rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur md:bottom-5 md:left-5 md:right-auto md:max-w-sm"
     >
-      <form onSubmit={handleSubmit} className="grid gap-3">
+      <form onSubmit={handleSubmit} className="grid min-w-0 grid-cols-1 gap-3">
         <div>
           <p className="text-xs font-semibold uppercase text-gray-500">
             Personalize fares

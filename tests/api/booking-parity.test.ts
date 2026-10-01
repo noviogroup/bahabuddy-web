@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
     details: null,
     status: 500,
   })),
+  retrievePaymentIntent: vi.fn(),
+  getHotelPrebookQuote: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: mocks.createClient }))
@@ -16,6 +18,14 @@ vi.mock('@/lib/supabase/admin', () => ({ createAdminClient: mocks.createAdminCli
 vi.mock('@/lib/travel-booking/provider', () => ({
   callTravelProvider: mocks.callTravelProvider,
   getProviderErrorResponse: mocks.getProviderErrorResponse,
+}))
+vi.mock('@/lib/stripe/payment-intents', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/stripe/payment-intents')>()),
+  retrievePaymentIntent: mocks.retrievePaymentIntent,
+}))
+vi.mock('@/lib/travel-booking/hotel-prebook', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/travel-booking/hotel-prebook')>()),
+  getHotelPrebookQuote: mocks.getHotelPrebookQuote,
 }))
 
 import { POST as addTripItem } from '@/app/api/trips/[id]/items/route'
@@ -70,7 +80,23 @@ function insertSingle(table: string, inserted: Array<{ table: string; row: JsonR
   }
 }
 
+function succeededPaymentIntent(overrides: JsonRecord = {}) {
+  return {
+    ok: true,
+    paymentIntent: {
+      id: 'pi_hotel_1',
+      status: 'succeeded',
+      amount: 126000,
+      amount_received: 126000,
+      currency: 'usd',
+      metadata: { user_id: 'user-1', trip_id: 'trip-1', liteapi_prebook_id: 'prebook-1' },
+      ...overrides,
+    },
+  }
+}
+
 function adminPersistenceMock(options: {
+  existingBookings?: JsonRecord[]
   existingBookingId?: string | null
   insertedBookingId?: string
   insertedTripItemId?: string
@@ -92,10 +118,14 @@ function adminPersistenceMock(options: {
           data: options.existingBookingId ? { id: options.existingBookingId } : null,
           error: null,
         }),
+        limit: vi.fn().mockResolvedValue({ data: options.existingBookings ?? [], error: null }),
         update: vi.fn((row: JsonRecord) => ({
-          eq: vi.fn().mockResolvedValue({
-            data: null,
-            error: options.bookingUpdateError ? { message: options.bookingUpdateError } : null,
+          eq: vi.fn((column: string, value: unknown) => {
+            updated.push({ table, row, filters: [[column, value]] })
+            return Promise.resolve({
+              data: null,
+              error: options.bookingUpdateError ? { message: options.bookingUpdateError } : null,
+            })
           }),
         })),
         insert: vi.fn((row: JsonRecord) => {
@@ -182,6 +212,14 @@ function adminPersistenceMock(options: {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.createAdminClient.mockReturnValue(null)
+  mocks.getHotelPrebookQuote.mockResolvedValue({
+    prebookId: 'prebook-1',
+    offerId: 'rate-1',
+    hotelId: 'hotel-123',
+    amountCents: 126000,
+    currency: 'usd',
+  })
+  mocks.retrievePaymentIntent.mockResolvedValue(succeededPaymentIntent())
 })
 
 describe('direct trip item API', () => {
@@ -557,6 +595,107 @@ describe('hotel booking APIs', () => {
     })
     expect(body.localError).toContain('trip_accommodations insert failed')
     expect(body.localError).toContain('trip accommodation insert failed')
+  })
+})
+
+describe('hotel book payment verification', () => {
+  const bookBody = {
+    tripId: 'trip-1',
+    prebookId: 'prebook-1',
+    paymentIntentId: 'pi_hotel_1',
+    hotelId: 'hotel-123',
+    amount: 1,
+    holder: { firstName: 'Valdez', lastName: 'Williams', email: 'traveler@example.com' },
+    guests: [{ firstName: 'Valdez', lastName: 'Williams', email: 'traveler@example.com' }],
+  }
+
+  function setup(existingBookings: JsonRecord[] = []) {
+    const from = vi.fn((table: string) => {
+      if (table === 'trips') return selectMaybeSingle({ id: 'trip-1' })
+      throw new Error(`Unexpected user table: ${table}`)
+    })
+    const persistence = adminPersistenceMock({ existingBookings })
+    mocks.createClient.mockResolvedValue(clientWithAuth({ id: 'user-1' }, from))
+    mocks.createAdminClient.mockReturnValue(persistence.admin)
+    return persistence
+  }
+
+  test.each([
+    ['not found at Stripe', { ok: false, reason: 'not_found' }, 402, 'payment_not_found'],
+    ['unpaid', succeededPaymentIntent({ status: 'requires_payment_method' }), 402, 'payment_not_completed'],
+    ['below the prebook total', succeededPaymentIntent({ amount: 50, amount_received: 50 }), 409, 'payment_mismatch'],
+    ['in another currency', succeededPaymentIntent({ currency: 'eur' }), 409, 'payment_mismatch'],
+    ['owned by another user', succeededPaymentIntent({ metadata: { user_id: 'user-2', trip_id: 'trip-1' } }), 409, 'payment_mismatch'],
+    ['for another trip', succeededPaymentIntent({ metadata: { user_id: 'user-1', trip_id: 'trip-2' } }), 409, 'payment_mismatch'],
+    ['for another prebook', succeededPaymentIntent({ metadata: { user_id: 'user-1', trip_id: 'trip-1', liteapi_prebook_id: 'prebook-9' } }), 409, 'payment_mismatch'],
+    ['unverifiable (Stripe not configured)', { ok: false, reason: 'not_configured' }, 503, 'payment_verification_unavailable'],
+  ])('rejects a PaymentIntent that is %s without calling the provider', async (_label, retrieved, status, code) => {
+    setup()
+    mocks.retrievePaymentIntent.mockResolvedValue(retrieved)
+
+    const response = await hotelBook(jsonRequest(bookBody))
+    const body = await response.json()
+
+    expect(response.status).toBe(status)
+    expect(body.code).toBe(code)
+    expect(mocks.callTravelProvider).not.toHaveBeenCalled()
+  })
+
+  test('ignores the client amount and checks the PaymentIntent against the provider prebook price', async () => {
+    setup()
+    mocks.getHotelPrebookQuote.mockResolvedValue({
+      prebookId: 'prebook-1', offerId: null, hotelId: null, amountCents: 200000, currency: 'usd',
+    })
+
+    const response = await hotelBook(jsonRequest({ ...bookBody, amount: 1260 }))
+
+    expect(response.status).toBe(409)
+    expect(mocks.getHotelPrebookQuote).toHaveBeenCalledWith('prebook-1')
+    expect(mocks.callTravelProvider).not.toHaveBeenCalled()
+  })
+
+  test('rejects a PaymentIntent already linked to a confirmed booking', async () => {
+    setup([{ id: 'booking-row-1', status: 'confirmed', booking_ref: 'lite-booking-1' }])
+
+    const response = await hotelBook(jsonRequest(bookBody))
+    const body = await response.json()
+
+    expect(response.status).toBe(409)
+    expect(body.code).toBe('payment_already_used')
+    expect(mocks.retrievePaymentIntent).not.toHaveBeenCalled()
+    expect(mocks.callTravelProvider).not.toHaveBeenCalled()
+  })
+
+  test('records a paid-but-unbooked failure and returns a support message when the provider fails after payment', async () => {
+    const persistence = setup([{ id: 'pending-row-1', status: 'pending', booking_ref: null, financial_metadata: { booking_attempt_id: 'attempt-1' } }])
+    mocks.callTravelProvider.mockRejectedValue(Object.assign(new Error('rate no longer available'), { status: 400 }))
+
+    const response = await hotelBook(jsonRequest(bookBody))
+    const body = await response.json()
+
+    expect(response.status).toBe(502)
+    expect(body).toMatchObject({
+      code: 'paid_booking_failed',
+      paymentStatus: 'paid',
+      supportRequired: true,
+      paymentReference: 'pi_hotel_1',
+    })
+    expect(body.error).toContain('support@bahabuddy.com')
+    expect(body.error).not.toContain('rate no longer available')
+    expect(persistence.updated).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        table: 'bookings',
+        filters: [['id', 'pending-row-1']],
+        row: expect.objectContaining({
+          status: 'failed',
+          financial_metadata: expect.objectContaining({
+            booking_attempt_id: 'attempt-1',
+            failure_stage: 'provider_book_after_payment',
+            needs_refund_review: true,
+          }),
+        }),
+      }),
+    ]))
   })
 })
 

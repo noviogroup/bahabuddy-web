@@ -47,7 +47,7 @@ import {
 } from "@/lib/stay-traveler-types";
 
 export const metadata: Metadata = {
-  title: "Book Bahamas Hotels & Stays | Baha Buddy",
+  title: "Book Bahamas Hotels & Stays",
   description:
     "Browse 700+ Bahamas hotels, villas, and apartments. Check live availability, compare rates, and book your perfect stay.",
   openGraph: {

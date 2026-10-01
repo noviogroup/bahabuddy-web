@@ -56,20 +56,25 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const sanityArticle = await fetchArticleBySlug(params.slug)
   if (sanityArticle) {
     return {
-      title: `${sanityArticle.title} | Baha Buddy`,
+      title: sanityArticle.title,
       description: sanityArticle.excerpt,
+      // Same Sanity article is published at /guides/[slug]; that is the
+      // canonical (and the URL listed in the sitemap).
+      alternates: { canonical: `/guides/${params.slug}` },
       openGraph: {
         title: sanityArticle.title,
         description: sanityArticle.excerpt,
-        images: sanityArticle.imageUrl ? [{ url: sanityArticle.imageUrl }] : undefined,
+        // Omit `images` when there is no photo so opengraph-image.tsx applies.
+        ...(sanityArticle.imageUrl ? { images: [{ url: sanityArticle.imageUrl }] } : {}),
       },
     }
   }
 
   const article = getArticle(params.slug)
-  if (!article) return { title: 'Article not found | Baha Buddy' }
+  if (!article) notFound()
   return {
-    title: `${article.title} | Baha Buddy`,
+    title: article.title,
+    alternates: { canonical: `/explore/articles/${params.slug}` },
     description: article.subtitle,
     openGraph: {
       title: article.title,
@@ -156,7 +161,7 @@ export default async function ArticlePage({ params }: { params: { slug: string }
       {/* Callout */}
       {article.callout && (
         <aside className="mt-10 rounded-r-xl border-l-4 border-gray-300 bg-gray-50 p-5">
-          <p className="mb-2 text-xs font-bold uppercasest text-charcoal">
+          <p className="mb-2 text-xs font-bold uppercase text-charcoal">
             {article.callout.title}
           </p>
           <ArticleProse text={article.callout.body} className="text-gray-700" />
@@ -231,7 +236,7 @@ function ArticleReaderLayout({
           alt={title}
           title={title}
           eyebrow={categoryLabel}
-          className="mb-8 aspect-[16/7] min-h-[220px] rounded-baha-xl border border-gray-200 shadow-sm"
+          className="mb-8 aspect-[16/7] min-h-[220px] w-full rounded-baha-xl border border-gray-200 shadow-sm"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 896px"
           priority
@@ -274,7 +279,7 @@ function ArticlePlanningPanel({
 }) {
   return (
     <div className="mt-12 rounded-baha-lg border border-gray-200 bg-white p-6 shadow-sm sm:p-8">
-      <p className="mb-2 text-xs font-bold uppercasest text-charcoal">
+      <p className="mb-2 text-xs font-bold uppercase text-charcoal">
         Ready to make it real?
       </p>
       <h3 className="mb-3 text-xl font-bold text-night">

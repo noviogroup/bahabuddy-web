@@ -3,52 +3,34 @@ import HomepageStorySections from '@/components/home/HomepageStorySections'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import { getIslandHeroSlides, getIslandHeroes } from '@/lib/islands'
-import { createClient } from '@/lib/supabase/server'
 
-export const dynamic = 'force-dynamic'
+// The homepage no longer reads the session on the server: HeroSection's
+// client auth effect fills in the signed-in name (including the
+// users.display_name profile column). Without that per-request auth round
+// trip the page can be revalidated instead of forced dynamic. NOTE: it only
+// becomes truly static once lib/islands.ts reads through the cookie-free
+// public client (@/lib/supabase/public) instead of the cookie client.
+export const revalidate = 300
 
 export default async function HomePage() {
   // Hero slides pulled from `islands` table (DB-driven). HeroSection
   // is a Client Component — it can't await, so the server parent
   // fetches and passes down. getIslandHeroSlides falls back to the
   // static map in islands.ts if the DB is unreachable.
-  const supabase = await createClient()
-  const [heroSlides, destinationImages, { data: { user } }] = await Promise.all([
+  const [heroSlides, destinationImages] = await Promise.all([
     getIslandHeroSlides(),
     getIslandHeroes([
       'nassau-paradise-island', 'the-exumas', 'eleuthera-harbour-island',
       'abacos', 'andros', 'grand-bahama', 'bimini', 'long-island',
     ]),
-    supabase.auth.getUser(),
   ])
-  const { data: profile } = user
-    ? await supabase
-        .from('users')
-        .select('display_name')
-        .eq('id', user.id)
-        .maybeSingle()
-    : { data: null }
-  const userDisplayName = getStringValue(profile?.display_name) ?? getAuthDisplayName(user?.user_metadata)
 
   return (
     <main className="min-h-screen bg-white">
-      <HeroSection slides={heroSlides} userEmail={user?.email ?? null} userDisplayName={userDisplayName} />
+      <HeroSection slides={heroSlides} />
       <HomepageStorySections destinationImages={destinationImages} />
       <Footer />
       <ChatWidget />
     </main>
   )
-}
-
-function getAuthDisplayName(metadata: unknown) {
-  if (!metadata || typeof metadata !== 'object') return null
-
-  const record = metadata as Record<string, unknown>
-  return getStringValue(record.display_name) ?? getStringValue(record.full_name) ?? getStringValue(record.name)
-}
-
-function getStringValue(value: unknown) {
-  if (typeof value !== 'string') return null
-  const normalized = value.replace(/\s+/g, ' ').trim()
-  return normalized || null
 }

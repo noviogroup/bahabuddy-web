@@ -35,8 +35,13 @@ export default async function BuildMyCruiseDayPage({ searchParams }: PageProps) 
       />
 
       <section className="mx-auto max-w-4xl px-4 py-10">
-        <form name="baha-buddy-cruise-day-intake" method="POST" data-netlify="true" className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
+        <form name="baha-buddy-cruise-day-intake" method="POST" data-netlify="true" netlify-honeypot="bot-field" className="rounded-baha-xl border border-gray-200 bg-white p-6 shadow-sm">
           <input type="hidden" name="form-name" value="baha-buddy-cruise-day-intake" />
+          <p className="hidden">
+            <label>
+              Do not fill this out: <input name="bot-field" />
+            </label>
+          </p>
           <input type="hidden" name="selected_itinerary" value={itinerary} />
 
           <div className="grid gap-5 md:grid-cols-2">

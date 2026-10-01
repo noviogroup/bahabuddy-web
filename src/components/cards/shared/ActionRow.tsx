@@ -16,6 +16,7 @@
  */
 
 import type { MouseEvent, ReactNode } from 'react'
+import { safeHref } from '@/lib/safe-url'
 
 export interface Action {
   /** Visible label (also used as aria-label for icon-only buttons). */
@@ -49,8 +50,15 @@ function stop(e: MouseEvent<HTMLElement>) {
   e.stopPropagation()
 }
 
-export function ActionRow({ actions, align = 'left', className = '' }: Props) {
-  if (!actions || actions.length === 0) return null
+export function ActionRow({ actions: rawActions, align = 'left', className = '' }: Props) {
+  // Card hrefs come from tool/model/DB data — drop any action whose href is
+  // not http(s)/mailto/tel or a same-origin path (blocks javascript: URLs).
+  const actions = (rawActions ?? []).flatMap((a): Action[] => {
+    if (a.href === undefined) return [a]
+    const href = safeHref(a.href)
+    return href ? [{ ...a, href }] : []
+  })
+  if (actions.length === 0) return null
 
   const justify =
     align === 'right'  ? 'justify-end' :
