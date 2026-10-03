@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { usePathname } from 'next/navigation'
-import { init, track } from '@/lib/analytics'
+import { init, pageview } from '@/lib/analytics'
 
 export default function AnalyticsProvider() {
   const pathname = usePathname()
@@ -14,7 +14,7 @@ export default function AnalyticsProvider() {
 
   useEffect(() => {
     if (pathname && pathname !== prevPath.current) {
-      track('page_viewed', { path: pathname })
+      pageview(pathname)
       prevPath.current = pathname
     }
   }, [pathname])

@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
 import { TOOL_DEFINITIONS, executeTool, toolProgressLabel } from '@/lib/chat-tools'
 import { stripCustomerFacingEmoji } from '@/lib/customer-facing-text'
+import { aiGenerationEvent, aiTraceEvent, capturePostHogEvents, type PostHogEvent } from '@/lib/posthog-ai'
 import type { CardData } from '@/components/RichCards'
 import { BUDDY_GROUNDING_POLICY, BUDDY_GROUNDING_POLICY_VERSION } from '@/lib/buddy-grounding-policy'
 
@@ -397,6 +398,9 @@ export async function POST(req: NextRequest) {
         let staleContentBlocked = false
         let retrievalCount = 0
         let retrievalLatencyMs = 0
+        const posthogEvents: PostHogEvent[] = []
+        const turnStartedAt = Date.now()
+        let generationStartedAt = turnStartedAt
 
         try {
           // ── Agentic loop ─────────────────────────────────────────────
@@ -432,6 +436,22 @@ export async function POST(req: NextRequest) {
             const toolUses = finalMessage.content.filter(
               (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
             )
+            posthogEvents.push(aiGenerationEvent({
+              distinctId: user?.id,
+              traceId: correlationId,
+              sessionId: activeThreadId,
+              model: MODEL,
+              responseId: finalMessage.id,
+              usage: finalMessage.usage,
+              latencyMs: Date.now() - generationStartedAt,
+              stopReason: finalMessage.stop_reason,
+              properties: {
+                channel: 'web',
+                model_iteration: turn + 1,
+                tools_requested: toolUses.map((toolUse) => toolUse.name),
+                prompt_version: PROMPT_VERSION,
+              },
+            }))
 
             if (toolUses.length === 0 || finalMessage.stop_reason !== 'tool_use') {
               // No tools requested — we're done
@@ -518,6 +538,7 @@ export async function POST(req: NextRequest) {
 
             // Append tool results as a user message and loop
             messages.push({ role: 'user', content: toolResultBlocks })
+            generationStartedAt = Date.now()
           }
 
           // ── Parse synthesized cards from Claude's text (day_plan / summary / map)
@@ -652,10 +673,43 @@ export async function POST(req: NextRequest) {
           if (savedTripId) donePayload.tripId = savedTripId
           if (assistantMessageId) donePayload.assistantMessageId = assistantMessageId
           send(donePayload)
+          posthogEvents.push(aiTraceEvent({
+            distinctId: user?.id,
+            traceId: correlationId,
+            sessionId: activeThreadId,
+            name: 'buddy_chat_turn',
+            latencyMs: Date.now() - turnStartedAt,
+            properties: {
+              channel: 'web',
+              prompt_version: PROMPT_VERSION,
+              has_trip_context: Boolean(tripContext),
+              tool_names: Array.from(toolNames),
+              answer_status: answerStatus,
+              requested_island: requestedIslandSlug,
+              stale_content_blocked: staleContentBlocked,
+              retrieval_count: retrievalCount,
+              card_types: Array.from(new Set(combinedCards.map((card) => card.card_type).filter(Boolean))),
+              card_count: combinedCards.length,
+              saved_trip: Boolean(savedTripId),
+              message_chars: String(message).length,
+              reply_chars: cleanText.length,
+            },
+          }))
         } catch (err) {
           console.error('Chat agentic loop error:', err)
+          posthogEvents.push(aiTraceEvent({
+            distinctId: user?.id,
+            traceId: correlationId,
+            sessionId: activeThreadId,
+            name: 'buddy_chat_turn',
+            latencyMs: Date.now() - turnStartedAt,
+            error: err,
+            properties: { channel: 'web', prompt_version: PROMPT_VERSION, tool_names: Array.from(toolNames) },
+          }))
           send({ type: 'error', message: 'Something went wrong. Please try again.' })
         } finally {
+          // Serverless functions freeze once the stream closes, so send first.
+          await capturePostHogEvents(posthogEvents)
           controller.close()
         }
       },
