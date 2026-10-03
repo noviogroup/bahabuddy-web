@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { cleanText, cleanUrl, requireActiveVendorAccess } from '@/lib/vendor-portal'
+import { cleanText, cleanUrl, requireActiveVendorAccess, VENDOR_SUBMIT_ROLE } from '@/lib/vendor-portal'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -35,7 +35,7 @@ function buildProfileProposal(body: Record<string, unknown>): Record<string, str
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as Record<string, unknown>
   const requestedPartnerId = typeof body.partner_id === 'string' ? body.partner_id : null
-  const access = await requireActiveVendorAccess(requestedPartnerId)
+  const access = await requireActiveVendorAccess(requestedPartnerId, { minRole: VENDOR_SUBMIT_ROLE })
 
   if (!access.ok) {
     return NextResponse.json(

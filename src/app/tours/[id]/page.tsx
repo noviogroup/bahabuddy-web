@@ -31,9 +31,17 @@ import {
   type SelfGuidedCatalogTour,
   type TourPreviewStop,
 } from '@/lib/self-guided-tours'
-import { createClient } from '@/lib/supabase/server'
+import { requestCache } from '@/lib/request-cache'
+import { createPublicClient } from '@/lib/supabase/public'
 
 export const revalidate = 300
+
+// No paths at build time: each page is rendered on its first request and
+// then served from the ISR cache for `revalidate` seconds. Without this,
+// Next renders a dynamic [id] route on every request.
+export async function generateStaticParams() {
+  return []
+}
 
 interface PageProps {
   params: { id: string }
@@ -43,7 +51,7 @@ const isSelfTour = (row: ApprovedActivityRow) => row.source_layer === 'self_tour
 
 async function getApprovedTour(id: string): Promise<ApprovedActivityRow | null> {
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     // Island guide tiles link by activity id, which the RPC matches exactly.
     if (isUuid(id)) {
       const [row] = await getApprovedActivities(supabase, { activityId: id, limit: 1 })
@@ -65,7 +73,10 @@ interface TourPageData {
   previewStops: TourPreviewStop[]
 }
 
-async function getTour(id: string): Promise<TourPageData | null> {
+// generateMetadata and the page both need the tour: one lookup per request.
+// Public catalog + preview stops only; ownership is resolved client-side
+// (TourGetCta).
+const getTour = requestCache(async (id: string): Promise<TourPageData | null> => {
   const approved = await getApprovedTour(id)
   // The approved projection's source_record_id is the self_tours id. Catalog
   // links (/tours) use that id directly, so fall back to it.
@@ -73,7 +84,7 @@ async function getTour(id: string): Promise<TourPageData | null> {
   let catalog: SelfGuidedCatalogTour | null = null
   let previewStops: TourPreviewStop[] = []
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     catalog = await getCatalogTour(supabase, selfTourId)
     if (catalog) previewStops = await getPreviewStops(supabase, catalog)
   } catch {
@@ -81,14 +92,14 @@ async function getTour(id: string): Promise<TourPageData | null> {
   }
   if (!approved && !catalog) return null
   return { approved, catalog, previewStops }
-}
+})
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const data = await getTour(params.id)
-  if (!data) return {}
+  if (!data) notFound()
   const name = data.approved?.name ?? data.catalog?.title ?? 'Self-guided tour'
   return {
-    title: `${name} — Self-Guided Tour | Baha Buddy`,
+    title: `${name} — Self-Guided Tour`,
     description: data.approved?.description ?? `Self-guided tour: ${name}.`,
   }
 }

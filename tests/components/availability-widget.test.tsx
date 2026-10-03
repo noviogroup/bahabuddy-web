@@ -49,7 +49,7 @@ describe('AvailabilityWidget', () => {
       />,
     )
 
-    const dateButton = screen.getByRole('button', { name: 'Choose stay dates' })
+    const dateButton = screen.getByRole('button', { name: /^Choose stay dates: / })
     expect(dateButton).toHaveTextContent('Aug 1')
     expect(dateButton).toHaveTextContent('Aug 4')
     expect(screen.getByRole('button', { name: 'Choose guests' })).toHaveTextContent('2 adults, 1 child')

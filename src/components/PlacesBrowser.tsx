@@ -6,8 +6,20 @@ import { useSearchParams } from 'next/navigation'
 import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
 import { FilterButton, FilterGroup } from '@/components/marketplace/ResultFilterPanel'
 import { TravelSearchField, TravelSearchInput } from '@/components/marketplace/TravelSearchFields'
+import { useTripStyles } from '@/hooks/useTripStyles'
+import { normalizeCanonicalIslandSlug } from '@/lib/bahamas-island-bounds'
 import { buddyChatHref } from '@/lib/buddy-chat'
 import type { PublicPlace } from '@/lib/place-types'
+import {
+  TRIP_STYLES,
+  isPermanentlyClosed,
+  isTemporarilyClosed,
+  matchesTripStyles,
+  parseTripStyles,
+  rankByTripStyles,
+  tripStyleLabel,
+  type TripStyle,
+} from '@/lib/trip-styles'
 
 export type Place = PublicPlace
 
@@ -79,6 +91,22 @@ function matchFilterOption(value: string, options: string[], aliases: Record<str
   }) ?? ''
 }
 
+/** Island filter match: filter aliases, or the same canonical catalog slug
+ * ("nassau-paradise-island" matches "Nassau & Paradise Island"). */
+function sameIsland(value: string, option: string): boolean {
+  if (!value.trim() || !option.trim()) return false
+  if (matchFilterOption(value, [option], ISLAND_ALIASES)) return true
+  return normalizeCanonicalIslandSlug(value) === normalizeCanonicalIslandSlug(option)
+}
+
+function requestedIsland(value: string, options: string[]): string {
+  if (!value) return 'All'
+  const matched = options.find((name) => sameIsland(value, name))
+  if (matched) return matched
+  const normalized = normalizeFilterValue(value)
+  return ISLAND_ALIASES[normalized] || normalized
+}
+
 function displayIslandName(value: string): string {
   if (value === 'All') return 'All islands'
   const normalized = normalizeFilterValue(value)
@@ -93,6 +121,28 @@ function displayIslandName(value: string): string {
     .join(' ')
 }
 
+function requestedCategory(value: string, options: string[]): string {
+  const matched = matchFilterOption(value, options)
+  if (matched) return matched
+  return value
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(' ')
+}
+
+/** `exact` (from `match=exact`, e.g. an island category tile) compares the
+ * category label itself, so "Activity" does not widen to every activity. */
+function categoryMatches(place: Place, selected: string, exact = false): boolean {
+  if (selected === 'All') return true
+  const requested = normalizeFilterValue(selected)
+  const activityRequest = ['activity', 'activities', 'attraction', 'attractions', 'things-to-do', 'tour', 'tours']
+    .includes(requested)
+  if (activityRequest && !exact) return place.source_type === 'approved_activity' || place.source_type === 'canonical_attraction'
+  if (normalizeFilterValue(place.category) === requested) return true
+  return (place.tags ?? []).some((tag) => normalizeFilterValue(tag) === requested)
+}
+
 interface Props {
   places: Place[]
   allIslands: string[]
@@ -105,12 +155,45 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
   const initialIsland = searchParams.get('island')?.trim() ?? ''
   const initialCategory = searchParams.get('category')?.trim() ?? ''
   const [search, setSearch] = useState(initialSearch)
-  const [island, setIsland] = useState(() => matchFilterOption(initialIsland, allIslands, ISLAND_ALIASES) || 'All')
-  const [category, setCategory] = useState(() => matchFilterOption(initialCategory, allCategories) || 'All')
+  // A requested island with no listings still gets its own filter button, so
+  // the active filter stays visible and selectable instead of silently
+  // matching nothing.
+  const [linkedIsland] = useState(() => requestedIsland(initialIsland, allIslands))
+  const [island, setIsland] = useState(linkedIsland)
+  const islandOptions = linkedIsland !== 'All' && !allIslands.includes(linkedIsland)
+    ? [...allIslands, linkedIsland]
+    : allIslands
+  const [category, setCategoryState] = useState(() => initialCategory
+    ? requestedCategory(initialCategory, allCategories)
+    : 'All')
+  const [exactCategory, setExactCategory] = useState(
+    () => Boolean(initialCategory) && searchParams.get('match') === 'exact',
+  )
+  function setCategory(value: string) {
+    setCategoryState(value)
+    setExactCategory(false)
+  }
+  // Trip-style chips filter this page only (a shareable `styles=` URL param
+  // seeds them). With no chip on, the visitor's stored styles just order
+  // matching places first, after mount.
+  const [styleFilter, setStyleFilter] = useState<TripStyle[]>(
+    () => parseTripStyles(searchParams.get('styles') ?? searchParams.get('style') ?? ''),
+  )
+  const { styles: storedStyles } = useTripStyles()
+  const hasStyleData = useMemo(
+    () => places.some((place) => (place.trip_styles?.length ?? 0) > 0),
+    [places],
+  )
+  function toggleStyleFilter(style: TripStyle) {
+    setStyleFilter((current) => current.includes(style)
+      ? current.filter((value) => value !== style)
+      : parseTripStyles([...current, style]))
+  }
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
-    return places.filter((p) => {
+    const matches = places.filter((p) => {
+      if (isPermanentlyClosed(p.business_status)) return false
       const searchableText = [
         p.name,
         p.description,
@@ -121,22 +204,30 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
         ...(p.amenities ?? []),
       ].filter(Boolean).join(' ').toLowerCase()
       if (q && !searchableText.includes(q)) return false
-      if (island !== 'All' && p.island !== island) return false
-      if (category !== 'All' && p.category !== category) return false
+      if (island !== 'All' && !sameIsland(island, p.island ?? '') && !sameIsland(island, p.island_id ?? '')) return false
+      if (!categoryMatches(p, category, exactCategory)) return false
+      if (!matchesTripStyles({ tripStyles: p.trip_styles }, styleFilter)) return false
       return true
     })
-  }, [places, search, island, category])
+    return rankByTripStyles(
+      matches,
+      styleFilter.length > 0 ? styleFilter : storedStyles,
+      (p) => ({ tripStyles: p.trip_styles, priceTier: p.price_tier }),
+    )
+  }, [places, search, island, category, exactCategory, styleFilter, storedStyles])
 
   const activeFilterCount = [
     search.trim() ? search.trim() : null,
     island !== 'All' ? island : null,
     category !== 'All' ? category : null,
+    styleFilter.length > 0 ? 'style' : null,
   ].filter(Boolean).length
 
   function clearFilters() {
     setSearch('')
     setIsland('All')
     setCategory('All')
+    setStyleFilter([])
   }
 
   return (
@@ -211,6 +302,17 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
                   <span aria-hidden="true" className="text-gray-500">Remove</span>
                 </button>
               )}
+              {styleFilter.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setStyleFilter([])}
+                  className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-charcoal ring-1 ring-gray-200 transition-colors hover:bg-gray-50 hover:text-night focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
+                >
+                  <span className="text-gray-400">Trip style:</span>
+                  <span>{styleFilter.map(tripStyleLabel).join(', ')}</span>
+                  <span aria-hidden="true" className="text-gray-500">Remove</span>
+                </button>
+              )}
             </div>
           )}
 
@@ -229,7 +331,7 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
               <FilterButton active={island === 'All'} onClick={() => setIsland('All')}>
                 All islands
               </FilterButton>
-              {allIslands.map((name) => (
+              {islandOptions.map((name) => (
                 <FilterButton
                   key={name}
                   active={island === name}
@@ -254,6 +356,30 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
                 ))}
               </FilterGroup>
             </div>
+
+            {hasStyleData && (
+              <div className="md:col-span-2">
+                <FilterGroup label="Trip style">
+                  <FilterButton
+                    active={styleFilter.length === 0}
+                    onClick={() => setStyleFilter([])}
+                    tone="gold"
+                  >
+                    Any style
+                  </FilterButton>
+                  {TRIP_STYLES.map((style) => (
+                    <FilterButton
+                      key={style.slug}
+                      active={styleFilter.includes(style.slug)}
+                      onClick={() => toggleStyleFilter(style.slug)}
+                      tone="gold"
+                    >
+                      {style.label}
+                    </FilterButton>
+                  ))}
+                </FilterGroup>
+              </div>
+            )}
           </div>
         </section>
 
@@ -265,14 +391,21 @@ export default function PlacesBrowser({ places, allIslands, allCategories }: Pro
             {filtered.length} {filtered.length === 1 ? 'place' : 'places'} found
             {island !== 'All' && ` in ${displayIslandName(island)}`}
             {category !== 'All' && ` | ${category}`}
+            {styleFilter.length > 0 && ` | ${styleFilter.map(tripStyleLabel).join(', ')}`}
             {search.trim() && ` | "${search.trim()}"`}
           </p>
         </div>
 
         {filtered.length === 0 ? (
           <div className="text-center py-24">
-            <h3 className="text-lg font-semibold text-gray-700 mb-2">No places found</h3>
-            <p className="text-gray-400 text-sm mb-6">Try adjusting your search or filters.</p>
+            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+              {category !== 'All' ? `No ${category.toLowerCase()} listings found` : 'No places found'}
+            </h3>
+            <p className="text-gray-500 text-sm mb-6">
+              {category !== 'All'
+                ? `We don't have ${category.toLowerCase()} listings${island !== 'All' ? ` for ${displayIslandName(island)}` : ''} yet. Try another island or clear the filters.`
+                : 'Try adjusting your search or filters.'}
+            </p>
             <button
               type="button"
               onClick={clearFilters}
@@ -427,6 +560,9 @@ function PlaceCard({ place }: { place: Place }) {
 
       <div className="p-3.5 flex flex-col flex-1">
         <h3 className="font-bold text-gray-900 text-sm leading-snug mb-0.5 line-clamp-1">{place.name}</h3>
+        {isTemporarilyClosed(place.business_status) && (
+          <p className="mb-0.5 text-xs font-semibold text-amber-700">Temporarily closed</p>
+        )}
         <div className="flex items-center gap-2 mb-1.5">
           {place.island && (
             <p className="text-xs font-medium text-gray-500">{place.island}</p>
@@ -442,9 +578,9 @@ function PlaceCard({ place }: { place: Place }) {
 
         {hasAmenities && (
           <div className="flex gap-1.5 mb-3">
-            {amenities.slice(0, 5).map((a) => (
+            {amenities.slice(0, 5).map((a, index) => (
               <span
-                key={a}
+                key={`${a}-${index}`}
                 title={a}
                 className="text-xs font-medium bg-gray-50 text-gray-600 rounded-md px-1.5 py-0.5 capitalize"
               >
@@ -461,8 +597,8 @@ function PlaceCard({ place }: { place: Place }) {
 
         {place.tags && place.tags.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {place.tags.slice(0, 3).map((tag) => (
-              <span key={tag} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
+            {place.tags.slice(0, 3).map((tag, index) => (
+              <span key={`${tag}-${index}`} className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full">
                 {tag}
               </span>
             ))}

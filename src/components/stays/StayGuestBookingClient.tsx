@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { FormEvent, type ReactNode, useState } from 'react'
+import { FormEvent, type ReactNode, useEffect, useRef, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { getStripe } from '@/lib/stripe/client'
 import {
@@ -27,7 +27,11 @@ interface Props {
   trips: TripOption[]
 }
 
-type Stage = 'details' | 'payment' | 'processing' | 'error'
+// 'paid_needs_support' is terminal: the card was charged, so the checkout
+// forms must never be shown again for this rate.
+type Stage = 'details' | 'payment' | 'processing' | 'error' | 'paid_needs_support'
+
+type PaidSupportState = { paymentReference: string; message: string }
 
 export default function StayGuestBookingClient(props: Props) {
   const [tripId, setTripId] = useState(props.trips[0]?.id ?? '')
@@ -41,11 +45,33 @@ export default function StayGuestBookingClient(props: Props) {
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null)
   const [prebookId, setPrebookId] = useState<string | null>(null)
   const [tripItemId, setTripItemId] = useState<string | null>(null)
+  const [quotedAmountCents, setQuotedAmountCents] = useState<number | null>(null)
+  const [quotedCurrency, setQuotedCurrency] = useState<string | null>(null)
+  const [paidSupport, setPaidSupport] = useState<PaidSupportState | null>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
 
-  const formattedAmount = new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: props.currency,
-  }).format(props.amountCents / 100)
+  useEffect(() => {
+    const stored = readPaidSupport(props.rateId)
+    if (stored) {
+      setPaidSupport(stored)
+      setStage('paid_needs_support')
+    }
+  }, [props.rateId])
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
+
+  function markPaidNeedsSupport(state: PaidSupportState) {
+    writePaidSupport(props.rateId, state)
+    setPaidSupport(state)
+    setError(null)
+    setStage('paid_needs_support')
+  }
+
+  const displayCurrency = quotedCurrency ?? props.currency
+  const formattedAmount = formatMoney((quotedAmountCents ?? props.amountCents) / 100, displayCurrency)
+  const priceChanged = quotedAmountCents !== null && quotedAmountCents !== props.amountCents
   const childrenCount = Math.max(0, props.childrenCount ?? 0)
   const requestedRooms = Math.max(1, props.requestedRooms ?? 1)
   const totalTravelers = props.adults + childrenCount
@@ -56,7 +82,9 @@ export default function StayGuestBookingClient(props: Props) {
       ? 'Preparing checkout'
       : stage === 'error'
         ? 'Review required'
-        : 'Guest details'
+        : stage === 'paid_needs_support'
+          ? 'Support follow-up'
+          : 'Guest details'
   const returnTo = bookingReturnPath(props)
 
   async function startPayment(event: FormEvent<HTMLFormElement>) {
@@ -83,11 +111,11 @@ export default function StayGuestBookingClient(props: Props) {
       const nextPrebookId = String(prebook.prebookId ?? '')
       if (!nextPrebookId) throw new Error('Hotel prebook did not return a prebook ID.')
 
+      // The server prices the payment from this prebook; the browser never sends an amount.
       const intent = await postJson('/api/booking/payments/intent', {
-        amount: props.amountCents,
         tripId,
+        prebookId: nextPrebookId,
         bookingType: 'hotel',
-        currency: props.currency.toLowerCase(),
         description: `${props.hotelName} · ${props.roomName}`,
         metadata: {
           source_surface: 'web',
@@ -97,6 +125,9 @@ export default function StayGuestBookingClient(props: Props) {
         },
       })
 
+      const serverAmount = Number(intent.amountCents)
+      if (Number.isFinite(serverAmount) && serverAmount > 0) setQuotedAmountCents(serverAmount)
+      if (typeof intent.currency === 'string' && intent.currency) setQuotedCurrency(intent.currency.toUpperCase())
       setPrebookId(nextPrebookId)
       setPaymentIntentId(String(intent.paymentIntentId ?? ''))
       setClientSecret(String(intent.clientSecret ?? ''))
@@ -161,13 +192,46 @@ export default function StayGuestBookingClient(props: Props) {
               </div>
             </section>
 
-            {error && (
-              <div className="rounded-2xl bg-coral-50 p-4 text-sm font-medium text-coral-800 ring-1 ring-coral-200">
-                {error}
-              </div>
+            <div
+              ref={errorRef}
+              role="alert"
+              tabIndex={-1}
+              className={error ? 'rounded-2xl bg-coral-50 p-4 text-sm font-medium text-coral-800 ring-1 ring-coral-200 focus:outline-none' : 'sr-only'}
+            >
+              {error}
+            </div>
+
+            {stage === 'paid_needs_support' && paidSupport && (
+              <section role="status" className="rounded-baha-lg border border-gold-300 bg-gold-50 p-5 shadow-sm md:p-6">
+                <p className="text-xs font-bold uppercase text-charcoal">
+                  Payment received
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-night">
+                  Our team is finishing this booking with you
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-charcoal">
+                  {paidSupport.message}
+                </p>
+                <p className="mt-3 text-sm font-semibold text-night">
+                  Payment reference: <span className="font-mono text-xs">{paidSupport.paymentReference}</span>
+                </p>
+                <p className="mt-2 text-sm leading-6 text-charcoal">
+                  Please do not pay again. Email{' '}
+                  <a className="font-bold text-brand-700 underline" href={`mailto:support@bahabuddy.com?subject=${encodeURIComponent(`Hotel booking ${paidSupport.paymentReference}`)}`}>support@bahabuddy.com</a>{' '}
+                  with this reference and we will confirm your stay or arrange a refund.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href={tripId ? `/trip/${encodeURIComponent(tripId)}` : '/dashboard'}
+                    className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
+                  >
+                    View my trip
+                  </Link>
+                </div>
+              </section>
             )}
 
-            {!hasTrip && stage !== 'payment' && (
+            {!hasTrip && stage !== 'payment' && stage !== 'paid_needs_support' && (
               <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
                 <p className="text-sm font-semibold uppercase text-gray-500">
                   Trip required
@@ -209,7 +273,7 @@ export default function StayGuestBookingClient(props: Props) {
               </section>
             )}
 
-            {hasTrip && stage !== 'payment' && (
+            {hasTrip && (stage === 'details' || stage === 'processing' || stage === 'error') && (
               <form onSubmit={startPayment} className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm md:p-6">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <Field label="Trip" htmlFor="stay-trip">
@@ -218,16 +282,16 @@ export default function StayGuestBookingClient(props: Props) {
                     </TravelSearchSelect>
                   </Field>
                   <Field label="Email" htmlFor="stay-email">
-                    <TravelSearchInput id="stay-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+                    <TravelSearchInput id="stay-email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
                   </Field>
                   <Field label="First name" htmlFor="stay-first-name">
-                    <TravelSearchInput id="stay-first-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
+                    <TravelSearchInput id="stay-first-name" autoComplete="given-name" value={firstName} onChange={(e) => setFirstName(e.target.value)} required />
                   </Field>
                   <Field label="Last name" htmlFor="stay-last-name">
-                    <TravelSearchInput id="stay-last-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
+                    <TravelSearchInput id="stay-last-name" autoComplete="family-name" value={lastName} onChange={(e) => setLastName(e.target.value)} required />
                   </Field>
                   <Field label="Phone" htmlFor="stay-phone">
-                    <TravelSearchInput id="stay-phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+                    <TravelSearchInput id="stay-phone" type="tel" inputMode="tel" autoComplete="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
                   </Field>
                 </div>
 
@@ -242,6 +306,12 @@ export default function StayGuestBookingClient(props: Props) {
               </form>
             )}
 
+            {stage === 'payment' && priceChanged && (
+              <div role="status" className="rounded-2xl border border-gold-300 bg-gold-50 p-4 text-sm font-semibold text-night">
+                The hotel updated this rate. Your confirmed total is {formattedAmount} (was {formatMoney(props.amountCents / 100, props.currency)}).
+              </div>
+            )}
+
             {stage === 'payment' && clientSecret && prebookId && paymentIntentId && (
               <Elements stripe={getStripe()} options={{ clientSecret }}>
                 <HotelPaymentForm
@@ -251,8 +321,9 @@ export default function StayGuestBookingClient(props: Props) {
                   prebookId={prebookId}
                   paymentIntentId={paymentIntentId}
                   tripItemId={tripItemId}
+                  formattedAmount={formattedAmount}
                   setError={setError}
-                  setStage={setStage}
+                  onPaidNeedsSupport={markPaidNeedsSupport}
                 />
               </Elements>
             )}
@@ -279,33 +350,36 @@ function HotelPaymentForm({
   rateId,
   checkin,
   checkout,
-  amountCents,
-  currency,
   roomName,
   tripId,
   guest,
   prebookId,
   paymentIntentId,
   tripItemId,
+  formattedAmount,
   setError,
-  setStage,
+  onPaidNeedsSupport,
 }: Props & {
   tripId: string
   guest: { firstName: string; lastName: string; email: string; phone: string }
   prebookId: string
   paymentIntentId: string
   tripItemId: string | null
+  formattedAmount: string
   setError: (value: string | null) => void
-  setStage: (value: Stage) => void
+  onPaidNeedsSupport: (state: PaidSupportState) => void
 }) {
   const stripe = useStripe()
   const elements = useElements()
+  // Local state only: the parent must keep <Elements>/<PaymentElement> mounted
+  // while Stripe confirms the payment (3DS, redirects, wallet sheets).
+  const [submitting, setSubmitting] = useState(false)
 
   async function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe || !elements || submitting) return
 
-    setStage('processing')
+    setSubmitting(true)
     setError(null)
 
     const { error: stripeError, paymentIntent } = await stripe.confirmPayment({
@@ -315,7 +389,7 @@ function HotelPaymentForm({
 
     if (stripeError || paymentIntent?.status !== 'succeeded') {
       setError(stripeError?.message ?? 'Payment was not completed.')
-      setStage('payment')
+      setSubmitting(false)
       return
     }
 
@@ -333,16 +407,19 @@ function HotelPaymentForm({
         checkin,
         checkout,
         roomName,
-        amount: amountCents / 100,
-        currency,
       })
 
       ensureLocalBookingSaved(result)
       const bookingId = result.bookingRecordId ?? result.bookingId ?? paymentIntentId
       window.location.href = `/trip/${encodeURIComponent(tripId)}?booking=${encodeURIComponent(String(bookingId))}`
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment succeeded, but the booking needs support. Contact support with your payment reference.')
-      setStage('error')
+      setSubmitting(false)
+      onPaidNeedsSupport({
+        paymentReference: paymentIntentId,
+        message: err instanceof Error && err.message
+          ? err.message
+          : 'Payment succeeded, but the booking needs support. Contact support with your payment reference.',
+      })
     }
   }
 
@@ -351,11 +428,15 @@ function HotelPaymentForm({
       <PaymentElement options={{ layout: 'tabs' }} />
       <button
         type="submit"
-        disabled={!stripe || !elements}
+        disabled={!stripe || !elements || submitting}
+        aria-describedby="stay-pay-total"
         className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:opacity-60"
       >
-        Pay and confirm hotel
+        {submitting ? 'Confirming payment...' : 'Pay and confirm hotel'}
       </button>
+      <p id="stay-pay-total" className="mt-2 text-center text-xs font-semibold text-gray-500">
+        Total charged: {formattedAmount}
+      </p>
     </form>
   )
 }
@@ -538,6 +619,37 @@ function ensureLocalBookingSaved(result: Record<string, unknown>) {
     || !result.tripItemId
   ) {
     throw new Error('Payment succeeded, but this booking needs support before it can be shown as confirmed. Contact support with your payment reference.')
+  }
+}
+
+function formatMoney(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(amount)
+  } catch {
+    return `${currency} ${amount.toFixed(2)}`
+  }
+}
+
+const PAID_SUPPORT_KEY_PREFIX = 'bb:stay-paid-needs-support:'
+
+function readPaidSupport(rateId: string): PaidSupportState | null {
+  try {
+    const raw = window.sessionStorage.getItem(`${PAID_SUPPORT_KEY_PREFIX}${rateId}`)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as Partial<PaidSupportState>
+    return typeof parsed.paymentReference === 'string' && typeof parsed.message === 'string'
+      ? { paymentReference: parsed.paymentReference, message: parsed.message }
+      : null
+  } catch {
+    return null
+  }
+}
+
+function writePaidSupport(rateId: string, state: PaidSupportState) {
+  try {
+    window.sessionStorage.setItem(`${PAID_SUPPORT_KEY_PREFIX}${rateId}`, JSON.stringify(state))
+  } catch {
+    // Storage can be unavailable (private mode); the in-memory stage still blocks re-payment.
   }
 }
 

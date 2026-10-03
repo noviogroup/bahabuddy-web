@@ -17,6 +17,13 @@ vi.mock('next/cache', () => ({
   unstable_cache: (fn: unknown) => fn,
 }))
 
+// Public catalog reads use the cookie-free client; route them to the same
+// mock client the test configures for the cookie client.
+vi.mock('@/lib/supabase/public', async () => {
+  const { deferredSupabaseClient } = await import('../fixtures/deferred-supabase')
+  return { createPublicClient: () => deferredSupabaseClient(() => supabaseMocks.createClient()) }
+})
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: supabaseMocks.createClient,
 }))
@@ -171,8 +178,8 @@ class MockSupabaseQuery {
   }
 
   select = vi.fn(() => this)
-  eq = vi.fn(() => this)
-  ['in'] = vi.fn(() => this)
+  eq = vi.fn(() => this);
+  ['in'] = vi.fn<() => MockSupabaseQuery>(() => this);
   limit = vi.fn(() => this)
   or = vi.fn(() => this)
   order = vi.fn(() => this)
@@ -218,6 +225,39 @@ describe('Explore island detail compact marketplace layout', () => {
     ]))
     supabaseMocks.createClient.mockResolvedValue({
       from: vi.fn((table: string) => new MockSupabaseQuery(table)),
+      rpc: vi.fn(async () => ({
+        data: attractionRows.map((row) => ({
+          activity_id: '24600000-0000-4000-8000-000000000001',
+          place_id: null,
+          source_layer: 'places',
+          source_record_id: row.id,
+          name: row.name,
+          island_slug: row.island,
+          category_tags: row.tags,
+          description: row.description,
+          location_model: 'exact_point',
+          latitude: 23.5,
+          longitude: -75.7,
+          location_notes: null,
+          contact: {},
+          seasonality: {},
+          safety_access: {},
+          price_basis: {},
+          booking_quote_state: 'informational_only',
+          cancellation: {},
+          media: { hero_url: row.image_url },
+          duration: null,
+          meeting_pickup: null,
+          group_age_limits: null,
+          source_checked_at: row.enriched_at,
+          source_recheck_at: '2026-10-01T00:00:00Z',
+          source_owner: 'Baha Buddy',
+          source_class: 'official',
+          source_url: 'https://example.invalid/stocking-island',
+          live_availability_state: 'requires_live_check',
+        })),
+        error: null,
+      })),
     })
   })
 
@@ -234,8 +274,8 @@ describe('Explore island detail compact marketplace layout', () => {
     expect(screen.getByRole('link', { name: 'Browse stays' })).toHaveAttribute('href', expect.stringContaining('/stays?island=Exuma'))
     expect(screen.getByRole('link', { name: 'Browse stays' })).toHaveAttribute('href', expect.stringContaining('checkin='))
     expect(screen.getByRole('link', { name: 'Browse stays' })).toHaveAttribute('href', expect.stringContaining('checkout='))
-    expect(screen.getByRole('link', { name: 'Things to do' })).toHaveAttribute('href', '/explore/places?island=The%20Exumas')
-    expect(screen.getByText('Live planning snapshot')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Things to do' })).toHaveAttribute('href', '/explore/places?island=The%20Exumas&category=Activity')
+    expect(screen.getByText('Trip planning at a glance')).toBeInTheDocument()
     expect(screen.getByTestId('island-live-feeds')).toHaveClass('mt-5')
     expect(screen.getByText('Weather this week')).toBeInTheDocument()
     expect(screen.getByTestId('weather-forecast-strip')).toHaveClass('grid-cols-7')
@@ -248,7 +288,7 @@ describe('Explore island detail compact marketplace layout', () => {
     expect(screen.getByText(/3 nights/)).toBeInTheDocument()
     expect(screen.getByText('Check live rate')).toBeInTheDocument()
     expect(screen.queryByText('Cached rate pending')).not.toBeInTheDocument()
-    expect(screen.getByText('Restaurant feed is being enriched')).toBeInTheDocument()
+    expect(screen.getByText('More restaurants coming soon')).toBeInTheDocument()
     expect(screen.getByText('Marketplace footer')).toBeInTheDocument()
     expect(supabaseMocks.getStayStartingRates).toHaveBeenCalledWith(expect.objectContaining({
       hotelIds: ['rosewood-baha-mar', 'sls-at-baha-mar'],
@@ -263,12 +303,67 @@ describe('Explore island detail compact marketplace layout', () => {
     expect(primaryImage).toHaveAttribute('data-tone', 'island')
     expect(primaryImage).toHaveClass('rounded-baha-lg')
 
-    expect(container.querySelector('a[href="/explore/places?category=beach&island=the-exumas"]')).toBeInTheDocument()
+    expect(container.querySelector('a[href="/explore/places?category=beach&island=the-exumas&match=exact"]')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Search stays' })).not.toBeInTheDocument()
 
     expect(container.innerHTML).not.toContain('relative h-72 md:h-96 overflow-hidden')
     expect(container.innerHTML).not.toContain('from-black/70 via-black/30 to-transparent')
     expect(container.innerHTML).not.toContain('DefaultHeaderHero')
     expect(container.innerHTML).not.toContain('lg:grid-cols-[264px_minmax(0,1fr)]')
+    // Empty sections describe coverage in traveler terms.
+    expect(screen.getByText('No self-guided tours for The Exumas yet.')).toBeInTheDocument()
+    expect(container).not.toHaveTextContent(/source-approved|approved inventory|route-ready|passes review/i)
+  })
+
+  test('lists approved self-guided tours from the full RPC page and links them by activity id', async () => {
+    const tourActivityId = '24600000-0000-4000-8000-000000000301'
+    const rpc = vi.fn(async (_name: string, params: Record<string, unknown>) => ({
+      data: [{
+        activity_id: tourActivityId,
+        place_id: null,
+        source_layer: 'self_tours',
+        source_record_id: 'exuma-cays-route',
+        name: 'Exuma Cays Heritage Route',
+        island_slug: 'the-exumas',
+        category_tags: ['self_tour', 'boat, beach & culture'],
+        description: 'Self-guided cays route.',
+        location_model: 'area_only',
+        latitude: null,
+        longitude: null,
+        location_notes: 'Great Exuma',
+        contact: {},
+        seasonality: {},
+        safety_access: {},
+        price_basis: {},
+        booking_quote_state: 'informational_only',
+        cancellation: {},
+        media: {},
+        duration: null,
+        meeting_pickup: null,
+        group_age_limits: null,
+        source_checked_at: '2026-09-26T00:00:00Z',
+        source_recheck_at: '2026-10-26T00:00:00Z',
+        source_owner: 'Baha Buddy',
+        source_class: 'editorial',
+        source_url: 'https://example.invalid/exuma-route',
+        live_availability_state: 'not_applicable',
+      }].filter(() => params.p_island_slug === 'the-exumas'),
+      error: null,
+    }))
+    const client = await supabaseMocks.createClient()
+    supabaseMocks.createClient.mockResolvedValue({ ...client, rpc })
+
+    const { container } = render(await IslandDetailPage({ params: { id: 'the-exumas' } }))
+
+    // The RPC cannot filter by layer, so the tour feed reads its full page.
+    expect(rpc).toHaveBeenCalledWith('get_approved_activity_recommendations', expect.objectContaining({
+      p_island_slug: 'the-exumas',
+      p_limit: 100,
+    }))
+    const tourLink = container.querySelector(`a[href="/tours/${tourActivityId}"]`)
+    expect(tourLink).toBeInTheDocument()
+    expect(tourLink).toHaveTextContent('Exuma Cays Heritage Route')
+    expect(tourLink).toHaveTextContent('boat, beach & culture')
+    expect(tourLink).not.toHaveTextContent('self_tour')
   })
 })

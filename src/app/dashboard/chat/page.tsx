@@ -6,7 +6,7 @@ import { BuddyAvatar } from '@/components/ui'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Chat with Baha Buddy',
+  title: { absolute: 'Chat with Baha Buddy' },
   description: 'Your personal AI travel guide for the Bahamas',
 }
 

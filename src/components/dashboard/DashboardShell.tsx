@@ -32,6 +32,7 @@ import Sidebar from './Sidebar'
 import ChatPanel from './ChatPanel'
 import MobileChatEntryBar from '../home/MobileChatEntryBar'
 import { BahaLogo, BuddyAvatar } from '@/components/ui'
+import { useDialogFocus } from '@/components/ui/useDialogFocus'
 
 export interface DashboardShellProps {
   /** Authenticated user email (rendered in sidebar + chat header). */
@@ -61,6 +62,9 @@ export default function DashboardShell({
   // Refs for focus-on-open — points at each overlay's close button.
   const mobileNavCloseRef = useRef<HTMLButtonElement>(null)
   const chatCloseRef = useRef<HTMLButtonElement>(null)
+  const mobileNavDialogRef = useRef<HTMLDivElement>(null)
+  const chatDialogRef = useRef<HTMLDivElement>(null)
+  const backgroundRefs = [useRef<HTMLDivElement>(null), useRef<HTMLElement>(null), useRef<HTMLElement>(null)] as const
 
   // Lock body scroll when an overlay is open
   useEffect(() => {
@@ -85,21 +89,35 @@ export default function DashboardShell({
     return () => window.removeEventListener('keydown', onKey)
   }, [mobileNavOpen, chatOverlayOpen])
 
-  // Move focus into the chat overlay when it opens (a11y: keyboard +
-  // screen-reader users should land inside the dialog, not stranded
-  // behind it). requestAnimationFrame waits one paint so the ref is
-  // attached.
+  // Make the page behind an open overlay inert so pointer, Tab and the
+  // screen-reader virtual cursor cannot reach it. Declared before
+  // useDialogFocus so inert is removed before focus is restored to the opener.
   useEffect(() => {
-    if (chatOverlayOpen) {
-      requestAnimationFrame(() => chatCloseRef.current?.focus())
+    const anyOpen = mobileNavOpen || chatOverlayOpen
+    const elements = backgroundRefs.map((ref) => ref.current).filter((el): el is HTMLElement => Boolean(el))
+    if (!anyOpen) return
+    for (const element of elements) element.setAttribute('inert', '')
+    return () => {
+      for (const element of elements) element.removeAttribute('inert')
     }
-  }, [chatOverlayOpen])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mobileNavOpen, chatOverlayOpen])
 
-  useEffect(() => {
-    if (mobileNavOpen) {
-      requestAnimationFrame(() => mobileNavCloseRef.current?.focus())
-    }
-  }, [mobileNavOpen])
+  // Focus management for both modal overlays: focus lands on the close
+  // button, Tab / Shift+Tab stay inside the dialog, and focus returns to the
+  // opener (hamburger / Buddy button) on close. Escape is handled above.
+  useDialogFocus({
+    open: chatOverlayOpen,
+    containerRef: chatDialogRef,
+    trapFocus: true,
+    getInitialFocus: () => chatCloseRef.current,
+  })
+  useDialogFocus({
+    open: mobileNavOpen,
+    containerRef: mobileNavDialogRef,
+    trapFocus: true,
+    getInitialFocus: () => mobileNavCloseRef.current,
+  })
 
   // External triggers — children inside <main> can dispatch this event to
   // open the chat overlay without prop drilling. Used by MobileChatEntryBar.
@@ -118,12 +136,12 @@ export default function DashboardShell({
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-offwhite text-night">
       {/* ── Left: Sidebar (desktop + tablet) ──────────────────────────── */}
-      <div className="hidden lg:flex shrink-0">
+      <div ref={backgroundRefs[0]} className="hidden lg:flex shrink-0">
         <Sidebar userEmail={userEmail} displayName={displayName} variant="auto" />
       </div>
 
       {/* ── Center: Main content column ───────────────────────────────── */}
-      <main className="flex-1 min-w-0 flex flex-col overflow-hidden">
+      <main ref={backgroundRefs[1]} className="flex-1 min-w-0 flex flex-col overflow-hidden">
         {/* Mobile top bar (phone only) */}
         <div className="lg:hidden shrink-0 flex min-h-16 items-center gap-3 border-b border-gray-200 bg-white px-3 py-2 sm:px-4">
           <button
@@ -151,6 +169,7 @@ export default function DashboardShell({
       {/* ── Right: Chat panel (desktop ≥1280px only) ──────────────────── */}
       {chatDocked && (
         <aside
+          ref={backgroundRefs[2]}
           className="hidden xl:flex shrink-0 w-[380px] relative"
           aria-label="Chat with Buddy"
         >
@@ -184,6 +203,7 @@ export default function DashboardShell({
             aria-hidden="true"
           />
           <div
+            ref={mobileNavDialogRef}
             id={mobileNavId}
             role="dialog"
             aria-modal="true"
@@ -220,6 +240,7 @@ export default function DashboardShell({
             aria-hidden="true"
           />
           <div
+            ref={chatDialogRef}
             id={chatOverlayId}
             role="dialog"
             aria-modal="true"

@@ -1,32 +1,11 @@
 'use client'
 
-/**
- * FlightSearchClient — direct-search form + results for /flights.
- *
- * State machine:
- *   idle    → user hasn't searched yet; show empty hint
- *   loading → request in flight; show skeleton
- *   results → success path; show cards or "no results found"
- *   error   → validation / API error; show banner, keep form usable
- *
- * Results are rendered through <RichCardRenderer> with the same flight
- * cards Buddy emits in chat. Cards now expose a direct "Book this fare"
- * action when the provider offer ID is present.
- *
- * Defaults that reduce typing:
- *   - Departure date: today + 14 days (typical Bahamas trip lead time)
- *   - Destination: NAS (largest catchment)
- *   - Passengers: 1
- *   - Cabin: economy
- *
- * Defaults that match mobile's known origin cities (CITY_TO_IATA in
- * chat-tools.ts). The airport combobox surfaces city, airport, and code
- * matches without requiring users to know IATA codes.
- */
+/** Search first, then compare fares with editable context and on-demand details. */
 
 import { useState, useMemo, useEffect, useRef, type FormEvent } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { RichCardRenderer, providerOfferIdFromCard, type CardData } from '@/components/RichCards'
+import SearchSummaryPanel from '@/components/marketplace/SearchSummaryPanel'
 import { FilterButton } from '@/components/marketplace/ResultFilterPanel'
 import { track } from '@/lib/analytics'
 import {
@@ -55,51 +34,6 @@ const POPULAR_ROUTES: Array<{ label: string; origin: string; destination: string
   { label: 'New York to Nassau', origin: 'New York', destination: 'NAS' },
   { label: 'Atlanta to Exuma', origin: 'Atlanta', destination: 'EXU' },
   { label: 'Charlotte to Eleuthera', origin: 'Charlotte', destination: 'ELH' },
-]
-
-const FLIGHT_SEARCH_BACKGROUND_IMAGE = '/assets/marketplace/bahamas-flight-aerial.jpg'
-const STAY_PROMO_BACKGROUND_IMAGE = '/assets/marketplace/bahamas-stays-pool.jpg'
-
-const PREVIEW_FARE_ROUTES: Array<{
-  label: string
-  origin: string
-  destination: string
-  route: string
-  airlines: string
-  duration: string
-  servicePattern: string
-  decisionNote: string
-}> = [
-  {
-    label: 'Miami to Nassau',
-    origin: 'Miami',
-    destination: 'NAS',
-    route: 'MIA to NAS',
-    airlines: 'American Airlines, Bahamasair, JetBlue',
-    duration: 'About 1 hour',
-    servicePattern: 'Most useful for Nassau, Paradise Island, and short resort stays.',
-    decisionNote: 'Usually the strongest first search when travelers want quick arrival and more schedule choice.',
-  },
-  {
-    label: 'Fort Lauderdale to Nassau',
-    origin: 'Fort Lauderdale',
-    destination: 'NAS',
-    route: 'FLL to NAS',
-    airlines: 'JetBlue, Bahamasair, Silver Airways',
-    duration: 'About 1 hour',
-    servicePattern: 'Good South Florida alternate when Miami pricing or timing is weak.',
-    decisionNote: 'Worth comparing for weekend trips, smaller groups, and travelers already north of Miami.',
-  },
-  {
-    label: 'Atlanta to Exuma',
-    origin: 'Atlanta',
-    destination: 'EXU',
-    route: 'ATL to EXU',
-    airlines: 'Delta Air Lines and partners',
-    duration: 'About 2 hours 15 minutes nonstop when available',
-    servicePattern: 'Best for Exuma-focused trips that do not need a Nassau connection.',
-    decisionNote: 'Verify date-specific service before building boat days around the arrival time.',
-  },
 ]
 
 const CABIN_CLASSES: Array<{ value: string; label: string }> = [
@@ -134,21 +68,7 @@ const ISO_DATE_RX = /^\d{4}-\d{2}-\d{2}$/
 
 export default function FlightSearchClient() {
   const searchParams = useSearchParams()
-  const currentPath = typeof window !== 'undefined' ? window.location.pathname : '/flights'
-  const isDashboardSurface = currentPath.startsWith('/dashboard/flights')
 
-  // Default departure: 14 days from today. Computed once via useMemo so it
-  // doesn't shift while the user is typing.
-  const defaultDeparture = useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 14)
-    return d.toISOString().split('T')[0]
-  }, [])
-  const defaultReturn = useMemo(() => {
-    const d = new Date()
-    d.setDate(d.getDate() + 19)
-    return d.toISOString().split('T')[0]
-  }, [])
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
 
   // ── URL-param hydration (deep-link from HeroSearchPanel) ─────────────────
@@ -166,20 +86,17 @@ export default function FlightSearchClient() {
     const passengersNum = passengersRaw ? Number(passengersRaw) : NaN
 
     return {
-      origin: origin && origin.length > 0 ? origin : 'Miami',
+      origin: origin && origin.length > 0 ? origin : '',
       destination: destination && BAHAMAS_DESTINATION_CODES.has(destination) ? destination : 'NAS',
-      depart: depart && ISO_DATE_RX.test(depart) && depart >= todayStr ? depart : defaultDeparture,
-      returnDate: ret && ISO_DATE_RX.test(ret) ? ret : defaultReturn,
+      depart: depart && ISO_DATE_RX.test(depart) && depart >= todayStr ? depart : '',
+      returnDate: ret && ISO_DATE_RX.test(ret) ? ret : '',
       passengers: Number.isFinite(passengersNum) && passengersNum >= 1 && passengersNum <= 9
         ? Math.floor(passengersNum)
         : 1,
       cabin: cabin && CABIN_VALUES.has(cabin) ? cabin : 'economy',
       tripType: (tripType === 'one_way' ? 'one_way' : 'round_trip') as 'round_trip' | 'one_way',
-      /** True when the URL had at least one search param — used to auto-search on mount. */
-      hasDeepLink:
-        !!origin || !!destination || !!depart || !!ret || !!passengersRaw || !!cabin || !!tripType,
     }
-  }, [searchParams, defaultDeparture, defaultReturn, todayStr])
+  }, [searchParams, todayStr])
 
   const [originCity, setOriginCity] = useState(initial.origin)
   const [destination, setDestination] = useState(initial.destination)
@@ -191,21 +108,14 @@ export default function FlightSearchClient() {
   const [tripDetailsOpen, setTripDetailsOpen] = useState(false)
   const tripDetailsRef = useRef<HTMLDivElement>(null)
 
+  const [searchOpen, setSearchOpen] = useState(true)
+  const [submittedSearch, setSubmittedSearch] = useState<FlightSearchArgs | null>(null)
   const [status, setStatus] = useState<Status>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [results, setResults] = useState<CardData[]>([])
   const [emptyMessage, setEmptyMessage] = useState<string | null>(null)
-  const [lastSearchLabel, setLastSearchLabel] = useState('Miami to Nassau')
+  const [lastSearchLabel, setLastSearchLabel] = useState('')
   const [resultMode, setResultMode] = useState<FlightResultMode>('best')
-
-  /** Default return date when user toggles to round-trip: departure + 5 days. */
-  function ensureReturnDate(dep: string) {
-    if (returnDate) return
-    if (!dep) return
-    const d = new Date(dep)
-    d.setDate(d.getDate() + 5)
-    setReturnDate(d.toISOString().split('T')[0])
-  }
 
   /** Core search executor — stateless, takes everything as args so the
    *  auto-search-on-mount path (which fires before React commits any
@@ -228,9 +138,22 @@ export default function FlightSearchClient() {
 
     if (!args.originCity.trim()) {
       setErrorMessage('Tell us where you\u2019re flying from.')
+      setSearchOpen(true)
       setStatus('error')
       return
     }
+
+    if (!args.departureDate || args.departureDate < todayStr ||
+        (args.tripType === 'round_trip' && (!args.returnDate || args.returnDate < args.departureDate))) {
+      setErrorMessage(args.tripType === 'round_trip' ? 'Choose departure and return dates for your trip.' : 'Choose a departure date for your trip.')
+      setSearchOpen(true)
+      setStatus('error')
+      return
+    }
+    setSubmittedSearch(args)
+    setResultMode('best')
+    setSearchOpen(false)
+    setTripDetailsOpen(false)
 
     try {
       syncFlightSearchUrl(args)
@@ -254,6 +177,7 @@ export default function FlightSearchClient() {
 
       if (!res.ok) {
         setErrorMessage(payload?.error ?? 'Flight search failed.')
+        setSearchOpen(true)
         setStatus('error')
         return
       }
@@ -261,6 +185,7 @@ export default function FlightSearchClient() {
       // Executor can return either { results, cards } or { error, results: [] }
       if (payload.error) {
         setErrorMessage(payload.error as string)
+        setSearchOpen(true)
         setStatus('error')
         return
       }
@@ -280,18 +205,17 @@ export default function FlightSearchClient() {
     } catch (err) {
       console.error('[FlightSearchClient]', err)
       setErrorMessage('Could not reach the flight search service. Check your connection and try again.')
+      setSearchOpen(true)
       setStatus('error')
     }
   }
 
-  // Auto-search on mount. Public visitors should immediately see that
-  // this is a live flight surface, not an empty workbench. Deep links
-  // still hydrate the route first.
+  // Only search when the traveler supplied a complete route and dates.
   const didAutoSearchRef = useRef(false)
   useEffect(() => {
     if (didAutoSearchRef.current) return
     didAutoSearchRef.current = true
-    const storedOrigin = initial.hasDeepLink ? null : readStoredTravelOrigin()?.origin ?? null
+    const storedOrigin = initial.origin ? null : readStoredTravelOrigin()?.origin ?? null
     const searchOrigin = storedOrigin ?? initial.origin
     if (storedOrigin) {
       setOriginCity(storedOrigin)
@@ -301,6 +225,7 @@ export default function FlightSearchClient() {
         destination: initial.destination,
       })
     }
+    if (!searchOrigin || !initial.depart || (initial.tripType === 'round_trip' && !initial.returnDate)) return
     void runSearch({
       originCity: searchOrigin,
       destination: initial.destination,
@@ -323,6 +248,8 @@ export default function FlightSearchClient() {
         source: 'public_prompt_event',
         destination,
       })
+      setSearchOpen(true)
+      if (!departureDate || (tripType === 'round_trip' && !returnDate)) return
       void runSearch({
         originCity: nextOrigin,
         destination,
@@ -358,17 +285,10 @@ export default function FlightSearchClient() {
   async function handlePopularRoute(route: { label: string; origin: string; destination: string }) {
     setOriginCity(route.origin)
     setDestination(route.destination)
-    setTripType('round_trip')
-    if (!returnDate) setReturnDate(defaultReturn)
-    await runSearch({
-      originCity: route.origin,
-      destination: route.destination,
-      departureDate,
-      returnDate: returnDate || defaultReturn,
-      tripType: 'round_trip',
-      passengers,
-      cabinClass,
-    })
+    setSearchOpen(true)
+    if (departureDate && (tripType === 'one_way' || returnDate)) {
+      await runSearch(currentSearchArgs({ originCity: route.origin, destination: route.destination }))
+    }
   }
 
   function currentSearchArgs(overrides: Partial<FlightSearchArgs> = {}): FlightSearchArgs {
@@ -386,9 +306,7 @@ export default function FlightSearchClient() {
 
   function handleTripTypeChange(nextTripType: 'round_trip' | 'one_way') {
     setTripType(nextTripType)
-    if (nextTripType === 'round_trip') {
-      ensureReturnDate(departureDate)
-    }
+
   }
 
   function syncFlightSearchUrl(args: FlightSearchArgs) {
@@ -410,6 +328,16 @@ export default function FlightSearchClient() {
   }
 
   const isLoading = status === 'loading'
+  // One always-mounted live region announces search progress and outcome
+  // (WCAG 4.1.3). Errors keep their own role="alert" block below.
+  const searchStatusMessage =
+    status === 'loading'
+      ? `Searching flights for ${lastSearchLabel}…`
+      : status === 'results'
+        ? results.length > 0
+          ? `${results.length} flight ${results.length === 1 ? 'option' : 'options'} found for ${lastSearchLabel}.`
+          : `No flight options for ${lastSearchLabel}. ${emptyMessage ?? ''}`.trim()
+        : ''
   const displayedResults = useMemo(
     () => rankFlightResults(results, resultMode),
     [results, resultMode],
@@ -419,7 +347,6 @@ export default function FlightSearchClient() {
     () => rankFlightResults(results, 'nonstop').length,
     [results],
   )
-  const destinationLabel = BAHAMAS_AIRPORT_OPTIONS.find((item) => item.code === destination)?.label ?? 'The Bahamas'
   const cabinLabel = CABIN_CLASSES.find(c => c.value === cabinClass)?.label ?? 'Economy'
   const travelerLabel = `${passengers} ${passengers === 1 ? 'traveler' : 'travelers'}`
   const personalizedRoutes = useMemo(() => {
@@ -441,116 +368,26 @@ export default function FlightSearchClient() {
     ]
   }, [originCity])
 
-  const searchGridClassName = [
-    'grid grid-cols-1 gap-3 md:grid-cols-2',
-    isDashboardSurface
-      ? 'min-[1600px]:grid-cols-[minmax(0,1.1fr)_2.5rem_minmax(0,1.1fr)_minmax(15rem,0.9fr)_minmax(14rem,0.85fr)_auto]'
-      : 'xl:grid-cols-[minmax(0,1.1fr)_2.5rem_minmax(0,1.1fr)_minmax(15rem,0.9fr)_minmax(14rem,0.85fr)_auto]',
-  ].join(' ')
-  const resultsGridClassName = [
-    'grid min-w-0 gap-5',
-    isDashboardSurface
-      ? 'min-[1600px]:grid-cols-[minmax(0,1fr)_15.5rem]'
-      : 'min-[1120px]:grid-cols-[minmax(0,1fr)_15.5rem]',
-  ].join(' ')
-  const promoAsideClassName = [
-    'space-y-4',
-    isDashboardSurface
-      ? 'min-[1600px]:col-span-1 min-[1600px]:sticky min-[1600px]:top-24'
-      : 'min-[1120px]:sticky min-[1120px]:top-24',
-  ].join(' ')
-  const swapControlClassName = isDashboardSurface
-    ? 'hidden items-end justify-center min-[1600px]:flex'
-    : 'hidden items-end justify-center xl:flex'
-  const searchActionCellClassName = isDashboardSurface
-    ? 'flex items-end md:col-span-2 min-[1600px]:col-span-1'
-    : 'flex items-end md:col-span-2 xl:col-span-1'
-
-  function renderFarePreviewBoard(title: string, description: string) {
-    return (
-      <section className="rounded-baha-lg border border-gray-200 bg-white p-4 shadow-sm sm:p-5">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Route preview
-            </p>
-            <h2 className="mt-1 text-lg font-bold text-night">
-              {title}
-            </h2>
-          </div>
-          <p className="max-w-md text-xs font-semibold leading-5 text-gray-500 sm:text-right">
-            {description}
-          </p>
-        </div>
-
-        <div className="mt-4 grid gap-3">
-          {PREVIEW_FARE_ROUTES.map((route) => (
-            <article key={route.label} className="rounded-2xl border border-gray-200 bg-white p-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase text-brand-700">
-                    {route.route}
-                  </p>
-                  <h3 className="mt-1 text-base font-bold text-night">
-                    {route.label}
-                  </h3>
-                  <p className="mt-1 text-sm font-semibold leading-6 text-charcoal">
-                    {route.airlines}
-                  </p>
-                </div>
-                <div className="rounded-xl bg-gray-50 px-3 py-2 text-left sm:text-right">
-                  <p className="text-xs font-semibold uppercase text-gray-500">
-                    Typical duration
-                  </p>
-                  <p className="mt-1 text-sm font-semibold text-night">
-                    {route.duration}
-                  </p>
-                </div>
-              </div>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <p className="rounded-xl bg-gray-50 p-3 text-sm font-semibold leading-6 text-charcoal">
-                  {route.servicePattern}
-                </p>
-                <p className="rounded-xl border border-gray-200 bg-white p-3 text-sm font-semibold leading-6 text-charcoal">
-                  {route.decisionNote}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => void handlePopularRoute(route)}
-                disabled={isLoading}
-                className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
-              >
-                Search this route
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
-    )
-  }
+  const searchGridClassName = 'grid grid-cols-1 gap-3 md:grid-cols-2'
+  const searchActionCellClassName = 'flex items-end md:col-span-2'
+  const summarySearch = submittedSearch ?? currentSearchArgs()
+  const summaryDates = [summarySearch.departureDate, summarySearch.tripType === 'round_trip' ? summarySearch.returnDate : '']
+    .filter(Boolean).map(date => new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })).join(' – ')
+  const summaryCabin = CABIN_CLASSES.find(c => c.value === summarySearch.cabinClass)?.label ?? 'Economy'
 
   return (
-    <div className="space-y-5">
-      <form
-        onSubmit={handleSubmit}
-        className="flex min-h-80 flex-col overflow-visible rounded-baha-lg bg-night bg-cover bg-center p-3 shadow-sm md:min-h-96 md:p-5"
-        style={{
-          backgroundImage: `url("${FLIGHT_SEARCH_BACKGROUND_IMAGE}")`,
-          backgroundPosition: 'center',
-        }}
-        aria-label="Flight search"
+    <div className="mx-auto max-w-5xl space-y-6">
+      <header>
+        <h1 className="text-3xl font-bold text-night">Find flights</h1>
+        <p className="mt-2 text-sm text-gray-600">Choose your route and dates. Compare fares in one place.</p>
+      </header>
+      <SearchSummaryPanel
+        summary={summarySearch.originCity ? searchLabel(summarySearch.originCity, summarySearch.destination) : 'Where are you flying from?'}
+        detail={`${summarySearch.tripType === 'round_trip' ? 'Round-trip' : 'One-way'} · ${summaryDates || 'Add travel dates'} · ${summarySearch.passengers} traveler${summarySearch.passengers === 1 ? '' : 's'} · ${summaryCabin}`}
+        open={searchOpen}
+        onOpenChange={setSearchOpen}
       >
-        <div className="w-fit max-w-full rounded-baha-lg bg-white/95 px-4 py-3 shadow-lg shadow-gray-950/10 ring-1 ring-black/5">
-          <p className="text-xs font-semibold uppercase text-brand-700">
-            Baha Buddy flights
-          </p>
-          <h1 className="mt-1 text-3xl font-bold text-night">
-            Find flights from anywhere in the world to The Bahamas
-          </h1>
-        </div>
-
-        <div className="mt-auto w-full rounded-baha-lg bg-white p-3 shadow-xl shadow-gray-950/15 ring-1 ring-black/5 md:p-4">
+      <form onSubmit={handleSubmit} aria-label="Flight search">
           <div className="mb-4 border-b border-gray-100">
             <div role="radiogroup" aria-label="Trip type" className="flex flex-wrap gap-5">
               <button
@@ -583,7 +420,7 @@ export default function FlightSearchClient() {
           </div>
 
           <div className={searchGridClassName}>
-            <TravelSearchField label="Leaving from" hint="City or airport" htmlFor="origin">
+            <TravelSearchField className="!border-0 !p-0 !shadow-none" label="From" htmlFor="origin">
               <TravelSearchCombobox
                 id="origin"
                 name="origin"
@@ -599,18 +436,7 @@ export default function FlightSearchClient() {
               />
             </TravelSearchField>
 
-            <div className={swapControlClassName} aria-hidden="true">
-              <span className="flex h-11 w-11 items-center justify-center rounded-full border border-gray-200 bg-white text-brand-700 shadow-sm">
-                <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M7 7h10" />
-                  <path d="M14 4l3 3-3 3" />
-                  <path d="M17 17H7" />
-                  <path d="M10 14l-3 3 3 3" />
-                </svg>
-              </span>
-            </div>
-
-            <TravelSearchField label="Going to" hint="Bahamas airport" htmlFor="destination">
+            <TravelSearchField className="!border-0 !p-0 !shadow-none" label="To" htmlFor="destination">
               <TravelSearchCombobox
                 id="destination"
                 name="destination"
@@ -624,10 +450,11 @@ export default function FlightSearchClient() {
               />
             </TravelSearchField>
 
-            <TravelSearchField label="Dates" hint={tripType === 'round_trip' ? 'Round-trip' : 'One-way'} htmlFor="departure-date-trigger">
-              <div className={`grid gap-2 ${tripType === 'round_trip' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+            <div>
+              <div className={`grid gap-3 ${tripType === 'round_trip' ? 'grid-cols-1 sm:grid-cols-2' : 'grid-cols-1'}`}>
                 <BahaDatePicker
                   id="departure-date"
+                  label="Departure"
                   name="departure-date"
                   ariaLabel="Departure date"
                   required
@@ -636,9 +463,7 @@ export default function FlightSearchClient() {
                   onChange={(v) => {
                     setDepartureDate(v)
                     if (returnDate && v > returnDate) {
-                      const d = new Date(v)
-                      d.setDate(d.getDate() + 5)
-                      setReturnDate(d.toISOString().split('T')[0])
+                      setReturnDate('')
                     }
                   }}
                   placeholder="Depart"
@@ -646,6 +471,7 @@ export default function FlightSearchClient() {
                 {tripType === 'round_trip' && (
                   <BahaDatePicker
                     id="return-date"
+                    label="Return"
                     name="return-date"
                     ariaLabel="Return date"
                     required
@@ -656,9 +482,9 @@ export default function FlightSearchClient() {
                   />
                 )}
               </div>
-            </TravelSearchField>
+            </div>
 
-            <TravelSearchField label="Travelers" hint="Cabin" htmlFor="passengers-search">
+            <TravelSearchField className="!border-0 !p-0 !shadow-none" label="Travelers & cabin" htmlFor="passengers-search">
               <div ref={tripDetailsRef} className="relative">
                 <button
                   id="passengers-search"
@@ -734,6 +560,7 @@ export default function FlightSearchClient() {
                         Done
                       </button>
                     </div>
+                    <button type="button" onClick={() => setResultMode('best')} className="mt-3 min-h-11 rounded-full border border-gray-200 px-4 text-sm font-semibold text-brand-700">Show all flights</button>
                   </div>
                 )}
               </div>
@@ -747,7 +574,7 @@ export default function FlightSearchClient() {
               >
                 {isLoading ? (
                   <>
-                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 animate-spin motion-reduce:animate-none" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
                     </svg>
@@ -764,22 +591,22 @@ export default function FlightSearchClient() {
               </button>
             </div>
           </div>
-        </div>
       </form>
+      </SearchSummaryPanel>
 
-      <section aria-label="Popular flight routes" className="rounded-baha-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
+      {status === 'idle' && <section aria-label="Popular flight routes" className="rounded-baha-lg border border-gray-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase text-gray-500">
-              Popular Bahamas routes
+              Try a route
             </p>
             <p className="mt-0.5 text-sm font-semibold text-night">
-              Island gateways travelers compare from {originCity.trim() || 'your city'}
+              Choose a route, then add your dates.
             </p>
           </div>
           <div className="relative -mr-4 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-10 after:bg-gradient-to-l after:from-white after:to-transparent lg:mr-0 lg:after:hidden">
           <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 pr-10 lg:mx-0 lg:flex-wrap lg:justify-end lg:pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {personalizedRoutes.map((route) => (
+            {personalizedRoutes.slice(0, 3).map((route) => (
               <button
                 key={route.label}
                 type="button"
@@ -793,10 +620,13 @@ export default function FlightSearchClient() {
           </div>
           </div>
         </div>
-      </section>
+      </section>}
 
-      <div className={resultsGridClassName}>
+      <div>
         <div className="min-w-0 space-y-5">
+          <p role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="flight-search-status">
+            {searchStatusMessage}
+          </p>
           {status === 'error' && errorMessage && (
             <div
               role="alert"
@@ -807,10 +637,10 @@ export default function FlightSearchClient() {
           )}
 
           {isLoading && (
-            <div className="space-y-3" aria-live="polite" aria-busy="true">
+            <div className="space-y-3" aria-busy="true">
               <div className="rounded-baha-md border border-gray-200 bg-white px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-3">
-                  <svg className="h-4 w-4 animate-spin text-brand-600" fill="none" viewBox="0 0 24 24">
+                  <svg className="h-4 w-4 animate-spin motion-reduce:animate-none text-brand-600" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v3a5 5 0 00-5 5H4z" />
                   </svg>
@@ -819,35 +649,26 @@ export default function FlightSearchClient() {
                   </p>
                 </div>
                 <p className="mt-1 text-xs font-semibold text-gray-500">
-                  Live prices, baggage, stops, and offer expiry will replace the preview board when the provider responds.
+                  Checking availability for your trip…
                 </p>
               </div>
-              {renderFarePreviewBoard(
-                'Common Bahamas flight routes to compare first',
-                'These route notes keep the page useful while live availability loads. They are not confirmed fares.',
-              )}
+              {[0, 1, 2].map(index => <div key={index} className="h-36 animate-pulse rounded-baha-lg bg-gray-100 motion-reduce:animate-none" aria-hidden="true" />)}
             </div>
           )}
 
           {status === 'results' && results.length > 0 && (
-            <section aria-label="Flight results" className="space-y-2">
-              <div className="rounded-baha-lg border border-gray-200 bg-white p-3 shadow-sm">
+            <section aria-label="Flight results" className="space-y-4">
+              <div className="border-b border-gray-200 pb-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <p className="text-xs font-semibold uppercase text-gray-500">
-                      Live results
-                    </p>
                     <h2 className="mt-0.5 text-lg font-bold text-night">
-                      {lastSearchLabel}: {displayedResults.length} of {results.length} {results.length === 1 ? 'option' : 'options'}
+                      {displayedResults.length} {displayedResults.length === 1 ? 'flight' : 'flights'}{resultMode === 'nonstop' ? ` of ${results.length}` : ''}
                     </h2>
                     <p className="mt-1 text-xs font-medium text-gray-500">
-                      {travelerLabel} · {cabinLabel}
+                      Total prices for {submittedSearch?.passengers ?? passengers} traveler{(submittedSearch?.passengers ?? passengers) === 1 ? '' : 's'}
                     </p>
                   </div>
                   <div className="min-w-0">
-                    <p className="mb-2 text-xs font-semibold uppercase text-gray-500">
-                      Fare focus
-                    </p>
                     <div className="relative -mr-3 after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-10 after:bg-gradient-to-l after:from-white after:to-transparent lg:mr-0 lg:after:hidden">
                     <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 pr-10 lg:mx-0 lg:flex-wrap lg:justify-end lg:pr-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                       {FLIGHT_RESULT_MODES.map((mode) => (
@@ -869,7 +690,7 @@ export default function FlightSearchClient() {
                 </p>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-3">
                 {displayedResults.length > 0 ? (
                   displayedResults.map((card, idx) => (
                     <RichCardRenderer
@@ -888,6 +709,7 @@ export default function FlightSearchClient() {
                     <p className="mt-1 text-xs font-semibold text-gray-500">
                       Switch to Best or try nearby dates to compare connecting fares.
                     </p>
+                    <button type="button" onClick={() => setResultMode('best')} className="mt-3 min-h-11 rounded-full border border-gray-200 px-4 text-sm font-semibold text-brand-700">Show all flights</button>
                   </div>
                 )}
               </div>
@@ -903,122 +725,11 @@ export default function FlightSearchClient() {
                 <FlightGlyph />
               </div>
               <p className="text-sm text-gray-700">{emptyMessage}</p>
+              <button type="button" onClick={() => setSearchOpen(true)} className="mt-3 min-h-11 rounded-full border border-gray-200 px-4 text-sm font-semibold text-brand-700">Change dates or route</button>
             </div>
           )}
 
-          {status === 'idle' && (
-            renderFarePreviewBoard(
-              'Start with routes travelers use most',
-              'Pick dates above to verify live fares. Preview notes help compare routing before provider prices load.',
-            )
-          )}
         </div>
-
-        <aside
-          aria-label="Flight promotions"
-          className={promoAsideClassName}
-        >
-          <section className="overflow-hidden rounded-baha-lg border border-gray-200 bg-white shadow-sm">
-            <div
-              className="h-20 bg-cover bg-center"
-              style={{ backgroundImage: `url("${FLIGHT_SEARCH_BACKGROUND_IMAGE}")` }}
-              aria-hidden="true"
-            />
-            <div className="space-y-3 p-3.5">
-              <p className="text-xs font-semibold uppercase text-gray-500">
-                Plan with Buddy
-              </p>
-              <h2 className="mt-1 text-lg font-bold text-night">
-                Flights are just the start
-              </h2>
-              <p className="text-xs font-semibold leading-5 text-gray-600">
-                Build the rest of the trip: stays, transfers, tours, dining, documents, deals.
-              </p>
-              <div className="grid grid-cols-3 gap-1.5">
-                {['Stays', 'Transfers', 'Tours', 'Dining', 'Docs', 'Deals'].map((tool) => (
-                  <span key={tool} className="rounded-full border border-gray-200 bg-gray-50 px-2 py-1 text-center text-xs font-semibold text-charcoal">
-                    {tool}
-                  </span>
-                ))}
-              </div>
-              <a
-                href="/dashboard/trips/new?source=flight_search"
-                className="inline-flex w-full items-center justify-center rounded-full bg-brand-600 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
-              >
-                Start planning
-              </a>
-            </div>
-          </section>
-
-          <section className="overflow-hidden rounded-baha-lg border border-gray-200 bg-white shadow-sm">
-            <div
-              className="h-20 bg-cover bg-center"
-              style={{ backgroundImage: `url("${STAY_PROMO_BACKGROUND_IMAGE}")` }}
-              aria-hidden="true"
-            />
-            <div className="p-3.5">
-              <p className="text-xs font-semibold uppercase text-gray-500">
-                Bundle this trip
-              </p>
-              <h3 className="mt-1 text-base font-bold text-night">
-                Pair {destinationLabel} flights with top stays
-              </h3>
-              <p className="mt-2 text-xs font-semibold leading-5 text-gray-500">
-                Move from airfare to Bahamas hotels, resorts, villas, and homes with the same trip context.
-              </p>
-              <a
-                href="/stays?sort=stars"
-                className="mt-3 inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
-              >
-                Browse stays
-              </a>
-            </div>
-          </section>
-
-          <section className="rounded-baha-lg border border-brand-100 bg-brand-50 p-3.5 shadow-sm">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Concierge
-            </p>
-            <h3 className="mt-1 text-base font-bold text-night">
-              Land smoother in {destinationLabel}
-            </h3>
-            <p className="mt-2 text-xs font-semibold leading-5 text-gray-600">
-              Add VIP arrivals, transfers, restaurant timing, insurance reminders, and local handoffs.
-            </p>
-            <a
-              href="/concierge-trip-plan"
-              className="mt-3 inline-flex w-full items-center justify-center rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
-            >
-              See concierge options
-            </a>
-          </section>
-
-          <section className="rounded-baha-lg border border-gray-200 bg-white p-3.5 shadow-sm">
-            <p className="text-xs font-semibold uppercase text-gray-500">
-              Deals & guides
-            </p>
-            <h3 className="mt-1 text-base font-bold text-night">
-              Plan the rest of the trip
-            </h3>
-            <p className="mt-2 text-xs font-semibold leading-5 text-gray-600">
-              Compare deals, island guides, boat days, and food picks while fares are fresh.
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              <a
-                href="/deals"
-                className="inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
-              >
-                View deals
-              </a>
-              <a
-                href="/guides"
-                className="inline-flex w-full items-center justify-center rounded-full border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
-              >
-                Read guides
-              </a>
-            </div>
-          </section>
-        </aside>
       </div>
     </div>
   )

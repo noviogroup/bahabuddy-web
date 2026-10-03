@@ -16,17 +16,20 @@ import TripSuggestionRotator from '@/components/trip/TripSuggestionRotator'
 import TripTimelineCards, { tripTimelineDayCount } from '@/components/trip/TripTimelineCards'
 import { isStripeConfigured } from '@/lib/stripe/client'
 import { resolveDefaultHeaderImage } from '@/lib/default-headers'
+import { isAllowedTripHeroImageUrl, parseTripDate } from '@/lib/trips/trip-field-validation'
 
 export const dynamic = 'force-dynamic'
 
 function fmt(d: string | null) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  const date = parseTripDate(d)
+  if (!date) return '—'
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
 function daysUntil(dateStr: string | null): number | null {
-  if (!dateStr) return null
-  const target = new Date(dateStr).getTime()
+  const date = parseTripDate(dateStr)
+  if (!date) return null
+  const target = date.getTime()
   const now = Date.now()
   const diff = target - now
   if (diff <= 0) return null
@@ -54,7 +57,23 @@ export default async function TripPage({ params }: { params: { id: string } }) {
   ])
 
   if (!tripRes.data) notFound()
-  if (tripRes.data.user_id !== user.id) notFound()
+
+  // Owners get the full page. Accepted collaborators (the same trips
+  // fetchVisibleTrips lists for them) get a read-only view; the membership is
+  // checked explicitly here rather than relying on RLS alone. Everyone else
+  // gets a 404.
+  const isOwner = tripRes.data.user_id === user.id
+  if (!isOwner) {
+    const { data: membership } = await supabase
+      .from('trip_collaborators')
+      .select('trip_id')
+      .eq('trip_id', params.id)
+      .eq('user_id', user.id)
+      .not('accepted_at', 'is', null)
+      .limit(1)
+      .maybeSingle()
+    if (!membership) notFound()
+  }
 
   const trip = tripRes.data as Trip
   const flights = (flightsRes.data ?? []) as TripFlight[]
@@ -75,9 +94,10 @@ export default async function TripPage({ params }: { params: { id: string } }) {
 
   const countdown = daysUntil(trip.date_start ?? null)
   const primaryIsland = trip.islands?.[0]
-  const bookable = isBookable(trip) && isStripeConfigured
+  const bookable = isOwner && isBookable(trip) && isStripeConfigured
+  const customHeroImageUrl = isAllowedTripHeroImageUrl(trip.hero_image_url) ? trip.hero_image_url : null
   const tripHeader = await resolveDefaultHeaderImage({
-    customImageUrl: trip.hero_image_url,
+    customImageUrl: customHeroImageUrl,
     island: primaryIsland,
     category: trip.status === 'completed' ? 'Romantic' : 'Local Gems',
     preferredVariant: 'desktop',
@@ -118,7 +138,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
           <div className="h-48 sm:h-56 bg-brand-100 relative">
             <Image
               src={tripHeader.url}
-              alt={trip.hero_image_url ? trip.name : tripHeader.alt}
+              alt={customHeroImageUrl ? trip.name : tripHeader.alt}
               fill
               sizes="(max-width: 768px) 100vw, 768px"
               priority
@@ -136,14 +156,21 @@ export default async function TripPage({ params }: { params: { id: string } }) {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap mb-1">
                   <TripStatusBadge status={trip.status as TripStatus} />
+                  {!isOwner && (
+                    <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-semibold text-gray-700">
+                      Shared with you · read-only
+                    </span>
+                  )}
                 </div>
                 <h1 className="text-2xl font-bold text-night">{trip.name}</h1>
                 {(trip.date_start || trip.date_end) && <p className="text-gray-500 mt-1 text-sm">{fmt(trip.date_start)} → {fmt(trip.date_end)}</p>}
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <ShareButton tripId={trip.id} />
-                <InviteCompanions tripId={trip.id} />
-              </div>
+              {isOwner && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <ShareButton tripId={trip.id} />
+                  <InviteCompanions tripId={trip.id} />
+                </div>
+              )}
             </div>
 
             {trip.islands && trip.islands.length > 0 && (
@@ -177,7 +204,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
           </div>
         </div>
 
-        <TripSuggestionRotator trip={trip} hasItinerary={flights.length > 0 || accommodations.length > 0 || activities.length > 0} />
+        {isOwner && <TripSuggestionRotator trip={trip} hasItinerary={flights.length > 0 || accommodations.length > 0 || activities.length > 0} />}
 
         <TripTabView
           timelineContent={timelineContent}
@@ -193,7 +220,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
             </svg>
             <div className="relative flex items-center justify-between gap-4 flex-wrap">
               <div>
-                <p className="text-brand-100 text-xs font-bold uppercasest">Ready when you are</p>
+                <p className="text-brand-100 text-xs font-bold uppercase">Ready when you are</p>
                 <h2 className="text-xl font-bold mt-1">Book this trip</h2>
                 <p className="text-brand-100 text-sm mt-1">Lock in {trip.name} for ${trip.budget_estimate?.toLocaleString()}.</p>
               </div>
@@ -207,7 +234,7 @@ export default async function TripPage({ params }: { params: { id: string } }) {
           </section>
         )}
 
-        <TripReceipts tripId={trip.id} />
+        {isOwner && <TripReceipts tripId={trip.id} />}
       </main>
     </>
   )

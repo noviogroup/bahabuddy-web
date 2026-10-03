@@ -16,13 +16,28 @@ export interface StoreBadgeLinksProps {
   className?: string
   /** Rendered badge height in pixels; width scales from intrinsic aspect ratio. */
   height?: number
+  /** Overrides for tests; default to the env-configured listing URLs. */
+  appStoreUrl?: string | null
+  googlePlayUrl?: string | null
 }
 
-export default function StoreBadgeLinks({ className, height = 44 }: StoreBadgeLinksProps) {
+/**
+ * Store badges render only for listings that actually exist (configured via
+ * env in `@/lib/brand`). With neither configured the component renders nothing.
+ */
+export default function StoreBadgeLinks({
+  className,
+  height = 44,
+  appStoreUrl = APP_STORE_URL,
+  googlePlayUrl = GOOGLE_PLAY_URL,
+}: StoreBadgeLinksProps) {
+  if (!appStoreUrl && !googlePlayUrl) return null
+
   return (
     <div className={cn('flex flex-wrap items-center justify-center gap-3', className)}>
+      {appStoreUrl && (
       <a
-        href={APP_STORE_URL}
+        href={appStoreUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-block shrink-0 rounded-md opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-opacity"
@@ -38,8 +53,10 @@ export default function StoreBadgeLinks({ className, height = 44 }: StoreBadgeLi
           sizes={`${Math.round(height * 3)}px`}
         />
       </a>
+      )}
+      {googlePlayUrl && (
       <a
-        href={GOOGLE_PLAY_URL}
+        href={googlePlayUrl}
         target="_blank"
         rel="noopener noreferrer"
         className="inline-block shrink-0 rounded-md opacity-95 hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent transition-opacity"
@@ -55,6 +72,7 @@ export default function StoreBadgeLinks({ className, height = 44 }: StoreBadgeLi
           sizes={`${Math.round(height * 3.4)}px`}
         />
       </a>
+      )}
     </div>
   )
 }

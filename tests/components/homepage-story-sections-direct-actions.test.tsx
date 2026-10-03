@@ -63,25 +63,9 @@ describe("HomepageStorySections direct actions", () => {
     expect(screen.queryByText("Buddy sorts it")).not.toBeInTheDocument();
   });
 
-  test("decision story starts a seeded trip instead of routing to chat or generic dashboard", () => {
+  test("deferred Buddy story does not expose its homepage action", () => {
     render(<HomepageStorySections />);
-
-    expect(
-      screen.queryByRole("link", { name: "Plan with Buddy" }),
-    ).not.toBeInTheDocument();
-
-    const startTrip = screen.getByRole("link", { name: "Start with Buddy" });
-    const href = startTrip.getAttribute("href") ?? "";
-    const url = new URL(href, "https://bahabuddy.test");
-
-    expect(url.pathname).toBe("/dashboard/trips/new");
-    expect(url.searchParams.get("returnTo")).toBe("/");
-    expect(url.searchParams.get("source")).toBe("homepage");
-    expect(url.searchParams.get("seed")).toContain(
-      "Help me organize a Bahamas trip",
-    );
-    expect(href).not.toContain("/dashboard/chat");
-    expect(startTrip).toHaveClass("bg-brand-600");
+    expect(screen.queryByRole("link", { name: "Start with Buddy" })).not.toBeInTheDocument();
   });
 
   test("homepage category cards expose direct travel actions", () => {
@@ -140,41 +124,10 @@ describe("HomepageStorySections direct actions", () => {
     expect(container.innerHTML).not.toContain("/dashboard/chat");
   });
 
-  test("Buddy planning section focuses on chat and organizing the whole trip", () => {
+  test("Buddy planning story is temporarily removed from the homepage", () => {
     render(<HomepageStorySections />);
-
-    const section = screen.getByText("Chat with Buddy").closest("section");
-
-    expect(section).toHaveClass("bg-brand-50/55");
-    expect(section).toHaveTextContent(
-      "Plan your Bahamas trip in one conversation.",
-    );
-    expect(section).toHaveTextContent(
-      "Five nights in Nassau for two. Good food, history, and one quiet beach day.",
-    );
-    expect(section).toHaveTextContent("One plan that updates with you");
-    expect(section).toHaveTextContent(
-      "Stays, flights, transport, dining, and activities stay connected",
-    );
-    expect(
-      within(section as HTMLElement).getByRole("img", {
-        name: "Travelers exploring the Queen's Staircase in Nassau",
-      }),
-    ).toHaveAttribute(
-      "src",
-      expect.stringContaining(
-        "/assets/tourism-partner/02-islands/01-nassau-paradise-island.webp",
-      ),
-    );
-    expect(within(section as HTMLElement).queryByRole("list")).not.toBeInTheDocument();
-    expect(
-      within(section as HTMLElement).queryByRole("link", { name: "Explore first" }),
-    ).not.toBeInTheDocument();
-    expect(section?.innerHTML).not.toContain("Animated Buddy chat preview");
-    expect(section?.innerHTML).not.toContain("animate-ping");
-    expect(section?.innerHTML).not.toContain(
-      "buddy-chat-waterfront-planner.png",
-    );
+    expect(screen.queryByText("Chat with Buddy")).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Plan your Bahamas trip in one conversation." })).not.toBeInTheDocument();
   });
 
   test("island cards keep full images without a dark image overlay", () => {
@@ -240,37 +193,10 @@ describe("HomepageStorySections direct actions", () => {
     );
   });
 
-  test("homepage segments travelers by current trip moment", () => {
-    const { container } = render(<HomepageStorySections />);
-
-    const sections = Array.from(container.querySelectorAll("section"));
-    const islandSectionIndex = sections.findIndex((section) =>
-      section.textContent?.includes("The Bahamas changes every few miles."),
-    );
-    const travelerSectionIndex = sections.findIndex((section) =>
-      section.textContent?.includes("What kind of Bahamas help do you need?"),
-    );
-
-    expect(islandSectionIndex).toBeGreaterThanOrEqual(0);
-    expect(travelerSectionIndex).toBe(islandSectionIndex + 1);
-
-    expect(
-      screen.getByRole("heading", {
-        name: "What kind of Bahamas help do you need?",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("tablist", { name: "Traveler status" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("tab", { name: "Planning a trip" }),
-    ).toHaveAttribute("aria-selected", "true");
-    expect(
-      screen.getByRole("tab", { name: "Already here" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("tab", { name: "On a cruise" }),
-    ).toBeInTheDocument();
+  test("traveler moment section is temporarily removed from the homepage", () => {
+    render(<HomepageStorySections />);
+    expect(screen.queryByRole("heading", { name: "What kind of Bahamas help do you need?" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tablist", { name: "Traveler status" })).not.toBeInTheDocument();
   });
 
   test("featured experiences render as a marketplace shelf with direct details links", () => {
@@ -281,9 +207,15 @@ describe("HomepageStorySections direct actions", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {
-        name: "Popular ways to spend a Bahamas day.",
+        name: "Traveller favourites across The Bahamas.",
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Top things to do")).toBeInTheDocument();
+    expect(screen.queryByText("Airport Transfer")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("region", { name: "Traveller favourites across The Bahamas." }),
+    ).not.toHaveTextContent(/transfer/i);
+    expect(screen.queryAllByTestId("featured-experience-badge")).toHaveLength(0);
     expect(screen.queryByText("01 / 08")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Previous featured experience" }),
@@ -298,46 +230,67 @@ describe("HomepageStorySections direct actions", () => {
       screen.getByRole("link", {
         name: "View details for Swimming Pigs Experience",
       }),
-    ).toHaveAttribute("href", "/guides/swimming-pigs-exuma-guide");
+    ).toHaveAttribute("href", "/guides/swimming-pigs-exuma");
   });
 
-  test("partner ecosystem uses a visual wheel instead of plain partner boxes", () => {
-    const { container } = render(<HomepageStorySections />);
-    const wheel = screen.getByRole("group", {
-      name: "Baha Buddy connects the Bahamas travel ecosystem",
-    });
-    const wheelLinks = Array.from(wheel.querySelectorAll("a")).map((link) => ({
-      href: link.getAttribute("href"),
-      text: link.textContent?.replace(/\s+/g, " ").trim(),
-    }));
-
-    expect(within(wheel).getAllByText("Baha Buddy")).toHaveLength(2);
-    expect(within(wheel).getAllByText("Trip center")).toHaveLength(2);
-    expect(wheelLinks).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          href: "/stays?sort=stars",
-          text: expect.stringContaining("Stays"),
-        }),
-        expect.objectContaining({
-          href: "/flights",
-          text: expect.stringContaining("Flights"),
-        }),
-        expect.objectContaining({
-          href: "/explore",
-          text: expect.stringContaining("Activities"),
-        }),
-        expect.objectContaining({
-          href: "/guides",
-          text: expect.stringContaining("Guides"),
-        }),
-        expect.objectContaining({
-          href: "/concierge-trip-plan",
-          text: expect.stringContaining("Transport"),
-        }),
-      ]),
+  test("featured experiences show admin Top picks once there are at least three", () => {
+    const topPicks = ["Pig Beach at Big Major Cay", "Blue Lagoon Island", "Pink Sand Beach"].map(
+      (title, index) => ({
+        title,
+        island: "Exuma",
+        category: "Beach",
+        href: `/explore/places/pick-${index}`,
+        image: `https://media-cdn.tripadvisor.com/pick-${index}.jpg`,
+        badge: "Top pick" as const,
+      }),
     );
-    expect(container.innerHTML).not.toContain("Hotels and island stays");
-    expect(container.innerHTML).not.toContain("Tour operators and guides");
+    render(<HomepageStorySections topPicks={topPicks} />);
+
+    expect(screen.getAllByTestId("featured-experience-card")).toHaveLength(3);
+    expect(screen.getAllByTestId("featured-experience-badge")).toHaveLength(3);
+    expect(
+      screen.getByRole("link", { name: "View details for Pig Beach at Big Major Cay" }),
+    ).toHaveAttribute("href", "/explore/places/pick-0");
+    expect(
+      screen.queryByRole("link", { name: "View details for Swimming Pigs Experience" }),
+    ).not.toBeInTheDocument();
+    const section = screen.getByRole("region", {
+      name: "Traveller favourites across The Bahamas.",
+    });
+    expect(
+      within(section).getByRole("link", { name: "Explore Experiences" }),
+    ).toHaveAttribute("href", "/explore");
   });
+
+  test("featured experiences keep the static shelf when fewer than three Top picks exist", () => {
+    render(
+      <HomepageStorySections
+        topPicks={[
+          {
+            title: "Pink Sand Beach",
+            island: "Harbour Island",
+            category: "Beach",
+            href: "/explore/places/pink-sand-beach",
+            image: "https://media-cdn.tripadvisor.com/pink.jpg",
+            badge: "Top pick",
+          },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByRole("link", { name: "View details for Swimming Pigs Experience" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "View details for Pink Sand Beach" }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Airport Transfer")).not.toBeInTheDocument();
+  });
+
+  test("partner ecosystem is temporarily removed from the homepage", () => {
+    render(<HomepageStorySections />);
+    expect(screen.queryByText("Bahamas travel ecosystem")).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Baha Buddy connects the Bahamas travel ecosystem" })).not.toBeInTheDocument();
+  });
+
 });

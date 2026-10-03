@@ -19,10 +19,10 @@
  *     Jun 19" line under the trip name, giving the brand-gradient header
  *     concrete grounding instead of just a label.
  *
- *   - Book CTA preserved exactly as it worked before — same Stripe
- *     checkout href shape, same gating (tripId + total_cost > 0 +
- *     isStripeConfigured). This card is the single most common entry
- *     point to checkout from chat, so the CTA contract is load-bearing.
+ *   - Book CTA routes to the saved trip page (/trip/<id>), where each
+ *     item is priced and booked against provider-backed rates. It never
+ *     passes the model-estimated total_cost to checkout: that number is
+ *     an LLM estimate, not a payable amount.
  *
  * Like other synthesis cards, this one renders in CardShell `plain`
  * mode — no detail page to link to, no expand state. The card itself
@@ -31,7 +31,6 @@
 
 import Link from 'next/link'
 import { CardShell } from './shared'
-import { isStripeConfigured } from '@/lib/stripe/client'
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -58,7 +57,7 @@ export interface SummaryCardData {
 
 interface Props {
   data: SummaryCardData
-  /** When set + total_cost > 0 + Stripe configured, renders the Book CTA. */
+  /** When set, renders a CTA to review and book the saved trip. */
   tripId?: string
   className?: string
 }
@@ -115,19 +114,15 @@ export function SummaryCard({ data, tripId, className }: Props) {
     ? Math.round(totalCost / travelers)
     : null
 
-  const showBookCTA = Boolean(tripId) && totalCost > 0 && isStripeConfigured
-  const checkoutHref = showBookCTA
-    ? `/dashboard/checkout?trip_id=${encodeURIComponent(tripId!)}` +
-      `&amount=${Math.round(totalCost * 100)}` +
-      `&type=full_trip` +
-      `&description=${encodeURIComponent(tripName)}`
-    : null
+  // Route to the saved trip rather than checkout: the payable amount must
+  // come from provider-priced trip items, never from the model's estimate.
+  const tripHref = tripId ? `/trip/${encodeURIComponent(tripId)}` : null
 
   return (
     <CardShell mode="plain" accent="brand" className={className}>
       {/* Header ──────────────────────────────────────────────────────── */}
       <div className="bg-gradient-to-r from-brand-700 to-brand-500 px-4 py-3">
-        <p className="text-brand-100 text-xs font-bold uppercasest">Trip summary</p>
+        <p className="text-brand-100 text-xs font-bold uppercase">Trip summary</p>
         <p className="text-white font-bold text-lg mt-1 leading-tight">{tripName}</p>
         {dateRange && (
           <p className="text-brand-100 text-xs mt-0.5">{dateRange}</p>
@@ -208,12 +203,12 @@ export function SummaryCard({ data, tripId, className }: Props) {
         )}
 
         {/* Book CTA ───────────────────────────────────────────────── */}
-        {checkoutHref && (
+        {tripHref && (
           <Link
-            href={checkoutHref}
+            href={tripHref}
             className="flex items-center justify-center gap-2 w-full bg-brand-500 hover:bg-brand-600 text-white text-sm font-bold py-2.5 px-4 rounded-full transition-colors shadow-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 focus-visible:ring-offset-2"
           >
-            Book this trip
+            Review and book this trip
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>

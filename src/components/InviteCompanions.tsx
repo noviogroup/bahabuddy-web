@@ -53,21 +53,31 @@ export default function InviteCompanions({ tripId }: Props) {
 
   async function copyLink() {
     if (!link) return
-    await navigator.clipboard.writeText(link)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      await navigator.clipboard.writeText(link)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setError('Copy failed. Select the link and copy it manually.')
+    }
   }
 
   async function revokeLink() {
     if (!confirm('Revoke all invite links? Companions with existing links will lose access.')) return
     setRevoking(true)
+    setError(null)
     try {
-      await fetch(`/api/trips/invite?tripId=${tripId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/trips/invite?tripId=${encodeURIComponent(tripId)}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(json.error ?? 'Failed to revoke invite')
+      }
       setLink(null)
       setRevoked(true)
       setTimeout(() => setRevoked(false), 3000)
-    } catch {
-      setError('Failed to revoke invite')
+    } catch (e) {
+      // Only claim revocation once the server confirms links were removed.
+      setError(e instanceof Error ? e.message : 'Failed to revoke invite')
     } finally {
       setRevoking(false)
     }

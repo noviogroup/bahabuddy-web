@@ -3,7 +3,7 @@ import Link from 'next/link'
 import IslandQuiz from '@/components/IslandQuiz'
 
 export const metadata: Metadata = {
-  title: 'What Bahamas Island Are You? | Baha Buddy',
+  title: 'What Bahamas Island Are You?',
   description:
     'Take our 5-question island personality quiz and discover which Bahamas island matches your travel style.',
 }

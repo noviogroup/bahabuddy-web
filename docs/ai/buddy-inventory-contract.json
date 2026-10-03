@@ -1,0 +1,43 @@
+{
+  "version": "grounded-inventory-v1",
+  "current_max_age_days": 30,
+  "stale_after_days": 90,
+  "surfaces": ["mobile", "web"],
+  "entity_contracts": {
+    "restaurant": {
+      "source": "google_places",
+      "publication": "is_active = true AND coalesce(is_disabled, false) = false",
+      "freshness": "v_google_places_freshness freshness_state = current and recommendation_eligible = true",
+      "canonical_id": "google_places.id returned unchanged as place_id"
+    },
+    "activity": {
+      "source": "google_places",
+      "publication": "is_active = true AND coalesce(is_disabled, false) = false AND type = attraction",
+      "freshness": "v_google_places_freshness freshness_state = current and recommendation_eligible = true",
+      "canonical_id": "google_places.id returned unchanged as place_id"
+    },
+    "attraction": {
+      "source": "bahamas_attractions",
+      "publication": "v_bahamas_attractions_freshness recommendation_eligible = true",
+      "freshness": "v_bahamas_attractions_freshness recommendation_eligible = true",
+      "canonical_id": "bahamas_attractions.id returned unchanged as place_id and attraction_id"
+    },
+    "self_tour": {
+      "source": "published_cruise_itineraries",
+      "publication": "the view admits only cruise_itineraries.status = published",
+      "freshness": "updated_at within current_max_age_days",
+      "canonical_id": "cruise_itineraries.id returned unchanged as place_id and tour_id"
+    }
+  },
+  "island_contract": {
+    "input": "resolve every alias through resolve_island_slug",
+    "output": "canonical island slug",
+    "storage_alias_exception": "published_cruise_itineraries may store legacy display values; nassau-paradise-island includes New Providence, Nassau, and Paradise Island"
+  },
+  "failure_contract": {
+    "provider_unavailable": "return provider_error and a deterministic honest response",
+    "zero_results": "return no_evidence and a deterministic honest response",
+    "stale_or_unpublished": "exclude the row and never expose its name or ID",
+    "model_memory_substitution": "prohibited"
+  }
+}

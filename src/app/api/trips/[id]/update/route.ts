@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { isAllowedTripHeroImageUrl, isDateOnlyString } from '@/lib/trips/trip-field-validation'
 
 interface TripUpdatePayload {
   islands?: string[]
@@ -41,6 +42,9 @@ const ALLOWED_FIELDS = new Set<keyof TripUpdatePayload>([
 ])
 
 const ALLOWED_PARTY_TYPES = new Set(['solo', 'couple', 'family', 'friends', 'group'])
+const MAX_PARTY_SIZE = 20
+const MAX_BUDGET = 1_000_000
+const MAX_ISLANDS = 16
 
 export async function PATCH(
   req: NextRequest,
@@ -74,7 +78,11 @@ export async function PATCH(
 
   // Field-level validation
   if ('islands' in payload) {
-    if (!Array.isArray(payload.islands) || payload.islands.some(v => typeof v !== 'string')) {
+    if (
+      !Array.isArray(payload.islands) ||
+      payload.islands.length > MAX_ISLANDS ||
+      payload.islands.some(v => typeof v !== 'string' || !v.trim() || v.length > 80)
+    ) {
       return NextResponse.json({ error: 'islands must be string[]' }, { status: 400 })
     }
   }
@@ -83,20 +91,40 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid party_type' }, { status: 400 })
     }
   }
-  if ('party_size' in payload && typeof payload.party_size !== 'number') {
-    return NextResponse.json({ error: 'party_size must be a number' }, { status: 400 })
+  if ('party_type' in payload && typeof payload.party_type !== 'string') {
+    return NextResponse.json({ error: 'Invalid party_type' }, { status: 400 })
   }
-  if ('party_size' in payload && typeof payload.party_size === 'number' && payload.party_size < 1) {
-    return NextResponse.json({ error: 'party_size must be >= 1' }, { status: 400 })
+  if ('party_size' in payload && (
+    typeof payload.party_size !== 'number' ||
+    !Number.isInteger(payload.party_size) ||
+    payload.party_size < 1 ||
+    payload.party_size > MAX_PARTY_SIZE
+  )) {
+    return NextResponse.json({ error: `party_size must be a whole number from 1 to ${MAX_PARTY_SIZE}` }, { status: 400 })
   }
-  if ('budget_estimate' in payload && payload.budget_estimate !== null && typeof payload.budget_estimate !== 'number') {
-    return NextResponse.json({ error: 'budget_estimate must be a number or null' }, { status: 400 })
+  if ('budget_estimate' in payload && payload.budget_estimate !== null && (
+    typeof payload.budget_estimate !== 'number' ||
+    !Number.isFinite(payload.budget_estimate) ||
+    payload.budget_estimate < 0 ||
+    payload.budget_estimate > MAX_BUDGET
+  )) {
+    return NextResponse.json({ error: 'budget_estimate must be a non-negative number or null' }, { status: 400 })
   }
-  if ('date_start' in payload && payload.date_start !== null && typeof payload.date_start !== 'string') {
-    return NextResponse.json({ error: 'date_start must be a date string or null' }, { status: 400 })
+  if ('date_start' in payload && payload.date_start !== null && !isDateOnlyString(payload.date_start)) {
+    return NextResponse.json({ error: 'date_start must be YYYY-MM-DD or null' }, { status: 400 })
   }
-  if ('date_end' in payload && payload.date_end !== null && typeof payload.date_end !== 'string') {
-    return NextResponse.json({ error: 'date_end must be a date string or null' }, { status: 400 })
+  if ('date_end' in payload && payload.date_end !== null && !isDateOnlyString(payload.date_end)) {
+    return NextResponse.json({ error: 'date_end must be YYYY-MM-DD or null' }, { status: 400 })
+  }
+  if (
+    typeof payload.date_start === 'string' &&
+    typeof payload.date_end === 'string' &&
+    payload.date_end < payload.date_start
+  ) {
+    return NextResponse.json({ error: 'date_end must be on or after date_start' }, { status: 400 })
+  }
+  if ('hero_image_url' in payload && payload.hero_image_url !== null && !isAllowedTripHeroImageUrl(payload.hero_image_url)) {
+    return NextResponse.json({ error: 'hero_image_url must be an https image on an approved host' }, { status: 400 })
   }
 
   if (Object.keys(payload).length === 0) {
@@ -115,7 +143,7 @@ export async function PATCH(
 
   if (error) {
     console.error('[PATCH /api/trips/:id/update]', error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: 'Could not update the trip.' }, { status: 500 })
   }
   if (!data) {
     return NextResponse.json({ error: 'Trip not found' }, { status: 404 })

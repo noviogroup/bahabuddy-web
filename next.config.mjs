@@ -2,8 +2,7 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      // Supabase Storage — used for cached place-source photos
-      // (google_place_photos.storage_url) and user uploads.
+      // Supabase Storage — rights-cleared catalog media and user uploads.
       {
         protocol: 'https',
         hostname: '**.supabase.co',
@@ -26,33 +25,15 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'www.nassauparadiseisland.com',
       },
-      // Provider photo fallback — when we don't proxy via
-      // /api/place-photo, next/image may receive direct photo CDN
-      // URLs. The maps.googleapis.com host issues redirects to these
-      // for legacy cached source rows.
-      {
-        protocol: 'https',
-        hostname: 'lh3.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh4.googleusercontent.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'lh5.googleusercontent.com',
-      },
+      // Google Maps static-map cards. Place-photo CDN hosts are omitted:
+      // provider photos require a fresh, visibly attributed presentation.
       {
         protocol: 'https',
         hostname: 'maps.googleapis.com',
       },
-      {
-        protocol: 'https',
-        hostname: 'places.googleapis.com',
-      },
       // Unsplash — DEPRECATED for product use but still in the
       // allowlist while we migrate every BahaImages consumer over
-      // to the DB-driven islands.ts / place-photos.ts layer. Safe to
+      // to the DB-driven islands.ts / canonical media layer. Safe to
       // remove once `src/lib/baha-images.ts` is fully retired.
       {
         protocol: 'https',

@@ -60,7 +60,6 @@ const FOOTER_COLUMNS: { title: string; links: FooterLink[] }[] = [
       { href: '/profile/tours', label: 'My tours' },
       { href: '/help', label: 'Help center' },
       { href: `mailto:${SUPPORT_EMAIL}`, label: 'Contact support' },
-      { href: '/how-it-works', label: 'Travel requirements' },
       { href: '/login', label: 'Sign in' },
     ],
   },

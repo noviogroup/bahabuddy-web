@@ -25,7 +25,8 @@ import {
  *
  *   - HotelCard / RestaurantCard / ActivityCard expose real detail links
  *     when `place_id` is present. Hotels link to /stays/[id],
- *     restaurants to /restaurants/[id], and activities to /activities/[id].
+ *     restaurants to /restaurants/[id], and activities to the public
+ *     /explore/activities/[id] (the dashboard copy is behind sign-in).
  *   - DestinationCard links to /explore/island/[island-slug] (the
  *     marketing surface) when the island slug is recognizable.
  *   - Flight, DayPlan, Summary, Map cards have no detail page concept;
@@ -97,6 +98,16 @@ export interface CardData {
   fees?: number
   supplier?: string
   product_code?: string
+  duration_label?: string | null
+  price_basis_label?: string
+  booking_state_label?: string
+  meeting_pickup_label?: string | null
+  group_age_label?: string | null
+  safety_access_label?: string | null
+  cancellation_label?: string | null
+  source_as_of_label?: string | null
+  source_url?: string | null
+  live_availability_state?: string | null
   icon?: string
   // flight
   route?: string
@@ -420,8 +431,16 @@ function ActivityCardAdapter({
     review_count: data.review_count,
     vibe_tags: data.vibe_tags ?? [],
     kid_friendly: data.kid_friendly,
-    duration: data.duration,
-    from_price: data.from_price ?? data.price,
+    duration: data.duration_label ?? data.duration,
+    price_basis_label: data.price_basis_label,
+    booking_state_label: data.booking_state_label,
+    meeting_pickup_label: data.meeting_pickup_label,
+    group_age_label: data.group_age_label,
+    safety_access_label: data.safety_access_label,
+    cancellation_label: data.cancellation_label,
+    source_as_of_label: data.source_as_of_label,
+    source_url: data.source_url,
+    live_availability_state: data.live_availability_state,
     supplier: data.supplier,
     photo_url: activityImages.hero,
     photos: activityImages.photos,
@@ -548,7 +567,7 @@ function FlightCardAdapter({
           <button
             type="button"
             onClick={() => onAddToTrip(data, activeTripId)}
-            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Add to trip
           </button>
@@ -556,7 +575,7 @@ function FlightCardAdapter({
         {bookingHref && (
           <a
             href={bookingHref}
-            className="inline-flex h-9 min-w-32 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
+            className="inline-flex min-h-11 min-w-32 items-center justify-center gap-2 rounded-full bg-brand-600 px-4 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-700"
           >
             Book this fare
           </a>
@@ -565,7 +584,7 @@ function FlightCardAdapter({
           <button
             type="button"
             onClick={() => onSendMessage(`Help me save the ${data.airline ?? 'flight'} option to my trip`)}
-            className="inline-flex h-9 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
+            className="inline-flex min-h-11 items-center justify-center rounded-full border border-gray-300 bg-white px-4 text-xs font-semibold text-night transition-colors hover:border-gray-400 hover:bg-gray-50"
           >
             Plan this flight
           </button>

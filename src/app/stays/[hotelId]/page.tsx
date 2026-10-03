@@ -40,15 +40,16 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const hotel = await getHotelById(params.hotelId)
-  if (!hotel) return {}
+  if (!hotel) notFound()
   return {
-    title: `${hotel.name} - ${hotel.island ?? 'Bahamas'} | Book on Baha Buddy`,
+    title: `${hotel.name} - ${hotel.island ?? 'Bahamas'}`,
     description: `${hotel.name} in ${hotel.island ?? 'the Bahamas'}. ${hotel.star_rating ? `${hotel.star_rating}-star` : ''} ${hotel.property_type_name ?? 'hotel'}. Check live availability and book your stay.`.trim(),
     alternates: { canonical: `/stays/${hotel.id}` },
     openGraph: {
       title: `${hotel.name} | Baha Buddy`,
       description: `Book ${hotel.name} in ${hotel.island ?? 'the Bahamas'}`,
-      images: hotel.main_photo_url ? [{ url: hotel.main_photo_url }] : undefined,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(hotel.main_photo_url ? { images: [{ url: hotel.main_photo_url }] } : {}),
     },
   }
 }
@@ -157,6 +158,7 @@ function StayReviewsSection({
 }
 
 export default async function StayDetailPage({ params, searchParams = {} }: PageProps) {
+  const googleMapsEmbedKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? process.env.NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY ?? ''
   const hotel = await getHotelById(params.hotelId)
   if (!hotel) notFound()
 
@@ -195,14 +197,8 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
     ...(hotel.star_rating != null && hotel.star_rating > 0 && {
       starRating: { '@type': 'Rating', ratingValue: hotel.star_rating },
     }),
-    ...(hotel.review_score != null && hotel.review_score > 0 && {
-      aggregateRating: {
-        '@type': 'AggregateRating',
-        ratingValue: hotel.review_score,
-        bestRating: 5,
-        reviewCount: hotel.review_count ?? 0,
-      },
-    }),
+    // No aggregateRating: review_score is a third-party (LiteAPI, 10-point)
+    // guest score, not first-party Baha Buddy reviews.
     ...(heroUrl !== FALLBACK_IMAGE && { image: heroUrl }),
   }
 
@@ -351,7 +347,7 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
             )}
 
             {/* Map */}
-            {hotel.latitude != null && hotel.longitude != null && (
+            {googleMapsEmbedKey && hotel.latitude != null && hotel.longitude != null && (
               <section id="location" className="scroll-mt-24">
                 <h2 className="text-xl font-bold text-gray-900 mb-4">Location</h2>
                 <div className="rounded-2xl overflow-hidden border border-gray-200 bg-gray-100 aspect-video">
@@ -362,7 +358,7 @@ export default async function StayDetailPage({ params, searchParams = {} }: Page
                     style={{ border: 0 }}
                     loading="lazy"
                     referrerPolicy="no-referrer-when-downgrade"
-                    src={`https://www.google.com/maps/embed/v1/place?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8&q=${hotel.latitude},${hotel.longitude}&zoom=14`}
+                    src={`https://www.google.com/maps/embed/v1/place?key=${encodeURIComponent(googleMapsEmbedKey)}&q=${hotel.latitude},${hotel.longitude}&zoom=14`}
                   />
                 </div>
               </section>

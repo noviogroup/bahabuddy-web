@@ -1,23 +1,16 @@
-import { redirect } from 'next/navigation'
+import { legacyPermanentRedirect, type LegacySearchParams } from '@/lib/legacy-redirects'
 
 export const dynamic = 'force-dynamic'
 
-export default function LegacyHotelDetailPage({
-  params,
-  searchParams = {},
-}: {
+interface PageProps {
   params: { hotelId: string }
-  searchParams?: Record<string, string | string[] | undefined>
-}) {
-  redirect(toStaysUrl(`/stays/${encodeURIComponent(params.hotelId)}`, searchParams))
+  searchParams?: LegacySearchParams
 }
 
-function toStaysUrl(path: string, searchParams: Record<string, string | string[] | undefined>): string {
-  const params = new URLSearchParams()
-  for (const [key, value] of Object.entries(searchParams)) {
-    const first = Array.isArray(value) ? value[0] : value
-    if (first) params.set(key, first)
-  }
-  const query = params.toString()
-  return query ? `${path}?${query}` : path
+export function generateMetadata({ params, searchParams }: PageProps): never {
+  legacyPermanentRedirect(`/stays/${encodeURIComponent(params.hotelId)}`, searchParams)
+}
+
+export default function LegacyHotelDetailPage({ params, searchParams }: PageProps) {
+  legacyPermanentRedirect(`/stays/${encodeURIComponent(params.hotelId)}`, searchParams)
 }

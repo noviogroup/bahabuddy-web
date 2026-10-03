@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { cleanText, ensurePartnerPlaceLink, requireActiveVendorAccess } from '@/lib/vendor-portal'
+import { cleanText, ensurePartnerPlaceLink, requireActiveVendorAccess, VENDOR_SUBMIT_ROLE } from '@/lib/vendor-portal'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
 
   const requestedPartnerId = cleanText(formData.get('partner_id'), 80)
   const placeId = cleanText(formData.get('place_id'), 80)
-  const access = await requireActiveVendorAccess(requestedPartnerId)
+  const access = await requireActiveVendorAccess(requestedPartnerId, { minRole: VENDOR_SUBMIT_ROLE })
 
   if (!access.ok) {
     return NextResponse.json(

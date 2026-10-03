@@ -17,12 +17,12 @@ export default function SelfGuidedToursSection() {
           <p className="text-xs font-bold uppercase text-brand-700">Self-guided tours</p>
           <h2 id="self-guided-heading" className="mt-3 text-3xl font-bold leading-tight text-night">A little guidance. Your own pace.</h2>
           <p className="mt-4 text-base leading-7 text-charcoal">
-            Explore Nassau with a plan you can make your own. See the stops, check the time you need, and choose what fits your day.
+            Explore Nassau at your own pace with self-guided day plans. Each plan lists the details we have checked, so you can choose what fits your day.
           </p>
           <Link href="/nassau-cruise-itineraries" className="mt-6 inline-flex min-h-11 self-start items-center justify-center rounded-full bg-brand-600 px-5 py-3 text-sm font-bold text-white hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2">
             Explore self-guided tours
           </Link>
-          <p className="mt-4 text-xs leading-5 text-gray-600">Destination artwork is illustrative. Check each itinerary for its actual stops and transport needs.</p>
+          <p className="mt-4 text-xs leading-5 text-gray-600">Destination artwork is illustrative. Step-by-step route maps are not available yet.</p>
         </div>
       </div>
     </section>

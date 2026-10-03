@@ -16,6 +16,7 @@
  */
 
 import type { MouseEvent, ReactNode } from 'react'
+import { safeHref } from '@/lib/safe-url'
 
 export interface Action {
   /** Visible label (also used as aria-label for icon-only buttons). */
@@ -49,8 +50,15 @@ function stop(e: MouseEvent<HTMLElement>) {
   e.stopPropagation()
 }
 
-export function ActionRow({ actions, align = 'left', className = '' }: Props) {
-  if (!actions || actions.length === 0) return null
+export function ActionRow({ actions: rawActions, align = 'left', className = '' }: Props) {
+  // Card hrefs come from tool/model/DB data — drop any action whose href is
+  // not http(s)/mailto/tel or a same-origin path (blocks javascript: URLs).
+  const actions = (rawActions ?? []).flatMap((a): Action[] => {
+    if (a.href === undefined) return [a]
+    const href = safeHref(a.href)
+    return href ? [{ ...a, href }] : []
+  })
+  if (actions.length === 0) return null
 
   const justify =
     align === 'right'  ? 'justify-end' :
@@ -68,6 +76,8 @@ export function ActionRow({ actions, align = 'left', className = '' }: Props) {
         const common = `inline-flex items-center text-xs font-semibold rounded-full border bg-white transition-colors ${tone} ${sizeClass}`
 
         if (a.href) {
+          // Screen readers are told when a link opens a new tab.
+          const newTabHint = a.external ? ' (opens in new tab)' : ''
           return (
             <a
               key={`${a.label}-${i}`}
@@ -75,11 +85,12 @@ export function ActionRow({ actions, align = 'left', className = '' }: Props) {
               target={a.external ? '_blank' : undefined}
               rel={a.external ? 'noopener noreferrer' : undefined}
               onClick={stop}
-              aria-label={a.iconOnly ? a.label : undefined}
+              aria-label={a.iconOnly ? `${a.label}${newTabHint}` : undefined}
               className={common}
             >
               {a.icon}
               {!a.iconOnly && <span>{a.label}</span>}
+              {!a.iconOnly && newTabHint && <span className="sr-only">{newTabHint}</span>}
             </a>
           )
         }

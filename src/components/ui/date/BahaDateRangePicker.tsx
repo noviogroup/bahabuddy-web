@@ -14,6 +14,8 @@ import {
   todayIso,
 } from '@/lib/date-utils'
 import { useCalendarMonths } from './useCalendarMonths'
+import { focusInitialCalendarDay } from './focusCalendarDay'
+import { useDialogFocus } from '../useDialogFocus'
 
 export interface BahaDateRangePickerProps {
   start: string
@@ -62,7 +64,9 @@ export default function BahaDateRangePicker({
   const autoId = useId()
   const id = idProp ?? autoId
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
+  const popoverRef = useRef<HTMLDivElement>(null)
   const months = useCalendarMonths(2)
 
   const min = isoToDate(minDate ?? todayIso()) ?? startOfToday()
@@ -100,6 +104,15 @@ export default function BahaDateRangePicker({
     return () => document.removeEventListener('mousedown', onPointer)
   }, [layout, open])
 
+  // Escape closes; focus moves to the selected (or first enabled) day on open
+  // and returns to the trigger on close.
+  useDialogFocus({
+    open: layout === 'field' && open,
+    containerRef: popoverRef,
+    onClose: () => setOpen(false),
+    getInitialFocus: focusInitialCalendarDay,
+  })
+
   const calendar = (
     <DayPicker
       mode="range"
@@ -132,18 +145,33 @@ export default function BahaDateRangePicker({
   }
 
   const display = formatRangeLabel(start, end, placeholder)
+  // Name = purpose + chosen dates, so check-in/check-out are announced.
+  const triggerName = `${ariaLabel ?? label ?? 'Dates'}: ${start || end ? display : 'not set'}`
 
   return (
-    <div ref={rootRef} id={id} className={`relative ${className}`}>
+    <div
+      ref={rootRef}
+      id={id}
+      className={`relative ${className}`}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.preventDefault()
+          event.stopPropagation()
+          setOpen(false)
+          triggerRef.current?.focus()
+        }
+      }}
+    >
       {label && (
         <span className="block text-xs font-semibold text-gray-600 uppercase mb-1">
           {label}
         </span>
       )}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        aria-label={ariaLabel}
+        aria-label={triggerName}
         aria-expanded={open}
         aria-haspopup="dialog"
         className={`w-full flex items-center gap-2 rounded-baha-md border bg-white px-3 py-2.5 text-sm text-left transition-colors focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-500 ${
@@ -156,6 +184,7 @@ export default function BahaDateRangePicker({
 
       {open && (
         <div
+          ref={popoverRef}
           role="dialog"
           aria-label={label ?? 'Choose dates'}
           className="absolute z-50 mt-2 left-0 right-0 sm:left-auto sm:right-auto sm:min-w-[min(100%,680px)] rounded-baha-lg border border-gray-200 bg-white p-4 shadow-card-hover overflow-x-auto"

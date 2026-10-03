@@ -7,15 +7,62 @@ import StoreBadgeLinks from '@/components/StoreBadgeLinks'
 import { BuddyAvatar } from '@/components/ui'
 import MarketingHeroSearch from '@/components/marketing/MarketingHeroSearch'
 import type { IslandHeroSlide } from '@/lib/islands'
+import { canOptimizeImageSrc } from '@/lib/next-image-hosts'
 import { createClient } from '@/lib/supabase/client'
 
-const HERO_VIDEO_START_SECONDS = 3
-const HERO_VIDEO_END_SECONDS = 25
-const HERO_VIDEO_SRC = '/assets/home/baha-buddy-hero-nassau-paradise-1080p.mp4'
-// Keep the start hint for browsers that support media fragments, but manage
-// the clip end ourselves. Mobile Safari can stop at a fragment end instead of
-// honoring `loop`, which leaves an autoplay background paused on its last frame.
-const HERO_VIDEO_CLIP_SRC = `${HERO_VIDEO_SRC}#t=${HERO_VIDEO_START_SECONDS}`
+// 720p web encodes of the 3s-25s clip of the original 1080p master
+// (baha-buddy-hero-nassau-paradise-1080p.mp4, kept in /public as the source).
+// The encodes are already trimmed, so the clip runs from 0s to its end.
+const HERO_VIDEO_START_SECONDS = 0
+const HERO_VIDEO_END_SECONDS = 22
+const HERO_VIDEO_SOURCES = [
+  { src: '/assets/home/baha-buddy-hero-nassau-paradise-720p.webm', type: 'video/webm' },
+  { src: '/assets/home/baha-buddy-hero-nassau-paradise-720p.mp4', type: 'video/mp4' },
+] as const
+
+// The video is decoration: skip it (poster image only) on phones, for
+// reduced-motion users, and on data-saver / slow connections. Everyone else
+// keeps the DB-sourced island photo as the poster.
+const HERO_VIDEO_MIN_WIDTH_QUERY = '(min-width: 768px)'
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+const HERO_VIDEO_SLOW_CONNECTIONS = new Set(['slow-2g', '2g', '3g'])
+
+type NetworkInformationLike = {
+  saveData?: boolean
+  effectiveType?: string
+  addEventListener?: (type: 'change', listener: () => void) => void
+  removeEventListener?: (type: 'change', listener: () => void) => void
+}
+
+function getNetworkInformation(): NetworkInformationLike | undefined {
+  if (typeof navigator === 'undefined') return undefined
+  return (navigator as Navigator & { connection?: NetworkInformationLike }).connection
+}
+
+/**
+ * Only fetch the clip on a wide viewport (the min-width query must match, so
+ * an unknown viewport gets the poster), without a reduced-motion preference,
+ * and without data-saver or a slow effective connection.
+ */
+export function shouldLoadHeroVideo(
+  win: Pick<Window, 'matchMedia'>,
+  connection: NetworkInformationLike | undefined = getNetworkInformation(),
+): boolean {
+  if (!win.matchMedia(HERO_VIDEO_MIN_WIDTH_QUERY).matches) return false
+  if (win.matchMedia(REDUCED_MOTION_QUERY).matches) return false
+  if (connection?.saveData) return false
+  if (connection?.effectiveType && HERO_VIDEO_SLOW_CONNECTIONS.has(connection.effectiveType)) return false
+  return true
+}
+
+function subscribeToMediaQuery(query: MediaQueryList, listener: () => void): () => void {
+  if (typeof query.addEventListener === 'function') {
+    query.addEventListener('change', listener)
+    return () => query.removeEventListener('change', listener)
+  }
+  query.addListener(listener)
+  return () => query.removeListener(listener)
+}
 
 /** Wide, soft halo for headlines and body copy on photos */
 const heroTextShadow =
@@ -32,9 +79,9 @@ export default function HeroSection({
   userEmail: initialUserEmail,
   userDisplayName: initialUserDisplayName,
 }: HeroSectionProps) {
-  // Render the muted inline video in the initial markup. Inserting it only
-  // after hydration makes autoplay less reliable on iOS Safari.
-  const [showVideoBackground, setShowVideoBackground] = useState(true)
+  // Decided on the client after mount so the server markup (poster image
+  // only) is identical for every visitor and the page stays cacheable.
+  const [showVideoBackground, setShowVideoBackground] = useState(false)
   const [userEmail, setUserEmail] = useState<string | null>(initialUserEmail ?? null)
   const [userDisplayName, setUserDisplayName] = useState<string | null>(initialUserDisplayName ?? null)
   const [authLoading, setAuthLoading] = useState(initialUserEmail === undefined)
@@ -47,22 +94,21 @@ export default function HeroSection({
   const fallbackSlide = slides[0]
 
   useEffect(() => {
-    const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)')
-    const syncMotionPreference = () => setShowVideoBackground(!reducedMotion.matches)
+    if (typeof window.matchMedia !== 'function') return
+    const wideScreen = window.matchMedia(HERO_VIDEO_MIN_WIDTH_QUERY)
+    const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY)
+    const connection = getNetworkInformation()
+    const syncVideoEligibility = () => setShowVideoBackground(shouldLoadHeroVideo(window, connection))
 
-    syncMotionPreference()
-    if (typeof reducedMotion.addEventListener === 'function') {
-      reducedMotion.addEventListener('change', syncMotionPreference)
-    } else {
-      reducedMotion.addListener(syncMotionPreference)
-    }
+    syncVideoEligibility()
+    const unsubscribeWidth = subscribeToMediaQuery(wideScreen, syncVideoEligibility)
+    const unsubscribeMotion = subscribeToMediaQuery(reducedMotion, syncVideoEligibility)
+    connection?.addEventListener?.('change', syncVideoEligibility)
 
     return () => {
-      if (typeof reducedMotion.removeEventListener === 'function') {
-        reducedMotion.removeEventListener('change', syncMotionPreference)
-      } else {
-        reducedMotion.removeListener(syncMotionPreference)
-      }
+      unsubscribeWidth()
+      unsubscribeMotion()
+      connection?.removeEventListener?.('change', syncVideoEligibility)
     }
   }, [])
 
@@ -160,25 +206,41 @@ export default function HeroSection({
   useEffect(() => {
     const supabase = createClient()
     let mounted = true
+    let latestRequest = 0
+    // The saved profile name (users.display_name) wins over auth metadata,
+    // as it did when the home page read it on the server. One lookup per user.
+    const profileNames = new Map<string, Promise<string | null>>()
+
+    type HeroAuthUser = { id: string; email?: string | null; user_metadata?: unknown } | null | undefined
+
+    const applyUser = async (user: HeroAuthUser, emailFallback: string | null) => {
+      const request = ++latestRequest
+      const nextEmail = user?.email ?? emailFallback
+      let profileName: string | null = null
+      if (user?.id) {
+        if (!profileNames.has(user.id)) profileNames.set(user.id, getProfileDisplayName(supabase, user.id))
+        profileName = await profileNames.get(user.id)!
+      }
+      // Keep the loading state until the name is known so the greeting does
+      // not flip between two names; ignore results overtaken by a newer event.
+      if (!mounted || request !== latestRequest) return
+      setUserEmail(nextEmail)
+      setUserDisplayName(
+        profileName
+          ?? getAuthDisplayName(user?.user_metadata)
+          ?? getInitialDisplayNameForEmail(nextEmail, initialUserEmail, initialUserDisplayName),
+      )
+      setAuthLoading(false)
+    }
 
     supabase.auth.getUser().then(({ data }) => {
       if (!mounted) return
-      const nextEmail = data.user?.email ?? initialUserEmail ?? null
-      setUserEmail(nextEmail)
-      setUserDisplayName(
-        getAuthDisplayName(data.user?.user_metadata) ?? getInitialDisplayNameForEmail(nextEmail, initialUserEmail, initialUserDisplayName),
-      )
-      setAuthLoading(false)
+      void applyUser(data.user, initialUserEmail ?? null)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return
-      const nextEmail = session?.user?.email ?? null
-      setUserEmail(nextEmail)
-      setUserDisplayName(
-        getAuthDisplayName(session?.user?.user_metadata) ?? getInitialDisplayNameForEmail(nextEmail, initialUserEmail, initialUserDisplayName),
-      )
-      setAuthLoading(false)
+      void applyUser(session?.user, null)
     })
 
     return () => {
@@ -199,7 +261,9 @@ export default function HeroSection({
             priority
             className="object-cover object-center"
             sizes="100vw"
-            unoptimized
+            // Local and allowlisted poster images go through the optimiser;
+            // any other host would be rejected by it, so serve it as-is.
+            unoptimized={!canOptimizeImageSrc(fallbackSlide.image)}
           />
         )}
         {showVideoBackground && (
@@ -207,18 +271,22 @@ export default function HeroSection({
             ref={heroVideoRef}
             data-testid="hero-background-video"
             className="pointer-events-none absolute inset-0 h-full w-full object-cover object-center"
-            src={HERO_VIDEO_CLIP_SRC}
             autoPlay
             muted
             loop
             playsInline
-            preload="auto"
+            preload="metadata"
+            poster={fallbackSlide?.image}
             controls={false}
             controlsList="nodownload noplaybackrate noremoteplayback"
             disablePictureInPicture
             tabIndex={-1}
             aria-hidden="true"
-          />
+          >
+            {HERO_VIDEO_SOURCES.map((source) => (
+              <source key={source.src} src={source.src} type={source.type} />
+            ))}
+          </video>
         )}
         <div className="absolute inset-0" aria-hidden />
       </div>
@@ -270,6 +338,24 @@ export default function HeroSection({
       </div>
     </section>
   )
+}
+
+async function getProfileDisplayName(
+  supabase: ReturnType<typeof createClient>,
+  userId: string,
+): Promise<string | null> {
+  try {
+    const { data } = await supabase
+      .from('users')
+      .select('display_name')
+      .eq('id', userId)
+      .maybeSingle()
+    const value = (data as { display_name?: unknown } | null)?.display_name
+    if (typeof value !== 'string') return null
+    return value.replace(/\s+/g, ' ').trim() || null
+  } catch {
+    return null
+  }
 }
 
 function getAuthDisplayName(metadata: unknown) {

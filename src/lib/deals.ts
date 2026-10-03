@@ -1,5 +1,5 @@
 import 'server-only'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 
 export interface Deal {
   id: string
@@ -95,6 +95,21 @@ export function canonicalDealIsCurrent(row: Record<string, unknown>, now = new D
   return true
 }
 
+/**
+ * Legacy `bahamas_deals` rows only carry `valid_through` (usually a plain
+ * YYYY-MM-DD date, valid through the end of that day). Rows without it are
+ * treated as open-ended; expired rows must never be shown as current offers.
+ */
+export function legacyDealIsCurrent(row: Record<string, unknown>, now = new Date()): boolean {
+  const validThrough = text(row.valid_through)
+  if (!validThrough) return true
+  if (/^\d{4}-\d{2}-\d{2}$/.test(validThrough)) {
+    return validThrough >= now.toISOString().slice(0, 10)
+  }
+  const ends = new Date(validThrough).getTime()
+  return Number.isNaN(ends) ? true : ends >= now.getTime()
+}
+
 export function normalizeCanonicalDeal(row: Record<string, unknown>): Deal {
   const place = relation(row.places)
   const partner = relation(row.partners)
@@ -150,7 +165,7 @@ function matchesQuery(deal: Deal, query: DealQuery): boolean {
 export async function getDeals(query: DealQuery = {}): Promise<Deal[]> {
   const limit = Math.max(1, Math.min(query.limit ?? 50, 100))
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     const canonical = await supabase
       .from('deals')
       .select(CANONICAL_DEAL_SELECT)
@@ -176,6 +191,7 @@ export async function getDeals(query: DealQuery = {}): Promise<Deal[]> {
       .limit(100)
     if (legacy.error) return []
     return ((legacy.data ?? []) as Array<Record<string, unknown>>)
+      .filter((row) => legacyDealIsCurrent(row))
       .map(normalizeLegacyDeal)
       .filter((deal) => matchesQuery(deal, query))
       .slice(0, limit)

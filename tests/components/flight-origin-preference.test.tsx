@@ -24,12 +24,6 @@ function mockFlightResponse() {
   })
 }
 
-function latestRequestBody(fetchMock: ReturnType<typeof vi.fn>) {
-  const lastCall = fetchMock.mock.calls.at(-1)
-  const init = lastCall?.[1] as RequestInit | undefined
-  return JSON.parse(String(init?.body ?? '{}'))
-}
-
 describe('FlightSearchClient origin preference', () => {
   beforeEach(() => {
     window.localStorage.clear()
@@ -37,7 +31,7 @@ describe('FlightSearchClient origin preference', () => {
     vi.unstubAllGlobals()
   })
 
-  test('uses saved public travel origin for initial flight previews', async () => {
+  test('uses a saved origin without inventing travel dates or searching', async () => {
     const preference: TravelOriginPreference = {
       origin: 'Atlanta',
       savedAt: '2026-06-19T00:00:00.000Z',
@@ -48,11 +42,9 @@ describe('FlightSearchClient origin preference', () => {
 
     render(<FlightSearchClient />)
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    expect(latestRequestBody(fetchMock)).toMatchObject({
-      origin_city: 'Atlanta',
-      destination: 'NAS',
-    })
+    await waitFor(() => expect(screen.getByLabelText('From')).toHaveValue('Atlanta (ATL)'))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(screen.getByRole('button', { name: 'Departure date: not set' })).toHaveTextContent('Depart')
     expect(analyticsMock.track).toHaveBeenCalledWith('flight_origin_preference_applied', {
       origin: 'Atlanta',
       source: 'stored_preference',
@@ -62,24 +54,21 @@ describe('FlightSearchClient origin preference', () => {
     expect(screen.getByRole('button', { name: 'Atlanta to Nassau' })).toBeInTheDocument()
   })
 
-  test('updates flight previews when the public origin prompt changes', async () => {
+  test('updates the origin while waiting for traveler-selected dates', async () => {
     const fetchMock = vi.fn<typeof fetch>(async () => mockFlightResponse())
     vi.stubGlobal('fetch', fetchMock)
 
     render(<FlightSearchClient />)
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+    expect(fetchMock).not.toHaveBeenCalled()
     act(() => {
       window.dispatchEvent(new CustomEvent(TRAVEL_ORIGIN_EVENT, {
         detail: { origin: 'Toronto' },
       }))
     })
 
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
-    expect(latestRequestBody(fetchMock)).toMatchObject({
-      origin_city: 'Toronto',
-      destination: 'NAS',
-    })
+    await waitFor(() => expect(screen.getByLabelText('From')).toHaveValue('Toronto (YYZ)'))
+    expect(fetchMock).not.toHaveBeenCalled()
     expect(analyticsMock.track).toHaveBeenCalledWith('flight_origin_preference_applied', {
       origin: 'Toronto',
       source: 'public_prompt_event',

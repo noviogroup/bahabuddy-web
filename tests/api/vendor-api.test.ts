@@ -181,3 +181,30 @@ describe('vendor submissions stay pending', () => {
     })
   })
 })
+
+describe('vendor mutation routes require an editor role (F39)', () => {
+  test('profile, deal and photo submissions ask for minRole editor', async () => {
+    mockRequireActiveVendorAccess.mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: 'VENDOR_ROLE_FORBIDDEN',
+      message: 'view-only',
+    })
+    const json = (body: unknown) => ({ method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+
+    const profile = await postProfile(request('/api/vendor/profile-submissions', json({ partner_id: 'partner-1', name: 'X' })))
+    const deal = await postDeal(request('/api/vendor/deals', json({ partner_id: 'partner-1', title: 'T', description: 'D' })))
+    const form = new FormData()
+    form.set('partner_id', 'partner-1')
+    form.set('place_id', 'place-1')
+    const photo = await postPhoto(request('/api/vendor/photos', { method: 'POST', body: form }))
+
+    for (const res of [profile, deal, photo]) expect(res.status).toBe(403)
+    for (const call of mockRequireActiveVendorAccess.mock.calls) {
+      expect(call[1]).toEqual({ minRole: 'editor' })
+    }
+    expect(mockRequireActiveVendorAccess).toHaveBeenCalledTimes(3)
+    expect(insertCalls).toHaveLength(0)
+    expect(uploadCalls).toHaveLength(0)
+  })
+})

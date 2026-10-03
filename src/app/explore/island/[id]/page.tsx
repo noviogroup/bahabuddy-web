@@ -20,11 +20,10 @@
  *   2. Hardcoded `ISLAND_CONFIGS` (in `src/lib/island-config.ts`) —
  *      tagline, hero, vibe, bestTime, tripLength, description.
  *
- *   3. Supabase `tripadvisor_locations` — enriched restaurant cards,
- *      matching the public restaurant directory.
+ *   3. Supabase canonical publication-readiness view — restaurant cards
+ *      that have passed Baha Buddy's freshness, media, and location gates.
  *
- *   4. Supabase `bahamas_attractions`, `self_tours`, and
- *      `historic_landmarks` — activity, tour, and landmark feeds.
+ *   4. Supabase approved-activity RPC — exact-island activity and tour feed.
  *
  *   5. Open-Meteo via `fetchIslandWeather` and LiteAPI flight search
  *      deep links — weather and flight intent.
@@ -47,7 +46,8 @@ import { unstable_cache } from "next/cache";
 import Link from "next/link";
 import Image from "next/image";
 
-import { createClient } from "@/lib/supabase/server";
+import { requestCache } from "@/lib/request-cache";
+import { createPublicClient } from "@/lib/supabase/public";
 import {
   ISLAND_CONFIGS,
   getIslandConfig,
@@ -70,12 +70,9 @@ import ImageWithSourcePolicy from "@/components/marketplace/ImageWithSourcePolic
 import { dealActionLinks } from "@/lib/deal-actions";
 import { getIslandDeals, type Deal } from "@/lib/deals";
 import { islandFoodLinks } from "@/lib/island-context-links";
-import {
-  formatCuisineLabel,
-  getRestaurantIslandQueryNames,
-  type TripAdvisorLocation,
-} from "@/lib/tripadvisor/types";
 import { buddyChatHref } from "@/lib/buddy-chat";
+import { getPublishedRestaurantsByIsland } from "@/lib/places";
+import type { PublicPlace } from "@/lib/place-types";
 import { getStayStartingRates, type HotelStartingRate } from "@/lib/hotels";
 import { stayIslandFilterLabel } from "@/lib/stay-island-filters";
 import {
@@ -86,6 +83,18 @@ import {
 } from "@/lib/stay-search-params";
 import type { FaqItem } from "@/components/island/FaqAccordion";
 import ImageGallery from "@/components/island/ImageGallery";
+import {
+  APPROVED_ACTIVITY_PAGE_LIMIT,
+  approvedActivityCard,
+  approvedActivityTypeLabel,
+  canonicalAttractionCategory,
+  canonicalAttractionPhotos,
+  getActivitiesWithCanonicalFallback,
+  getApprovedActivities,
+  isApprovedTourRow,
+  type ApprovedActivityRow,
+  type CanonicalAttractionRow,
+} from "@/lib/approved-activities";
 
 export const revalidate = 300;
 
@@ -184,7 +193,7 @@ interface StayPreview {
 
 async function getIslandGalleryImages(slug: string): Promise<string[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data } = await supabase
       .from("islands")
       .select("gallery_images")
@@ -199,35 +208,51 @@ async function getIslandGalleryImages(slug: string): Promise<string[]> {
 }
 
 async function getIslandLandmarks(slug: string): Promise<Landmark[]> {
-  try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("historic_landmarks")
-      .select(
-        "id, name, landmark_type, location_area, short_description, why_it_matters, visitor_tips, opening_hours, entry_fee",
-      )
-      .eq("island_slug", slug)
-      .eq("status", "active")
-      .limit(20);
-    return (data as Landmark[]) ?? [];
-  } catch {
-    return [];
-  }
+  // Raw landmark rows are activity-adjacent traveler recommendations. They
+  // stay out of delivery until BAH-245 can represent them in the approved
+  // projection. Preserve the exact-island argument to make this boundary
+  // explicit and avoid substituting another island.
+  void slug;
+  return [];
 }
 
-async function getIslandTours(island: string): Promise<SelfTour[]> {
+/**
+ * The island's approved activities, fetched once per request and shared by
+ * the tours and attractions sections. The RPC cannot filter by source layer,
+ * so request its full page; a smaller page lets other activities on the
+ * island crowd valid tours out.
+ */
+const getIslandApprovedActivities = requestCache(
+  (islandSlug: string): Promise<ApprovedActivityRow[]> =>
+    getApprovedActivities(createPublicClient(), {
+      islandSlug,
+      limit: APPROVED_ACTIVITY_PAGE_LIMIT,
+    }),
+);
+
+/** Attractions section budget; the RPC orders by name, so this matches a
+ * direct `limit: 24` call. */
+const ISLAND_ATTRACTION_LIMIT = 24;
+
+async function getIslandTours(islandSlug: string): Promise<SelfTour[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("self_tours")
-      .select(
-        "id, title, island, theme, estimated_duration, difficulty, cover_image_url, cruise_friendly, featured",
-      )
-      .eq("island", island)
-      .eq("is_active", true)
-      .order("featured", { ascending: false })
-      .limit(8);
-    return (data as SelfTour[]) ?? [];
+    const rows = await getIslandApprovedActivities(islandSlug);
+    return rows
+      .filter((row) => row.source_layer === "self_tours")
+      .slice(0, 8)
+      .map((row) => ({
+        // /tours/[id] resolves activity ids with an exact RPC lookup.
+        id: row.activity_id,
+        title: row.name,
+        island: row.island_slug,
+        // "self_tour" is a catalog marker, not a traveler-facing theme.
+        theme: row.category_tags.find((tag) => tag !== "self_tour") ?? null,
+        estimated_duration: durationMinutes(row.duration),
+        difficulty: null,
+        cover_image_url: approvedActivityCard(row).photo_url ?? null,
+        cruise_friendly: false,
+        featured: false,
+      }));
   } catch {
     return [];
   }
@@ -235,7 +260,7 @@ async function getIslandTours(island: string): Promise<SelfTour[]> {
 
 async function getIslandFaqs(slug: string): Promise<FaqItem[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const { data } = await supabase
       .from("island_faq")
       .select("id, category, question, answer, traveller_type")
@@ -250,48 +275,86 @@ async function getIslandFaqs(slug: string): Promise<FaqItem[]> {
 
 async function getIslandAttractions(dbSlug: string): Promise<Attraction[]> {
   try {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from("bahamas_attractions")
-      .select(
-        "id, name, category, island, description, image_url, tags, rating, review_count, amenities, short_description, enriched_at",
-      )
-      .eq("island", dbSlug)
-      .limit(24);
-    return (data as Attraction[]) ?? [];
+    let islandApproved: ApprovedActivityRow[];
+    try {
+      islandApproved = (await getIslandApprovedActivities(dbSlug)).slice(
+        0,
+        ISLAND_ATTRACTION_LIMIT,
+      );
+    } catch (error) {
+      // PGRST202: the approved RPC is not deployed; canonical rows still apply.
+      if ((error as { code?: unknown } | null)?.code !== "PGRST202") throw error;
+      islandApproved = [];
+    }
+    const { approved, canonical } = await getActivitiesWithCanonicalFallback(
+      createPublicClient(),
+      {
+        islandSlug: dbSlug,
+        limit: ISLAND_ATTRACTION_LIMIT,
+        approved: islandApproved,
+      },
+    );
+    // Approved tours already have their own "Guided tours" section.
+    return [
+      ...approved
+        .filter((row) => !isApprovedTourRow(row))
+        .map(mapApprovedAttraction),
+      ...canonical.map(mapCanonicalAttraction),
+    ];
   } catch {
     return [];
   }
 }
 
+/** Real catalog attraction for the same island; no offer facts attached. */
+function mapCanonicalAttraction(row: CanonicalAttractionRow): Attraction {
+  const rating = Number(row.rating);
+  return {
+    id: row.id,
+    name: row.name,
+    category: canonicalAttractionCategory(row),
+    island: row.island_id,
+    description: row.description ?? row.short_description ?? "",
+    image_url: canonicalAttractionPhotos(row)[0] ?? null,
+    tags: Array.isArray(row.tags) ? row.tags.map(String) : [],
+    rating: row.rating != null && Number.isFinite(rating) ? rating : null,
+    review_count: row.review_count,
+    amenities: null,
+    short_description: row.short_description,
+    enriched_at: row.updated_at,
+  };
+}
+
+function mapApprovedAttraction(row: ApprovedActivityRow): Attraction {
+  return {
+    id: row.activity_id,
+    name: row.name,
+    category: approvedActivityTypeLabel(row),
+    island: row.island_slug,
+    description: row.description,
+    image_url: approvedActivityCard(row).photo_url ?? null,
+    tags: row.category_tags,
+    rating: null,
+    review_count: null,
+    amenities: null,
+    short_description: row.description,
+    enriched_at: row.source_checked_at,
+  };
+}
+
+function durationMinutes(value: Record<string, unknown> | null): number | null {
+  if (!value) return null;
+  const minutes = Number(value.minutes ?? value.duration_minutes);
+  if (Number.isFinite(minutes) && minutes > 0) return Math.round(minutes);
+  const hours = Number(value.hours ?? value.duration_hours);
+  return Number.isFinite(hours) && hours > 0 ? Math.round(hours * 60) : null;
+}
+
 async function getIslandRestaurants(
+  islandSlug: string,
   islandName: string,
-): Promise<TripAdvisorLocation[]> {
-  try {
-    const supabase = await createClient();
-    const islandNames = getRestaurantIslandQueryNames(islandName);
-    let query = supabase
-      .from("tripadvisor_locations")
-      .select("*")
-      .eq("category", "restaurants")
-      .order("rating", { ascending: false, nullsFirst: false })
-      .limit(6);
-
-    query =
-      typeof (query as { in?: unknown }).in === "function"
-        ? (
-            query as typeof query & {
-              in: (column: string, values: string[]) => typeof query;
-            }
-          ).in("island_name", islandNames)
-        : query.eq("island_name", islandName);
-
-    const { data, error } = await query;
-    if (error || !data) return [];
-    return data as TripAdvisorLocation[];
-  } catch {
-    return [];
-  }
+): Promise<PublicPlace[]> {
+  return getPublishedRestaurantsByIsland(islandSlug, islandName, 6);
 }
 
 async function getIslandStays(
@@ -299,7 +362,7 @@ async function getIslandStays(
   islandName: string,
 ): Promise<StayPreview[]> {
   try {
-    const supabase = await createClient();
+    const supabase = createPublicClient();
     const aliases = stayIslandAliases(slug, islandName);
     let query = supabase
       .from("hotels")
@@ -653,6 +716,18 @@ const ISLAND_FLIGHT_ACCESS: Record<string, FlightAccess> = {
   },
 };
 
+/**
+ * Some Sanity destination taglines are editorial placeholders
+ * ("Source-backed guide to …") that describe our data pipeline rather than
+ * the island. Treat those as missing so the traveller-facing config tagline
+ * (or the default copy) is used instead.
+ */
+function travellerTagline(tagline: string | null | undefined): string | null {
+  const trimmed = tagline?.trim();
+  if (!trimmed || /^source[- ]backed\b/i.test(trimmed)) return null;
+  return trimmed;
+}
+
 // ─── Static params + metadata ───────────────────────────────────────────────
 
 export async function generateStaticParams() {
@@ -672,24 +747,25 @@ export async function generateMetadata({
     config ? getIslandHero(config.slug) : Promise.resolve(undefined),
   ]);
 
-  if (!config && !sanity) return {};
+  if (!config && !sanity) notFound();
 
   const name = sanity?.name ?? config?.name ?? params.id;
-  const tagline = sanity?.tagline ?? config?.tagline ?? "";
+  const tagline = travellerTagline(sanity?.tagline) ?? config?.tagline ?? "";
   // Sanity hero wins when published; otherwise the DB-sourced URL from
   // `islands.hero_image_url`. We no longer fall back to BahaImages here.
   const heroUrl = sanity ? sanity.imageUrl : dbHero;
 
   return {
-    title: `${name} — Bahamas Travel Guide | Baha Buddy`,
-    description: `Plan the perfect trip to ${name}, Bahamas. ${tagline} Attractions, deals, and local tips.`,
+    title: `${name} — Bahamas Travel Guide`,
+    description: [`Plan the perfect trip to ${name}, Bahamas.`, tagline, "Attractions, deals, and local tips."].filter(Boolean).join(" "),
     alternates: {
       canonical: `/explore/island/${params.id}`,
     },
     openGraph: {
       title: `${name} Travel Guide | Baha Buddy`,
-      description: `Plan your ${name} trip — ${tagline}`,
-      images: heroUrl ? [{ url: heroUrl }] : undefined,
+      description: tagline ? `Plan your ${name} trip — ${tagline}` : `Plan your ${name} trip with Baha Buddy.`,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(heroUrl ? { images: [{ url: heroUrl }] } : {}),
     },
   };
 }
@@ -726,7 +802,9 @@ export default async function IslandDetailPage({ params }: PageProps) {
     getIslandLandmarks(dbSlug),
     getIslandTours(dbSlug),
     getIslandFaqs(dbSlug),
-    getIslandRestaurants(config?.name ?? params.id),
+    // dbSlug, not params.id: Harbour Island's rows live under the
+    // eleuthera-harbour-island group, like the attractions above.
+    getIslandRestaurants(dbSlug, config?.name ?? params.id),
     getSafeIslandWeather(params.id),
     getIslandGuides(params.id, config?.name ?? params.id),
     getIslandStays(params.id, config?.name ?? params.id),
@@ -738,15 +816,13 @@ export default async function IslandDetailPage({ params }: PageProps) {
   // Derived display fields (Sanity wins where present, config fills gaps).
   // Hero priority: Sanity image > islands table (DB) > empty (gradient placeholder).
   const name = sanity?.name ?? config!.name;
-  const tagline = sanity?.tagline ?? config?.tagline ?? "";
+  const tagline = travellerTagline(sanity?.tagline) ?? config?.tagline ?? "";
   const heroUrl = sanity ? sanity.imageUrl : dbHero;
   const bestTime = sanity?.bestTimeToVisit ?? config?.bestTime ?? "Year-round";
   const overviewPortable = sanity?.overview;
   const overviewProse = config?.description ?? "";
   const sanityGallery = sanity?.gallery ?? [];
-  const gallery = sanity
-    ? sanityGallery
-    : Array.from(new Set(galleryImages));
+  const gallery = sanity ? sanityGallery : Array.from(new Set(galleryImages));
   const gettingThere = sanity?.gettingThere ?? null;
   const destinationFaqs: FaqItem[] = (sanity?.faqs ?? [])
     .map((faq, index) => ({
@@ -774,6 +850,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
     returnPath: islandPath,
   });
   const islandPlacesHref = `/explore/places?island=${encodeURIComponent(name)}`;
+  const islandActivitiesHref = `${islandPlacesHref}&category=Activity`;
   const stayIsland =
     stayIslandFilterLabel(name) || stayIslandFilterLabel(params.id) || name;
   const stayRateWindow = defaultIslandStayRateWindow();
@@ -855,7 +932,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
               icon="bed"
             />
             <SecondaryAction
-              href={islandPlacesHref}
+              href={islandActivitiesHref}
               label="Things to do"
               icon="pin"
             />
@@ -865,7 +942,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
             flightsHref={islandFlightsHref}
             staysHref={islandStaysHref}
             restaurantsHref={foodLinks.restaurantsHref}
-            placesHref={islandPlacesHref}
+            placesHref={islandActivitiesHref}
             guidesHref={islandGuidesHref}
             askBuddyHref={askBuddyHref}
             flightAccess={flightAccess}
@@ -880,7 +957,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
           />
         </header>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
             <ImageWithSourcePolicy
               src={primaryImageUrl}
@@ -929,7 +1006,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
                   </div>
                 ) : (
                   <CompactEmpty
-                    title="Restaurant feed is being enriched"
+                    title="More restaurants coming soon"
                     href={foodLinks.restaurantsHref}
                     actionLabel="Browse dining"
                   />
@@ -939,7 +1016,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
               <CompactSection
                 title="Things to do"
                 actionLabel="View all activities"
-                actionHref={islandPlacesHref}
+                actionHref={islandActivitiesHref}
               >
                 {attractionsByCategory.size > 0 ? (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -956,9 +1033,9 @@ export default async function IslandDetailPage({ params }: PageProps) {
                   </div>
                 ) : (
                   <CompactEmpty
-                    title="Activity feed is being enriched"
-                    href={islandPlacesHref}
-                    actionLabel="Browse places"
+                    title={`No activities listed for ${name} yet.`}
+                    href={islandActivitiesHref}
+                    actionLabel="Browse activities"
                   />
                 )}
               </CompactSection>
@@ -983,7 +1060,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
                 </div>
               ) : (
                 <CompactEmpty
-                  title="Stay inventory is being enriched"
+                  title="More stays coming soon"
                   href={islandStaysHref}
                   actionLabel="Search stays"
                 />
@@ -994,7 +1071,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
               <CompactSection
                 title="Guided tours"
                 actionLabel="View all tours"
-                actionHref={islandPlacesHref}
+                actionHref={islandActivitiesHref}
               >
                 {tours.length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -1004,8 +1081,8 @@ export default async function IslandDetailPage({ params }: PageProps) {
                   </div>
                 ) : (
                   <CompactEmpty
-                    title="Tour feed is being curated"
-                    href={islandPlacesHref}
+                    title={`No self-guided tours for ${name} yet.`}
+                    href={islandActivitiesHref}
                     actionLabel="Browse activities"
                   />
                 )}
@@ -1014,7 +1091,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
               <CompactSection
                 title="Historic landmarks"
                 actionLabel="View all sites"
-                actionHref={islandPlacesHref}
+                actionHref={`${islandPlacesHref}&category=Culture`}
               >
                 {landmarks.length > 0 ? (
                   <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
@@ -1024,7 +1101,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
                   </div>
                 ) : (
                   <CompactEmpty
-                    title="Historic site feed is being curated"
+                    title={`No historic sites listed for ${name} yet.`}
                     href={askBuddyHref}
                     actionLabel="Ask Buddy"
                   />
@@ -1057,7 +1134,11 @@ export default async function IslandDetailPage({ params }: PageProps) {
             )}
 
             <div className="grid gap-4 lg:grid-cols-[0.85fr_1.35fr]">
-              <FaqPreview name={name} faqs={approvedFaqs} askBuddyHref={askBuddyHref} />
+              <FaqPreview
+                name={name}
+                faqs={approvedFaqs}
+                askBuddyHref={askBuddyHref}
+              />
               <IslandBuddyBanner name={name} href={foodLinks.startTripHref} />
             </div>
 
@@ -1158,8 +1239,8 @@ function LiveFeedsPanel({
       value: stayCount > 0 ? `${stayCount} featured` : "Search live",
       helper:
         stayRateCount > 0
-          ? `${stayRateCount} cached rates`
-          : "Live rates loading",
+          ? `${stayRateCount} with rates`
+          : "Check live rates",
       href: staysHref,
       icon: "bed",
     },
@@ -1167,14 +1248,14 @@ function LiveFeedsPanel({
   const exploreFeeds = [
     {
       label: "Restaurants",
-      value: restaurantCount > 0 ? `${restaurantCount} loaded` : "Browse feed",
+      value: restaurantCount > 0 ? `${restaurantCount} to try` : "Browse all",
       href: restaurantsHref,
       icon: "dining",
     },
     {
       label: "Activities",
       value:
-        attractionCount > 0 ? `${attractionCount} experiences` : "Browse feed",
+        attractionCount > 0 ? `${attractionCount} experiences` : "Browse all",
       href: placesHref,
       icon: "activity",
     },
@@ -1206,10 +1287,10 @@ function LiveFeedsPanel({
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase text-gray-500">
-            Live planning snapshot
+            Trip planning at a glance
           </p>
           <p className="mt-0.5 text-sm font-semibold text-charcoal">
-            {islandName} trip signals, grouped by user intent.
+            Weather, stays, food and things to do in {islandName}.
           </p>
         </div>
         <Link
@@ -1525,9 +1606,7 @@ function FlightRoutesPanel({
             key={`${route.carrier}-${route.code}`}
             className="grid grid-cols-[72px_minmax(0,1fr)_22px_32px_auto] items-center gap-1.5 py-2.5 text-sm"
           >
-            <p className="truncate font-bold text-night">
-              {route.carrier}
-            </p>
+            <p className="truncate font-bold text-night">{route.carrier}</p>
             <div className="min-w-0">
               <p className="truncate text-xs font-bold text-night ">
                 {route.origin} ({route.code})
@@ -1562,14 +1641,15 @@ function DestinationPlanningDetails({
   destination: SanityDestination;
 }) {
   const tripFit = destination.tripFit;
-  const tripFitRows = ([
-    ["Vibe", tripFit?.vibe],
-    ["Pace", tripFit?.pace],
-    ["Recommended stay", tripFit?.recommendedStay],
-    ["Best for", tripFit?.bestFor?.join(", ")],
-    ["Not ideal for", tripFit?.notIdealFor],
-  ] as Array<[string, string | null | undefined]>)
-    .filter((row): row is [string, string] => Boolean(row[1]?.trim()));
+  const tripFitRows = (
+    [
+      ["Vibe", tripFit?.vibe],
+      ["Pace", tripFit?.pace],
+      ["Recommended stay", tripFit?.recommendedStay],
+      ["Best for", tripFit?.bestFor?.join(", ")],
+      ["Not ideal for", tripFit?.notIdealFor],
+    ] as Array<[string, string | null | undefined]>
+  ).filter((row): row is [string, string] => Boolean(row[1]?.trim()));
   const hasPracticalNotes = Boolean(destination.practicalNotes?.length);
   const hasContent =
     destination.highlights.length > 0 ||
@@ -1581,7 +1661,9 @@ function DestinationPlanningDetails({
 
   return (
     <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
-      <h2 className="text-lg font-bold text-night">Plan the right island stay</h2>
+      <h2 className="text-lg font-bold text-night">
+        Plan the right island stay
+      </h2>
       <div className="mt-4 grid gap-5 md:grid-cols-2">
         {destination.highlights.length > 0 && (
           <div>
@@ -1589,7 +1671,9 @@ function DestinationPlanningDetails({
             <div className="mt-2 space-y-3">
               {destination.highlights.map((highlight, index) => (
                 <div key={`${highlight.label}-${index}`}>
-                  <p className="text-sm font-bold text-night">{highlight.label}</p>
+                  <p className="text-sm font-bold text-night">
+                    {highlight.label}
+                  </p>
                   {highlight.description && (
                     <p className="mt-1 text-sm font-medium leading-6 text-charcoal">
                       {highlight.description}
@@ -1606,7 +1690,10 @@ function DestinationPlanningDetails({
             <h3 className="text-sm font-bold text-night">Trip fit</h3>
             <dl className="mt-2 space-y-2">
               {tripFitRows.map(([label, value]) => (
-                <div key={label} className="grid grid-cols-[120px_1fr] gap-3 text-sm">
+                <div
+                  key={label}
+                  className="grid grid-cols-[120px_1fr] gap-3 text-sm"
+                >
                   <dt className="font-bold text-gray-500">{label}</dt>
                   <dd className="font-medium text-charcoal">{value}</dd>
                 </div>
@@ -1617,12 +1704,15 @@ function DestinationPlanningDetails({
 
         {destination.gateways.length > 0 && (
           <div>
-            <h3 className="text-sm font-bold text-night">Airports, ferries and ports</h3>
+            <h3 className="text-sm font-bold text-night">
+              Airports, ferries and ports
+            </h3>
             <div className="mt-2 space-y-3">
               {destination.gateways.map((gateway, index) => (
                 <div key={`${gateway.name}-${index}`}>
                   <p className="text-sm font-bold text-night">
-                    {gateway.name}{gateway.code ? ` · ${gateway.code}` : ""}
+                    {gateway.name}
+                    {gateway.code ? ` · ${gateway.code}` : ""}
                   </p>
                   {gateway.note && (
                     <p className="mt-1 text-sm font-medium leading-6 text-charcoal">
@@ -1694,9 +1784,10 @@ function CompactEmpty({
   );
 }
 
-function RestaurantTile({ restaurant }: { restaurant: TripAdvisorLocation }) {
-  const heroPhoto = restaurant.photos?.[0]?.url ?? null;
-  const detailHref = `/restaurants/${restaurant.location_id || restaurant.id}`;
+function RestaurantTile({ restaurant }: { restaurant: PublicPlace }) {
+  const heroPhoto = restaurant.image_url;
+  const detailHref =
+    restaurant.detail_href ?? `/explore/places/${restaurant.id}`;
   return (
     <Link href={detailHref} className="group block">
       {heroPhoto ? (
@@ -1718,9 +1809,7 @@ function RestaurantTile({ restaurant }: { restaurant: TripAdvisorLocation }) {
         {restaurant.name}
       </p>
       <p className="text-xs font-semibold text-gray-500">
-        {restaurant.cuisine_types?.[0]
-          ? formatCuisineLabel(restaurant.cuisine_types[0])
-          : "Dining"}
+        {restaurant.tags?.[0] ?? "Dining"}
         {restaurant.rating ? ` · ${restaurant.rating.toFixed(1)}` : ""}
       </p>
     </Link>
@@ -1802,7 +1891,9 @@ function ActivityCategoryTile({
   const label = CATEGORY_LABELS[category] ?? category;
   return (
     <Link
-      href={`/explore/places?category=${encodeURIComponent(category)}&island=${encodeURIComponent(sample.island ?? "")}`}
+      // match=exact: the tile count covers this category only, so the list
+      // must not widen "Activity" to every activity on the island.
+      href={`/explore/places?category=${encodeURIComponent(category)}&island=${encodeURIComponent(sample.island ?? "")}&match=exact`}
       className="group block"
     >
       {sample.image_url ? (
@@ -2030,7 +2121,7 @@ function WeatherSideCard({
               </div>
             ))}
           </div>
-          <dl className="mt-4 grid gap-2 border-t border-gray-100 pt-3 text-sm sm:grid-cols-3">
+          <dl className="mt-4 grid grid-cols-1 gap-2 border-t border-gray-100 pt-3 text-sm sm:grid-cols-3">
             <div className="rounded-lg bg-gray-50 px-3 py-2">
               <dt className="text-xs font-bold uppercase text-gray-500">
                 Condition

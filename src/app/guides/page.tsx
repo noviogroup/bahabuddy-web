@@ -11,7 +11,7 @@ import { editorialTripHref } from '@/lib/editorial-planning-links'
 export const revalidate = 3600
 
 export const metadata: Metadata = {
-  title: 'Bahamas Travel Guides — Baha Buddy',
+  title: 'Bahamas Travel Guides',
   description:
     'In-depth guides to the Bahamas — beaches, adventure, food, culture, and more. Plan your perfect island escape with expert travel tips.',
   openGraph: {

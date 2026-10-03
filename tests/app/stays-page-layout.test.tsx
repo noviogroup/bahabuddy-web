@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, test, vi } from "vitest";
 import StaysPage from "@/app/stays/page";
 
@@ -147,7 +147,7 @@ describe("StaysPage marketplace layout", () => {
     ]);
   });
 
-  test("renders compact inline search with a left sidebar filter model", async () => {
+  test("preserves search context through collapsed editing, filter clearing, and stay detail", async () => {
     const page = await StaysPage({
       searchParams: {
         island: "Nassau",
@@ -167,188 +167,33 @@ describe("StaysPage marketplace layout", () => {
     });
     const { container } = render(page);
 
+    expect(screen.getByRole("heading", { name: "Find stays" })).toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Search stays" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit search" }));
     const searchForm = screen.getByRole("form", { name: "Search stays" });
-    expect(
-      within(searchForm).getByRole("heading", { name: "Find stays in Nassau" }),
-    ).toBeInTheDocument();
-    expect(
-      within(searchForm).queryByText("Inline stay search"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(searchForm).queryByText("Refine Bahamas stays"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(searchForm).queryByText(
-        "Browse is public. Saving, checkout, and booking require a traveler account.",
-      ),
-    ).not.toBeInTheDocument();
-    expect(searchForm).toHaveClass("bg-night");
-    expect(searchForm).not.toHaveClass("border-gray-200");
-    expect(searchForm).not.toHaveClass("border-brand-100");
-    expect(
-      within(searchForm).getByRole("button", { name: "Search" }),
-    ).toHaveClass("bg-brand-600");
-    expect(screen.getByTestId("stay-primary-search-row")).toHaveClass(
-      "lg:grid-cols-[minmax(16rem,1.65fr)_minmax(14rem,1.2fr)_minmax(12rem,1fr)_minmax(10rem,0.85fr)_auto]",
-    );
-    expect(
-      screen.queryByTestId("stay-detail-search-row"),
-    ).not.toBeInTheDocument();
-    expect(searchForm.innerHTML).not.toContain("minmax(9rem,0.72fr)");
-    expect(container.innerHTML).toMatch(/text-brand-700/);
-    expect(container.innerHTML).not.toContain("h-2 w-2 rounded-full bg-gold-400");
-    expect(container.innerHTML).not.toMatch(
-      /border-gold|border-sand|bg-sand|ring-sand/,
-    );
-    expect(
-      within(searchForm).getByRole("button", { name: "Choose destination" }),
-    ).toHaveTextContent("Paradise Island, Nassau");
-    expect(
-      within(searchForm).queryByRole("button", { name: "Open Where to? menu" }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(searchForm).queryByRole("button", { name: "Open Area menu" }),
-    ).not.toBeInTheDocument();
-    expect(screen.getByLabelText("Stay type")).toHaveValue("Resort");
-    expect(
-      within(searchForm).getByRole("button", { name: "Choose stay dates" }),
-    ).toHaveTextContent("Aug 1 – Aug 5");
-    expect(
-      within(searchForm).getByRole("button", {
-        name: "Choose travelers and rooms",
-      }),
-    ).toHaveTextContent("2 adults, 2 rooms");
-    expect(container.querySelector('input[name="island"]')).toHaveValue(
-      "Nassau",
-    );
-    expect(container.querySelector('input[name="city"]')).toHaveValue(
-      "Paradise Island",
-    );
-    expect(container.querySelector('input[name="checkin"]')).toHaveValue(
-      "2026-08-01",
-    );
-    expect(container.querySelector('input[name="checkout"]')).toHaveValue(
-      "2026-08-05",
-    );
-    expect(container.querySelector('input[name="adults"]')).toHaveValue("2");
-    expect(container.querySelector('input[name="rooms"]')).toHaveValue("2");
-    expect(container.querySelector('input[name="children"]')).toHaveValue("1");
-    expect(container.querySelector('input[name="stars"]')).toHaveValue("5");
-    expect(container.querySelector('input[name="guest_rating"]')).toHaveValue(
-      "8",
-    );
-    expect(container.querySelector('input[name="traveler_type"]')).toHaveValue(
-      "families",
-    );
-    expect(container.querySelector('input[name="amenities"]')).toHaveValue(
-      "Pool,Beachfront",
-    );
-
-    const filters = screen.getByRole("complementary", { name: "Stay filters" });
-    expect(filters).toBeInTheDocument();
-    expect(filters).toHaveClass("border-gray-200");
-    expect(
-      within(filters).queryByText("Find your island fit"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(filters).queryByText("Beach days, family space, quiet cays."),
-    ).not.toBeInTheDocument();
-    expect(filters.innerHTML).not.toContain("https://images.example/deal.jpg");
-    expect(filters.innerHTML).not.toContain("linear-gradient");
-    expect(filters.innerHTML).not.toContain("bg-night");
-    expect(within(filters).getByText("Current search")).toBeInTheDocument();
-    expect(within(filters).getByText("Best next move")).toBeInTheDocument();
-    expect(
-      within(filters).getByRole("link", { name: /Beach stays/ }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(
-      within(filters).getByRole("link", { name: /Family friendly/ }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(
-      within(filters).getByRole("link", { name: /Luxury/ }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(within(filters).getByText("Refine results")).toBeInTheDocument();
-    expect(within(filters).getByText("Traveler fit")).toBeInTheDocument();
-    expect(within(filters).getByText("Quality")).toBeInTheDocument();
-    expect(within(filters).getAllByText("Stay type").length).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getByRole("region", { name: "Stay results" }),
-    ).toBeInTheDocument();
-    expect(within(filters).getByRole("link", { name: "Clear all" })).toHaveAttribute(
-      "href",
-      "/stays",
-    );
-    expect(
-      within(filters).getByRole("link", { name: "5+ star" }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(
-      within(filters).getByRole("link", { name: "5+ star" }),
-    ).not.toHaveClass("bg-brand-600");
-    expect(
-      within(filters).getByRole("link", { name: "Paradise Island" }),
-    ).toHaveAttribute("aria-current", "true");
-    expect(within(filters).getAllByText("Resort").length).toBeGreaterThanOrEqual(1);
-    expect(
-      within(filters).getByRole("link", { name: "Families" }),
-    ).toHaveAttribute("aria-current", "true");
-
-    const popularTypes = screen.getByRole("navigation", {
-      name: "Popular stay type shortcuts",
-    });
-    expect(popularTypes).toHaveClass("border-gray-200");
-    expect(
-      within(popularTypes).queryByText(
-        "Jump straight to hotels, resorts, villas, homes, houses, apartments, or condos.",
-      ),
-    ).not.toBeInTheDocument();
-    expect(
-      within(popularTypes).getByRole("link", { name: "All stays" }),
-    ).toHaveAttribute("href", expect.stringContaining("/stays?"));
-    expect(
-      within(popularTypes).getByRole("link", { name: "All stays" }),
-    ).toHaveClass("min-h-11");
-    expect(
-      within(popularTypes).getByRole("link", { name: "House" }),
-    ).toHaveAttribute("href", expect.stringContaining("type=House"));
-    expect(
-      within(popularTypes).getByRole("link", { name: "Condo" }),
-    ).toHaveAttribute("href", expect.stringContaining("type=Condo"));
-
-    const stayPromos = screen.getByRole("complementary", {
-      name: "Stay promotions",
-    });
-    expect(
-      within(stayPromos).getByRole("heading", {
-        name: "Build the trip around this stay.",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(stayPromos).getByRole("link", { name: "Plan with Buddy" }),
-    ).toHaveAttribute(
-      "href",
-      "/dashboard/trips/new?returnTo=%2Fstays&source=stay_search",
-    );
-    expect(
-      within(stayPromos).getByRole("heading", {
-        name: "Add live flights before you pick the room.",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(stayPromos).getByRole("link", { name: "Search flights" }),
-    ).toHaveAttribute("href", "/flights");
-
-    expect(
-      screen.getAllByText("Ocean Club Resort").length,
-    ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Starting from")).toBeInTheDocument();
-    expect(screen.getByText(/\$350/)).toBeInTheDocument();
-    expect(screen.getByText("$1,400 total · 4 nights")).toBeInTheDocument();
-    expect(screen.getByText("Why Buddy picked this")).toBeInTheDocument();
-    expect(screen.getByText(/5-star Resort in Nassau/)).toBeInTheDocument();
-    expect(screen.getByAltText("Ocean Club Resort")).toHaveAttribute(
-      "src",
-      "https://images.example/ocean-club.jpg",
-    );
+    expect(within(searchForm).getByRole("button", { name: "Choose destination" })).toHaveTextContent("Paradise Island, Nassau");
+    expect(within(searchForm).getByRole("button", { name: /^Choose stay dates: / })).toHaveTextContent("Aug 1 – Aug 5");
+    expect(within(searchForm).getByRole("button", { name: "Choose travelers and rooms" })).toHaveTextContent("2 adults, 2 rooms");
+    const fields = {island: "Nassau", city: "Paradise Island", checkin: "2026-08-01", checkout: "2026-08-05", adults: "2", children: "1", rooms: "2", type: "Resort", stars: "5", guest_rating: "8", traveler_type: "families", amenities: "Pool,Beachfront"};
+    for (const [name, value] of Object.entries(fields)) {
+      expect(searchForm.querySelector(`input[name="${name}"]`)).toHaveValue(value);
+    }
+    const clear = new URL(screen.getByRole("link", { name: "Clear filters" }).getAttribute("href")!, "https://test.local");
+    expect(clear.searchParams.get("checkin")).toBe("2026-08-01");
+    expect(clear.searchParams.get("adults")).toBe("2");
+    expect(clear.searchParams.get("island")).toBe("Nassau");
+    expect(clear.searchParams.has("type")).toBe(false);
+    expect(clear.searchParams.has("amenities")).toBe(false);
+    expect(screen.getByRole("link", { name: "Remove Amenity: Pool" })).toHaveAttribute("href", expect.stringContaining("amenities=Beachfront"));
+    expect(screen.getByText("Filters & sort (6)").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByRole("complementary", { name: "Stay promotions" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Why Buddy picked this")).not.toBeInTheDocument();
+    expect(screen.getByText(/USD\s*350/)).toBeInTheDocument();
+    expect(screen.getByText(/USD\s*1,400 total · 4 nights/)).toBeInTheDocument();
+    const detail = new URL(screen.getByRole("link", { name: "View stay" }).getAttribute("href")!, "https://test.local");
+    expect(detail.searchParams.get("checkin")).toBe("2026-08-01");
+    expect(detail.searchParams.get("rooms")).toBe("2");
+    expect(container.querySelectorAll('article')).toHaveLength(1);
 
     expect(hotelMocks.getHotels).toHaveBeenCalledWith({
       island: "Nassau",
@@ -370,83 +215,26 @@ describe("StaysPage marketplace layout", () => {
       limit: 24,
     });
     expect(hotelMocks.getFeaturedStayHotels).not.toHaveBeenCalled();
-    expect(dealMocks.getStayDeals).toHaveBeenCalledWith(3);
+    expect(dealMocks.getStayDeals).not.toHaveBeenCalled();
   });
 
-  test("defaults to featured starter islands with stay deals and FAQ", async () => {
+  test("lets guests browse featured stays without invented rates or promotional panels", async () => {
     const page = await StaysPage({ searchParams: {} });
     render(page);
 
-    expect(
-      screen.queryByRole("heading", {
-        name: "Best Bahamas stays to start with",
-      }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Find stays in The Bahamas" }),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Start with 5-6 strong/)).not.toBeInTheDocument();
-    expect(screen.queryByText("Default stay feed")).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "Best starred stays across the islands travelers ask for most",
-      ),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        /This starter set favors 4- and 5-star active provider records/,
-      ),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", {
-        name: "Bahamas stay offers worth checking",
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Nassau resort stay offer")).toBeInTheDocument();
-    expect(screen.getByText("Starting from")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Find stays" })).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Search stays" })).toBeVisible();
     expect(screen.getByText("Select dates")).toBeInTheDocument();
-    expect(
-      screen.getByText("Add dates to compare live rates"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Stays FAQ" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Can travelers filter by homes, villas, apartments, or hotels?",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", {
-        name: "Turn this stay shortlist into a Bahamas trip",
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "Start stay trip" }),
-    ).toHaveAttribute(
-      "href",
-      "/dashboard/trips/new?returnTo=%2Fstays&source=stay",
-    );
-    expect(screen.getByRole("link", { name: "Start stay trip" })).toHaveClass(
-      "bg-brand-600",
-    );
-    expect(
-      screen.getByRole("link", { name: "Compare starred stays" }),
-    ).toHaveAttribute("href", "/stays?sort=stars");
-    expect(
-      screen.getByRole("link", { name: "Review stay deals" }),
-    ).toHaveAttribute("href", "/deals?type=accommodation");
-    expect(screen.getByRole("link", { name: "Ask Buddy" })).toHaveAttribute(
-      "href",
-      "/dashboard/chat?q=Help+me+compare+Bahamas+stays",
-    );
-    expect(screen.queryByText("Chat with Baha Buddy")).not.toBeInTheDocument();
+    expect(screen.queryByText("Why Buddy picked this")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Stays FAQ" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Nassau resort stay offer")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ask Buddy" })).toHaveAttribute("href", "/dashboard/chat?q=Help+me+compare+Bahamas+stays");
 
     expect(hotelMocks.getFeaturedStayHotels).toHaveBeenCalledWith(6);
     expect(hotelMocks.getHotels).not.toHaveBeenCalled();
     expect(hotelMocks.getCityOptions).toHaveBeenCalledWith(undefined);
     expect(hotelMocks.getStayStartingRates).not.toHaveBeenCalled();
-    expect(dealMocks.getStayDeals).toHaveBeenCalledWith(3);
+    expect(dealMocks.getStayDeals).not.toHaveBeenCalled();
   });
 
   test("normalizes display island names before querying stay inventory", async () => {
@@ -462,10 +250,26 @@ describe("StaysPage marketplace layout", () => {
     );
     expect(hotelMocks.getCityOptions).toHaveBeenCalledWith("Exuma");
     expect(
-      within(screen.getByRole("form", { name: "Search stays" })).getByRole(
-        "heading",
-        { name: "Find stays in Exuma" },
-      ),
+      screen.getByRole("heading", { name: "Find stays" }),
     ).toBeInTheDocument();
   });
+  test("unpriced stays remain visible beside priced stays", async () => {
+    hotelMocks.getHotels.mockResolvedValue([...sampleHotels, { ...sampleHotels[0], id: "unpriced", name: "Unpriced stay", review_score: null }]);
+    render(await StaysPage({ searchParams: { island: "Nassau", checkin: "2099-10-17", checkout: "2099-10-21", adults: "2" } }));
+    expect(screen.getByRole("heading", { name: "2 stays in Nassau" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Unpriced stay" })).toBeInTheDocument();
+    expect(screen.getByText("Price not yet available")).toBeInTheDocument();
+    expect(screen.getAllByRole("link", { name: "View stay" })).toHaveLength(2);
+  });
+
+  test("empty filtered results can clear refinements without losing dates", async () => {
+    hotelMocks.getHotels.mockResolvedValue([]);
+    render(await StaysPage({ searchParams: { island: "Nassau", type: "Villa", checkin: "2099-10-17", checkout: "2099-10-21" } }));
+    expect(screen.getByText("No stays found")).toBeInTheDocument();
+    const results = screen.getByRole("region", { name: "Stay results" });
+    const href = within(results).getByRole("link", { name: "Clear filters" }).getAttribute("href")!;
+    expect(href).toContain("checkin=2099-10-17");
+    expect(href).not.toContain("type=Villa");
+  });
+
 });

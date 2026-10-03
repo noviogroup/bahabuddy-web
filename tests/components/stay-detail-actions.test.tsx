@@ -64,7 +64,7 @@ describe('StayDetailActions', () => {
     expect(checkRatesLink).toHaveClass('bg-brand-600')
     expect(checkRatesLink.querySelector('.bg-gold-400')).toBeNull()
 
-    const trigger = await screen.findByRole('button', { name: 'Open Save to menu' })
+    const trigger = await screen.findByRole('button', { name: /^Save to: / })
     expect(document.querySelector('select#stay-trip-select')).toHaveClass('sr-only')
 
     fireEvent.click(trigger)

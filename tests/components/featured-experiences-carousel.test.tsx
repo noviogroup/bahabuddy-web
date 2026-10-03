@@ -9,14 +9,14 @@ const experiences: FeaturedExperience[] = [
     title: 'Swimming Pigs Experience',
     island: 'Exuma',
     category: 'Boat tour',
-    href: '/guides/swimming-pigs-exuma-guide',
+    href: '/guides/swimming-pigs-exuma',
     image: '/images/pigs.jpg',
   },
   {
     title: 'Nassau Snorkeling Tour',
     island: 'Nassau',
     category: 'Things to do',
-    href: '/explore?query=snorkeling',
+    href: '/explore/places?search=snorkeling&island=Nassau',
     image: '/images/snorkeling.jpg',
   },
   {
@@ -49,11 +49,11 @@ describe('FeaturedExperiencesCarousel', () => {
     expect(screen.getAllByTestId('featured-experience-card')).toHaveLength(3)
     expect(screen.getByRole('link', { name: 'View details for Swimming Pigs Experience' })).toHaveAttribute(
       'href',
-      '/guides/swimming-pigs-exuma-guide',
+      '/guides/swimming-pigs-exuma',
     )
     expect(screen.getByRole('link', { name: 'View details for Nassau Snorkeling Tour' })).toHaveAttribute(
       'href',
-      '/explore?query=snorkeling',
+      '/explore/places?search=snorkeling&island=Nassau',
     )
     expect(screen.getByRole('link', { name: 'View details for Family Beach Day' })).toHaveAttribute(
       'href',
@@ -61,5 +61,30 @@ describe('FeaturedExperiencesCarousel', () => {
     )
     expect(screen.getByText('Boat tour')).toBeInTheDocument()
     expect(screen.getAllByText('Plan with Buddy')).toHaveLength(3)
+  })
+
+  test('shows a gold Top pick badge and photo credit only when set', () => {
+    render(
+      <FeaturedExperiencesCarousel
+        experiences={[
+          ...experiences,
+          {
+            title: 'Pink Sand Beach',
+            island: 'Harbour Island',
+            category: 'Beach',
+            href: '/explore/places/pink-sand-beach',
+            image: 'https://media-cdn.tripadvisor.com/pink.jpg',
+            badge: 'Top pick',
+            attribution: 'Photo: Tripadvisor',
+          },
+        ]}
+      />,
+    )
+
+    const badges = screen.getAllByTestId('featured-experience-badge')
+    expect(badges).toHaveLength(1)
+    expect(badges[0]).toHaveTextContent('Top pick')
+    expect(badges[0]).toHaveClass('bg-gold-400')
+    expect(screen.getByText('Photo: Tripadvisor')).toBeInTheDocument()
   })
 })

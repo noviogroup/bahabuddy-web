@@ -4,6 +4,11 @@ import { createClient } from '@/lib/supabase/server'
 type PaymentStatus = 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded'
 type ProviderStatus = 'pending' | 'confirmed' | 'failed' | 'cancelled'
 
+// Booking ids, Stripe payment intents and provider references are all
+// [A-Za-z0-9_-]; anything else (',', '.', ')', spaces) is rejected before it
+// can reach a PostgREST filter.
+const BOOKING_LOOKUP_PATTERN = /^[A-Za-z0-9_-]{1,128}$/
+
 export async function GET(
   _request: Request,
   { params }: { params: { id: string; bookingId: string } },
@@ -16,6 +21,9 @@ export async function GET(
 
   const tripId = params.id
   const bookingId = params.bookingId
+  if (!BOOKING_LOOKUP_PATTERN.test(bookingId) || !BOOKING_LOOKUP_PATTERN.test(tripId)) {
+    return NextResponse.json({ error: 'Booking not found.' }, { status: 404 })
+  }
 
   const { data: trip, error: tripError } = await supabase
     .from('trips')
@@ -24,7 +32,10 @@ export async function GET(
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (tripError) return NextResponse.json({ error: tripError.message }, { status: 500 })
+  if (tripError) {
+    console.error('[GET /api/trips/:id/bookings/:bookingId]', tripError)
+    return NextResponse.json({ error: 'Could not load the trip.' }, { status: 500 })
+  }
   if (!trip) return NextResponse.json({ error: 'Trip not found.' }, { status: 404 })
 
   const booking = await loadBooking(supabase, user.id, tripId, bookingId)
@@ -64,7 +75,9 @@ export async function GET(
     amount: booking.amount ?? null,
     currency: booking.currency ?? 'usd',
     sourceSurface: sourceSurfaceFor(booking),
-    booking,
+    // Never echo provider payloads (raw_response) or internal financial
+    // metadata to the browser; only the reconciliation fields.
+    booking: publicBookingFields(booking),
     providerRow,
     reconciled,
   })
@@ -122,7 +135,6 @@ async function loadBooking(
     'booking_reference',
     'external_reference',
     'financial_metadata',
-    'raw_response',
   ].join(', ')
 
   const base = supabase
@@ -143,15 +155,27 @@ async function loadBooking(
     .maybeSingle()
   if (byPaymentIntent) return byPaymentIntent as unknown as BookingRecord
 
-  const { data: byProviderRef } = await supabase
-    .from('bookings')
-    .select(fields)
-    .eq('user_id', userId)
-    .eq('trip_id', tripId)
-    .or(`booking_ref.eq.${bookingId},booking_reference.eq.${bookingId},external_reference.eq.${bookingId}`)
-    .maybeSingle()
+  // Separate .eq() lookups instead of interpolating the path param into an
+  // .or() filter string.
+  for (const column of ['booking_ref', 'booking_reference', 'external_reference']) {
+    const { data: byProviderRef } = await supabase
+      .from('bookings')
+      .select(fields)
+      .eq('user_id', userId)
+      .eq('trip_id', tripId)
+      .eq(column, bookingId)
+      .limit(1)
+      .maybeSingle()
+    if (byProviderRef) return byProviderRef as unknown as BookingRecord
+  }
 
-  return (byProviderRef as unknown as BookingRecord | null) ?? null
+  return null
+}
+
+function publicBookingFields(booking: BookingRecord) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { financial_metadata, raw_response, ...rest } = booking
+  return rest
 }
 
 async function loadProviderRow(

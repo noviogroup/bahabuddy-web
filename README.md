@@ -12,11 +12,15 @@ This repository owns the **public marketplace and marketing pages**, **authentic
 ## Quick start
 
 ```bash
-# Install (use --legacy-peer-deps if React 18 peer mismatches surface)
-npm install
+# Install exactly what CI and Netlify install (npm is the only package
+# manager; package-lock.json is the only lockfile; .npmrc sets legacy-peer-deps)
+npm ci
 
 # Dev server
 npm run dev
+
+# Checks CI runs
+npm run lint && npm run typecheck && npm run test:coverage
 
 # Production build
 npm run build && npm run start
@@ -24,28 +28,45 @@ npm run build && npm run start
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Use Node 20–22, matching the package `engines` contract.
+Use **Node 20** (Netlify and CI build on Node 20; `engines` allows 20–22). On Apple Silicon,
+the Node binary must be the **arm64** build (check with `node -p process.arch`): an x64 Node
+running under Rosetta installs the wrong native SWC/esbuild binaries and `next dev`, `next build`
+and Vitest fail. With nvm: `arch -arm64 nvm install 20`. Do not use pnpm or yarn.
 
 ---
 
-## Required environment variables
+## Environment variables
 
-Set these in `.env.local`. Missing any one of them produces a **graceful fallback**, not a crash — but features will be degraded.
+Set these in `.env.local` (and in Netlify for production). Generated from the
+`process.env.*` keys read under `src/`. Missing optional values produce a **graceful fallback**,
+not a crash, but the related feature is degraded. "Prod" marks values required in production.
 
-| Variable | Purpose | Without it |
-|---|---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL | App can't run |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key | App can't run |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase admin key | Chat API can't write trips |
-| `ANTHROPIC_API_KEY` | Claude API key (server only) | Chat API returns 500 |
-| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe Elements (client) | `/dashboard/checkout` shows "not configured" screen. Trip detail + chat SummaryCard hide Book CTA. |
-| `LITEAPI_API_KEY` | Hotel and flight search/booking (server only) | Live travel search and booking routes return friendly unavailable states. |
-| `LITEAPI_PUBLIC_KEY` | LiteAPI payment SDK support when required | Flight payment flows cannot initialize provider-side payment when required. |
-| `NEXT_PUBLIC_SANITY_PROJECT_ID` | Editorial content | Hardcoded content keeps rendering. App fully usable. |
-| `NEXT_PUBLIC_SANITY_DATASET` | Editorial content | Same as above. |
-| `NEXT_PUBLIC_SANITY_API_VERSION` | Editorial content | Same as above. |
+| Variable | Prod | Purpose | Without it |
+|---|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | yes | Supabase project URL | App can't run |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | yes | Supabase anon key (also used by the cookie-free public catalog client) | App can't run |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | Server-only Supabase admin key | Chat, booking, concierge and admin writes fail |
+| `NEXT_PUBLIC_SITE_URL` | yes | Canonical origin for metadata, sitemap, share and email links | Canonicals/links fall back to defaults |
+| `ANTHROPIC_API_KEY` | yes | Claude API key (server only) | Chat API returns an unavailable state |
+| `TRAVEL_BOOKING_API_KEY` | yes | LiteAPI key for stays + flights (server only). **Takes precedence over `LITEAPI_API_KEY`.** | Live search/booking return friendly unavailable states |
+| `LITEAPI_API_KEY` | — | Legacy fallback name for the LiteAPI key, used only when `TRAVEL_BOOKING_API_KEY` is unset | — |
+| `TRAVEL_BOOKING_API_BASE_URL` / `TRAVEL_BOOKING_BOOK_BASE_URL` | — | Override LiteAPI data / booking base URLs | Defaults to `api.liteapi.travel` / `book.liteapi.travel` v3.0 |
+| `TRAVEL_BOOKING_API_AUTH_HEADER` | — | Auth header name for the provider | `X-API-Key` |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | yes | Stripe Elements (client) | `/checkout` shows a "not configured" screen; Book CTAs hide |
+| `STRIPE_SECRET_KEY` | yes | Stripe server API | Payment intents / concierge checkout fail |
+| `STRIPE_CONCIERGE_WEBHOOK_SECRET` | yes | Verifies `/api/stripe/concierge-webhook` signatures | Concierge orders never get marked paid |
+| `RESEND_API_KEY` | yes | Transactional email | Booking/concierge emails are silently skipped |
+| `MAIL_FROM` | yes | Sender address for transactional email | Email send fails |
+| `ADMIN_NOTIFICATION_EMAILS` | yes | Comma-separated ops recipients for new orders/leads | No internal notifications |
+| `SANITY_REVALIDATE_SECRET` | yes | Shared secret for the Sanity webhook at `/api/revalidate` | Webhook is rejected; edits wait for ISR |
+| `NEXT_PUBLIC_SANITY_PROJECT_ID` / `NEXT_PUBLIC_SANITY_DATASET` / `NEXT_PUBLIC_SANITY_API_VERSION` | — | Editorial content | Built-in content keeps rendering |
+| `GOOGLE_MAPS_API_KEY` | — | Server-side maps/geocoding | Map features hide |
+| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` / `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` / `GOOGLE_MAPS_MAP_ID` | — | Browser map embeds (domain-restrict the key) | Map embeds hide |
+| `NEXT_PUBLIC_MIXPANEL_TOKEN` | — | Analytics | Analytics disabled |
+| `BOOKING_READINESS_TOKEN` | — | Protects the booking-readiness diagnostics endpoint | Endpoint stays locked |
+| `ENABLE_DEMO_BOOKING_STATES` | no (never in prod) | Enables demo booking states for screenshots/QA | Demo states off |
 
-See `.env.example` for the full list including format examples.
+See `.env.example` for format examples.
 
 ### One-time Supabase setup
 
@@ -70,6 +91,27 @@ For Sanity setup specifically, see [`src/lib/sanity/README.md`](./src/lib/sanity
 
 ---
 
+## Stays and flights: less is more (October 2, 2026)
+
+The search/results screens adopt the mobile app's compact search summary and
+progressive disclosure, as implemented in `premium_hotel_search_screen.dart`
+and `premium_flight_search_screen.dart` under the mobile `lib/features/` tree.
+
+- Keep route/destination, dates, and travelers visible; reopen the form with **Edit search**.
+  Closing it preserves draft inputs. Flight results continue to describe the last submitted search.
+- Give results the main column. Keep promotion panels, repeated type shortcuts,
+  route-preview essays, deals, and FAQ blocks off these comparison screens.
+- Show stay refinements behind **Filters & sort**, with removable active filters.
+  Clearing refinements preserves destination, dates, and guests.
+- Keep unpriced stays visible. Show currency, nightly rate, and total when a quote exists.
+  Avoid generic claims that Buddy personally selected a catalog result.
+- Show both legs of round-trip fares, stops, baggage summary, and total up front.
+  Put fare rules, layovers, and verification expiry under **Fare details**.
+- Reuse supplied or saved flight origins. Fresh visits require chosen dates before searching;
+  they do not assume Miami or invent a departure/return date.
+
+Search UI changes do not constitute live payment/provider lifecycle verification.
+
 ## Architecture in 30 seconds
 
 - **Route group `(dashboard)/`** wraps every authenticated route, so the chat panel state persists across navigation.
@@ -88,10 +130,12 @@ Full architecture detail is in `PROGRESS.md`.
 ```
 src/
 ├── app/
-│   ├── (dashboard)/        ← authenticated routes (shared shell)
-│   ├── api/chat/           ← streaming SSE chat with tool use
-│   ├── login/, signup/     ← unauthenticated
-│   ├── deals/, share/      ← marketing routes
+│   ├── (dashboard)/        ← authenticated routes (shared shell); the group
+│   │                         name is not in the URL, e.g. (dashboard)/checkout → /checkout
+│   ├── api/                ← route handlers (chat SSE, booking/*, payments, concierge, stripe webhooks)
+│   ├── login/, auth/       ← sign-in (password + magic link; there is no /signup route)
+│   ├── stays/, flights/, restaurants/, tours/, explore/, deals/ ← public marketplace
+│   ├── share/              ← public trip share pages
 │   └── ...
 ├── components/
 │   ├── ui/                 ← 8 primitives (BahaCard, HeroCard, etc.)
@@ -101,9 +145,9 @@ src/
 │   ├── explore/, checkout/ ← Feature-specific
 │   └── *.tsx               ← Top-level components (RichCards, TripCard, etc.)
 ├── lib/
-│   ├── supabase/           ← Server + client Supabase factories
+│   ├── supabase/           ← server (cookie), client, public (cookie-free catalog reads), admin (service role)
 │   ├── stripe/             ← Stripe.js loader + Edge Function caller
-│   ├── sanity/             ← Sanity client + schemas (read-only)
+│   ├── sanity/             ← Sanity read client + queries (schemas live in ../studio)
 │   └── *.ts                ← Shared utilities
 ├── hooks/                  ← useTripRealtime
 └── types/                  ← Database types
@@ -132,7 +176,7 @@ Tokens live in `tailwind.config.ts` under `theme.extend.colors` and `theme.exten
 
 ### Verify Stripe
 
-Without a publishable key, `/dashboard/checkout` shows a friendly "not configured" screen. With one, use Stripe's test card `4242 4242 4242 4242` with any future expiry and any CVC — full booking flow should complete and the booking row should land in Supabase with `status='confirmed'` (after webhook fires).
+Without a publishable key, `/checkout` shows a friendly "not configured" screen. With one, use Stripe's test card `4242 4242 4242 4242` with any future expiry and any CVC — full booking flow should complete and the booking row should land in Supabase with `status='confirmed'` (after webhook fires).
 
 ---
 

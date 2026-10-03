@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { chooseVendorMembership, type VendorMembership } from '@/lib/vendor-portal'
+import { chooseVendorMembership, resolveVendorMembership, vendorRoleAllows, type VendorMembership } from '@/lib/vendor-portal'
 
 function membership(overrides: Partial<VendorMembership> = {}): VendorMembership {
   return {
@@ -55,5 +55,23 @@ describe('vendor portal access selection', () => {
 
     const owned = chooseVendorMembership([membership()], 'partner-1')
     expect(owned?.partner_id).toBe('partner-1')
+  })
+})
+
+describe('vendor roles and active partner (F39/F123)', () => {
+  test('viewer cannot submit, editor and owner can', () => {
+    expect(vendorRoleAllows('viewer', 'editor')).toBe(false)
+    expect(vendorRoleAllows('editor', 'editor')).toBe(true)
+    expect(vendorRoleAllows('owner', 'editor')).toBe(true)
+    expect(vendorRoleAllows('viewer', 'viewer')).toBe(true)
+  })
+
+  test('remembered partner is used only when it is still an active membership', () => {
+    const a = membership()
+    const b = membership({ id: 'membership-2', partner_id: 'partner-2', partner: { ...membership().partner!, id: 'partner-2' } })
+    expect(resolveVendorMembership([a, b], null, 'partner-2')?.partner_id).toBe('partner-2')
+    expect(resolveVendorMembership([a, b], null, 'partner-gone')?.partner_id).toBe('partner-1')
+    expect(resolveVendorMembership([a, b], 'partner-1', 'partner-2')?.partner_id).toBe('partner-1')
+    expect(resolveVendorMembership([a, b], 'partner-gone', 'partner-2')).toBeNull()
   })
 })

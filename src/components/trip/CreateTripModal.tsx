@@ -184,13 +184,13 @@ export default function CreateTripModal({ open, onClose }: CreateTripModalProps)
           <div className="absolute bottom-0 left-0 right-0 p-5">
             {selectedIsland ? (
               <>
-                <p className="text-white/80 text-xs font-semibold uppercasest">Your destination</p>
+                <p className="text-white/80 text-xs font-semibold uppercase">Your destination</p>
                 <p className="text-white text-2xl font-bold leading-tight drop-shadow">{selectedIsland.name}</p>
                 <p className="text-white/90 text-xs mt-1 leading-relaxed line-clamp-2">{selectedIsland.tagline}</p>
               </>
             ) : (
               <>
-                <p className="text-white/80 text-xs font-semibold uppercasest">Baha Buddy</p>
+                <p className="text-white/80 text-xs font-semibold uppercase">Baha Buddy</p>
                 <p className="text-white text-2xl font-bold leading-tight drop-shadow">Your Bahamas, your way.</p>
               </>
             )}

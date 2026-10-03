@@ -2,11 +2,36 @@ import { NextRequest } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
-import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
+import {
+  CardFenceStreamFilter,
+  deriveTitleFromMessage,
+  filterModelAuthoredCards,
+  parseCardsFromContent,
+  stripCardFences,
+  type ParsedCard,
+} from '@/lib/chat-utils'
+import { MAX_CHAT_BODY_BYTES, validateChatRequest, type ChatTripContext } from '@/lib/chat-request'
+import {
+  GUEST_CHAT_RATE_LIMITS,
+  IP_CHAT_RATE_LIMITS,
+  USER_CHAT_RATE_LIMITS,
+  chatRateLimiter,
+  clientIpFromHeaders,
+} from '@/lib/chat-rate-limit'
+import {
+  SUGGESTION_ACTIVITY_TYPE,
+  buildSuggestionActivityRows,
+  extractSummaryCard,
+  type SummaryCardFields,
+} from '@/lib/chat-trip-save'
 import { TOOL_DEFINITIONS, executeTool, toolProgressLabel } from '@/lib/chat-tools'
 import { stripCustomerFacingEmoji } from '@/lib/customer-facing-text'
+import { aiGenerationEvent, aiTraceEvent, capturePostHogEvents, type PostHogEvent } from '@/lib/posthog-ai'
 import type { CardData } from '@/components/RichCards'
 import { BUDDY_GROUNDING_POLICY, BUDDY_GROUNDING_POLICY_VERSION } from '@/lib/buddy-grounding-policy'
+import { failClosedMessageForPlaceToolBatch } from '@/lib/buddy-inventory-contract'
+import { recordAnthropicUsage } from '@/lib/provider-telemetry'
+import { filterApprovedActivityCards } from '@/lib/approved-activities'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -47,10 +72,19 @@ You are a stylized Bahamian guide — a cool island brother with relaxed, confid
 ## PERSONALITY TRAITS (Always Present)
 - Cool and confident — never anxious, never over-eager, never robotic
 - Knowledgeable — you know every island, every spot, every season
-- Proactive — you offer opinions and suggestions, don't just wait for questions
+- Proactive — offer one useful next step only when it helps the current request; do not add unsolicited recommendations
 - Culturally grounded — authentic Bahamian cultural awareness, occasional local phrases
 - Respectful — never pushy about bookings or upsells
-- Concise — respond with personality but don't ramble. Keep text responses under 200 words unless building an itinerary.
+- Concise — keep your warmth and personality, with a brief answer by default.
+
+## RESPONSE LENGTH (Applies across the whole reply)
+- For ordinary replies, use 1–3 short sentences and aim for 25–45 words of visible prose in TOTAL, including any text before tool calls and the final answer. Shorter is fine when it answers the request.
+- Lead with the answer or useful result. Skip introductions, filler, repeated acknowledgments, restating the request, and narration of tool calls or searches.
+- When cards are present, use one short introduction and, only if useful, one distinction the cards do not already show. Do not repeat card names, prices, ratings, amenities, schedules, or descriptions in prose unless a specific detail is needed to answer the user's question or support a decision.
+- Ask at most one question, only when needed to proceed or resolve a meaningful ambiguity. Do not end every reply with a question. Never guess required booking details.
+- If the user explicitly asks for detail, provide the requested depth. For multi-day itineraries, keep the prose summary short and put the day-by-day details in complete cards.
+- Preserve necessary booking, pricing, cancellation, safety, uncertainty, and unavailable-information disclosures even when they need more words. Keep all grounding and confirmation rules.
+- This prose target excludes structured card data. Never shorten or truncate required card fields to meet it.
 
 ## FORMATTING RULES (Critical — this is a chat app, NOT a document)
 - Write in natural conversational prose. NO Markdown headers (#), NO bullet lists (- or *), NO numbered lists.
@@ -105,6 +139,7 @@ You have 10 tools wired to live data. ALWAYS use these before recommending speci
 - Limit to 3-4 tool calls per response — keeps latency reasonable. If you need more, ask the user to narrow the ask.
 - For all factual destination questions, call get_destination_context before answering. Never fill a missing result from model memory.
 - For legacy practical FAQ coverage, search_island_faq may supplement get_destination_context, but it does not replace the approved destination-knowledge check.
+- Activity results are exact-island only and come in two kinds. Reviewed activity offers keep their returned duration, price basis, booking, meeting point, group/age, safety, cancellation and "checked on" facts. Canonical listings (listing_type "canonical_listing") are real places with no price, duration or availability: never quote or invent those, and suggest checking with the provider. If the result lists filters_not_applied, do not claim the options match those filters (for example, never call a listing kid-friendly unless the result says so). Present no more than 2–3 returned options, cite only returned records, and never substitute Nassau or another island when coverage is empty. Never use internal words such as "source-approved", "projection" or "canonical" with travelers.
 
 ## CARD OUTPUT FORMAT
 The web app renders cards differently depending on the source:
@@ -158,31 +193,6 @@ Rules:
 - Example: If today is March 6, 2026 and the user says "June 3 to June 10", use departure_date "2026-06-03", return_date "2026-06-10".
 - Example: If today is March 6, 2026 and the user says "February 14", that has already passed this year, so use "2027-02-14".`
 
-interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-interface SummaryCard {
-  card_type: 'summary'
-  trip_name?: string
-  days?: number
-  islands?: string[]
-  total_cost?: number
-  travelers?: number
-}
-
-function extractSummaryCard(cards: ParsedCard[]): SummaryCard | null {
-  for (const card of cards) {
-    if (card.card_type === 'summary') return card as unknown as SummaryCard
-    if (card.card_type === 'mixed' && Array.isArray(card.cards)) {
-      const nested = card.cards.find(c => c.card_type === 'summary')
-      if (nested) return nested as unknown as SummaryCard
-    }
-  }
-  return null
-}
-
 function buildUserContext(opts: {
   profile?: {
     display_name?: string | null
@@ -194,7 +204,7 @@ function buildUserContext(opts: {
     children_count?: number | null
     children_ages?: number[] | null
   } | null
-  tripContext?: { name?: string; islands?: string[]; date_start?: string; date_end?: string; id?: string } | null
+  tripContext?: ChatTripContext | null
 }): string {
   const p = opts.profile
   const t = opts.tripContext
@@ -237,12 +247,34 @@ const MAX_TOOL_CALLS = 8   // hard cap on total tool invocations per request
 const MODEL = 'claude-sonnet-4-6'
 const PROMPT_VERSION = BUDDY_GROUNDING_POLICY_VERSION
 
+function jsonError(status: number, error: string, headers: Record<string, string> = {}) {
+  return new Response(JSON.stringify({ error }), {
+    status,
+    headers: { 'Content-Type': 'application/json', ...headers },
+  })
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Anthropic.APIUserAbortError ||
+    (err instanceof Error && err.name === 'AbortError')
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const { message, history = [], tripContext, threadId } = await req.json()
-
-    if (!message || typeof message !== 'string') {
-      return new Response(JSON.stringify({ error: 'message is required' }), { status: 400 })
+    // ── Size guard before parsing ──────────────────────────────────────
+    const declaredLength = Number(req.headers.get('content-length') ?? 0)
+    if (declaredLength > MAX_CHAT_BODY_BYTES) {
+      return jsonError(413, 'This conversation is too large to send. Please start a new chat.')
+    }
+    const rawBody = await req.text()
+    if (rawBody.length > MAX_CHAT_BODY_BYTES) {
+      return jsonError(413, 'This conversation is too large to send. Please start a new chat.')
+    }
+    let body: unknown
+    try {
+      body = JSON.parse(rawBody)
+    } catch {
+      return jsonError(400, 'Invalid JSON body')
     }
 
     const supabase = await createClient()
@@ -256,7 +288,27 @@ export async function POST(req: NextRequest) {
       console.warn('[chat] no authenticated user on /api/chat — chat will respond but NOTHING will be persisted to chat_threads/chat_messages. Most likely cause: Supabase session cookie missing/invalid on this request.')
     }
 
-    let activeThreadId: string | null = threadId ?? null
+    // ── Rate limit (best-effort, per instance — see chat-rate-limit.ts) ─
+    const ip = clientIpFromHeaders(req.headers)
+    const limited = user
+      ? [chatRateLimiter.check(`user:${user.id}`, USER_CHAT_RATE_LIMITS), chatRateLimiter.check(`ip:${ip}`, IP_CHAT_RATE_LIMITS)]
+      : [chatRateLimiter.check(`guest:${ip}`, GUEST_CHAT_RATE_LIMITS)]
+    const blocked = limited.find(r => !r.allowed)
+    if (blocked) {
+      return jsonError(
+        429,
+        `You're sending messages faster than Buddy can keep up. Please wait ${blocked.retryAfterSec} seconds and try again.` +
+          (user ? '' : ' Signing in gives you a higher limit.'),
+        { 'Retry-After': String(blocked.retryAfterSec) },
+      )
+    }
+
+    // ── Validate + sanitize the body ───────────────────────────────────
+    const validated = validateChatRequest(body, { authenticated: Boolean(user) })
+    if (!validated.ok) return jsonError(validated.status, validated.error)
+    const { message, history, tripContext, threadId, draftTripId } = validated.value
+
+    let activeThreadId: string | null = null
     let userProfile: {
       display_name?: string | null
       party_type?: string | null
@@ -278,6 +330,17 @@ export async function POST(req: NextRequest) {
         if (profile) userProfile = profile
       } catch {
         // continue without profile
+      }
+
+      // Only reuse a supplied thread the caller owns; otherwise start a new one.
+      if (threadId) {
+        const { data: ownedThread } = await supabase
+          .from('chat_threads')
+          .select('id')
+          .eq('id', threadId)
+          .eq('user_id', user.id)
+          .maybeSingle()
+        activeThreadId = ownedThread?.id ?? null
       }
 
       if (!activeThreadId) {
@@ -362,71 +425,170 @@ export async function POST(req: NextRequest) {
     const userContext = buildUserContext({ profile: userProfile, tripContext })
 
     // ── Conversation history ──────────────────────────────────────────
-    // Note: messages array is mutable across the agentic loop — each tool
+    // History is already sanitized (plain-text user/assistant turns only).
+    // The messages array is mutable across the agentic loop — each tool
     // result gets appended as a user-role tool_result message.
     const messages: Anthropic.MessageParam[] = [
-      ...(history as ChatMessage[]).map(m => ({
-        role: m.role,
-        content: m.content,
-      })),
+      ...history.map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: message },
     ]
 
     const encoder = new TextEncoder()
-    const isNewThread = !!user && !!activeThreadId && !threadId
+    const isNewThread = !!user && !!activeThreadId && activeThreadId !== threadId
     const correlationId = crypto.randomUUID()
+    const edgeRequestId = crypto.randomUUID()
+
+    // Client disconnect / "new chat" aborts the request: stop the Anthropic
+    // stream and the tool loop instead of paying for output nobody sees.
+    const abortController = new AbortController()
+    const isAborted = () => abortController.signal.aborted
+    if (req.signal) {
+      if (req.signal.aborted) abortController.abort()
+      else req.signal.addEventListener('abort', () => abortController.abort(), { once: true })
+    }
+
+    const system: Anthropic.TextBlockParam[] = [
+      { type: 'text', text: staticPrompt, cache_control: { type: 'ephemeral' } },
+      { type: 'text', text: `## SHARED GROUNDING POLICY\n${BUDDY_GROUNDING_POLICY}` },
+      ...(adminGuidance ? [{ type: 'text' as const, text: adminGuidance }] : []),
+      { type: 'text', text: userContext },
+    ]
 
     const stream = new ReadableStream({
       async start(controller) {
+        let streamClosed = false
         const send = (event: Record<string, unknown>) => {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+          if (streamClosed || isAborted()) return
+          try {
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`))
+          } catch {
+            streamClosed = true
+          }
         }
 
         if (isNewThread) send({ type: 'thread_id', threadId: activeThreadId })
 
-        let allText = ''                  // accumulated text across all loop turns
+        let rawText = ''                  // raw model text across all turns (incl. card fences)
+        const fenceFilter = new CardFenceStreamFilter()
         const allCards: CardData[] = []   // server-emitted cards from tool results
         let toolCallCount = 0
         const toolNames = new Set<string>()
         const knowledgeIds = new Set<string>()
         const sourceIds = new Set<string>()
         const placeIds = new Set<string>()
+        const approvedActivityIds = new Set<string>()
         const contentVersions = new Set<string>()
         let requestedIslandSlug: string | null = null
         let answerStatus: 'grounded' | 'no_evidence' | 'provider_error' | 'not_applicable' = 'not_applicable'
         let staleContentBlocked = false
         let retrievalCount = 0
         let retrievalLatencyMs = 0
+        const posthogEvents: PostHogEvent[] = []
+        const turnStartedAt = Date.now()
+
+        /**
+         * Streams one model turn and records its provider usage + PostHog
+         * $ai_generation. Returns null when the request was aborted.
+         */
+        const runModelTurn = async (
+          allowTools: boolean,
+          iteration: number,
+        ): Promise<Anthropic.Message | null> => {
+          const providerStartedAt = Date.now()
+          const response = client.messages.stream(
+            {
+              model: MODEL,
+              max_tokens: 2048,
+              system,
+              // Tools stay defined even on the final turn because the history
+              // contains tool_use blocks; tool_choice 'none' forbids new calls.
+              tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
+              ...(allowTools ? {} : { tool_choice: { type: 'none' as const } }),
+              messages,
+            },
+            { signal: abortController.signal },
+          )
+          // Separate this turn's prose from the previous turn's (F134).
+          let needsSeparator = rawText.trim().length > 0
+          try {
+            for await (const event of response) {
+              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+                let textDelta = stripCustomerFacingEmoji(event.delta.text)
+                if (!textDelta) continue
+                if (needsSeparator) {
+                  textDelta = `\n\n${textDelta.replace(/^\s+/, '')}`
+                  needsSeparator = false
+                }
+                rawText += textDelta
+                // Never stream card-data JSON into the bubble.
+                const visible = fenceFilter.push(textDelta)
+                if (visible) send({ type: 'text_delta', delta: visible })
+              }
+            }
+            const finalMessage = await response.finalMessage()
+            // Telemetry is best-effort: it must never fail the user's turn.
+            try {
+              const usage = (finalMessage.usage ?? {}) as Partial<NonNullable<typeof finalMessage.usage>> & {
+                cache_read_input_tokens?: number | null
+                cache_creation_input_tokens?: number | null
+              }
+              await recordAnthropicUsage(knowledgeSupabase, {
+                model: MODEL,
+                iteration,
+                providerRequestId: finalMessage.id,
+                correlationId,
+                edgeRequestId,
+                userId: user?.id ?? null,
+                threadId: activeThreadId,
+                tripId: typeof tripContext?.id === 'string' ? tripContext.id : null,
+                inputTokens: usage.input_tokens ?? 0,
+                outputTokens: usage.output_tokens ?? 0,
+                cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+                cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+                latencyMs: Date.now() - providerStartedAt,
+                promptVersion: PROMPT_VERSION,
+              }).catch((telemetryError) => {
+                console.error('[chat] provider_usage_events insert FAILED', telemetryError)
+              })
+              posthogEvents.push(aiGenerationEvent({
+                distinctId: user?.id,
+                traceId: correlationId,
+                sessionId: activeThreadId,
+                model: MODEL,
+                responseId: finalMessage.id,
+                usage: finalMessage.usage,
+                latencyMs: Date.now() - providerStartedAt,
+                stopReason: finalMessage.stop_reason,
+                properties: {
+                  channel: 'web',
+                  model_iteration: iteration,
+                  tools_requested: finalMessage.content
+                    .filter((b): b is Anthropic.ToolUseBlock => b.type === 'tool_use')
+                    .map((toolUse) => toolUse.name),
+                  tools_allowed: allowTools,
+                  prompt_version: PROMPT_VERSION,
+                },
+              }))
+            } catch (telemetryError) {
+              console.error('[chat] turn telemetry FAILED', telemetryError)
+            }
+            if (finalMessage.stop_reason === 'max_tokens') {
+              console.warn('[chat] model hit max_tokens; any unclosed card fence is dropped', { correlationId })
+            }
+            return finalMessage
+          } catch (err) {
+            if (isAborted() || isAbortError(err)) return null
+            throw err
+          }
+        }
 
         try {
           // ── Agentic loop ─────────────────────────────────────────────
-          for (let turn = 0; turn < MAX_TURNS; turn++) {
-            const response = await client.messages.stream({
-              model: MODEL,
-              max_tokens: 2048,
-              system: [
-                { type: 'text', text: staticPrompt, cache_control: { type: 'ephemeral' } },
-                { type: 'text', text: `## SHARED GROUNDING POLICY\n${BUDDY_GROUNDING_POLICY}` },
-                ...(adminGuidance ? [{ type: 'text' as const, text: adminGuidance }] : []),
-                { type: 'text', text: userContext },
-              ],
-              tools: TOOL_DEFINITIONS as unknown as Anthropic.Tool[],
-              messages,
-            })
-
-            // Stream text deltas to client during this turn
-            let turnText = ''
-            for await (const event of response) {
-              if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-                const textDelta = stripCustomerFacingEmoji(event.delta.text)
-                turnText += textDelta
-                if (textDelta) send({ type: 'text_delta', delta: textDelta })
-              }
-            }
-            allText += turnText
-
-            // Get final message to inspect tool_use blocks + stop_reason
-            const finalMessage = await response.finalMessage()
+          let pendingToolResults = false
+          for (let turn = 0; turn < MAX_TURNS && !isAborted(); turn++) {
+            const finalMessage = await runModelTurn(true, turn + 1)
+            pendingToolResults = false
+            if (!finalMessage) break
 
             // Collect tool_use blocks
             const toolUses = finalMessage.content.filter(
@@ -443,7 +605,9 @@ export async function POST(req: NextRequest) {
 
             // Execute each tool, build tool_result blocks
             const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
+            const groundingBatch: Array<{ toolName: string; result: unknown }> = []
             for (const toolUse of toolUses) {
+              if (isAborted()) break
               if (toolCallCount >= MAX_TOOL_CALLS) {
                 toolResultBlocks.push({
                   type: 'tool_result',
@@ -465,6 +629,7 @@ export async function POST(req: NextRequest) {
                 user?.id ?? null,
                 knowledgeSupabase,
               )
+              groundingBatch.push({ toolName: toolUse.name, result: toolResult.data })
               toolNames.add(toolUse.name)
               const data = toolResult.data && typeof toolResult.data === 'object'
                 ? toolResult.data as Record<string, unknown>
@@ -498,7 +663,10 @@ export async function POST(req: NextRequest) {
                   if (!row || typeof row !== 'object') continue
                   const candidate = row as Record<string, unknown>
                   const placeId = candidate.place_id ?? candidate.id
-                  if (typeof placeId === 'string') placeIds.add(placeId)
+                  if (typeof placeId === 'string') {
+                    placeIds.add(placeId)
+                    if (toolUse.name === 'get_activities') approvedActivityIds.add(placeId)
+                  }
                 }
               }
 
@@ -515,20 +683,56 @@ export async function POST(req: NextRequest) {
                 content: JSON.stringify(toolResult.data),
               })
             }
+            if (isAborted()) break
+
+            const failClosedMessage = failClosedMessageForPlaceToolBatch(
+              groundingBatch,
+            )
+            if (failClosedMessage) {
+              const failClosedDelta = `${rawText.trim() ? '\n\n' : ''}${failClosedMessage}`
+              rawText += failClosedDelta
+              send({ type: 'text_delta', delta: failClosedDelta })
+              break
+            }
 
             // Append tool results as a user message and loop
             messages.push({ role: 'user', content: toolResultBlocks })
+            pendingToolResults = true
+          }
+
+          // Turn cap reached right after tools ran: give the model one final
+          // no-tools turn so it answers from the gathered results (F46).
+          if (pendingToolResults && !isAborted()) {
+            console.warn('[chat] MAX_TURNS reached after tool use; running final no-tools turn', { correlationId })
+            await runModelTurn(false, MAX_TURNS + 1)
           }
 
           // ── Parse synthesized cards from Claude's text (day_plan / summary / map)
-          const { text: cleanText, cards: fenceCards } = parseCardsFromContent(allText)
+          // Only safe synthesized types survive; inventory cards must come
+          // from DB-backed tool results (F45).
+          const { cards: parsedFenceCards } = parseCardsFromContent(rawText)
+          const fenceCards = filterModelAuthoredCards(parsedFenceCards)
+          let cleanText = stripCardFences(rawText)
 
           // Combine: server-emitted (concrete data) + Claude-emitted (synthesized).
           // Concrete data first so users see the lookup results before the summary.
-          const combinedCards: CardData[] = [
-            ...allCards,
-            ...(fenceCards as CardData[]),
-          ]
+          const combinedCards = filterApprovedActivityCards(
+            [
+              ...allCards,
+              ...(fenceCards as CardData[]),
+            ],
+            approvedActivityIds,
+          ) as CardData[]
+
+          if (!cleanText && combinedCards.length === 0) {
+            // Nothing usable (aborted before any text, or an empty reply).
+            // Never persist or return an empty assistant message (F50).
+            if (!isAborted()) {
+              send({ type: 'error', message: "Sorry, I couldn't put a reply together. Please try again." })
+            }
+            return
+          }
+          if (!cleanText) cleanText = 'Here is what I found.'
 
           // ── Persistence + trip auto-save ─────────────────────────────
           let savedTripId: string | null = null
@@ -594,49 +798,21 @@ export async function POST(req: NextRequest) {
                 })
               }
 
-              // Auto-save trip if Claude emitted a summary card
-              const summaryCard = extractSummaryCard(fenceCards as ParsedCard[])
+              // Auto-save trip if Claude emitted a summary card (not on abort).
+              const summaryCard = isAborted() ? null : extractSummaryCard(fenceCards)
               if (summaryCard) {
-                const tripName = summaryCard.trip_name || deriveTitleFromMessage(message)
-                const { data: newTrip } = await supabase
-                  .from('trips')
-                  .insert({
-                    user_id: user.id,
-                    name: tripName,
-                    status: 'draft',
-                    islands: summaryCard.islands ?? [],
-                    party_size: summaryCard.travelers ?? userProfile?.party_size ?? 1,
-                    party_type: userProfile?.party_type ?? 'solo',
-                    budget_estimate: summaryCard.total_cost ?? null,
-                  })
-                  .select('id')
-                  .single()
-                if (newTrip) {
-                  savedTripId = newTrip.id
-
-                  // Save day_plan activities from synthesized cards
-                  const dayPlans = (fenceCards as ParsedCard[]).flatMap(c => {
-                    if (c.card_type === 'day_plan') return [c]
-                    if (c.card_type === 'mixed' && Array.isArray(c.cards)) {
-                      return c.cards.filter(nc => nc.card_type === 'day_plan')
-                    }
-                    return []
-                  })
-
-                  if (dayPlans.length > 0) {
-                    const activities = dayPlans.flatMap((dp, idx) => {
-                      const dayNum = (dp.day_number as number) ?? idx + 1
-                      return [
-                        dp.morning ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'morning', activity_name: dp.morning as string, sort_order: 0 } : null,
-                        dp.afternoon ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'afternoon', activity_name: dp.afternoon as string, sort_order: 1 } : null,
-                        dp.evening ? { trip_id: savedTripId, day_number: dayNum, time_slot: 'evening', activity_name: dp.evening as string, sort_order: 2 } : null,
-                      ].filter((x): x is NonNullable<typeof x> => x !== null)
-                    })
-                    if (activities.length > 0) {
-                      await supabase.from('trip_activities').insert(activities)
-                    }
-                  }
-                }
+                savedTripId = await saveSummaryTrip({
+                  supabase,
+                  userId: user.id,
+                  summaryCard,
+                  fenceCards,
+                  // Reuse the conversation's trip instead of creating a new
+                  // draft for every summary (F40/F49).
+                  candidateTripId: tripContext?.id ?? draftTripId,
+                  fallbackName: deriveTitleFromMessage(message),
+                  partySize: userProfile?.party_size ?? 1,
+                  partyType: userProfile?.party_type ?? 'solo',
+                })
               }
             } catch (persistErr) {
               console.error('Persistence error:', persistErr)
@@ -645,19 +821,60 @@ export async function POST(req: NextRequest) {
           }
 
           // ── Emit final events ────────────────────────────────────────
+          // `cards` is the complete list (tool cards + filtered fence cards);
+          // clients must not re-parse fences from text.
           if (combinedCards.length > 0) {
             send({ type: 'cards', cards: combinedCards })
           }
-          const donePayload: Record<string, unknown> = { type: 'done' }
+          const donePayload: Record<string, unknown> = { type: 'done', text: cleanText }
           if (savedTripId) donePayload.tripId = savedTripId
           if (assistantMessageId) donePayload.assistantMessageId = assistantMessageId
           send(donePayload)
+          posthogEvents.push(aiTraceEvent({
+            distinctId: user?.id,
+            traceId: correlationId,
+            sessionId: activeThreadId,
+            name: 'buddy_chat_turn',
+            latencyMs: Date.now() - turnStartedAt,
+            properties: {
+              channel: 'web',
+              prompt_version: PROMPT_VERSION,
+              has_trip_context: Boolean(tripContext),
+              tool_names: Array.from(toolNames),
+              answer_status: answerStatus,
+              requested_island: requestedIslandSlug,
+              stale_content_blocked: staleContentBlocked,
+              retrieval_count: retrievalCount,
+              card_types: Array.from(new Set(combinedCards.map((card) => card.card_type).filter(Boolean))),
+              card_count: combinedCards.length,
+              saved_trip: Boolean(savedTripId),
+              message_chars: String(message).length,
+              reply_chars: cleanText.length,
+            },
+          }))
         } catch (err) {
+          if (isAborted() || isAbortError(err)) return
           console.error('Chat agentic loop error:', err)
+          posthogEvents.push(aiTraceEvent({
+            distinctId: user?.id,
+            traceId: correlationId,
+            sessionId: activeThreadId,
+            name: 'buddy_chat_turn',
+            latencyMs: Date.now() - turnStartedAt,
+            error: err,
+            properties: { channel: 'web', prompt_version: PROMPT_VERSION, tool_names: Array.from(toolNames) },
+          }))
           send({ type: 'error', message: 'Something went wrong. Please try again.' })
         } finally {
-          controller.close()
+          // Serverless functions freeze once the stream closes, so send first.
+          await capturePostHogEvents(posthogEvents)
+          if (!streamClosed) {
+            try { controller.close() } catch { /* already closed */ }
+          }
         }
+      },
+      cancel() {
+        abortController.abort()
       },
     })
 
@@ -672,4 +889,95 @@ export async function POST(req: NextRequest) {
     console.error('Chat API error:', err)
     return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500 })
   }
+}
+
+type RouteSupabase = Awaited<ReturnType<typeof createClient>>
+
+/**
+ * Save a summary card to a trip. Reuses the caller's trip (the active trip
+ * context, or the draft already saved earlier in this conversation) when the
+ * user owns it; otherwise creates one draft. Day-plan strings are stored as
+ * labelled suggestions, never as grounded places.
+ */
+async function saveSummaryTrip(opts: {
+  supabase: RouteSupabase
+  userId: string
+  summaryCard: SummaryCardFields
+  fenceCards: ParsedCard[]
+  candidateTripId: string | null | undefined
+  fallbackName: string
+  partySize: number
+  partyType: string
+}): Promise<string | null> {
+  const { supabase, userId, summaryCard, fenceCards } = opts
+  const tripName = (typeof summaryCard.trip_name === 'string' && summaryCard.trip_name.trim().slice(0, 120)) || opts.fallbackName
+  const islands = Array.isArray(summaryCard.islands)
+    ? summaryCard.islands.filter((i): i is string => typeof i === 'string').slice(0, 12)
+    : []
+  const travelers = Number.isInteger(summaryCard.travelers) && (summaryCard.travelers as number) > 0
+    ? summaryCard.travelers as number
+    : opts.partySize
+  const budget = typeof summaryCard.total_cost === 'number' && summaryCard.total_cost >= 0
+    ? summaryCard.total_cost
+    : null
+
+  let tripId: string | null = null
+  let isDraft = false
+  if (opts.candidateTripId) {
+    const { data: existing } = await supabase
+      .from('trips')
+      .select('id, status')
+      .eq('id', opts.candidateTripId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (existing) {
+      tripId = existing.id as string
+      isDraft = existing.status === 'draft'
+      // Only refresh fields on drafts Buddy owns; never rewrite a planned trip.
+      if (isDraft) {
+        await supabase
+          .from('trips')
+          .update({ name: tripName, islands, party_size: travelers, budget_estimate: budget })
+          .eq('id', tripId)
+          .eq('user_id', userId)
+      }
+    }
+  }
+
+  if (!tripId) {
+    const { data: newTrip } = await supabase
+      .from('trips')
+      .insert({
+        user_id: userId,
+        name: tripName,
+        status: 'draft',
+        islands,
+        party_size: travelers,
+        party_type: opts.partyType,
+        budget_estimate: budget,
+      })
+      .select('id')
+      .single()
+    if (!newTrip) return null
+    tripId = newTrip.id as string
+    isDraft = true
+  }
+
+  // Day-plan suggestions are written only to Buddy drafts. A re-plan replaces
+  // the earlier suggestions for the same days instead of duplicating them.
+  if (isDraft) {
+    const rows = buildSuggestionActivityRows(tripId, fenceCards)
+    if (rows.length > 0) {
+      const days = Array.from(new Set(rows.map(r => r.day_number)))
+      await supabase
+        .from('trip_activities')
+        .delete()
+        .eq('trip_id', tripId)
+        .eq('activity_type', SUGGESTION_ACTIVITY_TYPE)
+        .in('day_number', days)
+      await supabase.from('trip_activities').insert(rows)
+    }
+  }
+
+  return tripId
 }

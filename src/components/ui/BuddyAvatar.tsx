@@ -21,6 +21,12 @@ export interface BuddyAvatarProps {
   /** Override illustration URL (defaults to brand buddy avatar). */
   src?: string
   className?: string
+  /**
+   * Accessible name. Omit (the default) when the avatar is decorative, e.g.
+   * inside a labelled button or next to visible "Buddy" text: it is then
+   * hidden from assistive tech so it does not pollute the control's name.
+   */
+  label?: string
 }
 
 const SIZE_PX: Record<Size, number> = {
@@ -40,17 +46,19 @@ export default function BuddyAvatar({
   state = 'idle',
   src = BUDDY_AVATAR_SRC,
   className,
+  label,
 }: BuddyAvatarProps) {
   const px = SIZE_PX[size]
 
   const stateClass: Record<State, string> = {
-    idle:        'animate-breathe',
-    listening:   'animate-buddy-pulse',
-    thinking:    'animate-buddy-pulse',
-    excited:     'scale-110 transition-transform duration-300',
+    // Infinite animations stop for users who prefer reduced motion.
+    idle:        'animate-breathe motion-reduce:animate-none',
+    listening:   'animate-buddy-pulse motion-reduce:animate-none',
+    thinking:    'animate-buddy-pulse motion-reduce:animate-none',
+    excited:     'scale-110 transition-transform duration-300 motion-reduce:transition-none',
     presenting:  '',
-    celebrating: 'scale-110 animate-buddy-pulse',
-    greeting:    'animate-breathe',
+    celebrating: 'scale-110 animate-buddy-pulse motion-reduce:animate-none',
+    greeting:    'animate-breathe motion-reduce:animate-none',
   }
 
   const ringClass: Record<State, string> = {
@@ -65,8 +73,7 @@ export default function BuddyAvatar({
 
   return (
     <div
-      role="img"
-      aria-label={`Buddy avatar — ${state}`}
+      {...(label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true })}
       className={cn(
         'relative inline-flex items-center justify-center rounded-full overflow-visible',
         className,
@@ -75,7 +82,7 @@ export default function BuddyAvatar({
     >
       <div
         className={cn(
-          'rounded-full overflow-hidden bg-gray-50 transition-all duration-300',
+          'rounded-full overflow-hidden bg-gray-50 transition-all duration-300 motion-reduce:transition-none',
           stateClass[state],
           ringClass[state],
         )}

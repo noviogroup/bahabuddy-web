@@ -35,15 +35,28 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import {
-  CACHED_PLACE_REVIEW_TABLE,
-  CACHED_PLACE_SOURCE_TABLE,
-} from "@/lib/place-inventory";
 import type { CardData } from "@/components/RichCards";
 import { resolveAirlineLogoUrl } from "@/lib/airline-logos";
 import { stayIslandFilterAliases } from "@/lib/stay-island-filters";
 import { callTravelProvider } from "@/lib/travel-booking/provider";
 import { fetchIslandWeather, WeatherProviderError } from "@/lib/weather";
+import { inventoryGrounding } from "@/lib/buddy-inventory-contract";
+import {
+  BAHAMAS_COORDINATE_BOUNDS,
+  CANONICAL_ATTRACTION_NOTE,
+  MAX_BUDDY_ACTIVITY_OPTIONS,
+  approvedActivityCard,
+  approvedActivityEmptyMessage,
+  canonicalAttractionCard,
+  getApprovedActivities,
+  getCanonicalAttractionActivities,
+  isApprovedTourRow,
+} from "@/lib/approved-activities";
+import { normalizeCanonicalIslandSlug } from "@/lib/bahamas-island-bounds";
+
+// Same canonical table the web and mobile catalog screens read, so Buddy can
+// discuss every place the app shows (photo-less rows included).
+const GROUNDED_PLACE_INVENTORY_TABLE = "places";
 
 // ──────────────────────────────────────────────────────────────────────────
 // TOOL DEFINITIONS (sent to Claude)
@@ -59,7 +72,8 @@ export const TOOL_DEFINITIONS = [
       properties: {
         island_id: {
           type: "string",
-          description: "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
+          description:
+            "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
         },
         price_range: {
           type: "string",
@@ -89,7 +103,8 @@ export const TOOL_DEFINITIONS = [
       properties: {
         island_id: {
           type: "string",
-          description: "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
+          description:
+            "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
         },
         cuisine_type: {
           type: "string",
@@ -119,7 +134,8 @@ export const TOOL_DEFINITIONS = [
       properties: {
         island_id: {
           type: "string",
-          description: "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
+          description:
+            "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
         },
         vibe_tags: {
           type: "array",
@@ -256,7 +272,8 @@ export const TOOL_DEFINITIONS = [
       properties: {
         island_id: {
           type: "string",
-          description: "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
+          description:
+            "Canonical island slug or common alias. The backend validates it through the shared island resolver.",
         },
       },
       required: ["island_id"],
@@ -272,15 +289,34 @@ export const TOOL_DEFINITIONS = [
       properties: {
         island_slug: {
           type: "string",
-          description: "Canonical island slug or common alias. The backend resolves it through the shared island registry.",
+          description:
+            "Canonical island slug or common alias. The backend resolves it through the shared island registry.",
         },
-        query: { type: "string", description: "Traveler question or short description of the information needed." },
+        query: {
+          type: "string",
+          description:
+            "Traveler question or short description of the information needed.",
+        },
         topic: {
           type: "string",
-          enum: ["overview", "access", "stays", "food", "experiences", "nature", "culture", "seasonality", "safety", "accessibility"],
+          enum: [
+            "overview",
+            "access",
+            "stays",
+            "food",
+            "experiences",
+            "nature",
+            "culture",
+            "seasonality",
+            "safety",
+            "accessibility",
+          ],
           description: "Optional controlled topic used to narrow retrieval.",
         },
-        limit: { type: "integer", description: "Maximum approved records (default 6, maximum 12)." },
+        limit: {
+          type: "integer",
+          description: "Maximum approved records (default 6, maximum 12).",
+        },
       },
       required: ["island_slug", "query"],
     },
@@ -295,11 +331,21 @@ export const TOOL_DEFINITIONS = [
       properties: {
         island_slug: {
           type: "string",
-          description: "Canonical island slug or alias. The backend validates it through the shared island resolver.",
+          description:
+            "Canonical island slug or alias. The backend validates it through the shared island resolver.",
         },
-        category: { type: "string", description: "Optional exact FAQ category." },
-        keyword: { type: "string", description: "Optional keyword to match in FAQ questions." },
-        limit: { type: "integer", description: "Max results (default 5, max 10)." },
+        category: {
+          type: "string",
+          description: "Optional exact FAQ category.",
+        },
+        keyword: {
+          type: "string",
+          description: "Optional keyword to match in FAQ questions.",
+        },
+        limit: {
+          type: "integer",
+          description: "Max results (default 5, max 10).",
+        },
       },
       required: ["island_slug"],
     },
@@ -307,8 +353,12 @@ export const TOOL_DEFINITIONS = [
 ] as const;
 
 const ISLAND_SCOPED_TOOLS = new Set([
-  "get_hotels", "get_restaurants", "get_activities", "get_weather",
-  "get_destination_context", "search_island_faq",
+  "get_hotels",
+  "get_restaurants",
+  "get_activities",
+  "get_weather",
+  "get_destination_context",
+  "search_island_faq",
 ]);
 const CANONICAL_INVENTORY_ISLAND_IDS: Record<string, string[]> = {
   "nassau-paradise-island": ["nassau", "paradise-island"],
@@ -317,6 +367,18 @@ const CANONICAL_INVENTORY_ISLAND_IDS: Record<string, string[]> = {
   "grand-bahama": ["grand-bahama", "freeport"],
   abacos: ["abacos", "abaco"],
 };
+
+/** places.island_id stores the canonical slug ("nassau-paradise-island");
+ * aliases such as "nassau" resolve to it, legacy ids are kept alongside. */
+export function canonicalInventoryIslandIds(value: unknown): string[] {
+  const canonical = normalizeCanonicalIslandSlug(
+    typeof value === "string" ? value : "",
+  );
+  if (!canonical) return [];
+  return Array.from(
+    new Set([canonical, ...(CANONICAL_INVENTORY_ISLAND_IDS[canonical] ?? [])]),
+  );
+}
 
 // ──────────────────────────────────────────────────────────────────────────
 // SHARED REFERENCE DATA
@@ -370,12 +432,30 @@ const HOTEL_ISLAND_ALIASES: Record<string, string[]> = {
   "ragged-island": ["Ragged Island"],
 };
 
-const PRICE_LEVEL_MAP: Record<string, number[]> = {
-  budget: [0, 1],
-  moderate: [2],
-  upscale: [3],
-  "fine-dining": [3, 4],
+// places.price_level is "$" … "$$$$" text, sometimes a range ("$$ - $$$").
+const PRICE_LEVEL_TEXT_MAP: Record<string, string[]> = {
+  budget: ["$", "$ - $$"],
+  moderate: ["$$", "$ - $$", "$$ - $$$"],
+  upscale: ["$$$", "$$ - $$$", "$$$ - $$$$"],
+  luxury: ["$$$$", "$$$ - $$$$"],
+  "fine-dining": ["$$$", "$$$$", "$$$ - $$$$"],
 };
+
+/** Card glyph level (1-4) from a text or numeric price level; the upper bound
+ * of a range wins. Unknown stays undefined so no price tier is invented. */
+export function priceLevelNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return Math.min(4, Math.round(value));
+  }
+  if (typeof value !== "string" || !value.trim()) return undefined;
+  const numeric = Number(value);
+  if (Number.isFinite(numeric) && numeric > 0) {
+    return Math.min(4, Math.round(numeric));
+  }
+  const upper = value.split(/[-–]/).pop() ?? "";
+  const dollars = (upper.match(/\$/g) ?? []).length;
+  return dollars > 0 ? Math.min(4, dollars) : undefined;
+}
 
 const RESTAURANT_MIN_REVIEW_COUNT = 15;
 const RESTAURANT_MIN_RATING = 4.0;
@@ -411,13 +491,6 @@ function textValue(value: unknown): string {
   return typeof value === "string" ? value.toLowerCase() : "";
 }
 
-function hasRestaurantPhoto(place: Record<string, unknown>): boolean {
-  const photoUrl = typeof place.photo_url === "string" ? place.photo_url : "";
-  if (photoUrl.startsWith("http")) return true;
-  const photos = place.photos;
-  return Array.isArray(photos) && photos.length > 0;
-}
-
 export function isQualityRestaurantCandidate(
   place: Record<string, unknown>,
 ): boolean {
@@ -451,7 +524,9 @@ export function isQualityRestaurantCandidate(
     return false;
   }
 
-  return hasRestaurantPhoto(place);
+  // Photo-less restaurants stay eligible (cards show a placeholder), so
+  // Buddy can recommend everything the catalog lists.
+  return true;
 }
 
 const CITY_TO_IATA: Record<string, string> = {
@@ -538,32 +613,27 @@ export interface ToolResult {
  * Shape of a single photo entry in the cached place inventory photos JSONB.
  * This mirrors the backend-enriched cached place details payload.
  */
-interface PhotoMeta {
-  reference: string;
-  width?: number;
-  height?: number;
-}
-
-/** Build a proxy URL for a cached place photo reference. Matches the
- *  pattern in `src/lib/place-photos.ts` so existing storage caching
- *  (the /api/place-photo route walks Supabase storage first) applies. */
-function photoRefToProxyUrl(reference: string, width = 800): string {
-  const params = new URLSearchParams({ ref: reference, w: String(width) });
-  return `/api/place-photo?${params.toString()}`;
-}
-
-/** Convert a place's photos JSONB array into renderable URL strings.
- *  Returns an empty array when the field is missing/malformed. */
-function buildPhotoGallery(photos: unknown): string[] {
-  if (!Array.isArray(photos)) return [];
-  return photos
-    .filter(
-      (p): p is PhotoMeta =>
-        !!p &&
-        typeof p === "object" &&
-        typeof (p as PhotoMeta).reference === "string",
-    )
-    .map((p) => photoRefToProxyUrl(p.reference, 800));
+/** Canonical gallery entries are owned/licensed URLs, never cached provider
+ * references. Keep only explicit HTTP(S) URLs. */
+function buildCanonicalPhotoGallery(
+  primary: unknown,
+  gallery: unknown,
+): string[] {
+  const urls = new Set<string>();
+  const first = validHttpUrl(primary);
+  if (first) urls.add(first);
+  if (Array.isArray(gallery)) {
+    for (const item of gallery) {
+      const direct = validHttpUrl(item);
+      const nested =
+        item && typeof item === "object"
+          ? validHttpUrl((item as Record<string, unknown>).url)
+          : null;
+      if (direct) urls.add(direct);
+      if (nested) urls.add(nested);
+    }
+  }
+  return Array.from(urls);
 }
 
 function validHttpUrl(value: unknown): string | null {
@@ -595,14 +665,6 @@ function buildHotelPhotoGallery(
           urls.add(url);
           continue;
         }
-
-        const reference =
-          typeof record.reference === "string"
-            ? record.reference
-            : typeof record.photo_reference === "string"
-              ? record.photo_reference
-              : null;
-        if (reference) urls.add(photoRefToProxyUrl(reference, 800));
       }
     }
   }
@@ -646,64 +708,6 @@ type HotelInventoryRow = {
   property_type_name: string | null;
   description: string | null;
 };
-
-/** Shape of a single top-review record returned by fetchTopReviews. */
-interface TopReview {
-  text: string;
-  author_name: string;
-  rating: number;
-  time: string;
-}
-
-/**
- * Batch-pull one positive review per place from the cached place review table.
- *
- * Used by restaurant and activity executors to add social-proof snippets
- * to their cards. We pull a
- * wide window (rating >= 4, newest first) then dedupe to first-per-place
- * client-side — PostgREST has no DISTINCT ON, and a LATERAL subquery
- * would require a custom RPC. Query cost is small (~1,700 review rows,
- * indexed on place_id).
- *
- * Reviews shorter than 30 chars are skipped — they don't carry
- * decision-supporting signal ("Great!" doesn't help anyone decide).
- */
-async function fetchTopReviews(
-  supabase: SupabaseClient,
-  placeIds: string[],
-): Promise<Map<string, TopReview>> {
-  const out = new Map<string, TopReview>();
-  if (placeIds.length === 0) return out;
-
-  const { data: rows, error } = await supabase
-    .from(CACHED_PLACE_REVIEW_TABLE)
-    .select("place_id, author_name, rating, text, time")
-    .in("place_id", placeIds)
-    .gte("rating", 4)
-    .not("text", "is", null)
-    .order("time", { ascending: false })
-    .limit(placeIds.length * 4); // pull a few per place; we keep first
-
-  if (error) {
-    console.warn("[fetchTopReviews] lookup failed:", error.message);
-    return out;
-  }
-  if (!rows) return out;
-
-  for (const r of rows) {
-    const pid = r.place_id as string;
-    const txt = (r.text as string | null) ?? "";
-    if (!out.has(pid) && txt.length > 30) {
-      out.set(pid, {
-        text: txt,
-        author_name: (r.author_name as string) ?? "Guest",
-        rating: (r.rating as number) ?? 5,
-        time: (r.time as string) ?? "",
-      });
-    }
-  }
-  return out;
-}
 
 export async function getHotels(
   supabase: SupabaseClient,
@@ -814,26 +818,34 @@ async function getRestaurants(
   supabase: SupabaseClient,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
+  // Buddy reads the same canonical rows the web and mobile catalogs list.
   let query = supabase
-    .from(CACHED_PLACE_SOURCE_TABLE)
+    .from(GROUNDED_PLACE_INVENTORY_TABLE)
     .select(
-      "place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, cuisine_type",
+      "place_id:id, name, category, type:category, island_id, rating, review_count, user_ratings_total:review_count, address, phone, website, price_level, primary_image_url, photo_url:primary_image_url, gallery_images, photos:gallery_images, opening_hours, description, short_description, subcategory, cuisine_type:subcategory, tags, updated_at",
     )
     .eq("is_active", true)
-    .eq("type", "restaurant")
-    .in(
-      "island_id",
-      CANONICAL_INVENTORY_ISLAND_IDS[String(args.island_id)] ?? [String(args.island_id)],
-    )
+    .eq("status", "active")
+    .eq("category", "restaurant")
+    .in("island_id", canonicalInventoryIslandIds(args.island_id))
+    .gte("latitude", BAHAMAS_COORDINATE_BOUNDS.minLatitude)
+    .lte("latitude", BAHAMAS_COORDINATE_BOUNDS.maxLatitude)
+    .gte("longitude", BAHAMAS_COORDINATE_BOUNDS.minLongitude)
+    .lte("longitude", BAHAMAS_COORDINATE_BOUNDS.maxLongitude)
     .gte("rating", RESTAURANT_MIN_RATING)
-    .gte("user_ratings_total", RESTAURANT_MIN_REVIEW_COUNT)
+    .gte("review_count", RESTAURANT_MIN_REVIEW_COUNT)
     .order("rating", { ascending: false });
 
-  if (args.cuisine_type) {
-    query = query.ilike("cuisine_type", `%${args.cuisine_type}%`);
+  const cuisine =
+    typeof args.cuisine_type === "string"
+      ? args.cuisine_type.trim().replace(/[%_,()]/g, " ")
+      : "";
+  if (cuisine) {
+    // cuisine_type is a select alias; filter on the real column.
+    query = query.ilike("subcategory", `%${cuisine}%`);
   }
   if (args.price_range) {
-    const levels = PRICE_LEVEL_MAP[args.price_range as string];
+    const levels = PRICE_LEVEL_TEXT_MAP[args.price_range as string];
     if (levels) query = query.in("price_level", levels);
   }
 
@@ -847,6 +859,7 @@ async function getRestaurants(
       data: {
         error: `Restaurant search failed: ${error.message}`,
         results: [],
+        grounding: inventoryGrounding("provider_error"),
       },
     };
   }
@@ -860,6 +873,7 @@ async function getRestaurants(
       data: {
         results: [],
         message: `No restaurants found on ${ISLAND_DISPLAY[args.island_id as string] ?? args.island_id} matching your criteria.`,
+        grounding: inventoryGrounding("no_evidence"),
       },
     };
   }
@@ -867,8 +881,6 @@ async function getRestaurants(
   const placeIds = filteredData
     .map((p) => p.place_id as string)
     .filter(Boolean);
-  const reviewsByPlace = await fetchTopReviews(supabase, placeIds);
-
   const compact = filteredData.map((p) => ({
     place_id: p.place_id,
     name: p.name,
@@ -876,12 +888,12 @@ async function getRestaurants(
     cuisine: p.cuisine_type,
     rating: p.rating,
     price_level: p.price_level,
-    description: p.description,
+    description: p.description ?? p.short_description,
   }));
 
   const cards: CardData[] = filteredData.map((p) => {
     const pid = p.place_id as string;
-    const gallery = buildPhotoGallery(p.photos);
+    const gallery = buildCanonicalPhotoGallery(p.photo_url, p.photos);
     const hours = Array.isArray(p.opening_hours)
       ? (p.opening_hours as string[])
       : undefined;
@@ -894,122 +906,222 @@ async function getRestaurants(
       cuisine: (p.cuisine_type as string | null) ?? "International",
       rating: p.rating ?? 0,
       review_count: p.user_ratings_total ?? 0,
-      price_level: p.price_level ?? 2,
+      price_level: priceLevelNumber(p.price_level),
       photo_url: p.photo_url ?? gallery[0] ?? undefined,
       photos: gallery,
       phone: (p.phone as string | null) ?? undefined,
       website: (p.website as string | null) ?? undefined,
       full_address: (p.address as string | null) ?? undefined,
       opening_hours: hours,
-      top_review: reviewsByPlace.get(pid),
     };
   });
 
-  return { data: { results: compact, count: filteredData.length }, cards };
+  return {
+    data: {
+      results: compact,
+      count: filteredData.length,
+      grounding: inventoryGrounding("grounded", placeIds),
+    },
+    cards,
+  };
 }
 
 async function getActivities(
   supabase: SupabaseClient,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
-  let query = supabase
-    .from(CACHED_PLACE_SOURCE_TABLE)
-    .select(
-      "place_id:id, name, type, island_id, rating, user_ratings_total, address, phone, website, price_level, photo_url:image_url, photos, opening_hours, description, vibe_tags, kid_friendly",
-    )
-    .eq("is_active", true)
-    .eq("type", "attraction")
-    .in(
-      "island_id",
-      CANONICAL_INVENTORY_ISLAND_IDS[String(args.island_id)] ?? [String(args.island_id)],
-    )
-    .gte("user_ratings_total", 5)
-    .order("rating", { ascending: false });
-
-  if (args.kid_friendly === true) {
-    query = query.eq("kid_friendly", true);
-  }
-
-  // Vibe tag overlap (Supabase array contains operator)
-  if (Array.isArray(args.vibe_tags) && args.vibe_tags.length > 0) {
-    query = query.overlaps("vibe_tags", args.vibe_tags as string[]);
-  }
-
-  const limit = Math.min(Number(args.limit) || 5, 10);
-  query = query.limit(limit);
-
-  const { data, error } = await query;
-
-  if (error) {
-    return {
-      data: { error: `Activity search failed: ${error.message}`, results: [] },
-    };
-  }
-
-  if (!data || data.length === 0) {
+  const islandSlug =
+    typeof args.island_id === "string" ? args.island_id.trim() : "";
+  if (!islandSlug) {
     return {
       data: {
+        error: "A canonical island is required.",
         results: [],
-        message: `No verified activities found on ${ISLAND_DISPLAY[args.island_id as string] ?? args.island_id} matching your criteria. Do not invent activity names from model memory.`,
+        grounding: inventoryGrounding("provider_error"),
       },
     };
   }
-
-  const placeIds = data.map((p) => p.place_id as string).filter(Boolean);
-  const reviewsByPlace = await fetchTopReviews(supabase, placeIds);
-
-  const compact = data.map((p) => ({
-    place_id: p.place_id,
-    name: p.name,
-    island: p.island_id,
-    rating: p.rating,
-    review_count: p.user_ratings_total,
-    description: p.description,
-    vibe_tags: p.vibe_tags,
-    kid_friendly: p.kid_friendly,
-  }));
-
-  const cards: CardData[] = data.map((p) => {
-    const pid = p.place_id as string;
-    const gallery = buildPhotoGallery(p.photos);
-    const hours = Array.isArray(p.opening_hours)
-      ? (p.opening_hours as string[])
-      : undefined;
+  try {
+    const category =
+      Array.isArray(args.vibe_tags) && args.vibe_tags.length === 1
+        ? String(args.vibe_tags[0])
+        : null;
+    const rows = await getApprovedActivities(supabase, {
+      islandSlug,
+      category,
+      limit: MAX_BUDDY_ACTIVITY_OPTIONS,
+    });
+    const eligible =
+      args.kid_friendly === true
+        ? rows.filter(
+            (row) =>
+              row.safety_access.kid_friendly === true ||
+              row.safety_access.family_safe === true,
+          )
+        : rows;
+    // Until reviewers approve non-tour activities, ground Buddy in the same
+    // canonical attractions the site lists for this exact island; approved
+    // self-guided tours fill any remaining slots.
+    if (!eligible.some((row) => !isApprovedTourRow(row))) {
+      const fallback = await canonicalAttractionFallback(
+        supabase,
+        islandSlug,
+        eligible.map(approvedActivityCard),
+        args,
+      );
+      if (fallback) return fallback;
+    }
+    const cards = eligible
+      .slice(0, MAX_BUDDY_ACTIVITY_OPTIONS)
+      .map(approvedActivityCard);
+    if (cards.length === 0) {
+      return {
+        data: {
+          results: [],
+          message: approvedActivityEmptyMessage(islandSlug),
+          exact_island_slug: islandSlug,
+          grounding: inventoryGrounding("no_evidence"),
+        },
+      };
+    }
     return {
-      card_type: "activity" as const,
-      place_id: pid,
-      name: p.name ?? "Activity",
-      island: ISLAND_DISPLAY[p.island_id as string] ?? (p.island_id as string),
-      island_id: p.island_id ?? undefined,
-      description: (p.description as string | null) ?? "",
-      rating: p.rating ?? 0,
-      review_count: p.user_ratings_total ?? 0,
-      vibe_tags: (p.vibe_tags as string[] | null) ?? [],
-      kid_friendly: (p.kid_friendly as boolean | null) ?? false,
-      photo_url: p.photo_url ?? gallery[0] ?? undefined,
-      photos: gallery,
-      phone: (p.phone as string | null) ?? undefined,
-      website: (p.website as string | null) ?? undefined,
-      full_address: (p.address as string | null) ?? undefined,
-      opening_hours: hours,
-      top_review: reviewsByPlace.get(pid),
-      icon: pickActivityIcon((p.vibe_tags as string[] | null) ?? []),
+      data: {
+        results: cards,
+        count: cards.length,
+        exact_island_slug: islandSlug,
+        grounding: inventoryGrounding(
+          "grounded",
+          cards.map((card) => card.activity_id),
+        ),
+      },
+      cards,
     };
-  });
-
-  return { data: { results: compact, count: data.length }, cards };
+  } catch (error) {
+    // The approved RPC may be undeployed or failing; canonical places still
+    // ground the answer when they exist.
+    const fallback = await canonicalAttractionFallback(
+      supabase,
+      islandSlug,
+      [],
+      args,
+    );
+    if (fallback) return fallback;
+    return {
+      data: {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Approved activity inventory is unavailable.",
+        results: [],
+        grounding: inventoryGrounding("provider_error"),
+      },
+    };
+  }
 }
 
-function pickActivityIcon(vibeTags: string[]): string {
-  if (vibeTags.includes("water-sports") || vibeTags.includes("diving"))
-    return "dive";
-  if (vibeTags.includes("beach")) return "beach";
-  if (vibeTags.includes("fishing")) return "fish";
-  if (vibeTags.includes("foodie")) return "eat";
-  if (vibeTags.includes("culture")) return "culture";
-  if (vibeTags.includes("luxury") || vibeTags.includes("spa")) return "spa";
-  if (vibeTags.includes("adventure")) return "hike";
-  return "tour";
+/** Search words per get_activities vibe; a canonical row matches a vibe when
+ * any of its words appears in the listing's own text. */
+const ACTIVITY_VIBE_KEYWORDS: Record<string, string[]> = {
+  beach: ["beach", "sandbar"],
+  adventure: ["adventure", "diving", "kayak", "shark", "cave", "eco"],
+  culture: ["historic", "heritage", "culture", "cultural", "museum", "landmark"],
+  nightlife: ["nightlife", "nightclub"],
+  romance: ["romantic", "sunset", "honeymoon"],
+  family: ["family", "families", "children", "kids"],
+  foodie: ["food", "culinary", "conch"],
+  "water-sports": ["snorkel", "diving", "scuba", "kayak", "sailing", "kiteboard", "paddle"],
+  luxury: ["luxury", "yacht"],
+  fishing: ["fishing", "bonefish"],
+};
+
+/** Transport, shopping and wellness services are catalog attractions but not
+ * things to do; Buddy should not offer them as activities. */
+const NON_ACTIVITY_SUBCATEGORY =
+  /\b(taxi|shuttle|chauffeurs?|ferry|port gateway|grocery|provisioning|massage|wellness)\b/i;
+
+const KID_FRIENDLY_UNVERIFIED_NOTE =
+  "Kid suitability is not recorded for these listings: do not describe them as kid-friendly or family-safe.";
+
+function activityVibeKeywords(args: Record<string, unknown>): string[] {
+  const vibes = Array.isArray(args.vibe_tags)
+    ? args.vibe_tags
+        .filter((tag): tag is string => typeof tag === "string")
+        .map((tag) => tag.trim().toLowerCase())
+        .filter(Boolean)
+    : [];
+  return vibes.flatMap(
+    (vibe) => ACTIVITY_VIBE_KEYWORDS[vibe] ?? vibe.split(/[^a-z0-9]+/),
+  );
+}
+
+/** Canonical attractions for the exact island (mobile parity: island-only,
+ * review_count >= 5), narrowed to the requested vibes. Returns null when the
+ * catalog has no match. */
+async function canonicalAttractionFallback(
+  supabase: SupabaseClient,
+  islandSlug: string,
+  approvedTourCards: ReturnType<typeof approvedActivityCard>[],
+  args: Record<string, unknown> = {},
+): Promise<ToolResult | null> {
+  let rows: Awaited<ReturnType<typeof getCanonicalAttractionActivities>> = [];
+  try {
+    rows = await getCanonicalAttractionActivities(supabase, {
+      islandSlug,
+      anyKeywords: activityVibeKeywords(args),
+      minReviewCount: 5,
+      // Over-fetch: non-activity services are dropped below.
+      limit: MAX_BUDDY_ACTIVITY_OPTIONS * 4,
+    });
+  } catch {
+    rows = [];
+  }
+  rows = rows
+    .filter((row) => !NON_ACTIVITY_SUBCATEGORY.test(row.subcategory ?? ""))
+    .slice(0, MAX_BUDDY_ACTIVITY_OPTIONS);
+  if (rows.length === 0) return null;
+  // The catalog holds no kid-suitability facts, so that filter cannot apply.
+  const kidFilterUnverified = args.kid_friendly === true;
+
+  const canonicalCards = rows.map(canonicalAttractionCard);
+  const cards = [...canonicalCards, ...approvedTourCards].slice(
+    0,
+    MAX_BUDDY_ACTIVITY_OPTIONS,
+  );
+  const results = cards.map((card) =>
+    "activity_id" in card
+      ? card
+      : {
+          place_id: card.place_id,
+          name: card.name,
+          type: "attraction",
+          island: card.island_id,
+          rating: card.rating,
+          review_count: card.review_count,
+          description: card.description,
+          address: card.full_address,
+          website: card.website,
+          phone: card.phone,
+          listing_type: "canonical_listing",
+        },
+  );
+  return {
+    data: {
+      results,
+      count: results.length,
+      exact_island_slug: islandSlug,
+      note: kidFilterUnverified
+        ? `${CANONICAL_ATTRACTION_NOTE} ${KID_FRIENDLY_UNVERIFIED_NOTE}`
+        : CANONICAL_ATTRACTION_NOTE,
+      ...(kidFilterUnverified
+        ? { filters_not_applied: ["kid_friendly"] }
+        : {}),
+      grounding: inventoryGrounding(
+        "grounded",
+        cards.map((card) => card.place_id),
+      ),
+    },
+    cards,
+  };
 }
 
 export async function searchFlights(
@@ -1355,7 +1467,8 @@ async function searchDestinationContext(
   supabase: SupabaseClient,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
-  const islandInput = typeof args.island_slug === "string" ? args.island_slug.trim() : "";
+  const islandInput =
+    typeof args.island_slug === "string" ? args.island_slug.trim() : "";
   const query = typeof args.query === "string" ? args.query.trim() : "";
   const topic = typeof args.topic === "string" ? args.topic.trim() : null;
   const limit = Math.max(1, Math.min(Number(args.limit) || 6, 12));
@@ -1363,7 +1476,11 @@ async function searchDestinationContext(
     return {
       data: {
         error: `${!islandInput ? "island_slug" : "query"} is required`,
-        grounding: { answer_status: "no_evidence", source_ids: [], knowledge_ids: [] },
+        grounding: {
+          answer_status: "no_evidence",
+          source_ids: [],
+          knowledge_ids: [],
+        },
       },
     };
   }
@@ -1380,7 +1497,8 @@ async function searchDestinationContext(
     return {
       data: {
         error: "Approved destination knowledge is unavailable right now.",
-        message: "Do not answer from memory. Tell the traveler that verified information is unavailable.",
+        message:
+          "Do not answer from memory. Tell the traveler that verified information is unavailable.",
         grounding: {
           answer_status: "provider_error",
           source_ids: [],
@@ -1391,27 +1509,45 @@ async function searchDestinationContext(
     };
   }
 
-  const rows = Array.isArray(data) ? data as Array<Record<string, unknown>> : [];
-  const sourceIds = Array.from(new Set(rows.flatMap((row) =>
-    Array.isArray(row.source_ids) ? row.source_ids.map(String) : []
-  )));
+  const rows = Array.isArray(data)
+    ? (data as Array<Record<string, unknown>>)
+    : [];
+  const sourceIds = Array.from(
+    new Set(
+      rows.flatMap((row) =>
+        Array.isArray(row.source_ids) ? row.source_ids.map(String) : [],
+      ),
+    ),
+  );
   const knowledgeIds = rows
-    .map((row) => typeof row.knowledge_id === "string" ? row.knowledge_id : null)
+    .map((row) =>
+      typeof row.knowledge_id === "string" ? row.knowledge_id : null,
+    )
     .filter((value): value is string => value !== null);
-  const contentVersions = Array.from(new Set(rows
-    .map((row) => typeof row.content_version === "string" ? row.content_version : null)
-    .filter((value): value is string => value !== null)));
+  const contentVersions = Array.from(
+    new Set(
+      rows
+        .map((row) =>
+          typeof row.content_version === "string" ? row.content_version : null,
+        )
+        .filter((value): value is string => value !== null),
+    ),
+  );
 
   let noEvidenceIsland = islandInput;
   let staleContentBlocked = false;
   if (rows.length === 0) {
-    const { data: availability } = await supabase.rpc("destination_knowledge_availability", {
-      p_island: islandInput,
-      p_topic: topic,
-    });
-    const availabilityRow = Array.isArray(availability) && availability.length > 0
-      ? availability[0] as Record<string, unknown>
-      : null;
+    const { data: availability } = await supabase.rpc(
+      "destination_knowledge_availability",
+      {
+        p_island: islandInput,
+        p_topic: topic,
+      },
+    );
+    const availabilityRow =
+      Array.isArray(availability) && availability.length > 0
+        ? (availability[0] as Record<string, unknown>)
+        : null;
     if (typeof availabilityRow?.resolved_island_slug === "string") {
       noEvidenceIsland = availabilityRow.resolved_island_slug;
     }
@@ -1419,41 +1555,44 @@ async function searchDestinationContext(
   }
 
   return {
-    data: rows.length === 0 ? {
-      island_slug: noEvidenceIsland,
-      island_input: islandInput,
-      results: [],
-      message: `No current approved destination knowledge matched "${query}" for ${islandInput}. Do not fill the gap from model memory.`,
-      grounding: {
-        answer_status: "no_evidence",
-        source_ids: [],
-        knowledge_ids: [],
-        stale_content_blocked: staleContentBlocked,
-        retrieval_latency_ms: retrievalLatencyMs,
-      },
-    } : {
-      island_slug: rows[0].island_slug,
-      results: rows.map((row) => ({
-        knowledge_id: row.knowledge_id,
-        topic: row.topic,
-        title: row.title,
-        claim: row.claim,
-        traveler_guidance: row.traveler_guidance,
-        traveler_fit_tags: row.traveler_fit_tags,
-        checked_at: row.checked_at,
-        next_review_at: row.next_review_at,
-        volatility: row.volatility,
-        confidence: row.confidence,
-      })),
-      count: rows.length,
-      grounding: {
-        answer_status: "grounded",
-        source_ids: sourceIds,
-        knowledge_ids: knowledgeIds,
-        content_versions: contentVersions,
-        retrieval_latency_ms: retrievalLatencyMs,
-      },
-    },
+    data:
+      rows.length === 0
+        ? {
+            island_slug: noEvidenceIsland,
+            island_input: islandInput,
+            results: [],
+            message: `No current approved destination knowledge matched "${query}" for ${islandInput}. Do not fill the gap from model memory.`,
+            grounding: {
+              answer_status: "no_evidence",
+              source_ids: [],
+              knowledge_ids: [],
+              stale_content_blocked: staleContentBlocked,
+              retrieval_latency_ms: retrievalLatencyMs,
+            },
+          }
+        : {
+            island_slug: rows[0].island_slug,
+            results: rows.map((row) => ({
+              knowledge_id: row.knowledge_id,
+              topic: row.topic,
+              title: row.title,
+              claim: row.claim,
+              traveler_guidance: row.traveler_guidance,
+              traveler_fit_tags: row.traveler_fit_tags,
+              checked_at: row.checked_at,
+              next_review_at: row.next_review_at,
+              volatility: row.volatility,
+              confidence: row.confidence,
+            })),
+            count: rows.length,
+            grounding: {
+              answer_status: "grounded",
+              source_ids: sourceIds,
+              knowledge_ids: knowledgeIds,
+              content_versions: contentVersions,
+              retrieval_latency_ms: retrievalLatencyMs,
+            },
+          },
   };
 }
 
@@ -1461,12 +1600,18 @@ async function searchIslandFaq(
   supabase: SupabaseClient,
   args: Record<string, unknown>,
 ): Promise<ToolResult> {
-  const islandSlug = typeof args.island_slug === "string" ? args.island_slug.trim() : "";
-  if (!islandSlug) return { data: { error: "island_slug is required", faqs: [] } };
+  const islandSlug =
+    typeof args.island_slug === "string" ? args.island_slug.trim() : "";
+  if (!islandSlug)
+    return { data: { error: "island_slug is required", faqs: [] } };
 
   const limit = Math.max(1, Math.min(Number(args.limit) || 5, 10));
-  const keyword = typeof args.keyword === "string" ? args.keyword.trim().replace(/[%_]/g, "") : "";
-  const category = typeof args.category === "string" ? args.category.trim() : "";
+  const keyword =
+    typeof args.keyword === "string"
+      ? args.keyword.trim().replace(/[%_]/g, "")
+      : "";
+  const category =
+    typeof args.category === "string" ? args.category.trim() : "";
 
   let query = supabase
     .from("island_faq")
@@ -1507,20 +1652,31 @@ export async function executeTool(
     if (ISLAND_SCOPED_TOOLS.has(toolName)) {
       const islandValue = toolInput.island_slug ?? toolInput.island_id;
       if (typeof islandValue === "string" && islandValue.trim()) {
-        const { data: resolvedIsland, error: resolutionError } = await knowledgeSupabase.rpc(
-          "resolve_island_slug",
-          { p_value: islandValue },
-        );
-        if (resolutionError || typeof resolvedIsland !== "string" || !resolvedIsland) {
-          return { data: {
-            error: `Unknown Bahamas island: ${islandValue}`,
-            message: "Use a canonical island from the shared registry. Do not guess or substitute another island.",
-          } };
+        const { data: resolvedIsland, error: resolutionError } =
+          await knowledgeSupabase.rpc("resolve_island_slug", {
+            p_value: islandValue,
+          });
+        if (
+          resolutionError ||
+          typeof resolvedIsland !== "string" ||
+          !resolvedIsland
+        ) {
+          return {
+            data: {
+              error: `Unknown Bahamas island: ${islandValue}`,
+              message:
+                "Use a canonical island from the shared registry. Do not guess or substitute another island.",
+            },
+          };
         }
         toolInput = {
           ...toolInput,
-          ...(toolInput.island_id !== undefined ? { island_id: resolvedIsland } : {}),
-          ...(toolInput.island_slug !== undefined ? { island_slug: resolvedIsland } : {}),
+          ...(toolInput.island_id !== undefined
+            ? { island_id: resolvedIsland }
+            : {}),
+          ...(toolInput.island_slug !== undefined
+            ? { island_slug: resolvedIsland }
+            : {}),
         };
       }
     }
@@ -1528,9 +1684,9 @@ export async function executeTool(
       case "get_hotels":
         return await getHotels(supabase, toolInput);
       case "get_restaurants":
-        return await getRestaurants(supabase, toolInput);
+        return await getRestaurants(knowledgeSupabase, toolInput);
       case "get_activities":
-        return await getActivities(supabase, toolInput);
+        return await getActivities(knowledgeSupabase, toolInput);
       case "search_flights":
         return await searchFlights(toolInput);
       case "get_trip_details":

@@ -1,10 +1,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import FeaturedExperiencesCarousel from "@/components/home/FeaturedExperiencesCarousel";
+import type { FeaturedExperience } from "@/components/home/FeaturedExperiencesCarousel";
+import PersonalizedTopPicks from "@/components/home/PersonalizedTopPicks";
 import TravelerModeTabs from "@/components/home/TravelerModeTabs";
 import SelfGuidedToursSection from "@/components/home/SelfGuidedToursSection";
 import { BahaImages } from "@/lib/baha-images";
+
+// Temporarily removed from the homepage at the owner's request; retain for restoration.
+const SHOW_DEFERRED_SECTIONS = false;
 
 const HANDOFF_POINTS = [
   {
@@ -259,19 +263,19 @@ const ISLAND_FIT = [
   },
 ];
 
-const FEATURED_EXPERIENCES = [
+const FEATURED_EXPERIENCES: FeaturedExperience[] = [
   {
     title: "Swimming Pigs Experience",
     island: "Exuma",
     category: "Boat tour",
-    href: "/guides/swimming-pigs-exuma-guide",
+    href: "/guides/swimming-pigs-exuma",
     image: BahaImages.swimmingPigs,
   },
   {
     title: "Nassau Snorkeling Tour",
     island: "Nassau",
     category: "Things to do",
-    href: "/explore?query=snorkeling",
+    href: "/explore/places?search=snorkeling&island=Nassau",
     image: BahaImages.snorkeling,
   },
   {
@@ -287,13 +291,6 @@ const FEATURED_EXPERIENCES = [
     category: "Beach day",
     href: "/explore/island/eleuthera-harbour-island",
     image: BahaImages.harbourIsland,
-  },
-  {
-    title: "Airport Transfer",
-    island: "Nassau",
-    category: "Transportation",
-    href: "/concierge-trip-plan",
-    image: BahaImages.nassau,
   },
   {
     title: "Local Food Tour",
@@ -317,6 +314,9 @@ const FEATURED_EXPERIENCES = [
     image: BahaImages.beach,
   },
 ];
+
+/** Admin Top picks replace the static shelf once there are enough of them. */
+const MIN_TOP_PICKS = 3;
 
 const ECOSYSTEM_WHEEL_ITEMS = [
   {
@@ -766,35 +766,32 @@ function IslandFitSection({ destinationImages }: { destinationImages: Record<str
   );
 }
 
-function FeaturedExperiencesSection() {
+function FeaturedExperiencesSection({
+  topPicks,
+}: {
+  topPicks: FeaturedExperience[];
+}) {
+  const experiences =
+    topPicks.length >= MIN_TOP_PICKS ? topPicks : FEATURED_EXPERIENCES;
   return (
     <section
       className="bg-white py-16 sm:py-20"
       aria-labelledby="featured-experiences-title"
     >
       <div className="mx-auto max-w-6xl px-4">
-        <div className="mb-9 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-          <div className="max-w-2xl">
-            <p className="text-xs font-black uppercase text-brand-700">
-              Featured Bahamas experiences
-            </p>
-            <h2
-              id="featured-experiences-title"
-              className="mt-3 text-2xl font-bold leading-tight text-night "
-            >
-              Popular ways to spend a Bahamas day.
-            </h2>
-            <p className="mt-3 text-base font-medium leading-7 text-charcoal">
-              Browse boat days, beach escapes, food tours, transfers, and family
-              picks before Buddy fits them into the trip.
-            </p>
-          </div>
-          <PrimaryLink href="/explore" variant="outline">
-            Explore Experiences
-          </PrimaryLink>
-        </div>
-
-        <FeaturedExperiencesCarousel experiences={FEATURED_EXPERIENCES} />
+        {/* Client island: same server HTML for everyone; the visitor's stored
+            trip styles re-rank the picks after mount. */}
+        <PersonalizedTopPicks
+          experiences={experiences}
+          eyebrow="Top things to do"
+          defaultTitle="Traveller favourites across The Bahamas."
+          description="Beaches, boat days and island sights, ready for Buddy to plan."
+          action={
+            <PrimaryLink href="/explore" variant="outline">
+              Explore Experiences
+            </PrimaryLink>
+          }
+        />
       </div>
     </section>
   );
@@ -970,20 +967,23 @@ function EcosystemWheelCard({
 
 export default function HomepageStorySections({
   destinationImages = {},
+  topPicks = [],
 }: {
   destinationImages?: Record<string, string>;
+  /** Admin-managed Top picks; fewer than three falls back to the static shelf. */
+  topPicks?: FeaturedExperience[];
 }) {
   return (
     <>
       <HandoffStrip />
       <TrustLine />
       <IslandFitSection destinationImages={destinationImages} />
-      <TravelerModeTabs />
+      {SHOW_DEFERRED_SECTIONS && <TravelerModeTabs />}
       <SelfGuidedToursSection />
       <CategorySection />
-      <DecisionSection image={BahaImages.nassau} />
-      <FeaturedExperiencesSection />
-      <PartnerEcosystemSection />
+      {SHOW_DEFERRED_SECTIONS && <DecisionSection image={BahaImages.nassau} />}
+      <FeaturedExperiencesSection topPicks={topPicks} />
+      {SHOW_DEFERRED_SECTIONS && <PartnerEcosystemSection />}
     </>
   );
 }

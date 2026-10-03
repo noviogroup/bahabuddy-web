@@ -90,6 +90,19 @@ export async function safeFetch<T>(query: string, params?: Record<string, unknow
   }
 }
 
+/**
+ * Like `safeFetch`, but a failed request throws instead of returning null.
+ * Use for detail pages where `null` means "render a 404": throwing during ISR
+ * regeneration keeps the last good page instead of caching a 404 caused by a
+ * transient Sanity outage. Returns null only when Sanity is unconfigured or
+ * the document genuinely does not exist.
+ */
+export async function strictFetch<T>(query: string, params?: Record<string, unknown>): Promise<T | null> {
+  if (!client) return null
+  const result = await client.fetch<T>(query, params ?? {})
+  return result ?? null
+}
+
 const loggedSanityFallbacks = new Set<string>()
 
 function warnSanityFallback(err: unknown) {

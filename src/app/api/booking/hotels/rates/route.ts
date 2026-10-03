@@ -37,7 +37,6 @@ export async function POST(request: Request) {
       checkin,
       checkout,
       nights: nightsBetween(checkin, checkout),
-      raw: result.data,
     }, { status: result.status })
   } catch (error) {
     const response = getProviderErrorResponse(error)

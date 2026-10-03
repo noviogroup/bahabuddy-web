@@ -55,13 +55,14 @@ export function ConciergeDetailsClientForm({ order }: { order: ConciergeDetailsO
       return
     }
 
-    router.push(`/dashboard/concierge/${order.id}?saved=details`)
+    const json = await res.json().catch(() => ({})) as { awaitingPayment?: boolean }
+    router.push(`/dashboard/concierge/${order.id}?saved=details${json.awaitingPayment ? '&payment=pending' : ''}`)
     router.refresh()
   }
 
   return (
     <form onSubmit={onSubmit} className="space-y-4 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">
-      {error && <div className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">{error}</div>}
+      {error && <div role="alert" className="rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">{error}</div>}
       <div className="grid sm:grid-cols-2 gap-4">
         <TravelSearchField label="Name" htmlFor="concierge-detail-name" className="bg-white">
           <TravelSearchInput id="concierge-detail-name" name="traveler_name" defaultValue={order.traveler_name || ''} />

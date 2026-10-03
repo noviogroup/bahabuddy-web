@@ -130,7 +130,8 @@ describe('RichCardRenderer direct actions', () => {
 
     const detailLinks = screen.getAllByRole('link', { name: 'View details' })
     expect(detailLinks[0]).toHaveAttribute('href', '/restaurants/fish-fry')
-    expect(detailLinks[1]).toHaveAttribute('href', '/activities/exuma-cays-tour')
+    // Public route: the dashboard's /activities/[id] copy is behind sign-in.
+    expect(detailLinks[1]).toHaveAttribute('href', '/explore/activities/exuma-cays-tour')
     expect(onAddToTrip).toHaveBeenNthCalledWith(1, restaurant, 'trip-123')
     expect(onAddToTrip).toHaveBeenNthCalledWith(2, activity, 'trip-123')
     expect(onSendMessage).not.toHaveBeenCalled()
@@ -251,9 +252,14 @@ describe('RichCardRenderer direct actions', () => {
     expect(screen.getByText('Main Cabin')).toBeInTheDocument()
     expect(screen.getByText('UP 221 · Economy')).toBeInTheDocument()
     expect(screen.getByText('2 travelers')).toBeInTheDocument()
-    expect(screen.getByText('Total for 2')).toBeInTheDocument()
+    expect(screen.getByText('USD · Total for 2 · Round-trip')).toBeInTheDocument()
     expect(screen.getByText('$173 each')).toBeInTheDocument()
-    expect(screen.getByText('Non-stop')).toBeInTheDocument()
+    expect(screen.getByText('Return · NAS to MIA')).toBeInTheDocument()
+    expect(screen.getByText('4:00 PM')).toBeInTheDocument()
+    const fareDetails = screen.getByText('Fare details').closest('details')!
+    expect(fareDetails.open).toBe(false)
+    fireEvent.click(screen.getByText('Fare details'))
+    expect(fareDetails.open).toBe(true)
     expect(screen.getByText('Carry-on + 1 checked')).toBeInTheDocument()
     expect(screen.getByText('Refundable')).toBeInTheDocument()
     expect(screen.getByText(/Verify by Jun 18/i)).toBeInTheDocument()

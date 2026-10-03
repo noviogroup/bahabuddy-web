@@ -25,15 +25,17 @@
  *   - text_delta      → appended to streaming assistant message
  *   - tool_start      → show "Searching hotels…" pill under the message
  *   - tool_complete   → clear active tool pill
- *   - cards           → server-emitted CardData[] from tool results
- *   - done [tripId?]  → finalize: parse fence cards, merge with server cards,
- *                       trigger celebrating/presenting transient, persist
+ *   - cards           → the COMPLETE card list (tool cards + server-filtered
+ *                       synthesized cards); never re-parsed from text
+ *   - done [text, tripId?] → finalize with the server's clean text,
+ *                       trigger celebrating/presenting transient
  *   - error           → show fallback message
  *
  * D.9.7 a11y:
  *   - Textarea has an associated sr-only <label> in both modes
- *   - Message list wraps in role="log" aria-live="polite" so screen
- *     readers hear new assistant messages as they arrive
+ *   - Message list is role="log" with aria-live="off"; completed
+ *     replies are announced once via an sr-only role="status" region
+ *     (streaming deltas are not read out piecemeal)
  *   - Tool progress pill ("Searching hotels…") is a role="status" live
  *     region — announced when active
  *   - Thinking dots get aria-hidden + motion-reduce:animate-none
@@ -53,13 +55,14 @@
 import { useId, useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { RichCardRenderer, parseCardsFromContent, providerOfferIdFromCard, type CardData } from '../RichCards'
+import { RichCardRenderer, providerOfferIdFromCard, type CardData } from '../RichCards'
 import ConversationSidebar, { type Conversation } from '../ConversationSidebar'
 import TripContextChips from '../trip/TripContextChips'
 import { createClient } from '@/lib/supabase/client'
 import { BuddyAvatar, SuggestionChip, SuggestionChipRow } from '@/components/ui'
 import { getAdaptiveChips, type Chip } from '@/lib/adaptive-chips'
-import type { ParsedCard } from '@/lib/chat-utils'
+import { stripCardFences, type ParsedCard } from '@/lib/chat-utils'
+import { CHAT_FALLBACK_ERROR, chatErrorFromResponse, chatHistoryForRequest, readChatStream } from '@/lib/chat-sse'
 import { track } from '@/lib/analytics'
 
 interface Message {
@@ -212,6 +215,10 @@ export default function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+  /** Bumped on every send / thread switch; stale streams and fetches are ignored. */
+  const requestTokenRef = useRef(0)
+  /** Screen-reader announcement of the completed reply (not every delta). */
+  const [announcement, setAnnouncement] = useState('')
   const autoStartedRef = useRef<string | null>(null)
 
   useEffect(() => {
@@ -283,6 +290,9 @@ export default function ChatPanel({
   useEffect(() => {
     return () => {
       if (transientTimer.current) clearTimeout(transientTimer.current)
+      // Stop any in-flight stream on unmount so the server can cancel too.
+      requestTokenRef.current++
+      abortRef.current?.abort()
     }
   }, [])
 
@@ -314,6 +324,10 @@ export default function ChatPanel({
   }, [loadThreads])
 
   const startNewConversation = useCallback(() => {
+    requestTokenRef.current++
+    abortRef.current?.abort()
+    setLoading(false)
+    setAnnouncement('')
     setActiveThreadId(null)
     setMessages([GREETING])
     setInput('')
@@ -321,7 +335,6 @@ export default function ChatPanel({
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setSidebarOpen(false)
     }
-    abortRef.current?.abort()
     setTransient(null)
     setActiveTool(null)
     setTimeout(() => inputRef.current?.focus(), 100)
@@ -330,6 +343,11 @@ export default function ChatPanel({
   const selectConversation = useCallback(async (conv: Conversation) => {
     if (guestMode) return
 
+    // Abort the in-flight reply so it cannot overwrite the opened thread.
+    const token = ++requestTokenRef.current
+    abortRef.current?.abort()
+    setLoading(false)
+    setAnnouncement('')
     setActiveThreadId(conv.id)
     setThreadMenuOpen(false)
     setMessages([GREETING])
@@ -341,6 +359,9 @@ export default function ChatPanel({
       .select('role, content, card_data')
       .eq('thread_id', conv.id)
       .order('created_at', { ascending: true })
+
+    // Ignore results that arrive after the user switched again.
+    if (token !== requestTokenRef.current) return
 
     if (rows && rows.length > 0) {
       const loaded: Message[] = rows.map((row: { role: string; content: string; card_data: unknown }) => ({
@@ -367,6 +388,7 @@ export default function ChatPanel({
     setInput('')
     setLoading(true)
     setActiveTool(null)
+    setAnnouncement('')
 
     const sendTimestamp = Date.now()
     track('chat_message_sent', {
@@ -377,7 +399,26 @@ export default function ChatPanel({
     const assistantMsg: Message = { role: 'assistant', content: '' }
     setMessages([...newHistory, assistantMsg])
 
-    abortRef.current = new AbortController()
+    // Each request gets a token; a thread switch / new chat bumps the
+    // token so a still-running stream can never write into another thread.
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const requestToken = ++requestTokenRef.current
+    const isCurrent = () => requestTokenRef.current === requestToken && !controller.signal.aborted
+
+    const setLastAssistant = (next: Message) => {
+      if (!isCurrent()) return
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = next
+        return updated
+      })
+    }
+
+    // Reuse the draft Buddy already saved in this conversation instead of
+    // creating a new trip for every summary.
+    const draftTripId = [...messages].reverse().find(m => m.savedTripId)?.savedTripId
 
     try {
       const res = await fetch('/api/chat', {
@@ -385,147 +426,84 @@ export default function ChatPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text.trim(),
-          history: messages.slice(-10),
+          history: chatHistoryForRequest(messages),
           threadId: activeThreadId,
           tripContext: tripContext ?? undefined,
+          draftTripId,
         }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       })
 
-      if (!res.ok || !res.body) throw new Error('Failed to connect')
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let fullText = ''
-      // Server-emitted cards from tool results (B.16) — accumulated across the
-      // turn, then merged with Claude's fence-block cards at done time.
-      const serverCards: CardData[] = []
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const parsed = JSON.parse(line.slice(6))
-
-            switch (parsed.type) {
-              case 'thread_id':
-                setActiveThreadId(parsed.threadId)
-                loadThreads()
-                break
-
-              case 'text_delta':
-                fullText += parsed.delta
-                setMessages(prev => {
-                  const updated = [...prev]
-                  updated[updated.length - 1] = { role: 'assistant', content: fullText }
-                  return updated
-                })
-                break
-
-              case 'tool_start':
-                // e.g. "Searching hotels…" — shown under the streaming bubble
-                setActiveTool(parsed.label ?? `Using ${parsed.tool}…`)
-                break
-
-              case 'tool_complete':
-                setActiveTool(null)
-                break
-
-              case 'cards':
-                if (Array.isArray(parsed.cards)) {
-                  serverCards.push(...(parsed.cards as CardData[]))
-                }
-                break
-
-              case 'done': {
-                const savedTripId: string | undefined = parsed.tripId
-                // Parse fence-block cards from text (day_plan / summary / map)
-                const { text: cleanText, cards: fenceCards } = parseCardsFromContent(fullText)
-                // Merge: server-emitted concrete data first, then synthesized
-                const combinedCards: CardData[] = [
-                  ...serverCards,
-                  ...(fenceCards as CardData[]),
-                ]
-                setMessages(prev => {
-                  const updated = [...prev]
-                  updated[updated.length - 1] = {
-                    role: 'assistant',
-                    content: cleanText,
-                    cards: combinedCards.length > 0 ? combinedCards : undefined,
-                    savedTripId,
-                  }
-                  return updated
-                })
-                setActiveTool(null)
-                loadThreads()
-
-                track('ai_response_received', {
-                  card_count: combinedCards.length,
-                  card_types: combinedCards.map(c => c.card_type),
-                  response_time_ms: Date.now() - sendTimestamp,
-                })
-
-                if (savedTripId) {
-                  triggerTransient('celebrating', 2000)
-                } else if (combinedCards.length > 0) {
-                  triggerTransient('presenting', 1600)
-                }
-                break
-              }
-
-              case 'error':
-                setMessages(prev => {
-                  const updated = [...prev]
-                  updated[updated.length - 1] = {
-                    role: 'assistant',
-                    content: parsed.message ?? "Sorry, I couldn't connect right now. Please try again!",
-                  }
-                  return updated
-                })
-                break
-            }
-          } catch {
-            // skip malformed lines
-          }
-        }
+      if (!res.ok || !res.body) {
+        const errorText = res.ok ? CHAT_FALLBACK_ERROR : await chatErrorFromResponse(res)
+        setLastAssistant({ role: 'assistant', content: errorText })
+        if (isCurrent()) setAnnouncement(errorText)
+        return
       }
 
-      // Defensive: if stream ended without a `done` event (rare), still attach
-      // whatever we collected.
-      if (fullText && serverCards.length === 0) {
-        const { text: cleanText, cards } = parseCardsFromContent(fullText)
-        if (cards.length > 0) {
-          setMessages(prev => {
-            const updated = [...prev]
-            const last = updated[updated.length - 1]
-            if (!last.cards) {
-              updated[updated.length - 1] = { ...last, content: cleanText, cards: cards as CardData[] }
-            }
-            return updated
+      // The server's `cards` event is the full list (tool + synthesized).
+      let serverCards: CardData[] = []
+
+      const result = await readChatStream<CardData>(res.body, {
+        onThreadId: threadId => {
+          setActiveThreadId(threadId)
+          loadThreads()
+        },
+        onText: fullText => setLastAssistant({ role: 'assistant', content: fullText }),
+        // e.g. "Searching hotels…" — shown under the streaming bubble
+        onToolStart: label => setActiveTool(label),
+        onToolComplete: () => setActiveTool(null),
+        onCards: cards => { serverCards = cards },
+        onDone: ({ text: finalText, tripId: savedTripId }) => {
+          const cleanText = stripCardFences(finalText)
+          setLastAssistant({
+            role: 'assistant',
+            content: cleanText,
+            cards: serverCards.length > 0 ? serverCards : undefined,
+            savedTripId,
           })
-        }
+          setActiveTool(null)
+          setAnnouncement(`Baha Buddy replied: ${cleanText}`)
+          loadThreads()
+
+          track('ai_response_received', {
+            card_count: serverCards.length,
+            card_types: serverCards.map(c => c.card_type),
+            response_time_ms: Date.now() - sendTimestamp,
+          })
+
+          if (savedTripId) {
+            triggerTransient('celebrating', 2000)
+          } else if (serverCards.length > 0) {
+            triggerTransient('presenting', 1600)
+          }
+        },
+        onError: errorMessage => {
+          setLastAssistant({ role: 'assistant', content: errorMessage })
+          setAnnouncement(errorMessage)
+        },
+      }, isCurrent)
+
+      // Defensive: stream ended without `done` or `error` (connection cut).
+      if (isCurrent() && !result.sawDone && !result.sawError) {
+        const partial = stripCardFences(result.text)
+        const content = partial || CHAT_FALLBACK_ERROR
+        setLastAssistant({
+          role: 'assistant',
+          content,
+          cards: serverCards.length > 0 ? serverCards : undefined,
+        })
+        setAnnouncement(content)
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return
-      setMessages(prev => {
-        const updated = [...prev]
-        updated[updated.length - 1] = {
-          role: 'assistant',
-          content: "Sorry, I couldn't connect right now. Please try again!",
-        }
-        return updated
-      })
+      setLastAssistant({ role: 'assistant', content: CHAT_FALLBACK_ERROR })
+      if (isCurrent()) setAnnouncement(CHAT_FALLBACK_ERROR)
     } finally {
-      setLoading(false)
-      setActiveTool(null)
+      if (requestTokenRef.current === requestToken) {
+        setLoading(false)
+        setActiveTool(null)
+      }
     }
   }, [loading, messages, activeThreadId, loadThreads, triggerTransient, tripContext])
 
@@ -702,6 +680,10 @@ export default function ChatPanel({
               stay editable while chatting. */}
           {tripIdParam && !guestMode && <TripContextChips tripId={tripIdParam} />}
 
+          {/* Completed replies are announced once here; the log itself is not
+              live so streaming deltas are not read out piecemeal. */}
+          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
+
           <div className="flex-1 overflow-y-auto bg-offwhite">
             {isNewChat ? (
               <div className="flex flex-col items-center justify-center h-full px-4 text-center">
@@ -729,7 +711,8 @@ export default function ChatPanel({
             ) : (
               <div
                 role="log"
-                aria-live="polite"
+                aria-live="off"
+                aria-busy={loading}
                 aria-label="Conversation with Baha Buddy"
                 className="max-w-3xl mx-auto px-4 py-6 space-y-6"
               >
@@ -910,6 +893,10 @@ export default function ChatPanel({
           as the standalone surface, just at the docked indent depth. */}
       {tripIdParam && !guestMode && <TripContextChips tripId={tripIdParam} />}
 
+      {/* Completed replies are announced once here; the log itself is not
+          live so streaming deltas are not read out piecemeal. */}
+      <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
+
       <div className="flex-1 overflow-y-auto bg-offwhite">
         {isNewChat ? (
           <div className="flex flex-col items-center px-5 py-8 text-center">
@@ -935,7 +922,8 @@ export default function ChatPanel({
         ) : (
           <div
             role="log"
-            aria-live="polite"
+            aria-live="off"
+            aria-busy={loading}
             aria-label="Conversation with Baha Buddy"
             className="px-3 py-4 space-y-4"
           >

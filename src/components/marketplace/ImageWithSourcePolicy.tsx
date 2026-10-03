@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { shouldOptimizeImageSrc } from "@/lib/next-image-hosts";
+
+// Re-exported for existing callers and tests.
+export { OPTIMIZABLE_IMAGE_HOSTS, shouldOptimizeImageSrc } from "@/lib/next-image-hosts";
 
 type ImageTone =
   "brand" | "stay" | "restaurant" | "activity" | "deal" | "island" | "neutral";
@@ -15,9 +19,15 @@ type ImageWithSourcePolicyProps = {
   imageClassName?: string;
   sizes?: string;
   priority?: boolean;
+  /**
+   * Omit to let the component decide per source (see
+   * shouldOptimizeImageSrc). Pass `true` to force the raw original.
+   */
   unoptimized?: boolean;
   tone?: ImageTone;
   style?: CSSProperties;
+  /** Photo credit (e.g. "Photo: Tripadvisor"); shown only while the photo is. */
+  attribution?: string | null;
   children?: ReactNode;
 };
 
@@ -46,14 +56,18 @@ export default function ImageWithSourcePolicy({
   imageClassName = "object-cover transition-transform duration-500 group-hover:scale-105",
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
   priority = false,
-  unoptimized = true,
+  unoptimized,
   tone = "brand",
   style,
+  attribution,
   children,
 }: ImageWithSourcePolicyProps) {
   const [failed, setFailed] = useState(false);
   const imageSrc = validImageUrl(src);
   const hasImage = Boolean(imageSrc && !failed);
+  const credit = attribution?.trim();
+  const skipOptimization =
+    unoptimized ?? (imageSrc ? !shouldOptimizeImageSrc(imageSrc) : true);
 
   useEffect(() => {
     setFailed(false);
@@ -73,7 +87,7 @@ export default function ImageWithSourcePolicy({
           priority={priority}
           className={imageClassName}
           sizes={sizes}
-          unoptimized={unoptimized}
+          unoptimized={skipOptimization}
           onError={() => setFailed(true)}
         />
       ) : (
@@ -106,6 +120,11 @@ export default function ImageWithSourcePolicy({
             </p>
           </div>
         </div>
+      )}
+      {hasImage && credit && (
+        <p className="absolute bottom-2 right-2 max-w-[80%] truncate rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+          {credit}
+        </p>
       )}
       {children}
     </div>
