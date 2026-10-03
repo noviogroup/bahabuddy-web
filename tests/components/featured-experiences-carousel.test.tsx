@@ -62,4 +62,29 @@ describe('FeaturedExperiencesCarousel', () => {
     expect(screen.getByText('Boat tour')).toBeInTheDocument()
     expect(screen.getAllByText('Plan with Buddy')).toHaveLength(3)
   })
+
+  test('shows a gold Top pick badge and photo credit only when set', () => {
+    render(
+      <FeaturedExperiencesCarousel
+        experiences={[
+          ...experiences,
+          {
+            title: 'Pink Sand Beach',
+            island: 'Harbour Island',
+            category: 'Beach',
+            href: '/explore/places/pink-sand-beach',
+            image: 'https://media-cdn.tripadvisor.com/pink.jpg',
+            badge: 'Top pick',
+            attribution: 'Photo: Tripadvisor',
+          },
+        ]}
+      />,
+    )
+
+    const badges = screen.getAllByTestId('featured-experience-badge')
+    expect(badges).toHaveLength(1)
+    expect(badges[0]).toHaveTextContent('Top pick')
+    expect(badges[0]).toHaveClass('bg-gold-400')
+    expect(screen.getByText('Photo: Tripadvisor')).toBeInTheDocument()
+  })
 })

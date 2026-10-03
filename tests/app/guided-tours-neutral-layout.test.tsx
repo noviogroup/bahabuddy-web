@@ -82,13 +82,59 @@ class MockSupabaseQuery {
   }
 }
 
-function setupSupabase() {
+// The listing reads day plans from the approved-activity RPC; the detail page
+// still reads the published itinerary view.
+const APPROVED_PLAN = {
+  activity_id: '24600000-0000-4000-8000-000000000201',
+  place_id: null,
+  source_layer: 'cruise_itineraries',
+  source_record_id: PLAN.id,
+  name: PLAN.title,
+  island_slug: 'nassau-paradise-island',
+  category_tags: ['family'],
+  description: PLAN.short_description,
+  location_model: 'area_only',
+  latitude: null,
+  longitude: null,
+  location_notes: 'Downtown Nassau',
+  contact: {},
+  seasonality: {},
+  safety_access: {},
+  price_basis: {},
+  booking_quote_state: 'informational_only',
+  cancellation: {},
+  media: {},
+  duration: null,
+  meeting_pickup: null,
+  group_age_limits: null,
+  source_checked_at: '2026-09-26T00:00:00Z',
+  source_recheck_at: '2026-10-26T00:00:00Z',
+  source_owner: 'Baha Buddy',
+  source_class: 'editorial',
+  source_url: 'https://example.invalid/nassau-family-day',
+  live_availability_state: 'not_applicable',
+}
+
+const APPROVED_SELF_TOUR = {
+  ...APPROVED_PLAN,
+  activity_id: '24600000-0000-4000-8000-000000000202',
+  source_layer: 'self_tours',
+  source_record_id: 'nassau-historic-tour',
+  name: 'Nassau historic walking tour',
+}
+
+const INTERNAL_COPY = /source gate|approved source|source-approved|route-ready|passes .* review/i
+
+function setupSupabase(rpcResult: QueryResult = { data: [APPROVED_PLAN, APPROVED_SELF_TOUR], error: null }) {
+  const rpc = vi.fn(async () => rpcResult)
   supabaseMocks.createClient.mockResolvedValue({
     from: (table: string) => new MockSupabaseQuery({
       data: table === 'published_cruise_itineraries' ? [PLAN] : PLAN,
       error: null,
     }),
+    rpc,
   })
+  return rpc
 }
 
 function expectNoDecorativeInnerPageChrome(container: HTMLElement) {
@@ -103,30 +149,41 @@ describe('guided tours public routes neutral layout', () => {
   })
 
   test('guided-tour listing uses compact header and neutral itinerary cards', async () => {
+    const rpc = setupSupabase()
     const page = await NassauCruiseItinerariesPage()
     const { container } = render(page)
 
     expect(screen.getByRole('heading', { name: 'Choose a smarter way to spend one day in Nassau.' })).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'View planner' })).toHaveAttribute('href', '/nassau-cruise-day-planner')
     expect(screen.getByRole('link', { name: 'Build custom day' })).toHaveAttribute('href', '/build-my-cruise-day')
-    expect(screen.getByRole('link', { name: 'View itinerary' })).toHaveAttribute(
+    // Cards open the public activity detail, not the sign-in-only dashboard copy.
+    expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute(
       'href',
-      '/nassau-cruise-itineraries/nassau-family-day',
+      `/explore/activities/${APPROVED_PLAN.activity_id}`,
     )
     expect(screen.getByText('Return-to-ship planning')).toBeInTheDocument()
-    expect(screen.getByText('Nassau family day').closest('article')).toHaveClass('border-gray-200')
+    expect(screen.getByRole('button', { name: 'Expand Nassau family day for more info' })).toHaveClass('border-gray-200')
+    // Only cruise day plans are listed; the island's self-guided tour is not.
+    expect(screen.queryByText(APPROVED_SELF_TOUR.name)).not.toBeInTheDocument()
+    // The RPC cannot filter by layer, so the page asks for its full page.
+    expect(rpc).toHaveBeenCalledWith('get_approved_activity_recommendations', expect.objectContaining({
+      p_island_slug: 'nassau-paradise-island',
+      p_limit: 100,
+    }))
+    expect(container).not.toHaveTextContent('nassau-paradise-island')
     expectNoDecorativeInnerPageChrome(container)
   })
 
   test('empty catalogue describes the current state without internal publishing instructions', async () => {
-    supabaseMocks.createClient.mockResolvedValue({ from: () => new MockSupabaseQuery({ data: [], error: null }) })
-    render(await NassauCruiseItinerariesPage())
+    setupSupabase({ data: [], error: null })
+    const { container } = render(await NassauCruiseItinerariesPage())
     expect(screen.getByText('No self-guided tours are published for this view yet.')).toBeInTheDocument()
     expect(screen.queryByText(/Admin should|being prepared|check back soon/i)).not.toBeInTheDocument()
+    expect(container).not.toHaveTextContent(INTERNAL_COPY)
   })
 
   test('catalogue failure offers recovery and does not display stale results', async () => {
-    supabaseMocks.createClient.mockResolvedValue({ from: () => new MockSupabaseQuery({ data: [PLAN], error: { message: 'offline' } }) })
+    setupSupabase({ data: [APPROVED_PLAN], error: { message: 'offline' } })
     render(await NassauCruiseItinerariesPage())
     expect(screen.getByRole('alert')).toHaveTextContent('Tours could not be loaded.')
     expect(screen.getByRole('button', { name: 'Try again' }).closest('form')).toHaveAttribute('action', '/nassau-cruise-itineraries')

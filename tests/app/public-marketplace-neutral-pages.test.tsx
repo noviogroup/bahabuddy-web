@@ -21,6 +21,13 @@ vi.mock("@/lib/sanity/queries", () => ({
   fetchArticles: sanityMocks.fetchArticles,
 }));
 
+// Public catalog reads use the cookie-free client; route them to the same
+// mock client the test configures for the cookie client.
+vi.mock("@/lib/supabase/public", async () => {
+  const { deferredSupabaseClient } = await import("../fixtures/deferred-supabase")
+  return { createPublicClient: () => deferredSupabaseClient(() => supabaseMocks.createClient()) }
+})
+
 vi.mock("@/lib/supabase/server", () => ({
   createClient: supabaseMocks.createClient,
 }));

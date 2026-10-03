@@ -1,38 +1,6 @@
 'use client'
 
-/**
- * FlightCard — LiteAPI-backed flight offer card.
- *
- * Phase 3 redesign vs the old inline version:
- *
- *   - Time-to-time visual hierarchy. Departure / arrival times are the
- *     biggest type after the price, separated by a clear connector line
- *     showing the duration. This is the airline-app pattern users
- *     already recognize.
- *
- *   - Stops indicator is language-led. "Non-stop" is marked as positive;
- *     connecting fares stay neutral so the card does not overuse color.
- *
- *   - Cabin class chip alongside the airline when set. Helps clarify
- *     whether the price tag is economy or business.
- *
- *   - Optional layover detail block. When `layovers` is present, a
- *     compact line lists each connection: "Layover MIA \u00b7 1h 45m". Hidden
- *     by default for direct flights since there's nothing to show.
- *
- *   - Optional baggage badge row. When the provider ships baggage data into
- *     the card payload, we render carry-on / checked badges so the user
- *     can sanity-check the price tier without opening the offer page.
- *
- *   - Optional Save action. When `onSendMessage` is wired, a small
- *     "Save flight" pill sends a chat message to Buddy. Kept secondary
- *     to the price since provider offers expire quickly \u2014 the user
- *     typically books the offer immediately or moves on.
- *
- * Plain CardShell mode. Flight offers are time-sensitive (provider offer
- * IDs expire), so there is no stable detail page to link to \u2014 all the
- * decision-supporting information lives inline.
- */
+/** Compare flight times, stops, baggage, and total first; expand fare rules on demand. */
 
 import { CardShell } from './shared'
 import Image from 'next/image'
@@ -140,13 +108,12 @@ function routeParts(route: string | undefined): [string | undefined, string | un
 export function FlightCard({ data, onSendMessage, actions, className }: Props) {
   const {
     route, airline, departure, arrival, duration, stops,
-    price = 0, currency = 'USD', passengers = 1, cabin_class, fare_brand,
+    flight_legs = [], trip_type, price = 0, currency = 'USD', passengers = 1, cabin_class, fare_brand,
     refundable, changeable, expiration, layovers = [], baggage, airline_code, flight_number, flight_numbers, airline_logo_url,
   } = data
   const flightNumberLabel = flight_number || flight_numbers?.join(' · ')
 
   const stop = (e: MouseEvent<HTMLButtonElement>) => e.stopPropagation()
-  const isDirect = /direct|nonstop|non-stop|^0$/i.test(stops ?? '')
   const priceEach = passengers > 1 && price > 0 ? price / passengers : null
   const formattedPrice = formatMoney(price, currency)
   const travelerLabel = `${passengers} traveler${passengers === 1 ? '' : 's'}`
@@ -165,14 +132,9 @@ export function FlightCard({ data, onSendMessage, actions, className }: Props) {
   const verificationLabel = expiration
     ? `Verify by ${formatExpiration(expiration)}`
     : 'Verify before payment'
-  const [originCode, destinationCode] = routeParts(route)
+  const legs = flight_legs.length ? flight_legs : [{ route, departure, arrival, duration, stops }]
+
   const metaItems = [
-    {
-      label: 'Stops',
-      value: isDirect ? 'Non-stop' : stops ?? 'Confirm',
-      className: isDirect ? 'text-palm-700' : 'text-charcoal',
-    },
-    { label: 'Baggage', value: baggageLabel, className: 'text-gray-900' },
     { label: 'Fare', value: fare_brand ?? cabin_class ?? 'Confirm', className: 'text-gray-900' },
     {
       label: 'Rules',
@@ -215,44 +177,38 @@ export function FlightCard({ data, onSendMessage, actions, className }: Props) {
             </div>
           </div>
 
-          {(departure || arrival) && (
-            <div className="flex min-w-0 items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 px-3 py-2">
-              <div className="min-w-[3.75rem] text-center">
-                <p className="text-base font-semibold leading-none text-gray-900">{departure ?? '\u2014'}</p>
-                {originCode && (
-                  <p className="mt-1 text-xs font-medium uppercase text-gray-400">
-                    {originCode}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex min-w-0 flex-1 items-center">
-                <div className="relative h-px min-w-10 flex-1 bg-gray-300">
-                  {duration && (
-                    <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-gray-50 px-2 text-xs font-medium text-gray-500 ring-4 ring-gray-50">
-                      {duration}
-                    </span>
-                  )}
+          <div className="min-w-0 space-y-3">
+            {legs.map((leg, index) => {
+              const [originCode, destinationCode] = routeParts(leg.route ?? route)
+              return (
+                <div key={index}>
+                  {legs.length > 1 && <p className="mb-1 text-xs font-medium text-gray-500">{index === 0 ? 'Outbound' : 'Return'} · {leg.route}</p>}
+                  <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <p className="text-base font-semibold text-night">{leg.departure || 'Time pending'}</p>
+                      <p className="text-xs text-gray-600">{originCode}</p>
+                    </div>
+                    <div className="min-w-16 text-center text-xs text-gray-600">
+                      <p>{leg.duration}</p>
+                      <div className="my-1 h-px bg-gray-200" />
+                      <p>{leg.stops || 'Confirm stops'}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-base font-semibold text-night">{leg.arrival || 'Time pending'}</p>
+                      <p className="text-xs text-gray-600">{destinationCode}</p>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              )
+            })}
+          </div>
 
-              <div className="min-w-[3.75rem] text-center">
-                <p className="text-base font-semibold leading-none text-gray-900">{arrival ?? '\u2014'}</p>
-                {destinationCode && (
-                  <p className="mt-1 text-xs font-medium uppercase text-gray-400">
-                    {destinationCode}
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          <div className="flex w-full items-start justify-between gap-3 lg:w-auto lg:flex-col lg:items-end">
+          <div className="flex w-full flex-wrap items-start justify-between gap-3 lg:w-auto lg:flex-col lg:items-end">
             {price > 0 && (
-              <div className="shrink-0 text-left lg:text-right">
+              <div className="min-w-0 text-left lg:text-right">
                 <p className="text-xl font-bold leading-none text-night">{formattedPrice}</p>
                 <p className="mt-0.5 text-xs font-medium uppercase text-gray-400">
-                  {passengers > 1 ? `Total for ${passengers}` : 'Total fare'}
+                  {currency.toUpperCase()} · {passengers > 1 ? `Total for ${passengers}` : 'Total fare'}{trip_type === 'round_trip' ? ' · Round-trip' : ''}
                 </p>
                 {priceEach && (
                   <p className="mt-0.5 text-xs font-semibold text-gray-500">
@@ -272,7 +228,7 @@ export function FlightCard({ data, onSendMessage, actions, className }: Props) {
                       stop(e)
                       onSendMessage(`Help me decide on the ${airline ?? 'flight'} flight at ${departure ?? ''} for ${formattedPrice}`)
                     }}
-                    className="inline-flex h-9 items-center justify-center rounded-full border border-gray-200 bg-white px-4 text-xs font-semibold text-charcoal transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
+                    className="inline-flex min-h-11 items-center justify-center rounded-full border border-gray-200 bg-white px-4 text-xs font-semibold text-charcoal transition-colors hover:border-gray-400 hover:bg-gray-50 hover:text-night"
                   >
                     Ask Buddy
                   </button>
@@ -282,11 +238,19 @@ export function FlightCard({ data, onSendMessage, actions, className }: Props) {
           </div>
         </div>
 
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600">
+          <span>{baggageLabel}</span>
+          <span>{travelerLabel}</span>
+        </div>
+        <details className="group/details border-t border-gray-100">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md text-sm font-semibold text-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 [&::-webkit-details-marker]:hidden">
+            Fare details <span aria-hidden="true" className="group-open/details:rotate-45">+</span>
+          </summary>
         <dl className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-gray-100 bg-white px-3 py-2 text-xs">
           {metaItems.map((item) => (
             <div key={item.label} className="flex min-w-0 items-center gap-1.5">
               <dt className="shrink-0 font-medium text-gray-400">{item.label}</dt>
-              <dd className={`max-w-36 truncate font-semibold ${item.className}`} title={item.value}>
+              <dd className={`font-semibold ${item.className}`} title={item.value}>
                 {item.value}
               </dd>
             </div>
@@ -294,7 +258,6 @@ export function FlightCard({ data, onSendMessage, actions, className }: Props) {
         </dl>
 
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs font-medium text-gray-500">
-          <span>{travelerLabel}</span>
           <span className={expiration ? 'text-charcoal' : 'text-gray-400'}>
             {verificationLabel}
           </span>
@@ -310,6 +273,7 @@ export function FlightCard({ data, onSendMessage, actions, className }: Props) {
             ))}
           </ul>
         )}
+        </details>
       </div>
     </CardShell>
   )

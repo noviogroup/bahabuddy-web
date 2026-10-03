@@ -1,3 +1,5 @@
+import { approvedActivityDetailHref } from '@/lib/approved-activities'
+
 export const CATALOG_FILTERS = [
   { value: 'all', label: 'All' },
   { value: 'places', label: 'Places' },
@@ -157,6 +159,9 @@ function catalogResultHref(row: CatalogRpcRow, type: CatalogResultType): string 
   }
 
   if (type === 'deal') return '/deals'
+  if (type === 'attraction' && row.source_table === 'v_approved_activity_recommendations') {
+    return approvedActivityDetailHref(row.result_id)
+  }
   return `/explore/places/${id}`
 }
 

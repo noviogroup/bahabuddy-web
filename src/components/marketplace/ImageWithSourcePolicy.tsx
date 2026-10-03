@@ -18,6 +18,8 @@ type ImageWithSourcePolicyProps = {
   unoptimized?: boolean;
   tone?: ImageTone;
   style?: CSSProperties;
+  /** Photo credit (e.g. "Photo: Tripadvisor"); shown only while the photo is. */
+  attribution?: string | null;
   children?: ReactNode;
 };
 
@@ -49,11 +51,13 @@ export default function ImageWithSourcePolicy({
   unoptimized = true,
   tone = "brand",
   style,
+  attribution,
   children,
 }: ImageWithSourcePolicyProps) {
   const [failed, setFailed] = useState(false);
   const imageSrc = validImageUrl(src);
   const hasImage = Boolean(imageSrc && !failed);
+  const credit = attribution?.trim();
 
   useEffect(() => {
     setFailed(false);
@@ -106,6 +110,11 @@ export default function ImageWithSourcePolicy({
             </p>
           </div>
         </div>
+      )}
+      {hasImage && credit && (
+        <p className="absolute bottom-2 right-2 max-w-[80%] truncate rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+          {credit}
+        </p>
       )}
       {children}
     </div>

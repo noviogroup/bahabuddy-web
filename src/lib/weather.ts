@@ -142,8 +142,10 @@ export async function fetchIslandWeather(
     temperature_unit: 'fahrenheit',
     wind_speed_unit: 'mph',
   })
+  // Forecasts change slowly; a 15-minute data-cache window keeps island
+  // pages ISR-cacheable (no-store would force them to render per request).
   const response = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`, {
-    cache: 'no-store',
+    next: { revalidate: 900 },
   })
 
   if (!response.ok) {

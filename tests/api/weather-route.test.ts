@@ -41,7 +41,7 @@ describe('GET /api/weather', () => {
     expect(response.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('latitude=23.6282'),
-      { cache: 'no-store' },
+      { next: { revalidate: 900 } },
     )
     expect(body).toMatchObject({
       island: 'Exuma',
@@ -80,7 +80,7 @@ describe('GET /api/weather', () => {
     expect(response.status).toBe(200)
     expect(fetchMock).toHaveBeenCalledWith(
       expect.stringContaining('latitude=25.0343'),
-      { cache: 'no-store' },
+      { next: { revalidate: 900 } },
     )
     expect(body).toMatchObject({
       island: 'Nassau',

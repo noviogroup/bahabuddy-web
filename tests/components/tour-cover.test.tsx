@@ -27,6 +27,7 @@ describe('tour artwork', () => {
     expect(screen.getByRole('link', { name: 'Explore self-guided tours' })).toHaveAttribute('href', '/nassau-cruise-itineraries')
     expect(screen.getByRole('img')).toHaveAccessibleName(/Destination illustration/)
     expect(screen.getByText('AI illustration')).toBeInTheDocument()
+    expect(document.body).not.toHaveTextContent(/source gate|approved (tours|routes)|verified coordinates/i)
   })
 
   test.each([[30, 45, '30m–45m'], [90, 90, '1h 30m'], [90, 120, '1h 30m–2h'], [0, 0, 'Duration not listed'], [120, 30, 'Duration not listed']])('duration preserves short routes (%s, %s)', (min, max, expected) => {

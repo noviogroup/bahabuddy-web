@@ -14,7 +14,7 @@ import {
   tourStopCountLabel,
   type SelfGuidedCatalogTour,
 } from '@/lib/self-guided-tours'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 
 export const revalidate = 300
 
@@ -25,7 +25,8 @@ export const metadata: Metadata = {
 
 async function loadCatalog(): Promise<SelfGuidedCatalogTour[]> {
   try {
-    return await getSelfGuidedCatalog(await createClient())
+    // Public catalog only; ownership badges load client-side (OwnedTours).
+    return await getSelfGuidedCatalog(createPublicClient())
   } catch {
     return []
   }

@@ -233,6 +233,22 @@ export function getIslandConfig(slug: string): IslandConfig | null {
   return ISLAND_CONFIGS.find((i) => i.slug === slug) ?? null;
 }
 
+/** Traveler-facing island name. Canonical slugs such as
+ *  `nassau-paradise-island` map to their config name; unknown slugs are
+ *  title-cased and labels that are already display text pass through. */
+export function islandDisplayName(value: string | null | undefined): string {
+  const text = value?.trim() ?? "";
+  if (!text) return "";
+  const config = getIslandConfig(text);
+  if (config) return config.name;
+  if (text === "acklins-crooked-island") return "Acklins & Crooked Island";
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(text)) return text;
+  return text
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 /** Returns the Supabase query slug for an island. Falls back to the
  *  URL slug when no explicit override is set. */
 export function getIslandDbSlug(config: IslandConfig): string {

@@ -68,6 +68,8 @@ export function ActionRow({ actions, align = 'left', className = '' }: Props) {
         const common = `inline-flex items-center text-xs font-semibold rounded-full border bg-white transition-colors ${tone} ${sizeClass}`
 
         if (a.href) {
+          // Screen readers are told when a link opens a new tab.
+          const newTabHint = a.external ? ' (opens in new tab)' : ''
           return (
             <a
               key={`${a.label}-${i}`}
@@ -75,11 +77,12 @@ export function ActionRow({ actions, align = 'left', className = '' }: Props) {
               target={a.external ? '_blank' : undefined}
               rel={a.external ? 'noopener noreferrer' : undefined}
               onClick={stop}
-              aria-label={a.iconOnly ? a.label : undefined}
+              aria-label={a.iconOnly ? `${a.label}${newTabHint}` : undefined}
               className={common}
             >
               {a.icon}
               {!a.iconOnly && <span>{a.label}</span>}
+              {!a.iconOnly && newTabHint && <span className="sr-only">{newTabHint}</span>}
             </a>
           )
         }

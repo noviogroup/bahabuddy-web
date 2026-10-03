@@ -51,6 +51,7 @@ export default function BahaDatePicker({
   const autoId = useId()
   const id = idProp ?? autoId
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const months = useCalendarMonths(1)
 
@@ -115,7 +116,19 @@ export default function BahaDatePicker({
   const display = value ? formatDateShort(value) : placeholder
 
   return (
-    <div ref={rootRef} id={id} className={`relative ${className}`}>
+    <div
+      ref={rootRef}
+      id={id}
+      className={`relative ${className}`}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.preventDefault()
+          event.stopPropagation()
+          setOpen(false)
+          triggerRef.current?.focus()
+        }
+      }}
+    >
       {label && (
         <label
           htmlFor={`${id}-trigger`}
@@ -125,6 +138,7 @@ export default function BahaDatePicker({
         </label>
       )}
       <button
+        ref={triggerRef}
         id={`${id}-trigger`}
         type="button"
         onClick={() => setOpen((v) => !v)}

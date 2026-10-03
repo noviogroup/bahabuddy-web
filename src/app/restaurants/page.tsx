@@ -1,96 +1,80 @@
-import { createClient } from '@/lib/supabase/server'
-import type { Metadata } from 'next'
-import Link from 'next/link'
-import Footer from '@/components/Footer'
-import ChatWidget from '@/components/ChatWidget'
-import TrackView from '@/components/TrackView'
-import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
-import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
-import { FilterChip, FilterGroup, ResultFilterPanel } from '@/components/marketplace/ResultFilterPanel'
-import { buddyChatHref } from '@/lib/buddy-chat'
-import type { TripAdvisorLocation } from '@/lib/tripadvisor/types'
+import type { Metadata } from "next";
+import Link from "next/link";
+import Footer from "@/components/Footer";
+import ChatWidget from "@/components/ChatWidget";
+import TrackView from "@/components/TrackView";
+import CompactPageHeader from "@/components/marketplace/CompactPageHeader";
+import ImageWithSourcePolicy from "@/components/marketplace/ImageWithSourcePolicy";
+import TripStyleSortedList from "@/components/marketplace/TripStyleSortedList";
+import {
+  FilterChip,
+  FilterGroup,
+  ResultFilterPanel,
+} from "@/components/marketplace/ResultFilterPanel";
+import { buddyChatHref } from "@/lib/buddy-chat";
+import { isTemporarilyClosed } from "@/lib/trip-styles";
+import type { TripAdvisorLocation } from "@/lib/tripadvisor/types";
 import {
   formatCuisineLabel,
   formatPriceLevelLabel,
-  getRestaurantIslandQueryNames,
   ISLAND_SLUG_MAP,
-} from '@/lib/tripadvisor/types'
+} from "@/lib/tripadvisor/types";
+import {
+  getPublishedRestaurants,
+  publishedPlaceAsRestaurant,
+} from "@/lib/places";
 
 export const metadata: Metadata = {
-  title: 'Best Restaurants in the Bahamas | Baha Buddy',
+  title: "Best Restaurants in the Bahamas | Baha Buddy",
   description:
-    'Browse top-rated Bahamas restaurants across Nassau, Exuma, Eleuthera, and more. Cuisine, ratings, photos, and TripAdvisor reviews.',
+    "Browse Bahamas restaurants across Nassau, Exuma, Eleuthera, and more, with cuisine, ratings, and photos where available.",
   openGraph: {
-    title: 'Best Restaurants in the Bahamas | Baha Buddy',
-    description:
-      'Find the best Bahamas dining by island, cuisine, and rating.',
+    title: "Best Restaurants in the Bahamas | Baha Buddy",
+    description: "Find the best Bahamas dining by island, cuisine, and rating.",
   },
-}
+};
 
-export const revalidate = 86400
+export const revalidate = 86400;
 
 async function getRestaurants(
   island?: string,
   cuisine?: string,
 ): Promise<TripAdvisorLocation[]> {
   try {
-    const supabase = await createClient()
-    let query = supabase
-      .from('tripadvisor_locations')
-      .select('*')
-      .eq('category', 'restaurants')
-      .order('rating', { ascending: false, nullsFirst: false })
-      .limit(100)
-
-    if (island) {
-      const islandNames = getRestaurantIslandQueryNames(island)
-      query = typeof (query as { in?: unknown }).in === 'function'
-        ? (query as typeof query & { in: (column: string, values: string[]) => typeof query }).in('island_name', islandNames)
-        : query.eq('island_name', island)
-    }
-    if (cuisine) {
-      query = query.contains('cuisine_types', [cuisine])
-    }
-
-    const { data, error } = await query
-    if (error || !data) return []
-    return data as TripAdvisorLocation[]
+    const places = await getPublishedRestaurants({
+      island,
+      cuisine,
+      limit: 100,
+    });
+    return places.map(publishedPlaceAsRestaurant);
   } catch {
-    return []
+    return [];
   }
 }
 
 async function getCuisineTypes(): Promise<string[]> {
   try {
-    const supabase = await createClient()
-    const { data } = await supabase
-      .from('tripadvisor_locations')
-      .select('cuisine_types')
-      .eq('category', 'restaurants')
-      .not('cuisine_types', 'is', null)
-      .limit(500)
-    if (!data) return []
-    const all = new Set<string>()
-    for (const row of data) {
-      const types = row.cuisine_types as string[] | null
-      if (types) types.forEach((t) => all.add(t))
+    const data = await getPublishedRestaurants({ limit: 320 });
+    const all = new Set<string>();
+    for (const place of data) {
+      place.tags.forEach((tag) => all.add(tag));
     }
-    return Array.from(all).sort()
+    return Array.from(all).sort();
   } catch {
-    return []
+    return [];
   }
 }
 
 function getIslandOptions(): { slug: string; name: string }[] {
-  const seen = new Set<string>()
+  const seen = new Set<string>();
   return Object.entries(ISLAND_SLUG_MAP)
     .filter(([, name]) => {
-      if (seen.has(name)) return false
-      seen.add(name)
-      return true
+      if (seen.has(name)) return false;
+      seen.add(name);
+      return true;
     })
     .map(([slug, name]) => ({ slug, name }))
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function PriceLevelDisplay({ level }: { level: string }) {
@@ -101,113 +85,145 @@ function PriceLevelDisplay({ level }: { level: string }) {
     >
       {formatPriceLevelLabel(level)}
     </span>
-  )
+  );
 }
 
 function restaurantPreviewReason(rest: TripAdvisorLocation): string {
   if (rest.rating && rest.rating >= 4.5) {
-    return `Strong traveler rating${rest.island_name ? ` on ${rest.island_name}` : ''}, useful for shortlisting dining plans.`
+    return `Strong traveler rating${rest.island_name ? ` on ${rest.island_name}` : ""}, useful for shortlisting dining plans.`;
   }
   if (rest.cuisine_types && rest.cuisine_types.length > 0) {
-    return `Cuisine fit: ${rest.cuisine_types.slice(0, 2).map(formatCuisineLabel).join(' and ')}.`
+    return `Cuisine fit: ${rest.cuisine_types.slice(0, 2).map(formatCuisineLabel).join(" and ")}.`;
   }
   if (rest.num_reviews && rest.num_reviews > 0) {
-    return `${rest.num_reviews.toLocaleString()} traveler reviews to compare before you reserve.`
+    return `${rest.num_reviews.toLocaleString()} traveler reviews to compare before you reserve.`;
   }
-  return 'Real restaurant listing with detail page, island context, and booking-planning actions.'
+  return "Real restaurant listing with detail page, island context, and booking-planning actions.";
 }
 
 function paramsFrom(values: Record<string, string | undefined | null>): string {
-  const params = new URLSearchParams()
+  const params = new URLSearchParams();
   for (const [key, value] of Object.entries(values)) {
-    if (value?.trim()) params.set(key, value.trim())
+    if (value?.trim()) params.set(key, value.trim());
   }
-  const qs = params.toString()
-  return qs ? `?${qs}` : ''
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
 }
 
-function restaurantExploreFoodHref(island?: string | null, cuisine?: string | null): string {
-  const search = cuisine || 'Food'
-  return `/explore/places${paramsFrom({ island, category: 'Dining', search })}`
+function restaurantExploreFoodHref(
+  island?: string | null,
+  cuisine?: string | null,
+): string {
+  const search = cuisine || "Food";
+  return `/explore/places${paramsFrom({ island, category: "Dining", search })}`;
 }
 
 function restaurantAskBuddyHref(rest: TripAdvisorLocation): string {
   const prompt = [
     `Tell me about ${rest.name}`,
-    rest.island_name ? `Island: ${rest.island_name}` : '',
-    rest.cuisine_types?.[0] ? `Cuisine: ${formatCuisineLabel(rest.cuisine_types[0])}` : '',
-  ].filter(Boolean).join('. ')
-  return buddyChatHref(prompt)
+    rest.island_name ? `Island: ${rest.island_name}` : "",
+    rest.cuisine_types?.[0]
+      ? `Cuisine: ${formatCuisineLabel(rest.cuisine_types[0])}`
+      : "",
+  ]
+    .filter(Boolean)
+    .join(". ");
+  return buddyChatHref(prompt);
 }
 
 export default async function RestaurantsPage({
   searchParams,
 }: {
-  searchParams: { island?: string; cuisine?: string }
+  searchParams: { island?: string; cuisine?: string };
 }) {
-  const activeIsland = searchParams.island ?? ''
-  const activeCuisine = searchParams.cuisine ?? ''
+  const activeIsland = searchParams.island ?? "";
+  const activeCuisine = searchParams.cuisine ?? "";
 
   const [restaurants, cuisineTypes] = await Promise.all([
     getRestaurants(activeIsland || undefined, activeCuisine || undefined),
     getCuisineTypes(),
-  ])
+  ]);
 
-  const islandOptions = getIslandOptions()
+  const islandOptions = getIslandOptions();
 
   function buildFilterUrl(overrides: Record<string, string | undefined>) {
-    const params = new URLSearchParams()
+    const params = new URLSearchParams();
     const merged = {
       island: activeIsland,
       cuisine: activeCuisine,
       ...overrides,
-    }
+    };
     for (const [key, value] of Object.entries(merged)) {
-      if (value) params.set(key, value)
+      if (value) params.set(key, value);
     }
-    const qs = params.toString()
-    return qs ? `/restaurants?${qs}` : '/restaurants'
+    const qs = params.toString();
+    return qs ? `/restaurants?${qs}` : "/restaurants";
   }
 
   const activeFilters = [
-    activeIsland ? { label: 'Island', value: activeIsland, href: buildFilterUrl({ island: undefined }) } : null,
-    activeCuisine ? { label: 'Cuisine', value: activeCuisine, href: buildFilterUrl({ cuisine: undefined }) } : null,
-  ].filter((item): item is { label: string; value: string; href: string } => Boolean(item))
-  const startFoodTripHref = `/dashboard/trips/new${paramsFrom({ returnTo: '/restaurants', source: 'restaurant' })}`
-  const exploreFoodCultureHref = restaurantExploreFoodHref(activeIsland || undefined, activeCuisine || 'Food')
-  const askFoodBuddyHref = buddyChatHref(activeIsland ? `Recommend restaurants in ${activeIsland}` : 'Recommend restaurants for my Bahamas trip')
+    activeIsland
+      ? {
+          label: "Island",
+          value: activeIsland,
+          href: buildFilterUrl({ island: undefined }),
+        }
+      : null,
+    activeCuisine
+      ? {
+          label: "Cuisine",
+          value: activeCuisine,
+          href: buildFilterUrl({ cuisine: undefined }),
+        }
+      : null,
+  ].filter((item): item is { label: string; value: string; href: string } =>
+    Boolean(item),
+  );
+  const startFoodTripHref = `/dashboard/trips/new${paramsFrom({ returnTo: "/restaurants", source: "restaurant" })}`;
+  const exploreFoodCultureHref = restaurantExploreFoodHref(
+    activeIsland || undefined,
+    activeCuisine || "Food",
+  );
+  const askFoodBuddyHref = buddyChatHref(
+    activeIsland
+      ? `Recommend restaurants in ${activeIsland}`
+      : "Recommend restaurants for my Bahamas trip",
+  );
 
   const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'ItemList',
+    "@context": "https://schema.org",
+    "@type": "ItemList",
     name: activeIsland
       ? `Best Restaurants in ${activeIsland}, Bahamas`
-      : 'Best Restaurants in the Bahamas',
+      : "Best Restaurants in the Bahamas",
     numberOfItems: restaurants.length,
     itemListElement: restaurants.slice(0, 20).map((r, i) => ({
-      '@type': 'ListItem',
+      "@type": "ListItem",
       position: i + 1,
       item: {
-        '@type': 'Restaurant',
+        "@type": "Restaurant",
         name: r.name,
-        ...(r.cuisine_types && r.cuisine_types.length > 0 && {
-          servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(', '),
-        }),
+        ...(r.cuisine_types &&
+          r.cuisine_types.length > 0 && {
+            servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(", "),
+          }),
         ...(r.rating && {
           aggregateRating: {
-            '@type': 'AggregateRating',
+            "@type": "AggregateRating",
             ratingValue: r.rating,
             reviewCount: r.num_reviews ?? 0,
           },
         }),
       },
     })),
-  }
+  };
 
   const renderFilterControls = () => (
     <>
       <FilterGroup label="Island">
-        <FilterChip href={buildFilterUrl({ island: undefined })} active={!activeIsland}>
+        <FilterChip
+          href={buildFilterUrl({ island: undefined })}
+          active={!activeIsland}
+        >
           All islands
         </FilterChip>
         {islandOptions.map(({ slug, name }) => (
@@ -223,7 +239,11 @@ export default async function RestaurantsPage({
 
       {cuisineTypes.length > 0 && (
         <FilterGroup label="Cuisine">
-          <FilterChip href={buildFilterUrl({ cuisine: undefined })} active={!activeCuisine} tone="gold">
+          <FilterChip
+            href={buildFilterUrl({ cuisine: undefined })}
+            active={!activeCuisine}
+            tone="gold"
+          >
             All cuisines
           </FilterChip>
           {cuisineTypes.slice(0, 18).map((cuisine) => (
@@ -239,15 +259,15 @@ export default async function RestaurantsPage({
         </FilterGroup>
       )}
     </>
-  )
+  );
 
   return (
     <div className="min-h-screen bg-white">
       <TrackView
         event="restaurants_directory_viewed"
         props={{
-          island_filter: activeIsland || 'all',
-          cuisine_filter: activeCuisine || 'all',
+          island_filter: activeIsland || "all",
+          cuisine_filter: activeCuisine || "all",
           restaurant_count: restaurants.length,
         }}
       />
@@ -258,13 +278,14 @@ export default async function RestaurantsPage({
 
       <CompactPageHeader
         eyebrow="Bahamas dining"
-        title={activeIsland ? `Where to eat in ${activeIsland}` : 'Bahamas dining guide'}
+        title={
+          activeIsland
+            ? `Where to eat in ${activeIsland}`
+            : "Bahamas dining guide"
+        }
         subtitle="Find island restaurants, local seafood, waterfront spots, and refined dining with real photos, ratings, and Buddy context."
-        crumbs={[
-          { href: '/', label: 'Home' },
-          { label: 'Restaurants' },
-        ]}
-        actions={(
+        crumbs={[{ href: "/", label: "Home" }, { label: "Restaurants" }]}
+        actions={
           <>
             <Link
               href={startFoodTripHref}
@@ -285,14 +306,14 @@ export default async function RestaurantsPage({
               Ask Buddy
             </Link>
           </>
-        )}
+        }
       />
 
       <main className="max-w-6xl mx-auto px-4 py-8">
         <ResultFilterPanel
           ariaLabel="Filter restaurants"
           eyebrow="Filter restaurants"
-          title={`${restaurants.length} restaurant${restaurants.length !== 1 ? 's' : ''} found`}
+          title={`${restaurants.length} restaurant${restaurants.length !== 1 ? "s" : ""} found`}
           activeFilters={activeFilters}
           clearHref="/restaurants"
           emptyLabel="Showing all restaurants"
@@ -303,24 +324,24 @@ export default async function RestaurantsPage({
 
         {/* Results count */}
         <div className="mb-6">
-          <p className="text-xs font-bold uppercase text-gray-500">
-            Results
-          </p>
+          <p className="text-xs font-bold uppercase text-gray-500">Results</p>
           <p className="mt-1 text-sm font-semibold text-gray-500">
-            {restaurants.length} restaurant{restaurants.length !== 1 ? 's' : ''}
-            {activeIsland ? ` in ${activeIsland}` : ''}
-            {activeCuisine ? ` | ${activeCuisine}` : ''}
+            {restaurants.length} restaurant{restaurants.length !== 1 ? "s" : ""}
+            {activeIsland ? ` in ${activeIsland}` : ""}
+            {activeCuisine ? ` | ${activeCuisine}` : ""}
           </p>
         </div>
 
         {/* Grid */}
         {restaurants.length === 0 ? (
-          <div className="text-center py-20 text-gray-400">
+          <div className="text-center py-20 text-gray-500">
             <p className="text-lg font-medium text-gray-600">
-              No restaurants found
+              {activeIsland
+                ? `No published restaurants for ${activeIsland} yet`
+                : "No published restaurants match these filters yet"}
             </p>
             <p className="text-sm mt-2">
-              Restaurant data is being loaded. Check back soon.
+              Try another island or cuisine.
             </p>
             <Link
               href="/restaurants"
@@ -330,18 +351,26 @@ export default async function RestaurantsPage({
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {restaurants.map((rest) => {
-              const heroPhoto = rest.photos?.[0]?.url ?? null
-              const previewReason = restaurantPreviewReason(rest)
-              const detailHref = `/restaurants/${rest.location_id}`
-              const addToTripHref = `${detailHref}#trip-actions`
-              const exploreNearbyHref = restaurantExploreFoodHref(rest.island_name, rest.cuisine_types?.[0])
-              const askBuddyHref = restaurantAskBuddyHref(rest)
+          <TripStyleSortedList
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
+            items={restaurants.map((rest) => {
+              const heroPhoto = rest.photos?.[0]?.url ?? null;
+              const previewReason = restaurantPreviewReason(rest);
+              const detailHref = `/restaurants/${rest.location_id}`;
+              const addToTripHref = `${detailHref}#trip-actions`;
+              const exploreNearbyHref = restaurantExploreFoodHref(
+                rest.island_name,
+                rest.cuisine_types?.[0],
+              );
+              const askBuddyHref = restaurantAskBuddyHref(rest);
+              const temporarilyClosed = isTemporarilyClosed(rest.business_status);
 
-              return (
+              return {
+                key: rest.id,
+                tripStyles: rest.trip_styles,
+                priceTier: rest.price_tier,
+                node: (
                 <article
-                  key={rest.id}
                   className="group flex flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md"
                 >
                   <div className="relative h-48 overflow-hidden bg-gray-100">
@@ -352,6 +381,7 @@ export default async function RestaurantsPage({
                       eyebrow="Bahamas dining"
                       className="h-48"
                       tone="neutral"
+                      attribution={rest.image_attribution}
                     />
                     {rest.rating && (
                       <div className="absolute top-3 right-3 inline-flex items-center bg-white/95 backdrop-blur-sm rounded-md px-2 py-1 shadow-sm">
@@ -366,6 +396,12 @@ export default async function RestaurantsPage({
                     <h2 className="text-base font-bold text-gray-900 leading-snug line-clamp-1">
                       {rest.name}
                     </h2>
+
+                    {temporarilyClosed && (
+                      <p className="mt-1 text-xs font-semibold text-amber-700">
+                        Temporarily closed
+                      </p>
+                    )}
 
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
                       {rest.cuisine_types && rest.cuisine_types.length > 0 && (
@@ -446,15 +482,14 @@ export default async function RestaurantsPage({
                           Ask Buddy
                         </Link>
                       </div>
-                      <span className="sr-only">
-                        View details
-                      </span>
+                      <span className="sr-only">View details</span>
                     </div>
                   </div>
                 </article>
-              )
+                ),
+              };
             })}
-          </div>
+          />
         )}
 
         {/* Island landing pages */}
@@ -484,7 +519,8 @@ export default async function RestaurantsPage({
             Get personalized dining picks
           </h2>
           <p className="mb-6 text-gray-600">
-            Save restaurants into a trip, browse food culture nearby, or ask Buddy when you need planning context.
+            Save restaurants into a trip, browse food culture nearby, or ask
+            Buddy when you need planning context.
           </p>
           <div className="flex flex-col justify-center gap-3 sm:flex-row">
             <Link
@@ -512,5 +548,5 @@ export default async function RestaurantsPage({
       <Footer />
       <ChatWidget />
     </div>
-  )
+  );
 }

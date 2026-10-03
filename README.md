@@ -70,6 +70,27 @@ For Sanity setup specifically, see [`src/lib/sanity/README.md`](./src/lib/sanity
 
 ---
 
+## Stays and flights: less is more (October 2, 2026)
+
+The search/results screens adopt the mobile app's compact search summary and
+progressive disclosure, as implemented in `premium_hotel_search_screen.dart`
+and `premium_flight_search_screen.dart` under the mobile `lib/features/` tree.
+
+- Keep route/destination, dates, and travelers visible; reopen the form with **Edit search**.
+  Closing it preserves draft inputs. Flight results continue to describe the last submitted search.
+- Give results the main column. Keep promotion panels, repeated type shortcuts,
+  route-preview essays, deals, and FAQ blocks off these comparison screens.
+- Show stay refinements behind **Filters & sort**, with removable active filters.
+  Clearing refinements preserves destination, dates, and guests.
+- Keep unpriced stays visible. Show currency, nightly rate, and total when a quote exists.
+  Avoid generic claims that Buddy personally selected a catalog result.
+- Show both legs of round-trip fares, stops, baggage summary, and total up front.
+  Put fare rules, layovers, and verification expiry under **Fare details**.
+- Reuse supplied or saved flight origins. Fresh visits require chosen dates before searching;
+  they do not assume Miami or invent a departure/return date.
+
+Search UI changes do not constitute live payment/provider lifecycle verification.
+
 ## Architecture in 30 seconds
 
 - **Route group `(dashboard)/`** wraps every authenticated route, so the chat panel state persists across navigation.

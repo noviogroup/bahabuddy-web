@@ -1,5 +1,5 @@
 import 'server-only'
-import { createClient } from '@/lib/supabase/server'
+import { createPublicClient } from '@/lib/supabase/public'
 
 export interface Deal {
   id: string
@@ -150,7 +150,7 @@ function matchesQuery(deal: Deal, query: DealQuery): boolean {
 export async function getDeals(query: DealQuery = {}): Promise<Deal[]> {
   const limit = Math.max(1, Math.min(query.limit ?? 50, 100))
   try {
-    const supabase = await createClient()
+    const supabase = createPublicClient()
     const canonical = await supabase
       .from('deals')
       .select(CANONICAL_DEAL_SELECT)

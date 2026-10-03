@@ -1,11 +1,15 @@
 import type { Metadata } from 'next'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
-import GuidedDayCard from '@/components/guided-day/GuidedDayCard'
+import { ActivityCard } from '@/components/cards/ActivityCard'
 import { createClient } from '@/lib/supabase/server'
-import type { GuidedDayPlan } from '@/lib/guided-day/types'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import Link from 'next/link'
+import {
+  APPROVED_ACTIVITY_PAGE_LIMIT,
+  approvedActivityCard,
+  getApprovedActivities,
+} from '@/lib/approved-activities'
 
 export const metadata: Metadata = {
   title: 'Nassau Cruise Itineraries',
@@ -14,12 +18,18 @@ export const metadata: Metadata = {
 
 export default async function NassauCruiseItinerariesPage() {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('published_cruise_itineraries')
-    .select('*')
-    .order('base_price', { ascending: true })
-
-  const plans = (data ?? []) as GuidedDayPlan[]
+  let error: Error | null = null
+  // The RPC cannot filter by source layer, so request its full page (the RPC
+  // caps at 100) before keeping cruise day plans; a smaller page would let
+  // other Nassau activities crowd valid plans out.
+  const plans = await getApprovedActivities(supabase, {
+    islandSlug: 'nassau-paradise-island',
+    limit: APPROVED_ACTIVITY_PAGE_LIMIT,
+  }).then((rows) => rows.filter((row) => row.source_layer === 'cruise_itineraries'))
+    .catch((cause: unknown) => {
+      error = cause instanceof Error ? cause : new Error('Approved itinerary catalog unavailable')
+      return []
+    })
 
   return (
     <main className="min-h-screen bg-white">
@@ -80,7 +90,7 @@ export default async function NassauCruiseItinerariesPage() {
 
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {!error && plans.map((plan) => (
-            <GuidedDayCard key={plan.id} plan={plan} />
+            <ActivityCard key={plan.activity_id} data={approvedActivityCard(plan)} />
           ))}
         </div>
       </section>

@@ -5,8 +5,12 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { parseCardsFromContent, deriveTitleFromMessage, type ParsedCard } from '@/lib/chat-utils'
 import { TOOL_DEFINITIONS, executeTool, toolProgressLabel } from '@/lib/chat-tools'
 import { stripCustomerFacingEmoji } from '@/lib/customer-facing-text'
+import { aiGenerationEvent, aiTraceEvent, capturePostHogEvents, type PostHogEvent } from '@/lib/posthog-ai'
 import type { CardData } from '@/components/RichCards'
 import { BUDDY_GROUNDING_POLICY, BUDDY_GROUNDING_POLICY_VERSION } from '@/lib/buddy-grounding-policy'
+import { failClosedMessageForPlaceToolBatch } from '@/lib/buddy-inventory-contract'
+import { recordAnthropicUsage } from '@/lib/provider-telemetry'
+import { filterApprovedActivityCards } from '@/lib/approved-activities'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! })
 
@@ -105,6 +109,7 @@ You have 10 tools wired to live data. ALWAYS use these before recommending speci
 - Limit to 3-4 tool calls per response — keeps latency reasonable. If you need more, ask the user to narrow the ask.
 - For all factual destination questions, call get_destination_context before answering. Never fill a missing result from model memory.
 - For legacy practical FAQ coverage, search_island_faq may supplement get_destination_context, but it does not replace the approved destination-knowledge check.
+- Activity results are exact-island only and come in two kinds. Reviewed activity offers keep their returned duration, price basis, booking, meeting point, group/age, safety, cancellation and "checked on" facts. Canonical listings (listing_type "canonical_listing") are real places with no price, duration or availability: never quote or invent those, and suggest checking with the provider. If the result lists filters_not_applied, do not claim the options match those filters (for example, never call a listing kid-friendly unless the result says so). Present no more than 2–3 returned options, cite only returned records, and never substitute Nassau or another island when coverage is empty. Never use internal words such as "source-approved", "projection" or "canonical" with travelers.
 
 ## CARD OUTPUT FORMAT
 The web app renders cards differently depending on the source:
@@ -375,6 +380,7 @@ export async function POST(req: NextRequest) {
     const encoder = new TextEncoder()
     const isNewThread = !!user && !!activeThreadId && !threadId
     const correlationId = crypto.randomUUID()
+    const edgeRequestId = crypto.randomUUID()
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -391,16 +397,21 @@ export async function POST(req: NextRequest) {
         const knowledgeIds = new Set<string>()
         const sourceIds = new Set<string>()
         const placeIds = new Set<string>()
+        const approvedActivityIds = new Set<string>()
         const contentVersions = new Set<string>()
         let requestedIslandSlug: string | null = null
         let answerStatus: 'grounded' | 'no_evidence' | 'provider_error' | 'not_applicable' = 'not_applicable'
         let staleContentBlocked = false
         let retrievalCount = 0
         let retrievalLatencyMs = 0
+        const posthogEvents: PostHogEvent[] = []
+        const turnStartedAt = Date.now()
+        let generationStartedAt = turnStartedAt
 
         try {
           // ── Agentic loop ─────────────────────────────────────────────
           for (let turn = 0; turn < MAX_TURNS; turn++) {
+            const providerStartedAt = Date.now()
             const response = await client.messages.stream({
               model: MODEL,
               max_tokens: 2048,
@@ -427,11 +438,49 @@ export async function POST(req: NextRequest) {
 
             // Get final message to inspect tool_use blocks + stop_reason
             const finalMessage = await response.finalMessage()
+            const usage = finalMessage.usage as typeof finalMessage.usage & {
+              cache_read_input_tokens?: number
+              cache_creation_input_tokens?: number
+            }
+            await recordAnthropicUsage(knowledgeSupabase, {
+              model: MODEL,
+              iteration: turn + 1,
+              providerRequestId: finalMessage.id,
+              correlationId,
+              edgeRequestId,
+              userId: user?.id ?? null,
+              threadId: activeThreadId,
+              tripId: typeof tripContext?.id === 'string' ? tripContext.id : null,
+              inputTokens: usage.input_tokens ?? 0,
+              outputTokens: usage.output_tokens ?? 0,
+              cacheReadTokens: usage.cache_read_input_tokens ?? 0,
+              cacheWriteTokens: usage.cache_creation_input_tokens ?? 0,
+              latencyMs: Date.now() - providerStartedAt,
+              promptVersion: PROMPT_VERSION,
+            }).catch((telemetryError) => {
+              console.error('[chat] provider_usage_events insert FAILED', telemetryError)
+            })
 
             // Collect tool_use blocks
             const toolUses = finalMessage.content.filter(
               (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
             )
+            posthogEvents.push(aiGenerationEvent({
+              distinctId: user?.id,
+              traceId: correlationId,
+              sessionId: activeThreadId,
+              model: MODEL,
+              responseId: finalMessage.id,
+              usage: finalMessage.usage,
+              latencyMs: Date.now() - generationStartedAt,
+              stopReason: finalMessage.stop_reason,
+              properties: {
+                channel: 'web',
+                model_iteration: turn + 1,
+                tools_requested: toolUses.map((toolUse) => toolUse.name),
+                prompt_version: PROMPT_VERSION,
+              },
+            }))
 
             if (toolUses.length === 0 || finalMessage.stop_reason !== 'tool_use') {
               // No tools requested — we're done
@@ -443,6 +492,7 @@ export async function POST(req: NextRequest) {
 
             // Execute each tool, build tool_result blocks
             const toolResultBlocks: Anthropic.ToolResultBlockParam[] = []
+            const groundingBatch: Array<{ toolName: string; result: unknown }> = []
             for (const toolUse of toolUses) {
               if (toolCallCount >= MAX_TOOL_CALLS) {
                 toolResultBlocks.push({
@@ -465,6 +515,7 @@ export async function POST(req: NextRequest) {
                 user?.id ?? null,
                 knowledgeSupabase,
               )
+              groundingBatch.push({ toolName: toolUse.name, result: toolResult.data })
               toolNames.add(toolUse.name)
               const data = toolResult.data && typeof toolResult.data === 'object'
                 ? toolResult.data as Record<string, unknown>
@@ -498,7 +549,10 @@ export async function POST(req: NextRequest) {
                   if (!row || typeof row !== 'object') continue
                   const candidate = row as Record<string, unknown>
                   const placeId = candidate.place_id ?? candidate.id
-                  if (typeof placeId === 'string') placeIds.add(placeId)
+                  if (typeof placeId === 'string') {
+                    placeIds.add(placeId)
+                    if (toolUse.name === 'get_activities') approvedActivityIds.add(placeId)
+                  }
                 }
               }
 
@@ -516,8 +570,19 @@ export async function POST(req: NextRequest) {
               })
             }
 
+            const failClosedMessage = failClosedMessageForPlaceToolBatch(
+              groundingBatch,
+            )
+            if (failClosedMessage) {
+              const failClosedDelta = `${allText.trim() ? '\n\n' : ''}${failClosedMessage}`
+              allText += failClosedDelta
+              send({ type: 'text_delta', delta: failClosedDelta })
+              break
+            }
+
             // Append tool results as a user message and loop
             messages.push({ role: 'user', content: toolResultBlocks })
+            generationStartedAt = Date.now()
           }
 
           // ── Parse synthesized cards from Claude's text (day_plan / summary / map)
@@ -525,10 +590,13 @@ export async function POST(req: NextRequest) {
 
           // Combine: server-emitted (concrete data) + Claude-emitted (synthesized).
           // Concrete data first so users see the lookup results before the summary.
-          const combinedCards: CardData[] = [
-            ...allCards,
-            ...(fenceCards as CardData[]),
-          ]
+          const combinedCards = filterApprovedActivityCards(
+            [
+              ...allCards,
+              ...(fenceCards as CardData[]),
+            ],
+            approvedActivityIds,
+          ) as CardData[]
 
           // ── Persistence + trip auto-save ─────────────────────────────
           let savedTripId: string | null = null
@@ -652,10 +720,43 @@ export async function POST(req: NextRequest) {
           if (savedTripId) donePayload.tripId = savedTripId
           if (assistantMessageId) donePayload.assistantMessageId = assistantMessageId
           send(donePayload)
+          posthogEvents.push(aiTraceEvent({
+            distinctId: user?.id,
+            traceId: correlationId,
+            sessionId: activeThreadId,
+            name: 'buddy_chat_turn',
+            latencyMs: Date.now() - turnStartedAt,
+            properties: {
+              channel: 'web',
+              prompt_version: PROMPT_VERSION,
+              has_trip_context: Boolean(tripContext),
+              tool_names: Array.from(toolNames),
+              answer_status: answerStatus,
+              requested_island: requestedIslandSlug,
+              stale_content_blocked: staleContentBlocked,
+              retrieval_count: retrievalCount,
+              card_types: Array.from(new Set(combinedCards.map((card) => card.card_type).filter(Boolean))),
+              card_count: combinedCards.length,
+              saved_trip: Boolean(savedTripId),
+              message_chars: String(message).length,
+              reply_chars: cleanText.length,
+            },
+          }))
         } catch (err) {
           console.error('Chat agentic loop error:', err)
+          posthogEvents.push(aiTraceEvent({
+            distinctId: user?.id,
+            traceId: correlationId,
+            sessionId: activeThreadId,
+            name: 'buddy_chat_turn',
+            latencyMs: Date.now() - turnStartedAt,
+            error: err,
+            properties: { channel: 'web', prompt_version: PROMPT_VERSION, tool_names: Array.from(toolNames) },
+          }))
           send({ type: 'error', message: 'Something went wrong. Please try again.' })
         } finally {
+          // Serverless functions freeze once the stream closes, so send first.
+          await capturePostHogEvents(posthogEvents)
           controller.close()
         }
       },
