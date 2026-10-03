@@ -36,3 +36,23 @@ export function getStripe(): Promise<Stripe | null> {
 }
 
 export const stripePublishableKey = publishableKey
+
+const keyedStripePromises = new Map<string, Promise<Stripe | null>>()
+
+/**
+ * Stripe.js for a PaymentIntent created by the stripe-payment Edge Function.
+ * Prefers the publishable key the Edge Function returned (it always matches
+ * the account that created the PaymentIntent) and falls back to
+ * NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY. Publishable keys are public by design.
+ */
+export function getStripeForPublishableKey(key?: string | null): Promise<Stripe | null> {
+  const resolved = key?.trim() || publishableKey.trim()
+  if (!resolved.startsWith('pk_')) return Promise.resolve(null)
+  if (resolved === publishableKey.trim()) return getStripe()
+  let promise = keyedStripePromises.get(resolved)
+  if (!promise) {
+    promise = loadStripe(resolved)
+    keyedStripePromises.set(resolved, promise)
+  }
+  return promise
+}

@@ -1,221 +1,216 @@
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
+import { notFound } from 'next/navigation'
 
-import { createClient } from '@/lib/supabase/server'
-import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
+import Footer from '@/components/Footer'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
-import { PlanWithBuddyCTA } from '@/components/detail/PlanWithBuddyCTA'
 import TrackView from '@/components/TrackView'
+import TourGetCta from '@/components/tours/TourGetCta'
+import {
+  APPROVED_ACTIVITY_PAGE_LIMIT,
+  activityDurationLabel,
+  activityPriceLabel,
+  approvedActivityCard,
+  factLabel,
+  getApprovedActivities,
+  isUuid,
+  sourceAsOfLabel,
+  type ApprovedActivityRow,
+} from '@/lib/approved-activities'
+import { islandDisplayName } from '@/lib/island-config'
+import {
+  getCatalogTour,
+  getPreviewStops,
+  previewStopName,
+  previewStopSummary,
+  tourDurationLabel,
+  tourPriceLabel,
+  tourStopCountLabel,
+  type SelfGuidedCatalogTour,
+  type TourPreviewStop,
+} from '@/lib/self-guided-tours'
+import { createClient } from '@/lib/supabase/server'
 
 export const revalidate = 300
-
-interface TourStop {
-  id: string
-  sequence: number
-  name: string
-  description: string | null
-  lat: number
-  lng: number
-  audio_url: string | null
-  image_urls: string[]
-  duration_sec: number | null
-}
-
-interface Tour {
-  id: string
-  title: string
-  island: string
-  theme: string | null
-  estimated_duration: number | null
-  difficulty: string | null
-  cover_image_url: string | null
-  cruise_friendly: boolean
-  featured: boolean
-}
 
 interface PageProps {
   params: { id: string }
 }
 
-async function getTour(id: string): Promise<Tour | null> {
+const isSelfTour = (row: ApprovedActivityRow) => row.source_layer === 'self_tours'
+
+async function getApprovedTour(id: string): Promise<ApprovedActivityRow | null> {
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('self_tours')
-      .select('id, title, island, theme, estimated_duration, difficulty, cover_image_url, cruise_friendly, featured')
-      .eq('id', id)
-      .eq('is_active', true)
-      .single()
-    return data as Tour | null
+    // Island guide tiles link by activity id, which the RPC matches exactly.
+    if (isUuid(id)) {
+      const [row] = await getApprovedActivities(supabase, { activityId: id, limit: 1 })
+      if (row && isSelfTour(row)) return row
+    }
+    // Older links carry the self_tours record id, which the RPC cannot filter
+    // on, so search its full page rather than a partial one.
+    const rows = await getApprovedActivities(supabase, { limit: APPROVED_ACTIVITY_PAGE_LIMIT })
+    return rows.find((row) => isSelfTour(row) && row.source_record_id === id) ?? null
   } catch {
     return null
   }
 }
 
-async function getTourStops(tourId: string): Promise<TourStop[]> {
+interface TourPageData {
+  approved: ApprovedActivityRow | null
+  /** v_self_guided_catalog row: price, stops and the purchasable tour id. */
+  catalog: SelfGuidedCatalogTour | null
+  previewStops: TourPreviewStop[]
+}
+
+async function getTour(id: string): Promise<TourPageData | null> {
+  const approved = await getApprovedTour(id)
+  // The approved projection's source_record_id is the self_tours id. Catalog
+  // links (/tours) use that id directly, so fall back to it.
+  const selfTourId = approved?.source_record_id ?? id
+  let catalog: SelfGuidedCatalogTour | null = null
+  let previewStops: TourPreviewStop[] = []
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('tour_stops')
-      .select('id, sequence, name, description, lat, lng, audio_url, image_urls, duration_sec')
-      .eq('tour_id', tourId)
-      .order('sequence', { ascending: true })
-    return (data as TourStop[]) ?? []
+    catalog = await getCatalogTour(supabase, selfTourId)
+    if (catalog) previewStops = await getPreviewStops(supabase, catalog)
   } catch {
-    return []
+    catalog = null
   }
-}
-
-function formatDuration(minutes: number | null): string {
-  if (!minutes) return 'Varies'
-  if (minutes < 60) return `${minutes} min`
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return m > 0 ? `${h}h ${m}m` : `${h}h`
-}
-
-const DIFFICULTY_COLORS: Record<string, string> = {
-  easy: 'bg-green-100 text-green-800',
-  moderate: 'bg-yellow-100 text-yellow-800',
-  challenging: 'bg-orange-100 text-orange-800',
+  if (!approved && !catalog) return null
+  return { approved, catalog, previewStops }
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const tour = await getTour(params.id)
-  if (!tour) notFound()
-
+  const data = await getTour(params.id)
+  if (!data) notFound()
+  const name = data.approved?.name ?? data.catalog?.title ?? 'Self-guided tour'
   return {
-    title: `${tour.title} — Self-Guided Tour`,
-    description: `Explore ${tour.island} with this ${tour.theme ?? 'self-guided'} walking tour. ${tour.estimated_duration ? formatDuration(tour.estimated_duration) + ' estimated.' : ''}`,
+    title: `${name} — Self-Guided Tour`,
+    description: data.approved?.description ?? `Self-guided tour: ${name}.`,
   }
 }
 
 export default async function TourDetailPage({ params }: PageProps) {
-  const tour = await getTour(params.id)
-  if (!tour) notFound()
+  const data = await getTour(params.id)
+  if (!data) notFound()
+  const { approved: tour, catalog, previewStops } = data
 
-  const stops = await getTourStops(tour.id)
+  const name = tour?.name ?? catalog?.title ?? 'Self-guided tour'
+  const description = tour?.description ?? undefined
+  const islandSlug = tour?.island_slug ?? catalog?.island ?? null
+  const photoUrl = (tour ? approvedActivityCard(tour).photo_url : null) ?? catalog?.cover_image_url ?? null
+  const remainingStops = catalog?.stop_count != null ? Math.max(catalog.stop_count - previewStops.length, 0) : 0
+
+  const facts: Array<readonly [string, string | null]> = [
+    ['Island', islandSlug ? islandDisplayName(islandSlug) : null],
+    ['Duration', tourDurationLabel(catalog?.duration_minutes) ?? (tour ? activityDurationLabel(tour.duration) : null)],
+    ['Stops', tourStopCountLabel(catalog?.stop_count)],
+    ['Price', catalog ? tourPriceLabel(catalog.price_cents, catalog.currency) : tour ? activityPriceLabel(tour.price_basis, tour.booking_quote_state) : null],
+    ...(tour
+      ? ([
+          ['Meeting / pickup', factLabel(tour.meeting_pickup)],
+          ['Group / age limits', factLabel(tour.group_age_limits)],
+          ['Safety / access', factLabel(tour.safety_access)],
+          ['Cancellation', factLabel(tour.cancellation)],
+          ['Source status', sourceAsOfLabel(tour.source_checked_at, tour.source_recheck_at)],
+        ] as const)
+      : []),
+  ]
 
   return (
     <div className="min-h-screen bg-white">
-      <TrackView event="tour_viewed" props={{ tour_id: tour.id, tour_title: tour.title, island: tour.island }} />
+      <TrackView event="tour_viewed" props={{ tour_id: catalog?.id ?? tour?.source_record_id ?? params.id, tour_title: name, island: islandSlug }} />
 
       <CompactPageHeader
         eyebrow="Self-guided tour"
-        title={tour.title}
-        subtitle={`${tour.theme ?? 'Walking tour'} on ${tour.island}`}
+        title={name}
+        subtitle={description}
         crumbs={[
           { href: '/', label: 'Home' },
-          { href: '/explore', label: 'Explore' },
-          { label: tour.title },
+          { href: '/tours', label: 'Self-guided tours' },
+          { label: name },
         ]}
-      >
-        <div className="flex flex-wrap items-center gap-2">
-          {tour.estimated_duration && (
-            <span className="rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-bold text-charcoal">
-              {formatDuration(tour.estimated_duration)}
-            </span>
-          )}
-          {tour.difficulty && (
-            <span className={`rounded-full px-3 py-1 text-xs font-bold ${DIFFICULTY_COLORS[tour.difficulty] ?? 'bg-gray-100 text-gray-800'}`}>
-              {tour.difficulty}
-            </span>
-          )}
-          {tour.cruise_friendly && (
-            <span className="rounded-full border border-brand-200 bg-brand-50 px-3 py-1 text-xs font-bold text-brand-800">
-              Cruise-friendly
-            </span>
-          )}
-        </div>
-      </CompactPageHeader>
+      />
 
-      <main className="max-w-4xl mx-auto px-4 py-10">
+      <main className="mx-auto max-w-4xl px-4 py-10">
         <ImageWithSourcePolicy
-          src={tour.cover_image_url}
-          alt={tour.title}
-          title={tour.title}
+          src={photoUrl}
+          alt={name}
+          title={name}
           eyebrow="Tour"
           tone="activity"
-          className="mb-10 h-64 rounded-baha-xl border border-gray-200 shadow-sm sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]"
+          className="mb-8 h-64 rounded-baha-xl border border-gray-200 shadow-sm sm:aspect-[16/7] sm:h-auto sm:min-h-[240px]"
           imageClassName="object-cover"
           sizes="(max-width: 768px) 100vw, 900px"
           priority
         />
 
-        {stops.length > 0 ? (
-          <section>
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              {stops.length} {stops.length === 1 ? 'Stop' : 'Stops'}
-            </h2>
-            <div className="relative">
-              <div className="absolute left-5 top-0 bottom-0 w-px bg-gray-200" aria-hidden="true" />
-              <ol className="space-y-6">
-                {stops.map((stop, idx) => (
-                  <li key={stop.id} className="relative pl-12">
-                    <div className="absolute left-3 top-1 flex h-5 w-5 items-center justify-center rounded-md bg-brand-600 text-xs font-bold text-white ring-4 ring-white">
-                      {idx + 1}
-                    </div>
-                    <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className="text-base font-bold text-gray-900">{stop.name}</h3>
-                        {stop.duration_sec && (
-                          <span className="flex-shrink-0 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-semibold text-charcoal">
-                            {Math.ceil(stop.duration_sec / 60)} min
-                          </span>
-                        )}
-                      </div>
-                      {stop.description && (
-                        <p className="text-sm text-gray-600 leading-relaxed mb-3">{stop.description}</p>
-                      )}
-                      {stop.image_urls.length > 0 && (
-                        <div className="flex gap-2 overflow-x-auto pb-1">
-                          {stop.image_urls.slice(0, 3).map((url, imgIdx) => (
-                            <div key={url} className="relative h-24 w-32 flex-shrink-0 rounded-xl overflow-hidden bg-stone-100">
-                              <Image
-                                src={url}
-                                alt={`${stop.name} — photo ${imgIdx + 1}`}
-                                fill
-                                className="object-cover"
-                                sizes="128px"
-                                unoptimized
-                              />
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ol>
-            </div>
-          </section>
-        ) : (
-          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-8 text-center">
-            <p className="text-sm text-gray-500">Tour stops are being prepared. Check back soon.</p>
+        <section className="rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
+          <h2 className="text-lg font-bold text-night">Tour details</h2>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            {facts.map(([label, value]) => (
+              <div key={label}>
+                <dt className="text-sm font-bold text-night">{label}</dt>
+                <dd className="mt-1 text-sm text-charcoal">{value ?? 'Not listed'}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+
+        {catalog && (
+          <div className="mt-6">
+            <TourGetCta
+              tourId={catalog.id}
+              title={name}
+              priceCents={catalog.price_cents}
+              currency={catalog.currency}
+            />
           </div>
         )}
 
-        <div className="mt-12">
-          <PlanWithBuddyCTA
-            kind="experience"
-            planPrompt={`Help me plan around the "${tour.title}" tour on ${tour.island}`}
-            addPrompt={`Tell me more about the ${tour.title} self-guided tour`}
-          />
-        </div>
+        {previewStops.length > 0 ? (
+          <section aria-labelledby="tour-preview-heading" className="mt-6 rounded-baha-lg border border-gray-200 bg-white p-5 shadow-sm">
+            <h2 id="tour-preview-heading" className="text-lg font-bold text-night">Preview the first stops</h2>
+            <ol className="mt-4 space-y-4">
+              {previewStops.map((stop, index) => {
+                const summary = previewStopSummary(stop)
+                return (
+                  <li key={stop.id} className="flex gap-3">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-50 text-sm font-bold text-brand-700">
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-night">{previewStopName(stop.name)}</p>
+                      {summary && <p className="mt-1 line-clamp-2 text-sm text-charcoal">{summary}</p>}
+                    </div>
+                  </li>
+                )
+              })}
+            </ol>
+            {remainingStops > 0 && (
+              <p className="mt-4 text-sm text-gray-600">
+                {remainingStops} more {remainingStops === 1 ? 'stop' : 'stops'} with directions and narration in the Baha Buddy app.
+              </p>
+            )}
+          </section>
+        ) : (
+          <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+            <h2 className="font-bold text-amber-950">Route map not available yet</h2>
+            <p className="mt-2 text-sm text-amber-900">
+              A stop-by-stop route and map for this tour are not available yet. Check opening times and transport before you set out.
+            </p>
+          </section>
+        )}
 
         <div className="mt-10">
           <Link
-            href={`/explore/island/${tour.island}`}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-600 hover:text-brand-700 transition-colors"
+            href={tour ? `/explore/island/${tour.island_slug}` : '/tours'}
+            className="inline-flex text-sm font-semibold text-brand-600 hover:text-brand-700"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to island guide
+            {tour ? 'Back to island guide' : 'All self-guided tours'}
           </Link>
         </div>
       </main>

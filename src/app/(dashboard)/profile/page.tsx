@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import ProfileForm from '@/components/profile/ProfileForm'
@@ -82,6 +83,14 @@ export default async function ProfilePage() {
           </div>
           <SignOutButton />
         </div>
+        <nav aria-label="Account" className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-4">
+          <Link href="/profile/tours" className="inline-flex min-h-10 items-center rounded-full border border-gray-200 px-4 text-sm font-semibold text-night hover:border-brand-600 hover:text-brand-700">
+            My tours
+          </Link>
+          <Link href="/profile/bookings" className="inline-flex min-h-10 items-center rounded-full border border-gray-200 px-4 text-sm font-semibold text-night hover:border-brand-600 hover:text-brand-700">
+            My bookings
+          </Link>
+        </nav>
       </section>
 
       {/* Editable preferences */}

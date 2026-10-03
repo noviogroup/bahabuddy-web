@@ -17,15 +17,29 @@ import { MetadataRoute } from 'next'
 import { fetchAllArticleSlugs } from '@/lib/sanity/queries'
 import { ISLAND_CONFIGS } from '@/lib/island-config'
 import { createClient } from '@/lib/supabase/server'
+import { approvedActivityDetailHref, getApprovedActivities } from '@/lib/approved-activities'
+import { getExplorePlaces } from '@/lib/places'
 
-async function fetchPlaceIds(): Promise<string[]> {
+/** Public activity detail paths. The dashboard's /activities/[id] copy is
+ * behind sign-in, so crawlers are sent to /explore/activities/[id]. */
+async function fetchActivityPaths(): Promise<string[]> {
   try {
     const supabase = await createClient()
-    const { data } = await supabase
-      .from('bahamas_attractions')
-      .select('id')
-      .limit(500)
-    return data?.map((d: { id: string }) => d.id) ?? []
+    const data = await getApprovedActivities(supabase, { limit: 100 })
+    return data.map((row) => approvedActivityDetailHref(row.activity_id))
+  } catch {
+    return []
+  }
+}
+
+/** Public catalog detail paths (canonical hotels, restaurants and
+ * attractions at /explore/places/<slug>), same gates as /explore/places. */
+async function fetchPlacePaths(): Promise<string[]> {
+  try {
+    const places = await getExplorePlaces(500)
+    return places
+      .map((place) => place.detail_href)
+      .filter((href): href is string => typeof href === 'string' && href.startsWith('/'))
   } catch {
     return []
   }
@@ -35,9 +49,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://bahabuddy.app'
   const now = new Date()
 
-  const [articleSlugs, placeIds] = await Promise.all([
+  const [articleSlugs, activityPaths, placePaths] = await Promise.all([
     fetchAllArticleSlugs(),
-    fetchPlaceIds(),
+    fetchActivityPaths(),
+    fetchPlacePaths(),
   ])
 
   const guidePages: MetadataRoute.Sitemap = articleSlugs.map((slug) => ({
@@ -54,8 +69,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.85,
   }))
 
-  const placePages: MetadataRoute.Sitemap = placeIds.map((id) => ({
-    url: `${baseUrl}/explore/places/${id}`,
+  const detailPaths = Array.from(new Set([...activityPaths, ...placePaths]))
+  const activityPages: MetadataRoute.Sitemap = detailPaths.map((path) => ({
+    url: `${baseUrl}${path}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.7,
@@ -71,6 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/destinations', changeFrequency: 'weekly', priority: 0.9 },
     { path: '/guides', changeFrequency: 'weekly', priority: 0.8 },
     { path: '/nassau-cruise-itineraries', changeFrequency: 'weekly', priority: 0.75 },
+    { path: '/tours', changeFrequency: 'weekly', priority: 0.7 },
     { path: '/nassau-cruise-day-planner', changeFrequency: 'weekly', priority: 0.7 },
     { path: '/build-my-cruise-day', changeFrequency: 'weekly', priority: 0.65 },
     { path: '/deals', changeFrequency: 'daily', priority: 0.75 },
@@ -96,7 +113,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...staticPages,
     ...islandPages,
-    ...placePages,
+    ...activityPages,
     ...guidePages,
   ]
 }

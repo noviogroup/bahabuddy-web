@@ -7,7 +7,7 @@ import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Payment confirmed | Baha Buddy',
+  title: 'Payment confirmed',
   robots: { index: false },
 }
 

@@ -106,7 +106,9 @@ function InnerForm({
   const formattedAmount = new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: currency.toUpperCase(),
-    maximumFractionDigits: 0,
+    // Whole-dollar bookings stay "$220"; small tour prices keep cents ("$4.99").
+    minimumFractionDigits: amountCents % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: amountCents % 100 === 0 ? 0 : 2,
   }).format(amountCents / 100)
 
   const onSubmit = async (e: React.FormEvent) => {
