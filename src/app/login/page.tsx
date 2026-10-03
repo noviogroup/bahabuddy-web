@@ -27,6 +27,7 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { BahaLogo } from '@/components/ui'
 import { track } from '@/lib/analytics'
+import { safeRelativePath } from '@/lib/safe-redirect'
 
 type Mode = 'signin' | 'signup'
 type Method = 'password' | 'magic'
@@ -35,7 +36,9 @@ function AuthForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const initialMode: Mode = searchParams.get('mode') === 'signup' ? 'signup' : 'signin'
-  const redirectParam = searchParams.get('redirect') ?? '/dashboard'
+  // Only same-origin relative paths are honoured; anything else (//host,
+  // /\host, javascript:, absolute URLs) falls back to /dashboard.
+  const redirectParam = safeRelativePath(searchParams.get('redirect'))
 
   const [mode, setMode] = useState<Mode>(initialMode)
   const [method, setMethod] = useState<Method>('password')

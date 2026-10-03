@@ -39,18 +39,24 @@ const getActivity = requestCache(async (id: string) => {
 })
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  let result: Awaited<ReturnType<typeof getActivity>>
   try {
-    const { approved } = await getActivity(params.id)
-    const activity = approved[0]
-    if (!activity) return {}
-    const island = islandDisplayName(activity.island_slug)
-    return {
-      title: `${activity.name}${island ? ` — ${island}` : ''} | Baha Buddy`,
-      description: activity.description.slice(0, 160),
-      alternates: { canonical: approvedActivityDetailHref(activity.activity_id) },
-    }
+    result = await getActivity(params.id)
   } catch {
     return {}
+  }
+  const activity = result.approved[0]
+  if (!activity) {
+    // Canonical attraction ids redirect in the page; anything else is a real 404.
+    if (result.canonical[0]) return {}
+    notFound()
+  }
+  const island = islandDisplayName(activity.island_slug)
+  return {
+    // The root layout template appends "| Baha Buddy".
+    title: `${activity.name}${island ? ` — ${island}` : ''}`,
+    description: activity.description.slice(0, 160),
+    alternates: { canonical: approvedActivityDetailHref(activity.activity_id) },
   }
 }
 

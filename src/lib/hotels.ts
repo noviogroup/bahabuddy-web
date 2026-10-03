@@ -178,6 +178,48 @@ function providerData(value: unknown): unknown {
   return record.data ?? value;
 }
 
+/** Display-only provider lookups must never hold SSR hostage. */
+export const DISPLAY_PROVIDER_TIMEOUT_MS = 4000;
+const HOTEL_PHOTO_CACHE_SECONDS = 60 * 60 * 24;
+
+/**
+ * Rejects when `promise` has not settled within `ms`. callTravelProvider does
+ * not accept an AbortSignal yet, so this bounds how long a render waits; the
+ * underlying request is simply abandoned.
+ */
+export function withProviderTimeout<T>(
+  promise: Promise<T>,
+  ms = DISPLAY_PROVIDER_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`Provider lookup timed out after ${ms}ms`)),
+      ms,
+    );
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  });
+}
+
+// Throws on provider failure so unstable_cache never stores a transient
+// error as an empty gallery for 24 hours.
+const getCachedLiveHotelPhotoUrls = unstable_cache(
+  async (hotelId: string, limit: number): Promise<string[]> => {
+    const result = await withProviderTimeout(
+      callTravelProvider(
+        `/data/hotel?hotelId=${encodeURIComponent(hotelId)}`,
+        null,
+        { method: "GET" },
+      ),
+    );
+    return extractHotelImageUrls(providerData(result.data), limit);
+  },
+  ["hotel-live-photo-urls"],
+  { revalidate: HOTEL_PHOTO_CACHE_SECONDS, tags: ["hotels", "hotel-photos"] },
+);
+
 export async function getLiveHotelPhotoUrls(
   hotelId: string,
   limit = 30,
@@ -185,13 +227,7 @@ export async function getLiveHotelPhotoUrls(
   if (!hotelId) return [];
 
   try {
-    const result = await callTravelProvider(
-      `/data/hotel?hotelId=${encodeURIComponent(hotelId)}`,
-      null,
-      { method: "GET" },
-    );
-
-    return extractHotelImageUrls(providerData(result.data), limit);
+    return await getCachedLiveHotelPhotoUrls(hotelId, limit);
   } catch {
     return [];
   }
@@ -218,10 +254,12 @@ async function getLiveHotelReviews(
   if (!hotelId) return [];
 
   try {
-    const result = await callTravelProvider(
-      `/data/reviews?hotelId=${encodeURIComponent(hotelId)}&limit=${Math.max(limit, 5)}`,
-      null,
-      { method: "GET" },
+    const result = await withProviderTimeout(
+      callTravelProvider(
+        `/data/reviews?hotelId=${encodeURIComponent(hotelId)}&limit=${Math.max(limit, 5)}`,
+        null,
+        { method: "GET" },
+      ),
     );
     const data = providerData(result.data);
     const reviews = Array.isArray(data) ? data : [];
@@ -491,31 +529,34 @@ export async function getStayStartingRates(input: {
     chunks.push(hotelIds.slice(i, i + HOTEL_RATE_LOOKUP_CHUNK_SIZE));
   }
 
-  // Chunks are independent provider calls: run them together. A failed
-  // chunk only drops its own hotels' rates.
+  // Chunks are independent provider calls: run them together, each bounded
+  // by the display timeout. A failed or slow chunk only drops its own
+  // hotels' rates.
   const chunkRates = await Promise.all(
     chunks.map(async (chunk) => {
       try {
-        const result = await callTravelProvider("/hotels/rates", {
-          hotelIds: chunk,
-          checkin: input.checkin,
-          checkout: input.checkout,
-          occupancies: [
-            {
-              adults: Math.max(1, input.adults ?? 2),
-              ...(input.children && input.children > 0
-                ? {
-                    children: Array.from(
-                      { length: input.children },
-                      () => 10,
-                    ),
-                  }
-                : {}),
-            },
-          ],
-          currency: (input.currency ?? "USD").toUpperCase(),
-          guestNationality: (input.guestNationality ?? "US").toUpperCase(),
-        });
+        const result = await withProviderTimeout(
+          callTravelProvider("/hotels/rates", {
+            hotelIds: chunk,
+            checkin: input.checkin,
+            checkout: input.checkout,
+            occupancies: [
+              {
+                adults: Math.max(1, input.adults ?? 2),
+                ...(input.children && input.children > 0
+                  ? {
+                      children: Array.from(
+                        { length: input.children },
+                        () => 10,
+                      ),
+                    }
+                  : {}),
+              },
+            ],
+            currency: (input.currency ?? "USD").toUpperCase(),
+            guestNationality: (input.guestNationality ?? "US").toUpperCase(),
+          }),
+        );
         return shapeHotelStartingRates(result.data, nights);
       } catch {
         return [];
@@ -665,7 +706,7 @@ const getCachedAmenityOptions = unstable_cache(
       .slice(0, limit)
       .map((item) => item.label);
   },
-  ["stays-amenity-options-v1"],
+  ["hotel-amenity-options"],
   { revalidate: HOTEL_CATALOG_REVALIDATE_SECONDS, tags: HOTEL_CATALOG_TAGS },
 );
 
@@ -788,7 +829,7 @@ const getCachedIslandOptions = unstable_cache(
       ),
     ).sort();
   },
-  ["stays-island-options-v1"],
+  ["hotel-island-options"],
   { revalidate: HOTEL_CATALOG_REVALIDATE_SECONDS, tags: HOTEL_CATALOG_TAGS },
 );
 
@@ -827,7 +868,7 @@ const getCachedCityOptions = unstable_cache(
       ),
     ).sort();
   },
-  ["stays-city-options-v1"],
+  ["hotel-city-options"],
   { revalidate: HOTEL_CATALOG_REVALIDATE_SECONDS, tags: HOTEL_CATALOG_TAGS },
 );
 
@@ -862,6 +903,6 @@ const getCachedPropertyTypeNames = unstable_cache(
       ),
     ).sort();
   },
-  ["stays-property-types-v1"],
+  ["hotel-property-type-options"],
   { revalidate: HOTEL_CATALOG_REVALIDATE_SECONDS, tags: HOTEL_CATALOG_TAGS },
 );

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from 'react'
+import { FormEvent, type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js'
 import { loadStripe, type Stripe } from '@stripe/stripe-js'
 import {
@@ -29,7 +29,8 @@ import {
 } from '@/lib/flight-seat-map'
 
 type TripOption = { id: string; name: string }
-type CheckoutStage = 'details' | 'addOns' | 'payment' | 'processing' | 'error'
+// 'paid_needs_support' is terminal: payment was taken, so checkout forms stay hidden.
+type CheckoutStage = 'details' | 'addOns' | 'payment' | 'processing' | 'error' | 'paid_needs_support'
 
 export type FlightTravelerProfileDefaults = {
   firstName?: string
@@ -101,6 +102,18 @@ export default function FlightOfferBookingClient({
   const [selectedAncillaries, setSelectedAncillaries] = useState<Record<string, Record<number, FlightAncillary>>>({})
   const [attachedServiceSelectionKey, setAttachedServiceSelectionKey] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [paidSupport, setPaidSupport] = useState<{ paymentReference: string; message: string } | null>(null)
+  const errorRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (error) errorRef.current?.focus()
+  }, [error])
+
+  function markPaidNeedsSupport(state: { paymentReference: string; message: string }) {
+    setPaidSupport(state)
+    setError(null)
+    setStage('paid_needs_support')
+  }
   const leadTraveler = travelers[0] ?? emptyTraveler
   const requiresFreshSearch = !summary
   const seatMaps = useMemo(() => normalizeFlightSeatMaps(prebook?.seat_maps ?? prebook), [prebook])
@@ -249,7 +262,9 @@ export default function FlightOfferBookingClient({
         ? 'Verifying fare'
         : stage === 'error'
           ? 'Review required'
-          : 'Traveler details'
+          : stage === 'paid_needs_support'
+            ? 'Support follow-up'
+            : 'Traveler details'
 
   return (
     <main className="min-h-screen bg-white px-4 py-6 text-night md:py-8">
@@ -297,10 +312,43 @@ export default function FlightOfferBookingClient({
               <FlightFareSummary summary={summary} />
             </div>
 
-            {error && (
-              <div className="rounded-2xl bg-coral-50 p-4 text-sm font-medium text-coral-800 ring-1 ring-coral-200">
-                {error}
-              </div>
+            <div
+              ref={errorRef}
+              role="alert"
+              tabIndex={-1}
+              className={error ? 'rounded-2xl bg-coral-50 p-4 text-sm font-medium text-coral-800 ring-1 ring-coral-200 focus:outline-none' : 'sr-only'}
+            >
+              {error}
+            </div>
+
+            {stage === 'paid_needs_support' && paidSupport && (
+              <section role="status" className="rounded-baha-lg border border-gold-300 bg-gold-50 p-5 shadow-sm md:p-6">
+                <p className="text-xs font-bold uppercase text-charcoal">
+                  Payment received
+                </p>
+                <h2 className="mt-2 text-2xl font-bold text-night">
+                  Our team is finishing this booking with you
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-charcoal">
+                  {paidSupport.message}
+                </p>
+                <p className="mt-3 text-sm font-semibold text-night">
+                  Payment reference: <span className="font-mono text-xs">{paidSupport.paymentReference}</span>
+                </p>
+                <p className="mt-2 text-sm leading-6 text-charcoal">
+                  Please do not pay again. Email{' '}
+                  <a className="font-bold text-brand-700 underline" href={`mailto:support@bahabuddy.com?subject=${encodeURIComponent(`Flight booking ${paidSupport.paymentReference}`)}`}>support@bahabuddy.com</a>{' '}
+                  with this reference and we will confirm your flight or arrange a refund.
+                </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href={tripId ? `/trip/${encodeURIComponent(tripId)}` : '/dashboard'}
+                    className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-5 py-2.5 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-700"
+                  >
+                    View my trip
+                  </Link>
+                </div>
+              </section>
             )}
 
             {trips.length === 0 && (
@@ -350,13 +398,13 @@ export default function FlightOfferBookingClient({
                     </TravelSearchSelect>
                   </Field>
                   <Field label="Email" htmlFor="flight-email">
-                    <TravelSearchInput id="flight-email" type="email" value={leadTraveler.email} onChange={(e) => updateTraveler(0, 'email', e.target.value)} required />
+                    <TravelSearchInput id="flight-email" type="email" autoComplete="email" value={leadTraveler.email} onChange={(e) => updateTraveler(0, 'email', e.target.value)} required />
                   </Field>
                   <Field label="Phone country code" htmlFor="flight-phone-country-code">
-                    <TravelSearchInput id="flight-phone-country-code" value={leadTraveler.phoneCountryCode} onChange={(e) => updateTraveler(0, 'phoneCountryCode', e.target.value)} required />
+                    <TravelSearchInput id="flight-phone-country-code" autoComplete="tel-country-code" inputMode="tel" value={leadTraveler.phoneCountryCode} onChange={(e) => updateTraveler(0, 'phoneCountryCode', e.target.value)} required />
                   </Field>
                   <Field label="Phone number" htmlFor="flight-phone-number">
-                    <TravelSearchInput id="flight-phone-number" value={leadTraveler.phoneNumber} onChange={(e) => updateTraveler(0, 'phoneNumber', e.target.value)} required />
+                    <TravelSearchInput id="flight-phone-number" type="tel" inputMode="tel" autoComplete="tel-national" value={leadTraveler.phoneNumber} onChange={(e) => updateTraveler(0, 'phoneNumber', e.target.value)} required />
                   </Field>
                 </div>
 
@@ -386,13 +434,13 @@ export default function FlightOfferBookingClient({
                         </div>
                         <div className="grid gap-4 sm:grid-cols-2">
                           <Field label={`${prefix}first name`} htmlFor={`flight-traveler-${index}-first-name`}>
-                            <TravelSearchInput id={`flight-traveler-${index}-first-name`} value={item.firstName} onChange={(e) => updateTraveler(index, 'firstName', e.target.value)} required />
+                            <TravelSearchInput id={`flight-traveler-${index}-first-name`} autoComplete={index === 0 ? 'given-name' : 'off'} value={item.firstName} onChange={(e) => updateTraveler(index, 'firstName', e.target.value)} required />
                           </Field>
                           <Field label={`${prefix}last name`} htmlFor={`flight-traveler-${index}-last-name`}>
-                            <TravelSearchInput id={`flight-traveler-${index}-last-name`} value={item.lastName} onChange={(e) => updateTraveler(index, 'lastName', e.target.value)} required />
+                            <TravelSearchInput id={`flight-traveler-${index}-last-name`} autoComplete={index === 0 ? 'family-name' : 'off'} value={item.lastName} onChange={(e) => updateTraveler(index, 'lastName', e.target.value)} required />
                           </Field>
                           <Field label={`${prefix}date of birth`} htmlFor={`flight-traveler-${index}-birthday`}>
-                            <TravelSearchInput id={`flight-traveler-${index}-birthday`} type="date" value={item.birthday} onChange={(e) => updateTraveler(index, 'birthday', e.target.value)} required />
+                            <TravelSearchInput id={`flight-traveler-${index}-birthday`} type="date" autoComplete={index === 0 ? 'bday' : 'off'} value={item.birthday} onChange={(e) => updateTraveler(index, 'birthday', e.target.value)} required />
                           </Field>
                           <Field label={`${prefix}gender`} htmlFor={`flight-traveler-${index}-gender`}>
                             <TravelSearchSelect id={`flight-traveler-${index}-gender`} value={item.gender} onChange={(e) => updateTraveler(index, 'gender', e.target.value)}>
@@ -452,7 +500,7 @@ export default function FlightOfferBookingClient({
                   transactionId={transactionId}
                   summary={summary}
                   setError={setError}
-                  setStage={setStage}
+                  onPaidNeedsSupport={markPaidNeedsSupport}
                 />
               </Elements>
             )}
@@ -1326,7 +1374,7 @@ function FlightPaymentForm({
   transactionId,
   summary,
   setError,
-  setStage,
+  onPaidNeedsSupport,
 }: {
   tripId: string
   offerId: string
@@ -1334,26 +1382,28 @@ function FlightPaymentForm({
   transactionId: string
   summary?: FlightCheckoutSummary
   setError: (value: string | null) => void
-  setStage: (value: CheckoutStage) => void
+  onPaidNeedsSupport: (state: { paymentReference: string; message: string }) => void
 }) {
   const stripe = useStripe()
   const elements = useElements()
   const [acceptedTerms, setAcceptedTerms] = useState(false)
+  // Local state only: <Elements>/<PaymentElement> must stay mounted while Stripe confirms.
+  const [submitting, setSubmitting] = useState(false)
 
   async function submitPayment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!stripe || !elements) return
+    if (!stripe || !elements || submitting) return
     if (!acceptedTerms) {
       setError('Accept the Terms & Conditions and carrier fare rules before payment.')
       return
     }
-    setStage('processing')
+    setSubmitting(true)
     setError(null)
 
     const { error, paymentIntent } = await stripe.confirmPayment({ elements, redirect: 'if_required' })
     if (error || paymentIntent?.status !== 'succeeded') {
       setError(error?.message ?? 'Payment was not completed.')
-      setStage('payment')
+      setSubmitting(false)
       return
     }
 
@@ -1373,8 +1423,13 @@ function FlightPaymentForm({
       })
       window.location.href = `/flights/${encodeURIComponent(offerId)}/confirmation?${params.toString()}`
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Payment succeeded, but the booking needs support. Contact support with your payment reference.')
-      setStage('error')
+      setSubmitting(false)
+      onPaidNeedsSupport({
+        paymentReference: paymentIntent.id ?? transactionId,
+        message: err instanceof Error && err.message
+          ? err.message
+          : 'Payment succeeded, but the booking needs support. Contact support with your payment reference.',
+      })
     }
   }
 
@@ -1408,8 +1463,8 @@ function FlightPaymentForm({
           </p>
         </div>
       </div>
-      <button type="submit" disabled={!stripe || !elements || !acceptedTerms} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60">
-        Pay and confirm flight
+      <button type="submit" disabled={!stripe || !elements || !acceptedTerms || submitting} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-600 px-5 py-3 font-semibold text-white shadow-sm transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60">
+        {submitting ? 'Confirming payment...' : 'Pay and confirm flight'}
       </button>
     </form>
   )

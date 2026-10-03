@@ -29,8 +29,10 @@ vi.mock('@/components/revenue/TravelDocumentLeadForm', () => ({
   default: () => <form data-testid="travel-document-lead-form" />,
 }))
 
+type MockConciergeOrderPayload = Record<string, unknown> | Array<Record<string, unknown>>
+
 class MockConciergeOrderQuery {
-  constructor(private readonly payload: Record<string, unknown> | Array<Record<string, unknown>>) {}
+  constructor(private readonly payload: MockConciergeOrderPayload) {}
 
   select = vi.fn(() => this)
   eq = vi.fn(() => this)
@@ -40,8 +42,8 @@ class MockConciergeOrderQuery {
     error: null,
   }))
 
-  then<TResult1 = { data: typeof this.payload; error: null }, TResult2 = never>(
-    onfulfilled?: ((value: { data: typeof this.payload; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
+  then<TResult1 = { data: MockConciergeOrderPayload; error: null }, TResult2 = never>(
+    onfulfilled?: ((value: { data: MockConciergeOrderPayload; error: null }) => TResult1 | PromiseLike<TResult1>) | null,
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ) {
     return Promise.resolve({ data: this.payload, error: null }).then(onfulfilled, onrejected)
@@ -84,9 +86,11 @@ describe('concierge direct actions', () => {
     expect(container.innerHTML).not.toMatch(/min-h-\[88vh\]|bg-gradient-brand|border-sand|bg-sand|ring-sand|border-gold|ring-gold/)
   })
 
-  test('fallback Concierge success page sends users to dashboard instead of chat', () => {
+  test('fallback Concierge success page sends users to dashboard instead of chat', async () => {
+    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_x')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ payment_status: 'paid', status: 'complete' }), { status: 200 })))
     const { container } = render(
-      <ConciergeSuccessPage searchParams={{ session_id: 'cs_test_123', offer: 'concierge_trip_plan' }} />,
+      await ConciergeSuccessPage({ searchParams: { session_id: 'cs_test_123', offer: 'concierge_trip_plan' } }),
     )
 
     expect(screen.getByRole('heading', { name: 'Your Concierge Trip Plan payment was successful.' })).toBeInTheDocument()
@@ -95,6 +99,19 @@ describe('concierge direct actions', () => {
     expect(screen.queryByRole('link', { name: 'Continue planning with Buddy' })).not.toBeInTheDocument()
     expect(container.innerHTML).not.toContain('/dashboard/chat?intent=concierge')
     expectNoOldConciergeChrome(container)
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  test('Concierge success page does not claim payment until Stripe confirms it', async () => {
+    vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_x')
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ payment_status: 'unpaid', status: 'complete' }), { status: 200 })))
+    render(await ConciergeSuccessPage({ searchParams: { session_id: 'cs_test_456', offer: 'concierge_trip_plan' } }))
+
+    expect(screen.getByRole('heading', { name: 'We are confirming your Concierge Trip Plan payment.' })).toBeInTheDocument()
+    expect(screen.queryByText(/payment was successful/i)).not.toBeInTheDocument()
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
   })
 
   test('Concierge checkout uses compact neutral commerce layout', async () => {
@@ -188,6 +205,29 @@ describe('concierge direct actions', () => {
     expect(screen.queryByRole('link', { name: 'Continue planning with Buddy' })).not.toBeInTheDocument()
     expect(container.innerHTML).not.toContain('/dashboard/chat?intent=concierge')
     expect(container.innerHTML).not.toMatch(/bg-night|hover:bg-gray-900/)
+  })
+
+  test('dashboard Concierge order labels unpaid orders as due, not paid', async () => {
+    supabaseMocks.createClient.mockResolvedValue({
+      auth: {
+        getUser: vi.fn(async () => ({ data: { user: { id: 'user-1', email: 'traveler@example.com' } } })),
+      },
+      from: vi.fn(() => new MockConciergeOrderQuery({
+        id: 'order-2',
+        user_id: 'user-1',
+        offer_type: 'concierge_trip_plan',
+        status: 'checkout_started',
+        payment_status: 'unpaid',
+        price_usd: 149,
+      })),
+    })
+
+    render(await ConciergeOrderPage({ params: { orderId: 'order-2' }, searchParams: { session_id: 'cs_test_1' } }))
+
+    expect(screen.getByText('Amount due')).toBeInTheDocument()
+    expect(screen.queryByText('Amount paid')).not.toBeInTheDocument()
+    expect(screen.getByText(/We are confirming your payment with Stripe/)).toBeInTheDocument()
+    expect(screen.queryByText(/Payment confirmed/)).not.toBeInTheDocument()
   })
 
   test('dashboard payments and receipts use royal-blue primary actions', async () => {

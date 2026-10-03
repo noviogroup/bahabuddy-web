@@ -20,7 +20,7 @@
  * surface published documents.
  */
 
-import { safeFetch } from './client'
+import { safeFetch, strictFetch } from './client'
 import type {
   SanityArticleCard,
   SanityArticleFull,
@@ -105,6 +105,15 @@ export async function fetchFeaturedArticles(): Promise<SanityArticleCard[] | nul
  */
 export async function fetchArticleBySlug(slug: string): Promise<SanityArticleFull | null> {
   return safeFetch<SanityArticleFull>(ARTICLE_BY_SLUG_QUERY, { slug })
+}
+
+/**
+ * Detail-page variant of `fetchArticleBySlug`: throws when Sanity fails so a
+ * transient outage is not cached as a 404. Resolves null only when the
+ * article does not exist (or Sanity is unconfigured).
+ */
+export async function fetchArticleBySlugStrict(slug: string): Promise<SanityArticleFull | null> {
+  return strictFetch<SanityArticleFull>(ARTICLE_BY_SLUG_QUERY, { slug })
 }
 
 /**

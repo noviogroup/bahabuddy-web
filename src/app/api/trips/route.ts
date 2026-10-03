@@ -1,5 +1,22 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { isDateOnlyString } from '@/lib/trips/trip-field-validation'
+
+const TIME_SLOTS = new Set(['morning', 'afternoon', 'evening'])
+const MAX_ACTIVITIES = 100
+
+function isValidActivity(value: unknown): value is ActivityItem {
+  if (!value || typeof value !== 'object') return false
+  const a = value as Record<string, unknown>
+  return (
+    typeof a.dayNumber === 'number' && Number.isInteger(a.dayNumber) && a.dayNumber >= 1 && a.dayNumber <= 60 &&
+    typeof a.timeSlot === 'string' && TIME_SLOTS.has(a.timeSlot) &&
+    typeof a.activityName === 'string' && a.activityName.trim().length > 0 && a.activityName.length <= 200 &&
+    (a.activityType === undefined || a.activityType === null || typeof a.activityType === 'string') &&
+    (a.notes === undefined || a.notes === null || (typeof a.notes === 'string' && a.notes.length <= 2000)) &&
+    typeof a.sortOrder === 'number' && Number.isFinite(a.sortOrder)
+  )
+}
 
 interface ActivityItem {
   dayNumber: number
@@ -15,7 +32,7 @@ interface CreateTripBody {
   destination: string
   startDate: string | null
   endDate: string | null
-  activities: ActivityItem[]
+  activities?: ActivityItem[]
 }
 
 export async function POST(request: Request) {
@@ -33,10 +50,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { title, destination, startDate, endDate, activities } = body
+  if (!body || typeof body !== 'object') {
+    return NextResponse.json({ error: 'Body must be an object' }, { status: 400 })
+  }
 
-  if (!title?.trim()) {
+  const { title, destination, startDate, endDate } = body
+  const activities = body.activities ?? []
+
+  // Validate everything before inserting so a bad payload never leaves an
+  // orphan draft trip behind.
+  if (typeof title !== 'string' || !title.trim() || title.length > 200) {
     return NextResponse.json({ error: 'Trip title is required' }, { status: 400 })
+  }
+  if (destination != null && (typeof destination !== 'string' || destination.length > 80)) {
+    return NextResponse.json({ error: 'Invalid destination' }, { status: 400 })
+  }
+  if ((startDate && !isDateOnlyString(startDate)) || (endDate && !isDateOnlyString(endDate))) {
+    return NextResponse.json({ error: 'Dates must be YYYY-MM-DD' }, { status: 400 })
+  }
+  if (startDate && endDate && endDate < startDate) {
+    return NextResponse.json({ error: 'End date must be on or after start date' }, { status: 400 })
+  }
+  if (!Array.isArray(activities) || activities.length > MAX_ACTIVITIES || !activities.every(isValidActivity)) {
+    return NextResponse.json({ error: 'Invalid activities' }, { status: 400 })
   }
 
   const { data: trip, error: tripError } = await supabase
@@ -55,7 +91,8 @@ export async function POST(request: Request) {
     .single()
 
   if (tripError || !trip) {
-    return NextResponse.json({ error: tripError?.message ?? 'Failed to create trip' }, { status: 500 })
+    if (tripError) console.error('[POST /api/trips]', tripError)
+    return NextResponse.json({ error: 'Failed to create trip' }, { status: 500 })
   }
 
   if (activities.length > 0) {

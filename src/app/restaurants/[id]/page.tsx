@@ -83,7 +83,7 @@ export async function generateMetadata({
   if (isIslandSlug(slug)) {
     const name = getIslandDisplayName(slug);
     return {
-      title: `Best Restaurants in ${name} Bahamas | Baha Buddy`,
+      title: `Best Restaurants in ${name} Bahamas`,
       description: `Restaurants in ${name}, Bahamas, with cuisine, ratings, and photos where available.`,
       alternates: { canonical: `/restaurants/${slug}` },
       openGraph: {
@@ -94,19 +94,20 @@ export async function generateMetadata({
   }
 
   const restaurant = await getRestaurantByLocationId(slug);
-  if (!restaurant) return {};
+  if (!restaurant) notFound();
   const cuisine = restaurant.cuisine_types?.[0];
   return {
-    title: `${restaurant.name}${cuisine ? ` — ${formatCuisineLabel(cuisine)}` : ""} in ${restaurant.island_name ?? "Bahamas"} | Baha Buddy`,
+    title: `${restaurant.name}${cuisine ? ` — ${formatCuisineLabel(cuisine)}` : ""} in ${restaurant.island_name ?? "Bahamas"}`,
     description:
       `${restaurant.name}${cuisine ? ` (${formatCuisineLabel(cuisine)})` : ""} in ${restaurant.island_name ?? "the Bahamas"}. ${restaurant.rating ? `Rated ${restaurant.rating}/5` : ""} ${restaurant.num_reviews ? `(${restaurant.num_reviews} reviews)` : ""}`.trim(),
     alternates: { canonical: `/restaurants/${slug}` },
     openGraph: {
       title: `${restaurant.name} | Baha Buddy`,
       description: `${restaurant.name} restaurant in ${restaurant.island_name ?? "the Bahamas"}`,
-      images: restaurant.photos?.[0]?.url
-        ? [{ url: restaurant.photos[0].url }]
-        : undefined,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(restaurant.photos?.[0]?.url
+        ? { images: [{ url: restaurant.photos[0].url }] }
+        : {}),
     },
   };
 }
@@ -199,13 +200,8 @@ function IslandListingPage({
         ...(r.cuisine_types && {
           servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(", "),
         }),
-        ...(r.rating && {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: r.rating,
-            reviewCount: r.num_reviews ?? 0,
-          },
-        }),
+        // No aggregateRating: ratings are Tripadvisor's, and Google's review
+        // snippet rules forbid marking up ratings aggregated by other sites.
       },
     })),
   };
@@ -456,14 +452,8 @@ function RestaurantDetailPage({
         addressCountry: restaurant.address?.country ?? "BS",
       },
     }),
-    ...(restaurant.rating && {
-      aggregateRating: {
-        "@type": "AggregateRating",
-        ratingValue: restaurant.rating,
-        bestRating: 5,
-        reviewCount: restaurant.num_reviews ?? 0,
-      },
-    }),
+    // No aggregateRating: ratings are Tripadvisor's, and Google's review
+    // snippet rules forbid marking up ratings aggregated by other sites.
     ...(restaurant.website && { url: restaurant.website }),
     ...(photos.length > 0 && { image: photos.map((p) => p.url) }),
   };

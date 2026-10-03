@@ -37,6 +37,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Type-check (includes tests)
+        # next build skips diagnostics for *.test.* files, so run tsc directly.
+        run: npm run typecheck
+
       - name: Run tests with coverage
         run: npm run test:coverage
 

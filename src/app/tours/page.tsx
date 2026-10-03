@@ -19,7 +19,7 @@ import { createPublicClient } from '@/lib/supabase/public'
 export const revalidate = 300
 
 export const metadata: Metadata = {
-  title: 'Self-Guided Tours | Baha Buddy',
+  title: 'Self-Guided Tours',
   description: 'Self-guided Bahamas tours you can add to your Baha Buddy account and start in the app.',
 }
 

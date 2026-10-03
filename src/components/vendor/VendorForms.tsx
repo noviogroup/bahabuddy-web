@@ -40,19 +40,32 @@ function SubmitMessage({ state }: { state: SubmitState }) {
   )
 }
 
+function ViewOnlyNotice({ canSubmit }: { canSubmit: boolean }) {
+  if (canSubmit) return null
+  return (
+    <div role="note" className="rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-semibold leading-6 text-charcoal">
+      Your partner role is view-only. Ask a partner owner or editor to submit changes.
+    </div>
+  )
+}
+
 async function parseResponse(response: Response) {
   const body = await response.json().catch(() => ({}))
   if (!response.ok) throw new Error(body.error || `Request failed: ${response.status}`)
   return body
 }
 
-export function VendorProfileSubmissionForm({ partner }: { partner: VendorPartner }) {
+export function VendorProfileSubmissionForm({ partner, canSubmit = true }: { partner: VendorPartner; canSubmit?: boolean }) {
   const [state, setState] = useState<SubmitState>(initialState)
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canSubmit || state.status === 'saving') return
+    // React clears event.currentTarget once the handler yields, so keep the
+    // element for the reset after the request resolves.
+    const formEl = event.currentTarget
     setState({ status: 'saving', message: '' })
-    const form = new FormData(event.currentTarget)
+    const form = new FormData(formEl)
     const payload = {
       partner_id: partner.id,
       name: form.get('name'),
@@ -71,7 +84,7 @@ export function VendorProfileSubmissionForm({ partner }: { partner: VendorPartne
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }))
-      event.currentTarget.reset()
+      formEl.reset()
       setState({ status: 'success', message: 'Profile update submitted for admin review.' })
     } catch (error) {
       setState({ status: 'error', message: (error as Error).message })
@@ -84,6 +97,7 @@ export function VendorProfileSubmissionForm({ partner }: { partner: VendorPartne
         <h2 className="text-lg font-bold leading-7 text-night">Profile update submission</h2>
         <p className="mt-1 text-sm leading-6 text-charcoal">Updates stay pending until admin approval.</p>
       </div>
+      <ViewOnlyNotice canSubmit={canSubmit} />
       <SubmitMessage state={state} />
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Partner name">
@@ -117,7 +131,7 @@ export function VendorProfileSubmissionForm({ partner }: { partner: VendorPartne
       </div>
       <button
         type="submit"
-        disabled={state.status === 'saving'}
+        disabled={!canSubmit || state.status === 'saving'}
         className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-5 text-sm font-bold leading-5 text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {state.status === 'saving' ? 'Submitting...' : 'Submit profile update'}
@@ -126,14 +140,18 @@ export function VendorProfileSubmissionForm({ partner }: { partner: VendorPartne
   )
 }
 
-export function VendorDealSubmissionForm({ partnerId, listings }: { partnerId: string; listings: VendorListing[] }) {
+export function VendorDealSubmissionForm({ partnerId, listings, canSubmit = true }: { partnerId: string; listings: VendorListing[]; canSubmit?: boolean }) {
   const [state, setState] = useState<SubmitState>(initialState)
   const placeOptions = useMemo(() => listings.filter((listing) => listing.place), [listings])
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canSubmit || state.status === 'saving') return
+    // React clears event.currentTarget once the handler yields, so keep the
+    // element for the reset after the request resolves.
+    const formEl = event.currentTarget
     setState({ status: 'saving', message: '' })
-    const form = new FormData(event.currentTarget)
+    const form = new FormData(formEl)
     const payload = {
       partner_id: partnerId,
       title: form.get('title'),
@@ -154,7 +172,7 @@ export function VendorDealSubmissionForm({ partnerId, listings }: { partnerId: s
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }))
-      event.currentTarget.reset()
+      formEl.reset()
       setState({ status: 'success', message: 'Deal proposal submitted for admin review.' })
     } catch (error) {
       setState({ status: 'error', message: (error as Error).message })
@@ -167,6 +185,7 @@ export function VendorDealSubmissionForm({ partnerId, listings }: { partnerId: s
         <h2 className="text-lg font-bold leading-7 text-night">Deal submission</h2>
         <p className="mt-1 text-sm leading-6 text-charcoal">Approved proposals become canonical Baha Buddy deals.</p>
       </div>
+      <ViewOnlyNotice canSubmit={canSubmit} />
       <SubmitMessage state={state} />
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Deal title">
@@ -219,7 +238,7 @@ export function VendorDealSubmissionForm({ partnerId, listings }: { partnerId: s
       </div>
       <button
         type="submit"
-        disabled={state.status === 'saving'}
+        disabled={!canSubmit || state.status === 'saving'}
         className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-5 text-sm font-bold leading-5 text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {state.status === 'saving' ? 'Submitting...' : 'Submit deal proposal'}
@@ -228,14 +247,18 @@ export function VendorDealSubmissionForm({ partnerId, listings }: { partnerId: s
   )
 }
 
-export function VendorPhotoSubmissionForm({ partnerId, listings }: { partnerId: string; listings: VendorListing[] }) {
+export function VendorPhotoSubmissionForm({ partnerId, listings, canSubmit = true }: { partnerId: string; listings: VendorListing[]; canSubmit?: boolean }) {
   const [state, setState] = useState<SubmitState>(initialState)
   const placeOptions = useMemo(() => listings.filter((listing) => listing.place), [listings])
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (!canSubmit || state.status === 'saving') return
+    // React clears event.currentTarget once the handler yields, so keep the
+    // element for the reset after the request resolves.
+    const formEl = event.currentTarget
     setState({ status: 'saving', message: '' })
-    const form = new FormData(event.currentTarget)
+    const form = new FormData(formEl)
     form.set('partner_id', partnerId)
 
     try {
@@ -243,7 +266,7 @@ export function VendorPhotoSubmissionForm({ partnerId, listings }: { partnerId: 
         method: 'POST',
         body: form,
       }))
-      event.currentTarget.reset()
+      formEl.reset()
       setState({ status: 'success', message: 'Photo submitted for admin review.' })
     } catch (error) {
       setState({ status: 'error', message: (error as Error).message })
@@ -256,6 +279,7 @@ export function VendorPhotoSubmissionForm({ partnerId, listings }: { partnerId: 
         <h2 className="text-lg font-bold leading-7 text-night">Media submission</h2>
         <p className="mt-1 text-sm leading-6 text-charcoal">Images are uploaded to place-gallery and held for review.</p>
       </div>
+      <ViewOnlyNotice canSubmit={canSubmit} />
       <SubmitMessage state={state} />
       <div className="grid gap-4 md:grid-cols-2">
         <Field label="Linked listing">
@@ -288,7 +312,7 @@ export function VendorPhotoSubmissionForm({ partnerId, listings }: { partnerId: 
       </div>
       <button
         type="submit"
-        disabled={state.status === 'saving' || placeOptions.length === 0}
+        disabled={!canSubmit || state.status === 'saving' || placeOptions.length === 0}
         className="inline-flex min-h-11 items-center rounded-lg bg-brand-600 px-5 text-sm font-bold leading-5 text-white hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {state.status === 'saving' ? 'Uploading...' : 'Upload photo'}

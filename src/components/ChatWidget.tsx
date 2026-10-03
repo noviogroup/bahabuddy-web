@@ -1,8 +1,18 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useId, useState, useRef, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { BuddyAvatar } from '@/components/ui'
-import { RichCardRenderer, parseCardsFromContent, type CardData } from './RichCards'
+import type { CardData } from './RichCards'
+import { stripCardFences } from '@/lib/chat-utils'
+import { CHAT_FALLBACK_ERROR, chatErrorFromResponse, chatHistoryForRequest, readChatStream } from '@/lib/chat-sse'
+
+// Rich cards are only needed once the chat has replied; load them lazily so
+// the ~20 public pages that mount this widget don't ship every card up front.
+const RichCardRenderer = dynamic(
+  () => import('./RichCards').then(m => m.RichCardRenderer),
+  { ssr: false, loading: () => null },
+)
 
 interface Message {
   role: 'user' | 'assistant'
@@ -10,6 +20,7 @@ interface Message {
   cards?: CardData[]
   id?: string
   feedback?: 'helpful' | 'not_helpful'
+  savedTripId?: string
 }
 
 interface TripContext {
@@ -33,6 +44,13 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const didAutoSend = useRef(false)
+  const threadIdRef = useRef<string | null>(null)
+  const [announcement, setAnnouncement] = useState('')
+  const panelId = useId()
+  const inputId = useId()
+
+  // Abort any in-flight reply on unmount so the server can stop too.
+  useEffect(() => () => abortRef.current?.abort(), [])
 
   useEffect(() => {
     if (open && messages.length === 0) {
@@ -56,7 +74,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
   }, [messages.length, initialQuery])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
   }, [messages])
 
   useEffect(() => {
@@ -73,11 +91,26 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
     setMessages(newHistory)
     setInput('')
     setLoading(true)
+    setAnnouncement('')
 
     const assistantMsg: Message = { role: 'assistant', content: '' }
     setMessages([...newHistory, assistantMsg])
 
-    abortRef.current = new AbortController()
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    const isCurrent = () => abortRef.current === controller && !controller.signal.aborted
+
+    const setLastAssistant = (patch: Partial<Message>) => {
+      if (!isCurrent()) return
+      setMessages(prev => {
+        const updated = [...prev]
+        updated[updated.length - 1] = { ...updated[updated.length - 1], role: 'assistant', ...patch }
+        return updated
+      })
+    }
+
+    const draftTripId = [...messages].reverse().find(m => m.savedTripId)?.savedTripId
 
     try {
       const res = await fetch('/api/chat', {
@@ -85,83 +118,58 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: text.trim(),
-          history: messages.slice(-10),
+          history: chatHistoryForRequest(messages),
           tripContext,
+          // Keep signed-in widget chats in one thread instead of one per message.
+          threadId: threadIdRef.current ?? undefined,
+          draftTripId,
         }),
-        signal: abortRef.current.signal,
+        signal: controller.signal,
       })
 
-      if (!res.ok || !res.body) throw new Error('Failed to connect')
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let fullText = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n\n')
-        buffer = lines.pop() ?? ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const parsed = JSON.parse(line.slice(6))
-            if (parsed.type === 'text_delta') {
-              fullText += parsed.delta
-              setMessages(prev => {
-                const updated = [...prev]
-                updated[updated.length - 1] = { role: 'assistant', content: fullText }
-                return updated
-              })
-            } else if (parsed.type === 'done') {
-              const { text, cards } = parseCardsFromContent(fullText)
-              setMessages(prev => {
-                const updated = [...prev]
-                updated[updated.length - 1] = {
-                  ...updated[updated.length - 1],
-                  role: 'assistant',
-                  content: text,
-                  cards: cards.length > 0 ? cards : updated[updated.length - 1].cards,
-                  id: typeof parsed.assistantMessageId === 'string' ? parsed.assistantMessageId : undefined,
-                }
-                return updated
-              })
-            }
-          } catch {
-            // skip malformed lines
-          }
-        }
+      if (!res.ok || !res.body) {
+        const errorText = res.ok ? CHAT_FALLBACK_ERROR : await chatErrorFromResponse(res)
+        setLastAssistant({ content: errorText })
+        if (isCurrent()) setAnnouncement(errorText)
+        return
       }
-      // Final parse if done event was missed
-      if (fullText) {
-        const { text, cards } = parseCardsFromContent(fullText)
-        if (cards.length > 0) {
-          setMessages(prev => {
-            const updated = [...prev]
-            const last = updated[updated.length - 1]
-            if (!last.cards) {
-              updated[updated.length - 1] = { ...last, role: 'assistant', content: text, cards }
-            }
-            return updated
+
+      // The server's `cards` event is the complete list (tool cards plus
+      // filtered synthesized cards); never re-parse fences client-side.
+      let serverCards: CardData[] = []
+
+      const result = await readChatStream<CardData>(res.body, {
+        onThreadId: id => { threadIdRef.current = id },
+        onText: fullText => setLastAssistant({ content: fullText }),
+        onCards: cards => { serverCards = cards },
+        onDone: ({ text: finalText, tripId, assistantMessageId }) => {
+          const cleanText = stripCardFences(finalText)
+          setLastAssistant({
+            content: cleanText,
+            cards: serverCards.length > 0 ? serverCards : undefined,
+            id: assistantMessageId,
+            savedTripId: tripId,
           })
-        }
+          setAnnouncement(`Baha Buddy replied: ${cleanText}`)
+        },
+        onError: errorMessage => {
+          setLastAssistant({ content: errorMessage, cards: undefined })
+          setAnnouncement(errorMessage)
+        },
+      }, isCurrent)
+
+      // Stream ended without `done`/`error` (connection cut).
+      if (isCurrent() && !result.sawDone && !result.sawError) {
+        const content = stripCardFences(result.text) || CHAT_FALLBACK_ERROR
+        setLastAssistant({ content, cards: serverCards.length > 0 ? serverCards : undefined })
+        setAnnouncement(content)
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return
-      setMessages(prev => {
-        const updated = [...prev]
-        updated[updated.length - 1] = {
-          role: 'assistant',
-          content: "Sorry, I couldn't connect right now. Please try again!",
-        }
-        return updated
-      })
+      setLastAssistant({ content: CHAT_FALLBACK_ERROR })
+      if (isCurrent()) setAnnouncement(CHAT_FALLBACK_ERROR)
     } finally {
-      setLoading(false)
+      if (abortRef.current === controller) setLoading(false)
     }
   }, [loading, messages, tripContext])
 
@@ -199,6 +207,8 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
           open ? 'bg-night hover:bg-gray-900 text-white' : 'bg-white border border-gray-200 hover:shadow-md p-0.5'
         }`}
         aria-label={open ? 'Close chat' : 'Chat with Baha Buddy'}
+        aria-expanded={open}
+        aria-controls={open ? panelId : undefined}
       >
         {open ? (
           <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -211,7 +221,11 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
+        <div
+          id={panelId}
+          role="dialog"
+          aria-label="Chat with Baha Buddy"
+          className="fixed bottom-24 right-6 z-50 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-200 flex flex-col overflow-hidden"
           style={{ maxHeight: 'calc(100vh - 8rem)' }}>
           {/* Header */}
           <div className="border-b border-gray-100 bg-white px-4 py-3 flex items-center gap-3">
@@ -222,8 +236,18 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
             </div>
           </div>
 
+          {/* Completed replies are announced once; the log is not live so
+              streaming deltas are not read out piecemeal. */}
+          <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">{announcement}</div>
+
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
+          <div
+            role="log"
+            aria-live="off"
+            aria-busy={loading}
+            aria-label="Conversation with Baha Buddy"
+            className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0"
+          >
             {messages.map((msg, i) => (
               <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
                 <div className={`max-w-[85%] px-3 py-2 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap ${
@@ -233,7 +257,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                 }`}>
                   {msg.content}
                   {msg.role === 'assistant' && loading && i === messages.length - 1 && msg.content === '' && (
-                    <span role="status" aria-live="polite" className="text-xs font-semibold text-gray-500">
+                    <span className="text-xs font-semibold text-gray-500">
                       Buddy is thinking
                     </span>
                   )}
@@ -241,7 +265,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
                 {msg.role === 'assistant' && msg.cards && msg.cards.length > 0 && (
                   <div className="w-full max-w-[95%] mt-1">
                     {msg.cards.map((card, ci) => (
-                      <RichCardRenderer key={ci} cardData={card} onSendMessage={(q) => sendQuery(q)} />
+                      <RichCardRenderer key={ci} cardData={card} onSendMessage={(q) => sendQuery(q)} tripId={msg.savedTripId} />
                     ))}
                   </div>
                 )}
@@ -274,7 +298,9 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
 
           {/* Input */}
           <div className="border-t border-gray-100 p-3 flex items-end gap-2">
+            <label htmlFor={inputId} className="sr-only">Message Baha Buddy</label>
             <textarea
+              id={inputId}
               ref={inputRef}
               value={input}
               onChange={e => setInput(e.target.value)}
@@ -288,7 +314,7 @@ export default function ChatWidget({ tripContext, initialQuery }: ChatWidgetProp
               onClick={sendMessage}
               disabled={!input.trim() || loading}
               className="w-9 h-9 bg-night hover:bg-gray-900 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl flex items-center justify-center transition-colors shrink-0"
-              aria-label="Send"
+              aria-label="Send message"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />

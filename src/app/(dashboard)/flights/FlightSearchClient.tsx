@@ -328,6 +328,16 @@ export default function FlightSearchClient() {
   }
 
   const isLoading = status === 'loading'
+  // One always-mounted live region announces search progress and outcome
+  // (WCAG 4.1.3). Errors keep their own role="alert" block below.
+  const searchStatusMessage =
+    status === 'loading'
+      ? `Searching flights for ${lastSearchLabel}…`
+      : status === 'results'
+        ? results.length > 0
+          ? `${results.length} flight ${results.length === 1 ? 'option' : 'options'} found for ${lastSearchLabel}.`
+          : `No flight options for ${lastSearchLabel}. ${emptyMessage ?? ''}`.trim()
+        : ''
   const displayedResults = useMemo(
     () => rankFlightResults(results, resultMode),
     [results, resultMode],
@@ -614,6 +624,9 @@ export default function FlightSearchClient() {
 
       <div>
         <div className="min-w-0 space-y-5">
+          <p role="status" aria-live="polite" aria-atomic="true" className="sr-only" data-testid="flight-search-status">
+            {searchStatusMessage}
+          </p>
           {status === 'error' && errorMessage && (
             <div
               role="alert"
@@ -624,7 +637,7 @@ export default function FlightSearchClient() {
           )}
 
           {isLoading && (
-            <div className="space-y-3" aria-live="polite" aria-busy="true">
+            <div className="space-y-3" aria-busy="true">
               <div className="rounded-baha-md border border-gray-200 bg-white px-4 py-3 shadow-sm">
                 <div className="flex items-center gap-3">
                   <svg className="h-4 w-4 animate-spin motion-reduce:animate-none text-brand-600" fill="none" viewBox="0 0 24 24">

@@ -61,12 +61,15 @@ describe('Buddy grounded inventory contract', () => {
     )
   })
 
-  it('keeps mobile and web on raw canonical IDs and removes the model-memory fallback', () => {
-    const workspaceRoot = path.resolve(process.cwd(), '..')
-    const mobileTools = fs.readFileSync(
-      path.join(workspaceRoot, 'Baha-Buddy-V2/supabase/functions/claude-chat-proxy/tools.ts'),
-      'utf8',
-    )
+  // Cross-repo check against the sibling Flutter checkout. It only exists when
+  // bahabuddy-web sits inside the Baha Buddy workspace (or
+  // BAHA_BUDDY_WORKSPACE_ROOT points at it); standalone checkouts and CI skip.
+  const mobileToolsPath = path.join(
+    process.env.BAHA_BUDDY_WORKSPACE_ROOT ?? path.resolve(process.cwd(), '..'),
+    'Baha-Buddy-V2/supabase/functions/claude-chat-proxy/tools.ts',
+  )
+  it.skipIf(!fs.existsSync(mobileToolsPath))('keeps mobile and web on raw canonical IDs and removes the model-memory fallback', () => {
+    const mobileTools = fs.readFileSync(mobileToolsPath, 'utf8')
     expect(mobileTools).not.toContain("place_id: `attraction-${r.id}`")
     expect(mobileTools).not.toContain("place_id: `tour-${r.id}`")
     expect(mobileTools).not.toContain('recommend activities from my knowledge')

@@ -716,6 +716,18 @@ const ISLAND_FLIGHT_ACCESS: Record<string, FlightAccess> = {
   },
 };
 
+/**
+ * Some Sanity destination taglines are editorial placeholders
+ * ("Source-backed guide to …") that describe our data pipeline rather than
+ * the island. Treat those as missing so the traveller-facing config tagline
+ * (or the default copy) is used instead.
+ */
+function travellerTagline(tagline: string | null | undefined): string | null {
+  const trimmed = tagline?.trim();
+  if (!trimmed || /^source[- ]backed\b/i.test(trimmed)) return null;
+  return trimmed;
+}
+
 // ─── Static params + metadata ───────────────────────────────────────────────
 
 export async function generateStaticParams() {
@@ -735,24 +747,25 @@ export async function generateMetadata({
     config ? getIslandHero(config.slug) : Promise.resolve(undefined),
   ]);
 
-  if (!config && !sanity) return {};
+  if (!config && !sanity) notFound();
 
   const name = sanity?.name ?? config?.name ?? params.id;
-  const tagline = sanity?.tagline ?? config?.tagline ?? "";
+  const tagline = travellerTagline(sanity?.tagline) ?? config?.tagline ?? "";
   // Sanity hero wins when published; otherwise the DB-sourced URL from
   // `islands.hero_image_url`. We no longer fall back to BahaImages here.
   const heroUrl = sanity ? sanity.imageUrl : dbHero;
 
   return {
-    title: `${name} — Bahamas Travel Guide | Baha Buddy`,
-    description: `Plan the perfect trip to ${name}, Bahamas. ${tagline} Attractions, deals, and local tips.`,
+    title: `${name} — Bahamas Travel Guide`,
+    description: [`Plan the perfect trip to ${name}, Bahamas.`, tagline, "Attractions, deals, and local tips."].filter(Boolean).join(" "),
     alternates: {
       canonical: `/explore/island/${params.id}`,
     },
     openGraph: {
       title: `${name} Travel Guide | Baha Buddy`,
-      description: `Plan your ${name} trip — ${tagline}`,
-      images: heroUrl ? [{ url: heroUrl }] : undefined,
+      description: tagline ? `Plan your ${name} trip — ${tagline}` : `Plan your ${name} trip with Baha Buddy.`,
+      // Omit `images` when there is no photo so opengraph-image.tsx applies.
+      ...(heroUrl ? { images: [{ url: heroUrl }] } : {}),
     },
   };
 }
@@ -803,7 +816,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
   // Derived display fields (Sanity wins where present, config fills gaps).
   // Hero priority: Sanity image > islands table (DB) > empty (gradient placeholder).
   const name = sanity?.name ?? config!.name;
-  const tagline = sanity?.tagline ?? config?.tagline ?? "";
+  const tagline = travellerTagline(sanity?.tagline) ?? config?.tagline ?? "";
   const heroUrl = sanity ? sanity.imageUrl : dbHero;
   const bestTime = sanity?.bestTimeToVisit ?? config?.bestTime ?? "Year-round";
   const overviewPortable = sanity?.overview;
@@ -944,7 +957,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
           />
         </header>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
             <ImageWithSourcePolicy
               src={primaryImageUrl}
@@ -993,7 +1006,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
                   </div>
                 ) : (
                   <CompactEmpty
-                    title="Restaurant feed is being enriched"
+                    title="More restaurants coming soon"
                     href={foodLinks.restaurantsHref}
                     actionLabel="Browse dining"
                   />
@@ -1047,7 +1060,7 @@ export default async function IslandDetailPage({ params }: PageProps) {
                 </div>
               ) : (
                 <CompactEmpty
-                  title="Stay inventory is being enriched"
+                  title="More stays coming soon"
                   href={islandStaysHref}
                   actionLabel="Search stays"
                 />
@@ -1226,8 +1239,8 @@ function LiveFeedsPanel({
       value: stayCount > 0 ? `${stayCount} featured` : "Search live",
       helper:
         stayRateCount > 0
-          ? `${stayRateCount} cached rates`
-          : "Live rates loading",
+          ? `${stayRateCount} with rates`
+          : "Check live rates",
       href: staysHref,
       icon: "bed",
     },
@@ -1235,14 +1248,14 @@ function LiveFeedsPanel({
   const exploreFeeds = [
     {
       label: "Restaurants",
-      value: restaurantCount > 0 ? `${restaurantCount} loaded` : "Browse feed",
+      value: restaurantCount > 0 ? `${restaurantCount} to try` : "Browse all",
       href: restaurantsHref,
       icon: "dining",
     },
     {
       label: "Activities",
       value:
-        attractionCount > 0 ? `${attractionCount} experiences` : "Browse feed",
+        attractionCount > 0 ? `${attractionCount} experiences` : "Browse all",
       href: placesHref,
       icon: "activity",
     },
@@ -1274,10 +1287,10 @@ function LiveFeedsPanel({
       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <p className="text-xs font-bold uppercase text-gray-500">
-            Live planning snapshot
+            Trip planning at a glance
           </p>
           <p className="mt-0.5 text-sm font-semibold text-charcoal">
-            {islandName} trip signals, grouped by user intent.
+            Weather, stays, food and things to do in {islandName}.
           </p>
         </div>
         <Link
@@ -2108,7 +2121,7 @@ function WeatherSideCard({
               </div>
             ))}
           </div>
-          <dl className="mt-4 grid gap-2 border-t border-gray-100 pt-3 text-sm sm:grid-cols-3">
+          <dl className="mt-4 grid grid-cols-1 gap-2 border-t border-gray-100 pt-3 text-sm sm:grid-cols-3">
             <div className="rounded-lg bg-gray-50 px-3 py-2">
               <dt className="text-xs font-bold uppercase text-gray-500">
                 Condition

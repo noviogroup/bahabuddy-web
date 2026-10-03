@@ -1,6 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, test } from 'vitest'
-import ImageWithSourcePolicy from '@/components/marketplace/ImageWithSourcePolicy'
+import ImageWithSourcePolicy, {
+  OPTIMIZABLE_IMAGE_HOSTS,
+  shouldOptimizeImageSrc,
+} from '@/components/marketplace/ImageWithSourcePolicy'
 
 describe('ImageWithSourcePolicy', () => {
   test('renders the provider image when a valid item image exists', () => {
@@ -76,5 +81,40 @@ describe('ImageWithSourcePolicy', () => {
       />,
     )
     expect(screen.queryByText('Photo: Tripadvisor')).not.toBeInTheDocument()
+  })
+
+  test('optimizes local assets and allowlisted hosts, but not unknown provider hosts', () => {
+    expect(shouldOptimizeImageSrc('/assets/home/trip-categories/beach.jpg')).toBe(true)
+    expect(shouldOptimizeImageSrc('/assets/islands/nassau-paradise-island.svg')).toBe(false)
+    expect(shouldOptimizeImageSrc('/api/place-photo?ref=abc')).toBe(false)
+    expect(shouldOptimizeImageSrc('https://cdn.sanity.io/images/p/d/photo.jpg')).toBe(true)
+    expect(
+      shouldOptimizeImageSrc('https://abc.supabase.co/storage/v1/object/public/photos/a.jpg'),
+    ).toBe(true)
+    expect(shouldOptimizeImageSrc('https://abc.supabase.co/rest/v1/whatever')).toBe(false)
+    expect(shouldOptimizeImageSrc('https://static.cupid.travel/hotels/1.jpg')).toBe(false)
+    expect(shouldOptimizeImageSrc('https://lh3.googleusercontent.com/p/abc')).toBe(false)
+    expect(shouldOptimizeImageSrc('http://cdn.sanity.io/images/p/d/photo.jpg')).toBe(false)
+  })
+
+  test('routes allowlisted images through next/image optimization by default', () => {
+    render(
+      <ImageWithSourcePolicy
+        src="/assets/home/trip-categories/beach.jpg"
+        alt="Local beach"
+        title="Beach"
+        eyebrow="Trip"
+      />,
+    )
+
+    expect(screen.getByAltText('Local beach').getAttribute('src')).toContain('/_next/image?url=')
+  })
+
+  test('every optimizable host is allowlisted in next.config.mjs remotePatterns', () => {
+    const config = readFileSync(path.resolve(__dirname, '../../next.config.mjs'), 'utf8')
+    for (const host of OPTIMIZABLE_IMAGE_HOSTS) {
+      const pattern = host.startsWith('.') ? `'**${host}'` : `'${host}'`
+      expect(config, `${host} missing from remotePatterns`).toContain(`hostname: ${pattern}`)
+    }
   })
 })

@@ -21,13 +21,38 @@ const HERO_VIDEO_SOURCES = [
 ] as const
 
 // The video is decoration: skip it (poster image only) on phones, for
-// reduced-motion users, and when the browser asks to save data.
+// reduced-motion users, and on data-saver / slow connections. Everyone else
+// keeps the DB-sourced island photo as the poster.
 const HERO_VIDEO_MIN_WIDTH_QUERY = '(min-width: 768px)'
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
+const HERO_VIDEO_SLOW_CONNECTIONS = new Set(['slow-2g', '2g', '3g'])
 
-function prefersSaveData(): boolean {
-  const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
-  return Boolean(connection?.saveData)
+type NetworkInformationLike = {
+  saveData?: boolean
+  effectiveType?: string
+  addEventListener?: (type: 'change', listener: () => void) => void
+  removeEventListener?: (type: 'change', listener: () => void) => void
+}
+
+function getNetworkInformation(): NetworkInformationLike | undefined {
+  if (typeof navigator === 'undefined') return undefined
+  return (navigator as Navigator & { connection?: NetworkInformationLike }).connection
+}
+
+/**
+ * Only fetch the clip on a wide viewport (the min-width query must match, so
+ * an unknown viewport gets the poster), without a reduced-motion preference,
+ * and without data-saver or a slow effective connection.
+ */
+export function shouldLoadHeroVideo(
+  win: Pick<Window, 'matchMedia'>,
+  connection: NetworkInformationLike | undefined = getNetworkInformation(),
+): boolean {
+  if (!win.matchMedia(HERO_VIDEO_MIN_WIDTH_QUERY).matches) return false
+  if (win.matchMedia(REDUCED_MOTION_QUERY).matches) return false
+  if (connection?.saveData) return false
+  if (connection?.effectiveType && HERO_VIDEO_SLOW_CONNECTIONS.has(connection.effectiveType)) return false
+  return true
 }
 
 function subscribeToMediaQuery(query: MediaQueryList, listener: () => void): () => void {
@@ -72,16 +97,18 @@ export default function HeroSection({
     if (typeof window.matchMedia !== 'function') return
     const wideScreen = window.matchMedia(HERO_VIDEO_MIN_WIDTH_QUERY)
     const reducedMotion = window.matchMedia(REDUCED_MOTION_QUERY)
-    const syncVideoEligibility = () =>
-      setShowVideoBackground(wideScreen.matches && !reducedMotion.matches && !prefersSaveData())
+    const connection = getNetworkInformation()
+    const syncVideoEligibility = () => setShowVideoBackground(shouldLoadHeroVideo(window, connection))
 
     syncVideoEligibility()
     const unsubscribeWidth = subscribeToMediaQuery(wideScreen, syncVideoEligibility)
     const unsubscribeMotion = subscribeToMediaQuery(reducedMotion, syncVideoEligibility)
+    connection?.addEventListener?.('change', syncVideoEligibility)
 
     return () => {
       unsubscribeWidth()
       unsubscribeMotion()
+      connection?.removeEventListener?.('change', syncVideoEligibility)
     }
   }, [])
 
@@ -249,6 +276,7 @@ export default function HeroSection({
             loop
             playsInline
             preload="metadata"
+            poster={fallbackSlide?.image}
             controls={false}
             controlsList="nodownload noplaybackrate noremoteplayback"
             disablePictureInPicture

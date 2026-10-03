@@ -96,10 +96,10 @@ const getTour = requestCache(async (id: string): Promise<TourPageData | null> =>
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const data = await getTour(params.id)
-  if (!data) return {}
+  if (!data) notFound()
   const name = data.approved?.name ?? data.catalog?.title ?? 'Self-guided tour'
   return {
-    title: `${name} — Self-Guided Tour | Baha Buddy`,
+    title: `${name} — Self-Guided Tour`,
     description: data.approved?.description ?? `Self-guided tour: ${name}.`,
   }
 }

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { chooseVendorMembership, getVendorPortalState } from '@/lib/vendor-portal'
+import { getPreferredVendorPartnerId, getVendorPortalState, resolveVendorMembership } from '@/lib/vendor-portal'
 import { VendorAccessPending, VendorPortalShell, VendorServiceUnavailable } from '@/components/vendor/VendorPortalShell'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +16,9 @@ export default async function VendorLayout({ children }: { children: React.React
     return <VendorServiceUnavailable />
   }
 
-  const membership = chooseVendorMembership(state.memberships)
+  // Same partner as the page: middleware stores ?partner_id= in a cookie the
+  // layout can read (layouts never receive searchParams).
+  const membership = resolveVendorMembership(state.memberships, null, getPreferredVendorPartnerId())
   if (!membership) {
     return <VendorAccessPending state={state} />
   }

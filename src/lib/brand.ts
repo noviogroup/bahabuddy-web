@@ -8,10 +8,19 @@ export const LOGO_INTRINSIC = { width: 1354, height: 1398 } as const
 export const LOGO_MARK_SRC = '/brand/baha-logo-mark.svg'
 export const LOGO_MARK_INTRINSIC = { width: 64, height: 64 } as const
 
-/** App store listing URLs */
-export const APP_STORE_URL = 'https://apps.apple.com/app/baha-buddy'
-export const GOOGLE_PLAY_URL =
-  'https://play.google.com/store/apps/details?id=com.noviogroup.bahabuddy'
+/**
+ * App store listing URLs. The apps are not listed yet, so these come from
+ * env (`NEXT_PUBLIC_APP_STORE_URL`, e.g. https://apps.apple.com/app/baha-buddy/id<APP_ID>,
+ * and `NEXT_PUBLIC_GOOGLE_PLAY_URL`). While unset they are null and store
+ * badges are not rendered, so no CTA points at a not-found listing.
+ */
+export const APP_STORE_URL: string | null = storeUrl(process.env.NEXT_PUBLIC_APP_STORE_URL)
+export const GOOGLE_PLAY_URL: string | null = storeUrl(process.env.NEXT_PUBLIC_GOOGLE_PLAY_URL)
+
+function storeUrl(value: string | undefined): string | null {
+  const trimmed = value?.trim()
+  return trimmed && /^https:\/\//.test(trimmed) ? trimmed : null
+}
 
 /** Official store badges (Wikimedia Commons, high-res PNG exports of SVG badges). */
 export const APP_STORE_BADGE_SRC =

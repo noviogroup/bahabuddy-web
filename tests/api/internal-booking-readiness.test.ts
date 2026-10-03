@@ -8,7 +8,7 @@ function setReadyEnv() {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://cxcfymhoncysyloutvkh.supabase.co'
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon-key-redacted'
   process.env.SUPABASE_SERVICE_ROLE_KEY = 'service-role-secret'
-  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_redacted'
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_live_redacted'
   process.env.TRAVEL_BOOKING_API_KEY = 'prod_liteapi_private_secret'
   process.env.TRAVEL_BOOKING_API_BASE_URL = 'https://api.liteapi.travel/v3.0'
   process.env.TRAVEL_BOOKING_BOOK_BASE_URL = 'https://book.liteapi.travel/v3.0'
@@ -78,12 +78,41 @@ describe('GET /api/internal/booking-readiness', () => {
     expect(body.env).toEqual(expect.arrayContaining([
       expect.objectContaining({ key: 'SUPABASE_SERVICE_ROLE_KEY', scope: 'server', present: true }),
       expect.objectContaining({ key: 'LiteAPI private key', scope: 'server', present: true, mode: 'production' }),
-      expect.objectContaining({ key: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', scope: 'public', present: true, mode: 'test' }),
+      expect.objectContaining({ key: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', scope: 'public', present: true, mode: 'live' }),
     ]))
     expect(fetchMock).toHaveBeenCalledTimes(4)
     expect(serialized).not.toContain('readiness-token-secret')
     expect(serialized).not.toContain('service-role-secret')
     expect(serialized).not.toContain('prod_liteapi_private_secret')
+  })
+
+  test('does not fall back to the shared INTERNAL_API_SECRET', async () => {
+    setReadyEnv()
+    delete process.env.BOOKING_READINESS_TOKEN
+    process.env.INTERNAL_API_SECRET = 'shared-secret'
+
+    const response = await GET(request('shared-secret'))
+    const body = await response.json()
+
+    expect(response.status).toBe(503)
+    expect(JSON.stringify(body)).not.toContain('INTERNAL_API_SECRET')
+  })
+
+  test('is not launch-ready on Stripe test or LiteAPI sandbox keys even when schema passes', async () => {
+    setReadyEnv()
+    process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_redacted'
+    process.env.TRAVEL_BOOKING_API_KEY = 'sand_liteapi_secret'
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('', { status: 200 })))
+
+    const response = await GET(request())
+    const body = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(body).toMatchObject({ ready: false, schemaReady: true, liveKeys: false })
+    expect(body.env).toEqual(expect.arrayContaining([
+      expect.objectContaining({ key: 'LiteAPI private key', mode: 'test' }),
+      expect.objectContaining({ key: 'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', mode: 'test' }),
+    ]))
   })
 
   test('returns not-ready when a canonical schema check fails', async () => {

@@ -41,6 +41,9 @@ describe('FlightSearchClient marketplace layout', () => {
     const { container } = render(<FlightSearchClient />)
 
     await screen.findByText('No flights found')
+    // The always-mounted live region announces the empty outcome.
+    expect(screen.getByTestId('flight-search-status')).toHaveAttribute('role', 'status')
+    expect(screen.getByTestId('flight-search-status')).toHaveTextContent(/No flight options for .*No flights found/)
     expect(screen.getByRole('heading', { name: 'Find flights' })).toBeInTheDocument()
     expect(screen.queryByRole('form', { name: 'Flight search' })).not.toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Flight promotions' })).not.toBeInTheDocument()
@@ -50,18 +53,18 @@ describe('FlightSearchClient marketplace layout', () => {
     expect(searchForm).toBeVisible()
     expect(searchForm).not.toHaveClass('bg-night')
     expect(screen.getByRole('radio', { name: 'One-way' })).toHaveAttribute('aria-checked', 'true')
-    expect(screen.getByRole('button', { name: 'Search', exact: true })).toHaveClass('bg-brand-600')
+    expect(screen.getByRole('button', { name: /^Search$/ })).toHaveClass('bg-brand-600')
     expect(container.innerHTML).not.toContain('background-image')
     expect(screen.getByRole('button', { name: 'Edit travelers and cabin' })).toHaveTextContent('1 traveler, Economy')
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit travelers and cabin' }))
     expect(screen.getByRole('dialog', { name: 'Choose travelers and cabin' })).toBeInTheDocument()
-    fireEvent.click(screen.getByRole('button', { name: 'Open Travelers menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Travelers: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: '2 travelers' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Cabin menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cabin: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Business' }))
     fireEvent.click(screen.getByRole('button', { name: 'Done' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Search', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(latestRequestBody(fetchMock)).toMatchObject({
@@ -93,7 +96,7 @@ describe('FlightSearchClient marketplace layout', () => {
     expect(screen.getByText('Exuma International Airport')).toBeInTheDocument()
     fireEvent.mouseDown(screen.getByRole('option', { name: /Exuma International Airport/i }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Search', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(latestRequestBody(fetchMock)).toMatchObject({
@@ -122,7 +125,7 @@ describe('FlightSearchClient marketplace layout', () => {
     expect(screen.getByRole('listbox')).toBeInTheDocument()
     expect(screen.getByText('Choose Travelers')).toBeInTheDocument()
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Open Travelers menu' })).toHaveFocus()
+      expect(screen.getByRole('button', { name: /^Travelers: / })).toHaveFocus()
     })
   })
 
@@ -139,7 +142,7 @@ describe('FlightSearchClient marketplace layout', () => {
     fireEvent.change(from, { target: { value: 'Greenville' } })
     expect(screen.getByRole('option', { name: /Use "Greenville" as departure city/i })).toBeInTheDocument()
     fireEvent.keyDown(from, { key: 'Enter' })
-    fireEvent.click(screen.getByRole('button', { name: 'Search', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2))
     expect(latestRequestBody(fetchMock)).toMatchObject({
@@ -153,8 +156,8 @@ describe('FlightSearchClient marketplace layout', () => {
     vi.stubGlobal('fetch', fetchMock)
     render(<FlightSearchClient />)
     expect(screen.getByLabelText('From')).toHaveValue('')
-    expect(screen.getByRole('button', { name: 'Departure date' })).toHaveTextContent('Depart')
-    expect(screen.getByRole('button', { name: 'Return date' })).toHaveTextContent('Return')
+    expect(screen.getByRole('button', { name: 'Departure date: not set' })).toHaveTextContent('Depart')
+    expect(screen.getByRole('button', { name: 'Return date: not set' })).toHaveTextContent('Return')
     fireEvent.click(screen.getByRole('button', { name: 'Miami to Nassau' }))
     expect(screen.getByLabelText('From')).toHaveValue('Miami (MIA)')
     expect(fetchMock).not.toHaveBeenCalled()
@@ -171,7 +174,7 @@ describe('FlightSearchClient marketplace layout', () => {
     await screen.findByText('No flights found')
     fireEvent.click(screen.getByRole('button', { name: 'Change dates or route' }))
     expect(screen.getByLabelText('From')).toHaveValue('Miami (MIA)')
-    expect(screen.getByRole('button', { name: 'Departure date' })).toHaveTextContent('Oct 17')
+    expect(screen.getByRole('button', { name: /^Departure date: / })).toHaveTextContent('Oct 17')
   })
 
   test('provider failure keeps inputs available for a successful retry', async () => {
@@ -182,7 +185,7 @@ describe('FlightSearchClient marketplace layout', () => {
     render(<FlightSearchClient />)
     expect(await screen.findByRole('alert')).toHaveTextContent('Fares temporarily unavailable')
     expect(screen.getByLabelText('From')).toHaveValue('Miami (MIA)')
-    fireEvent.click(screen.getByRole('button', { name: 'Search', exact: true }))
+    fireEvent.click(screen.getByRole('button', { name: /^Search$/ }))
     await screen.findByText('No flights found')
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(fetchMock).toHaveBeenCalledTimes(2)

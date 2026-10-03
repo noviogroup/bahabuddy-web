@@ -11,8 +11,10 @@ import { dealActionLinks, dealIslandLabel } from '@/lib/deal-actions'
 import { getDeals, type Deal } from '@/lib/deals'
 
 export const metadata: Metadata = {
-  title: 'Bahamas Deals & Packages | Baha Buddy',
+  title: 'Bahamas Deals & Packages',
   description: 'Browse current Bahamas hotel deals, tour packages, and island experiences. Find the best prices with Baha Buddy.',
+  // Filter/sort query strings all canonicalize to the unfiltered listing.
+  alternates: { canonical: '/deals' },
   openGraph: {
     title: 'Bahamas Deals & Packages | Baha Buddy',
     description: 'Current deals on Bahamas hotels, tours, and island packages.',

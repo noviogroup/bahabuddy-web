@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { callTravelProvider, getProviderErrorResponse } from '@/lib/travel-booking/provider'
 import { createClient } from '@/lib/supabase/server'
+import { parseHotelPrebookQuote } from '@/lib/travel-booking/hotel-prebook'
 
 export async function POST(request: Request) {
   try {
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
     }, { useBookBase: true })
 
     const data = asRecord(asRecord(result.data).data ?? result.data)
+    const quote = parseHotelPrebookQuote(result.data)
     return NextResponse.json({
       prebookId: data.prebookId ?? data.prebook_id,
       offerId: data.offerId ?? rateId,
@@ -29,8 +31,10 @@ export async function POST(request: Request) {
       checkin: data.checkin ?? body.checkin ?? null,
       checkout: data.checkout ?? body.checkout ?? null,
       currency: data.currency ?? body.currency ?? 'USD',
+      // Authoritative prebook total; the payment amount is derived from this server-side.
+      price: quote ? quote.amountCents / 100 : null,
+      amountCents: quote?.amountCents ?? null,
       termsAndConditions: data.termsAndConditions ?? null,
-      raw: result.data,
     }, { status: result.status })
   } catch (error) {
     const response = getProviderErrorResponse(error)

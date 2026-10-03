@@ -157,6 +157,13 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
   const selectedOption = options.find((option) => option.value === selectedValue) ?? options[0]
   const activeOption = options[activeIndex] ?? selectedOption
   const visualLabel = props['aria-label'] ?? field.label ?? name ?? 'Select option'
+  const selectedLabel = selectedOption?.label || 'Select'
+  // The trigger's accessible name is "<field label>: <current value>", so
+  // screen readers hear what is selected (WCAG 4.1.2) and the visible value
+  // stays inside the name (WCAG 2.5.3). The field <label> keeps pointing at
+  // the native <select>, so it is not also wired to this button.
+  const triggerAccessibleName = `${visualLabel.replace(/[?:]\s*$/, '')}: ${selectedLabel}`
+  const listboxRef = useRef<HTMLDivElement>(null)
 
   useImperativeHandle(ref, () => nativeSelectRef.current as HTMLSelectElement)
 
@@ -165,6 +172,12 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
       setInternalValue(String(value))
     }
   }, [value])
+
+  useEffect(() => {
+    if (!open) return
+    const activeElement = listboxRef.current?.querySelector<HTMLElement>(`[id="${listboxId}-${activeIndex}"]`)
+    activeElement?.scrollIntoView?.({ block: 'nearest' })
+  }, [open, activeIndex, listboxId])
 
   useEffect(() => {
     function handlePointerDown(event: MouseEvent) {
@@ -289,10 +302,11 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
         id={nativeSelectId}
         type="button"
         disabled={disabled}
-        aria-label={`Open ${visualLabel} menu`}
+        aria-label={triggerAccessibleName}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-controls={listboxId}
+        aria-activedescendant={open && options[activeIndex] ? `${listboxId}-${activeIndex}` : undefined}
         onClick={handleTriggerClick}
         onKeyDown={handleKeyDown}
         className={travelSelectClassName(cx(
@@ -302,7 +316,7 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
         ))}
       >
         <span className="min-w-0 truncate">
-          {selectedOption?.label || 'Select'}
+          {selectedLabel}
         </span>
         <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 shadow-sm" aria-hidden="true">
           <svg className={cx('h-4 w-4 transition-transform', open && 'rotate-180')} viewBox="0 0 20 20" fill="none">
@@ -313,8 +327,10 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
 
       {open && (
         <div
+          ref={listboxRef}
           id={listboxId}
           role="listbox"
+          aria-label={visualLabel}
           className="absolute left-0 z-[90] mt-2 min-w-full overflow-hidden rounded-[1.25rem] border border-gray-200 bg-white shadow-2xl shadow-gray-950/10 ring-1 ring-black/5 sm:min-w-[16rem]"
         >
           <div className="border-b border-gray-100 bg-gray-50/80 px-4 py-3">
@@ -335,6 +351,7 @@ export const TravelSearchSelect = forwardRef<HTMLSelectElement, SelectHTMLAttrib
                   id={`${listboxId}-${index}`}
                   type="button"
                   role="option"
+                  tabIndex={-1}
                   aria-selected={selected}
                   disabled={option.disabled}
                   onMouseEnter={() => setActiveIndex(index)}

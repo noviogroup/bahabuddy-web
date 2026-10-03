@@ -11,7 +11,7 @@ import Footer from '@/components/Footer'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Search and book flights | Baha Buddy',
+  title: 'Search and book flights',
   description:
     'Search live flight options, verify fares, prebook, and book Bahamas flights through Baha Buddy.',
 }

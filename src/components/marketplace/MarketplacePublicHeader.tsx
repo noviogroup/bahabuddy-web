@@ -27,11 +27,11 @@ type ProductLink = {
 const exploreLinks = [
   { section: 'Start here', href: '/explore', label: 'Explore home', description: 'Mobile-style discovery, community, and trip ideas.' },
   { section: 'Start here', href: '/explore/places?category=Activity', label: 'Things to do', description: 'Tours, water days, wildlife, beaches, and island experiences.' },
-  { section: 'Start here', href: '/explore/places?search=landmark+historic+site', label: 'Landmarks', description: 'Historic sites, natural landmarks, and must-see stops.' },
+  { section: 'Start here', href: '/explore/places?search=historic', label: 'Landmarks', description: 'Historic sites, natural landmarks, and must-see stops.' },
   { section: 'Browse by interest', href: '/explore/places?category=Dining', label: 'Restaurants and food', description: 'Local dining, fish fry stops, cafes, and food culture.' },
   { section: 'Browse by interest', href: '/explore/places?category=Beach', label: 'Beaches', description: 'Pink sand, quiet coves, family beaches, and swim spots.' },
   { section: 'Browse by interest', href: '/explore/places?category=Activity&search=tour', label: 'Tours and activities', description: 'Guided days, boat trips, snorkeling, and curated activities.' },
-  { section: 'Browse by interest', href: '/explore/places?search=culture+history+museum', label: 'Culture and history', description: 'Museums, markets, art, Junkanoo, and local history.' },
+  { section: 'Browse by interest', href: '/explore/places?category=Culture', label: 'Culture and history', description: 'Museums, markets, art, Junkanoo, and local history.' },
   { section: 'Plan the trip', href: '/stays?sort=stars', label: 'Hotels and stays', description: 'Compare hotels, resorts, villas, apartments, homes, and condos.' },
   { section: 'Plan the trip', href: '/flights', label: 'Island access', description: 'Flights, ferries, airports, and route planning across the Bahamas.' },
 ] satisfies DropdownLink[]

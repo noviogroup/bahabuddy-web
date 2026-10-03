@@ -99,7 +99,7 @@ export function VendorPortalShell({
         <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-3">
-              <VendorPartnerSwitcher memberships={memberships} />
+              <VendorPartnerSwitcher memberships={memberships} activePartnerId={membership.partner_id} />
               <div className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-charcoal">
                 Partner ID: <span className="font-semibold text-night">{partner?.id?.slice(0, 8) || membership.partner_id.slice(0, 8)}</span>
               </div>
@@ -128,7 +128,11 @@ export function VendorPortalShell({
                 </span>
                 <div>
                   <div className="text-sm font-bold leading-5">Access active</div>
-                  <div className="text-xs font-semibold">You have full access to the vendor portal.</div>
+                  <div className="text-xs font-semibold">
+                    {membership.role === 'viewer'
+                      ? 'View-only access. Owners and editors can submit changes.'
+                      : 'You can submit profile, media and deal changes for review.'}
+                  </div>
                 </div>
               </div>
             </div>

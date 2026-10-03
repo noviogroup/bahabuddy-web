@@ -25,9 +25,11 @@ import {
 } from "@/lib/places";
 
 export const metadata: Metadata = {
-  title: "Best Restaurants in the Bahamas | Baha Buddy",
+  title: "Best Restaurants in the Bahamas",
   description:
     "Browse Bahamas restaurants across Nassau, Exuma, Eleuthera, and more, with cuisine, ratings, and photos where available.",
+  // Filter/sort query strings all canonicalize to the unfiltered listing.
+  alternates: { canonical: "/restaurants" },
   openGraph: {
     title: "Best Restaurants in the Bahamas | Baha Buddy",
     description: "Find the best Bahamas dining by island, cuisine, and rating.",
@@ -206,13 +208,8 @@ export default async function RestaurantsPage({
           r.cuisine_types.length > 0 && {
             servesCuisine: r.cuisine_types.map(formatCuisineLabel).join(", "),
           }),
-        ...(r.rating && {
-          aggregateRating: {
-            "@type": "AggregateRating",
-            ratingValue: r.rating,
-            reviewCount: r.num_reviews ?? 0,
-          },
-        }),
+        // No aggregateRating: ratings are Tripadvisor's, and Google's review
+        // snippet rules forbid marking up ratings aggregated by other sites.
       },
     })),
   };

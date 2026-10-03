@@ -2,6 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { shouldOptimizeImageSrc } from "@/lib/next-image-hosts";
+
+// Re-exported for existing callers and tests.
+export { OPTIMIZABLE_IMAGE_HOSTS, shouldOptimizeImageSrc } from "@/lib/next-image-hosts";
 
 type ImageTone =
   "brand" | "stay" | "restaurant" | "activity" | "deal" | "island" | "neutral";
@@ -15,6 +19,10 @@ type ImageWithSourcePolicyProps = {
   imageClassName?: string;
   sizes?: string;
   priority?: boolean;
+  /**
+   * Omit to let the component decide per source (see
+   * shouldOptimizeImageSrc). Pass `true` to force the raw original.
+   */
   unoptimized?: boolean;
   tone?: ImageTone;
   style?: CSSProperties;
@@ -48,7 +56,7 @@ export default function ImageWithSourcePolicy({
   imageClassName = "object-cover transition-transform duration-500 group-hover:scale-105",
   sizes = "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw",
   priority = false,
-  unoptimized = true,
+  unoptimized,
   tone = "brand",
   style,
   attribution,
@@ -58,6 +66,8 @@ export default function ImageWithSourcePolicy({
   const imageSrc = validImageUrl(src);
   const hasImage = Boolean(imageSrc && !failed);
   const credit = attribution?.trim();
+  const skipOptimization =
+    unoptimized ?? (imageSrc ? !shouldOptimizeImageSrc(imageSrc) : true);
 
   useEffect(() => {
     setFailed(false);
@@ -77,7 +87,7 @@ export default function ImageWithSourcePolicy({
           priority={priority}
           className={imageClassName}
           sizes={sizes}
-          unoptimized={unoptimized}
+          unoptimized={skipOptimization}
           onError={() => setFailed(true)}
         />
       ) : (

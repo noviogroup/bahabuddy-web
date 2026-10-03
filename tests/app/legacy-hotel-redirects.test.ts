@@ -2,14 +2,19 @@ import { beforeEach, describe, expect, test, vi } from 'vitest'
 import LegacyHotelPage from '@/app/hotel/page'
 import LegacyHotelDetailPage from '@/app/hotel/[hotelId]/page'
 import LegacyHotelsPage from '@/app/hotels/page'
-import LegacyHotelsDetailPage from '@/app/hotels/[id]/page'
+import LegacyHotelsDetailPage, { generateMetadata as legacyHotelsDetailMetadata } from '@/app/hotels/[id]/page'
+import GuidedDayPage from '@/app/guided-day/page'
 
 const routeMocks = vi.hoisted(() => ({
   redirect: vi.fn(),
 }))
 
+// Legacy routes must issue permanent (308) redirects so link equity moves to /stays.
 vi.mock('next/navigation', () => ({
-  redirect: routeMocks.redirect,
+  permanentRedirect: routeMocks.redirect,
+  redirect: () => {
+    throw new Error('legacy routes must use permanentRedirect')
+  },
 }))
 
 describe('legacy hotel route redirects', () => {
@@ -68,5 +73,15 @@ describe('legacy hotel route redirects', () => {
     expect(routeMocks.redirect).toHaveBeenCalledWith(
       '/stays/legacy%20hotel%2Fid?rate_id=rate-123&currency=USD',
     )
+  })
+
+  test('redirects from generateMetadata too, so the 308 is sent before streaming starts', () => {
+    legacyHotelsDetailMetadata({ params: { id: 'abc' }, searchParams: { adults: '2' } })
+    expect(routeMocks.redirect).toHaveBeenCalledWith('/stays/abc?adults=2')
+  })
+
+  test('redirects the retired guided-day route to cruise itineraries', () => {
+    GuidedDayPage()
+    expect(routeMocks.redirect).toHaveBeenCalledWith('/nassau-cruise-itineraries')
   })
 })

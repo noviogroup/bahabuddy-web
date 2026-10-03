@@ -4,7 +4,7 @@ import SanityManagedContentPage from '@/components/marketplace/SanityManagedCont
 import { fetchContentPageByRoute } from '@/lib/sanity/queries'
 
 export const metadata: Metadata = {
-  title: 'Contact Baha Buddy',
+  title: { absolute: 'Contact Baha Buddy' },
   description: 'Contact Baha Buddy support, partnerships, and business inquiries.',
 }
 

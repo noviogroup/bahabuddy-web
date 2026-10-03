@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import HeroSection from '@/components/HeroSection'
+import HeroSection, { shouldLoadHeroVideo } from '@/components/HeroSection'
 
 const authMocks = vi.hoisted(() => ({
   getUser: vi.fn(),
@@ -19,16 +19,14 @@ vi.mock('@/lib/supabase/client', () => ({
       getUser: authMocks.getUser,
       onAuthStateChange: authMocks.onAuthStateChange,
     },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({
-            data: authMocks.profileDisplayName ? { display_name: authMocks.profileDisplayName } : null,
-            error: null,
-          }),
-        }),
-      }),
-    }),
+    from: () => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        maybeSingle: async () => ({ data: { display_name: authMocks.profileDisplayName }, error: null }),
+      }
+      return query
+    },
   }),
 }))
 
@@ -120,6 +118,8 @@ describe('Homepage hero flow', () => {
       expect(video).toHaveAttribute('webkit-playsinline', 'true')
       expect((video as HTMLVideoElement).defaultMuted).toBe(true)
       expect(video).toHaveClass('object-cover')
+      expect(video).toHaveAttribute('preload', 'metadata')
+      expect(video).toHaveAttribute('poster', 'https://images.example.com/nassau.jpg')
       expect(container.querySelector('iframe[title="Baha Buddy homepage hero video background"]')).not.toBeInTheDocument()
     })
     await waitFor(() => expect(mediaMocks.play).toHaveBeenCalled())
@@ -192,5 +192,49 @@ describe('Homepage hero flow', () => {
     expect(screen.getByText('Hi, Valdez Williams')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Sign in' })).not.toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('link', { name: 'Profile for Valdez Williams' })).toBeInTheDocument())
+  })
+
+  test('reads the signed-in profile display name on the client', async () => {
+    authMocks.getUser.mockResolvedValue({
+      data: { user: { id: 'user-1', email: 'traveler@example.com', user_metadata: {} } },
+    })
+    authMocks.profileDisplayName = 'Island Traveler'
+
+    render(<HeroSection slides={slides} />)
+
+    await waitFor(() => expect(screen.getByText('Hi, Island Traveler')).toBeInTheDocument())
+  })
+
+  test('skips the hero video on phones, reduced motion, and data-saver connections', () => {
+    const matchMedia = (matching: string[]) => ({
+      matchMedia: (query: string) => ({ matches: matching.includes(query) }) as MediaQueryList,
+    })
+
+    expect(shouldLoadHeroVideo(matchMedia([DESKTOP]), undefined)).toBe(true)
+    // Phones (min-width query does not match) never get the clip.
+    expect(shouldLoadHeroVideo(matchMedia([]), undefined)).toBe(false)
+    expect(shouldLoadHeroVideo(matchMedia(['(max-width: 767px)']), undefined)).toBe(false)
+    expect(shouldLoadHeroVideo(matchMedia([DESKTOP, REDUCED_MOTION]), undefined)).toBe(false)
+    expect(shouldLoadHeroVideo(matchMedia([DESKTOP]), { saveData: true })).toBe(false)
+    expect(shouldLoadHeroVideo(matchMedia([DESKTOP]), { effectiveType: '3g' })).toBe(false)
+    expect(shouldLoadHeroVideo(matchMedia([DESKTOP]), { effectiveType: '4g' })).toBe(true)
+  })
+
+  test('never renders the video element on a narrow viewport', async () => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: query === '(max-width: 767px)',
+        media: query,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+      }),
+    })
+
+    render(<HeroSection slides={slides} />)
+    await waitFor(() => expect(authMocks.getUser).toHaveBeenCalled())
+    expect(screen.queryByTestId('hero-background-video')).not.toBeInTheDocument()
   })
 })

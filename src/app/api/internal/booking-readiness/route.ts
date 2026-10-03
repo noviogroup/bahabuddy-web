@@ -1,3 +1,4 @@
+import { createHash, timingSafeEqual } from 'crypto'
 import { NextResponse } from 'next/server'
 
 export const dynamic = 'force-dynamic'
@@ -8,6 +9,8 @@ type EnvCheck = {
   scope: 'public' | 'server'
   present: boolean
   mode?: string
+  /** Mode the key must be in for launch readiness. */
+  liveRequired?: string
   valid?: boolean
 }
 
@@ -116,20 +119,17 @@ const SCHEMA_CHECKS: SchemaCheck[] = [
 ]
 
 export async function GET(request: Request) {
-  const readinessSecret = process.env.BOOKING_READINESS_TOKEN || process.env.INTERNAL_API_SECRET || ''
+  // Dedicated token only; no fallback to a secret shared with other systems.
+  const readinessSecret = process.env.BOOKING_READINESS_TOKEN || ''
   if (!readinessSecret) {
     return NextResponse.json(
-      {
-        ready: false,
-        error: 'booking_readiness_token_not_configured',
-        message: 'Set BOOKING_READINESS_TOKEN or INTERNAL_API_SECRET on the deployed web runtime.',
-      },
+      { ready: false, error: 'booking_readiness_token_not_configured' },
       { status: 503, headers: noStoreHeaders() },
     )
   }
 
   const token = bearerToken(request) || request.headers.get('x-baha-readiness-token') || ''
-  if (token !== readinessSecret) {
+  if (!tokensMatch(token, readinessSecret)) {
     return NextResponse.json(
       { ready: false, error: 'not_authorized' },
       { status: 401, headers: noStoreHeaders() },
@@ -138,11 +138,18 @@ export async function GET(request: Request) {
 
   const env = envChecks()
   const schema = await schemaChecks()
-  const ready = env.every((check) => check.present && check.valid !== false) && schema.every((check) => check.ok)
+  // schemaReady: configuration + schema are wired (usable for staging/preview).
+  // ready: additionally running on live Stripe and production LiteAPI keys —
+  // the launch gate must never go green on test credentials.
+  const schemaReady = env.every((check) => check.present && check.valid !== false) && schema.every((check) => check.ok)
+  const liveKeys = env.every((check) => check.liveRequired === undefined || check.liveRequired === check.mode)
+  const ready = schemaReady && liveKeys
 
   return NextResponse.json(
     {
       ready,
+      schemaReady,
+      liveKeys,
       checkedAt: new Date().toISOString(),
       provider: 'liteapi',
       payment: 'stripe_edge_function',
@@ -165,9 +172,9 @@ function envChecks(): EnvCheck[] {
   return [
     publicEnv('NEXT_PUBLIC_SUPABASE_URL'),
     publicEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY'),
-    publicEnv('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', stripeMode(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)),
+    { ...publicEnv('NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY', stripeMode(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)), liveRequired: 'live' },
     serverEnv('SUPABASE_SERVICE_ROLE_KEY'),
-    serverEnv('LiteAPI private key', liteApiKeyMode(liteApiKey), Boolean(liteApiKey)),
+    { ...serverEnv('LiteAPI private key', liteApiKeyMode(liteApiKey), Boolean(liteApiKey)), liveRequired: 'production' },
     {
       key: 'TRAVEL_BOOKING_API_BASE_URL',
       scope: 'server',
@@ -280,8 +287,15 @@ function stripeMode(value: string | undefined) {
 function liteApiKeyMode(value: string) {
   if (!value) return undefined
   if (value.startsWith('prod_')) return 'production'
-  if (value.startsWith('sandbox_') || value.startsWith('test_')) return 'test'
+  if (value.startsWith('sandbox_') || value.startsWith('sand_') || value.startsWith('test_')) return 'test'
   return 'unknown'
+}
+
+function tokensMatch(supplied: string, expected: string): boolean {
+  // Compare fixed-length digests so neither length nor content leaks via timing.
+  const a = createHash('sha256').update(supplied, 'utf8').digest()
+  const b = createHash('sha256').update(expected, 'utf8').digest()
+  return timingSafeEqual(a, b) && supplied.length > 0
 }
 
 function stripTrailingSlash(input: string) {

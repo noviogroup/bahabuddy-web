@@ -20,7 +20,7 @@ describe('booking readiness runtime verifier', () => {
 
   test('runtime route is protected and separates operational from audit sources', () => {
     expect(route).toContain('BOOKING_READINESS_TOKEN')
-    expect(route).toContain('INTERNAL_API_SECRET')
+    expect(route).not.toContain('process.env.INTERNAL_API_SECRET')
     expect(route).toContain('SUPABASE_SERVICE_ROLE_KEY')
     expect(route).toContain("operational: ['bookings', 'trip_accommodations', 'trip_flights']")
     expect(route).toContain("auditOnly: ['travel_booking_records']")

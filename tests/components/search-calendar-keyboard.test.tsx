@@ -16,7 +16,7 @@ describe('search calendar keyboard recovery', () => {
       </SearchSummaryPanel>,
     )
 
-    const trigger = screen.getByRole('button', { name: mode === 'single' ? 'Departure' : 'Stay dates' })
+    const trigger = screen.getByRole('button', { name: mode === 'single' ? 'Departure: not set' : 'Stay dates: not set' })
     fireEvent.click(trigger)
     const calendarButton = within(screen.getByRole('dialog')).getAllByRole('button')[0]
     calendarButton.focus()

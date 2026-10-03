@@ -31,6 +31,7 @@ import {
 import { BahaDateRangePicker } from '@/components/ui'
 import type { IslandConfig } from '@/lib/island-config'
 import type { Trip } from '@/types/database'
+import { parseTripDate } from '@/lib/trips/trip-field-validation'
 
 interface TripContextChipsProps {
   tripId: string
@@ -82,7 +83,10 @@ function tierForBudget(budget: number | null | undefined): typeof BUDGET_TIERS[n
 
 function formatDateRange(start: string | null | undefined, end: string | null | undefined): string {
   if (!start && !end) return 'Flexible'
-  const fmt = (s: string) => new Date(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+  // Date-only values are parsed as local dates (not UTC) so they don't show a
+  // day early for travellers west of UTC.
+  const fmt = (s: string) =>
+    parseTripDate(s)?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) ?? s
   if (start && end) return `${fmt(start)} – ${fmt(end)}`
   if (start) return `From ${fmt(start)}`
   return `Until ${fmt(end!)}`

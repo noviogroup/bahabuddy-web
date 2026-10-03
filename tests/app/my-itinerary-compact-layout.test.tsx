@@ -24,7 +24,8 @@ describe('my itinerary compact handoff page', () => {
     const { container } = render(page)
 
     expect(screen.getByRole('heading', { name: 'Your cruise day plan is being prepared.' })).toBeInTheDocument()
-    expect(screen.getByText('Order reference order-123')).toBeInTheDocument()
+    expect(screen.getByText('Reference order-123')).toBeInTheDocument()
+    expect(container.innerHTML).not.toContain('The order is captured')
     expect(screen.getByText('Mobile Live Guide handoff')).toBeInTheDocument()
     expect(screen.getByText('Ship-return buffer')).toBeInTheDocument()
 
@@ -52,5 +53,16 @@ describe('my itinerary compact handoff page', () => {
     expect(container.innerHTML).not.toContain('/dashboard/chat')
     expect(container.innerHTML).not.toContain('cruise_day_orders')
     expectNoDecorativeInnerPageChrome(container)
+  })
+
+  test('rejects malformed references instead of echoing them', async () => {
+    await expect(
+      MyItineraryPage({ params: Promise.resolve({ id: '<script>alert(1)</script>' }) }),
+    ).rejects.toThrow()
+  })
+
+  test('is never indexed', async () => {
+    const mod = await import('@/app/my-itinerary/[id]/page')
+    expect(mod.metadata.robots).toEqual({ index: false, follow: false })
   })
 })

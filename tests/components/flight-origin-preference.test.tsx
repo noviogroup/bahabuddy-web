@@ -44,7 +44,7 @@ describe('FlightSearchClient origin preference', () => {
 
     await waitFor(() => expect(screen.getByLabelText('From')).toHaveValue('Atlanta (ATL)'))
     expect(fetchMock).not.toHaveBeenCalled()
-    expect(screen.getByRole('button', { name: 'Departure date' })).toHaveTextContent('Depart')
+    expect(screen.getByRole('button', { name: 'Departure date: not set' })).toHaveTextContent('Depart')
     expect(analyticsMock.track).toHaveBeenCalledWith('flight_origin_preference_applied', {
       origin: 'Atlanta',
       source: 'stored_preference',

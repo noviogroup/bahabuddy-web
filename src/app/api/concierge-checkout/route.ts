@@ -62,7 +62,8 @@ export async function POST(request: Request) {
       .single()
 
     if (orderError) {
-      return NextResponse.json({ error: orderError.message }, { status: 500 })
+      console.error('[concierge-checkout] order insert failed', orderError.message)
+      return NextResponse.json({ error: 'We could not start checkout. Please try again.' }, { status: 500 })
     }
 
     orderId = order?.id ?? null
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
   params.set('line_items[0][price_data][unit_amount]', String(offer.amountCents))
   params.set('line_items[0][price_data][product_data][name]', offer.name)
   params.set('line_items[0][price_data][product_data][description]', offer.description)
+  if (orderId) params.set('client_reference_id', orderId)
   params.set('metadata[product]', CONCIERGE_PRODUCT)
   params.set('metadata[offer_id]', offerId)
   params.set('metadata[source]', source)
@@ -110,22 +112,27 @@ export async function POST(request: Request) {
 
   if (!response.ok) {
     const text = await response.text()
+    console.error('[concierge-checkout] Stripe session create failed', response.status, text)
     return NextResponse.json(
-      { error: text || 'Stripe checkout could not be started.' },
-      { status: response.status }
+      { error: 'Stripe checkout could not be started. Please try again.' },
+      { status: 502 }
     )
   }
 
   const session = await response.json() as { id?: string; url?: string }
 
   if (orderId && session.id && admin) {
-    await admin
+    const { error: sessionLinkError } = await admin
       .from('concierge_orders')
       .update({
         stripe_checkout_session_id: session.id,
         updated_at: new Date().toISOString(),
       })
       .eq('id', orderId)
+    if (sessionLinkError) {
+      // Not fatal: the webhook resolves the order by metadata.order_id first.
+      console.error('[concierge-checkout] session link update failed', { orderId, error: sessionLinkError.message })
+    }
   }
 
   if (!session.url) {

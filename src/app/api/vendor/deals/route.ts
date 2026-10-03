@@ -7,6 +7,7 @@ import {
   cleanUrl,
   ensurePartnerPlaceLink,
   requireActiveVendorAccess,
+  VENDOR_SUBMIT_ROLE,
 } from '@/lib/vendor-portal'
 
 export const dynamic = 'force-dynamic'
@@ -51,7 +52,7 @@ function buildDealProposal(body: Record<string, unknown>): Record<string, unknow
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({})) as Record<string, unknown>
   const requestedPartnerId = typeof body.partner_id === 'string' ? body.partner_id : null
-  const access = await requireActiveVendorAccess(requestedPartnerId)
+  const access = await requireActiveVendorAccess(requestedPartnerId, { minRole: VENDOR_SUBMIT_ROLE })
 
   if (!access.ok) {
     return NextResponse.json(

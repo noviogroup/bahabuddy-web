@@ -230,7 +230,7 @@ describe("HomepageStorySections direct actions", () => {
       screen.getByRole("link", {
         name: "View details for Swimming Pigs Experience",
       }),
-    ).toHaveAttribute("href", "/guides/swimming-pigs-exuma-guide");
+    ).toHaveAttribute("href", "/guides/swimming-pigs-exuma");
   });
 
   test("featured experiences show admin Top picks once there are at least three", () => {

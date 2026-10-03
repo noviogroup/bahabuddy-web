@@ -67,7 +67,7 @@ describe('canonical stays navigation', () => {
     render(<HeroSearchPanel />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Stays' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Where to menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Where to: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Exuma' }))
     fireEvent.click(screen.getByRole('button', { name: 'Find stays' }))
 
@@ -94,7 +94,7 @@ describe('canonical stays navigation', () => {
     expect(screen.getByText('Exuma International Airport')).toBeInTheDocument()
     fireEvent.mouseDown(screen.getByRole('option', { name: /Exuma International Airport/i }))
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open Cabin menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Cabin: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Business' }))
 
     fireEvent.click(screen.getByRole('button', { name: 'Find flights' }))
@@ -111,7 +111,7 @@ describe('canonical stays navigation', () => {
     render(<HeroSearchPanel />)
 
     fireEvent.click(screen.getByRole('tab', { name: 'Things to Do' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Open Where menu' }))
+    fireEvent.click(screen.getByRole('button', { name: /^Where: / }))
     fireEvent.mouseDown(within(screen.getByRole('listbox')).getByRole('option', { name: 'Exuma' }))
     fireEvent.click(screen.getByRole('button', { name: 'Find activities' }))
 

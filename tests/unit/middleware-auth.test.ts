@@ -1,5 +1,15 @@
-import { describe, expect, test } from 'vitest'
-import { getPublicShareCodeFromTripPath, isGuestChatPath, isProtectedRoutePath } from '@/middleware'
+import { describe, expect, test, vi } from 'vitest'
+import { NextRequest } from 'next/server'
+
+const mocks = vi.hoisted(() => ({ user: null as null | { id: string } }))
+
+vi.mock('@supabase/ssr', () => ({
+  createServerClient: () => ({
+    auth: { getUser: async () => ({ data: { user: mocks.user } }) },
+  }),
+}))
+
+import { config, getPublicShareCodeFromTripPath, isGuestChatPath, isProtectedRoutePath, middleware } from '@/middleware'
 
 describe('middleware auth route boundaries', () => {
   test('allows public guest access to standalone chat only', () => {
@@ -35,5 +45,46 @@ describe('middleware auth route boundaries', () => {
     expect(isProtectedRoutePath('/explore')).toBe(false)
     expect(isProtectedRoutePath('/partners')).toBe(false)
     expect(isProtectedRoutePath('/list-your-property')).toBe(false)
+  })
+
+  test('keeps the login return path for dashboard-group activity and checkout pages', () => {
+    expect(isProtectedRoutePath('/activities/abc')).toBe(true)
+    expect(isProtectedRoutePath('/checkout')).toBe(true)
+  })
+})
+
+describe('middleware matcher and forwarding', () => {
+  const matcher = new RegExp(`^${config.matcher[0]}$`)
+
+  test('runs on public pages so Supabase can persist refreshed session cookies', () => {
+    for (const path of ['/', '/stays', '/stays/abc', '/explore', '/share/abc123', '/onboarding', '/dashboard', '/trip/x', '/login', '/vendor']) {
+      expect(matcher.test(path)).toBe(true)
+    }
+  })
+
+  test('skips Next internals, API routes and static files', () => {
+    for (const path of ['/_next/static/chunks/a.js', '/_next/image', '/api/stripe-webhook', '/api/trips/invite', '/favicon.ico', '/assets/tourism/a.jpg', '/robots.txt', '/sitemap.xml', '/brand/logo.svg']) {
+      expect(matcher.test(path)).toBe(false)
+    }
+  })
+
+  test('forwards the current path for server layouts and still redirects guests with ?redirect=', async () => {
+    mocks.user = null
+    const publicResponse = await middleware(new NextRequest('http://localhost.test/stays?island=nassau'))
+    expect(publicResponse.headers.get('x-middleware-request-x-baha-pathname')).toBe('/stays?island=nassau')
+
+    const protectedResponse = await middleware(new NextRequest('http://localhost.test/activities/abc'))
+    expect(protectedResponse.headers.get('location')).toBe(
+      `http://localhost.test/login?redirect=${encodeURIComponent('/activities/abc')}`,
+    )
+  })
+
+  test('remembers an explicit vendor partner_id in a cookie', async () => {
+    mocks.user = { id: 'user-1' }
+    const response = await middleware(new NextRequest('http://localhost.test/vendor/deals?partner_id=partner-2'))
+    expect(response.cookies.get('bb_vendor_partner_id')?.value).toBe('partner-2')
+
+    const ignored = await middleware(new NextRequest('http://localhost.test/vendor/deals?partner_id=%3Cscript%3E'))
+    expect(ignored.cookies.get('bb_vendor_partner_id')).toBeUndefined()
   })
 })

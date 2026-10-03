@@ -69,7 +69,7 @@ export default function CreateTripCTA({ tripCount }: CreateTripCTAProps) {
 
           <div className="absolute inset-0 flex items-center justify-between gap-4 px-5 sm:px-6">
             <div className="text-left min-w-0">
-              <p className="text-white/85 text-xs font-bold uppercasest">
+              <p className="text-white/85 text-xs font-bold uppercase">
                 {isFirstTrip ? 'Start here' : 'Ready for the next one?'}
               </p>
               <h2 className="text-white text-xl font-bold leading-tight mt-1 drop-shadow">

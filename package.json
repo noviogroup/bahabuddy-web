@@ -2,6 +2,7 @@
   "name": "bahabuddy-web",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@10.8.2",
   "engines": {
     "node": ">=20 <23"
   },
@@ -11,6 +12,7 @@
     "build": "NODE_ENV=production next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit -p .",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -39,13 +41,11 @@
     "date-fns": "^4.1.0",
     "mixpanel-browser": "^2.79.0",
     "next": "14.2.35",
-    "next-sanity": "^9.12.3",
     "posthog-js": "^1.435.6",
     "react": "^18",
     "react-day-picker": "^10.0.1",
     "react-dom": "^18",
-    "server-only": "0.0.1",
-    "styled-components": "6.1.19"
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@netlify/plugin-nextjs": "^5.15.10",

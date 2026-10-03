@@ -9,6 +9,8 @@ import { Children, type ReactNode } from 'react'
 import MarketplacePublicHeader from '@/components/marketplace/MarketplacePublicHeader'
 import CompactPageHeader from '@/components/marketplace/CompactPageHeader'
 import Footer from '@/components/Footer'
+import { isValidShareCode } from '@/lib/share-codes'
+import { isAllowedTripHeroImageUrl } from '@/lib/trips/trip-field-validation'
 
 export const dynamic = 'force-dynamic'
 
@@ -45,44 +47,65 @@ async function createShareClient() {
   return createClient()
 }
 
-export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
-  const supabase = await createShareClient()
+// Share snapshots are private itineraries: never index them, never follow
+// their links. Applied to every metadata path, including invalid/expired.
+const SHARE_ROBOTS: Metadata['robots'] = { index: false, follow: false, nocache: true }
+const GENERIC_SHARE_METADATA: Metadata = {
+  title: 'Shared Trip',
+  description: 'A read-only Bahamas trip preview from Baha Buddy.',
+  robots: SHARE_ROBOTS,
+}
+
+type ActiveShareLink = { trip_id: string; share_type: string | null }
+
+/**
+ * Resolves a share code to an active (existing, unexpired) share link.
+ * Invalid-looking codes never reach the database.
+ */
+async function resolveActiveShareLink(
+  supabase: Awaited<ReturnType<typeof createShareClient>>,
+  code: string,
+): Promise<ActiveShareLink | null> {
+  if (!isValidShareCode(code)) return null
   const { data: shareLink } = await supabase
     .from('share_links')
-    .select('trip_id')
-    .eq('short_code', params.code)
-    .single()
+    .select('trip_id, share_type, expires_at')
+    .eq('short_code', code)
+    .maybeSingle()
 
-  if (!shareLink) return { title: 'Shared Trip — Baha Buddy' }
+  if (!shareLink?.trip_id) return null
+  const isExpired = shareLink.expires_at ? new Date(shareLink.expires_at) < new Date() : false
+  if (isExpired) return null
+  return { trip_id: shareLink.trip_id, share_type: shareLink.share_type ?? null }
+}
+
+export async function generateMetadata({ params }: { params: { code: string } }): Promise<Metadata> {
+  const supabase = await createShareClient()
+  const shareLink = await resolveActiveShareLink(supabase, params.code)
+  if (!shareLink) return GENERIC_SHARE_METADATA
 
   const { data: trip } = await supabase
     .from('trips')
-    .select('name, islands')
+    .select('name')
     .eq('id', shareLink.trip_id)
-    .single()
+    .maybeSingle()
 
-  if (!trip) return { title: 'Shared Trip — Baha Buddy' }
+  if (!trip?.name) return GENERIC_SHARE_METADATA
 
   return {
-    title: `${trip.name} — Baha Buddy`,
-    description: `Check out this Bahamas trip: ${trip.name}${trip.islands?.length ? ` visiting ${trip.islands.join(', ')}` : ''}`,
+    title: trip.name,
+    description: 'A read-only Bahamas trip preview from Baha Buddy.',
+    robots: SHARE_ROBOTS,
   }
 }
 
 export default async function SharePage({ params }: { params: { code: string } }) {
   const supabase = await createShareClient()
 
-  const { data: shareLink } = await supabase
-    .from('share_links')
-    .select('trip_id, share_type, expires_at')
-    .eq('short_code', params.code)
-    .single()
-
+  const shareLink = await resolveActiveShareLink(supabase, params.code)
   if (!shareLink) notFound()
 
   const isCollaborative = shareLink.share_type === 'collaborative'
-  const isExpired = shareLink.expires_at ? new Date(shareLink.expires_at) < new Date() : false
-  if (isExpired) notFound()
 
   // Valid public share links expose a read-only trip snapshot. The service role
   // is server-only and keeps RLS strict for normal anonymous trip access.
@@ -92,22 +115,24 @@ export default async function SharePage({ params }: { params: { code: string } }
   const [tripRes, flightsRes, accRes, activitiesRes] = await Promise.all([
     supabase
       .from('trips')
-      .select('id,user_id,name,status,date_start,date_end,islands,party_type,party_size,budget_estimate,budget_actual,hero_image_url,created_at,updated_at')
+      // Only what the snapshot renders: no owner id, actual spend or audit
+      // timestamps, and no provider booking references below.
+      .select('id,name,status,date_start,date_end,islands,party_type,party_size,budget_estimate,hero_image_url')
       .eq('id', shareLink.trip_id)
       .single(),
     supabase
       .from('trip_flights')
-      .select('id,trip_id,origin,destination,departure_at,arrival_at,airline,booking_reference,price,created_at')
+      .select('id,origin,destination,departure_at,arrival_at,airline,price')
       .eq('trip_id', shareLink.trip_id)
       .order('departure_at'),
     supabase
       .from('trip_accommodations')
-      .select('id,trip_id,name,island,check_in,check_out,price_per_night,guests,booking_reference,created_at')
+      .select('id,name,island,check_in,check_out,price_per_night,guests')
       .eq('trip_id', shareLink.trip_id)
       .order('check_in'),
     supabase
       .from('trip_activities')
-      .select('id,trip_id,day_number,time_slot,activity_name,activity_type,notes,sort_order,created_at')
+      .select('id,day_number,time_slot,activity_name,notes,sort_order')
       .eq('trip_id', shareLink.trip_id)
       .order('day_number')
       .order('sort_order'),
@@ -115,10 +140,11 @@ export default async function SharePage({ params }: { params: { code: string } }
 
   if (!tripRes.data) notFound()
 
-  const trip = tripRes.data as Trip
-  const flights = (flightsRes.data ?? []) as TripFlight[]
-  const accommodations = (accRes.data ?? []) as TripAccommodation[]
-  const activities = (activitiesRes.data ?? []) as TripActivity[]
+  const trip = tripRes.data as unknown as Trip
+  const heroImageUrl = isAllowedTripHeroImageUrl(trip.hero_image_url) ? trip.hero_image_url : null
+  const flights = (flightsRes.data ?? []) as unknown as TripFlight[]
+  const accommodations = (accRes.data ?? []) as unknown as TripAccommodation[]
+  const activities = (activitiesRes.data ?? []) as unknown as TripActivity[]
 
   return (
     <div className="min-h-screen bg-offwhite text-night">
@@ -151,10 +177,10 @@ export default async function SharePage({ params }: { params: { code: string } }
           )}
 
           <div className="overflow-hidden rounded-3xl border border-gray-200 bg-white shadow-soft">
-            {trip.hero_image_url && (
+            {heroImageUrl && (
               <div className="relative h-72 md:h-96">
                 <Image
-                  src={trip.hero_image_url}
+                  src={heroImageUrl}
                   alt={trip.name}
                   fill
                   className="object-cover"

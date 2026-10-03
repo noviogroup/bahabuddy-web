@@ -10,7 +10,7 @@ import { notFound } from 'next/navigation'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
-  title: 'Your tour | Baha Buddy',
+  title: 'Your tour',
   robots: { index: false },
 }
 

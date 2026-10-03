@@ -31,7 +31,12 @@ export async function callTravelProvider<T = ProviderJson>(
   const config = getTravelBookingConfig()
 
   if (!config.configured) {
-    throw new Error('Travel booking provider is not configured. Add TRAVEL_BOOKING_API_KEY to the server environment.')
+    // Operator-facing detail stays in server logs; getProviderErrorResponse maps
+    // this to traveller-safe copy.
+    const error = new Error('Travel booking provider is not configured (TRAVEL_BOOKING_API_KEY missing).')
+    ;(error as ProviderError).status = 503
+    ;(error as ProviderError).code = 'provider_not_configured'
+    throw error
   }
 
   const method = init?.method ?? 'POST'
@@ -67,8 +72,8 @@ export async function callTravelProvider<T = ProviderJson>(
   if (!response.ok) {
     const message = extractProviderMessage(data) ?? `Provider request failed with status ${response.status}.`
     const error = new Error(message)
-    ;(error as Error & { status?: number; details?: unknown }).status = response.status
-    ;(error as Error & { status?: number; details?: unknown }).details = data
+    ;(error as ProviderError).status = response.status
+    ;(error as ProviderError).details = data
     throw error
   }
 
@@ -78,12 +83,34 @@ export async function callTravelProvider<T = ProviderJson>(
   }
 }
 
+type ProviderError = Error & { status?: number; details?: unknown; code?: string }
+
+export const PROVIDER_UNAVAILABLE_MESSAGE =
+  "We can't reach our travel partner right now. Please try again in a few minutes."
+export const PROVIDER_REJECTED_MESSAGE =
+  'Our travel partner could not complete this request. The price or availability may have changed. Please search again or pick another option.'
+
+/**
+ * Maps a provider/config failure to a traveller-safe response. Raw provider
+ * messages, payloads, and configuration hints are logged server-side only and
+ * are never returned to the browser.
+ */
 export function getProviderErrorResponse(error: unknown) {
-  const typed = error as Error & { status?: number; details?: unknown }
-  return {
-    error: typed.message || 'Provider request failed.',
+  const typed = (error ?? {}) as ProviderError
+  const rawStatus = typeof typed.status === 'number' ? typed.status : 500
+  console.error('[travel-provider]', {
+    status: rawStatus,
+    code: typed.code ?? null,
+    message: typed.message ?? String(error),
     details: typed.details ?? null,
-    status: typed.status ?? 500,
+  })
+
+  // 401/403 from the provider mean our credentials are wrong, not the traveller's input.
+  const unavailable = typed.code === 'provider_not_configured' || rawStatus >= 500 || rawStatus === 401 || rawStatus === 403
+  return {
+    error: unavailable ? PROVIDER_UNAVAILABLE_MESSAGE : PROVIDER_REJECTED_MESSAGE,
+    details: null,
+    status: unavailable ? (typed.code === 'provider_not_configured' ? 503 : 502) : rawStatus,
   }
 }
 

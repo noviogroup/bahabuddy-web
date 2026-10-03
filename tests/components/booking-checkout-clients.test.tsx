@@ -151,11 +151,14 @@ describe('StayGuestBookingClient', () => {
       currency: 'USD',
     })
     expect(fetchMock.mock.calls[2][0]).toBe('/api/booking/payments/intent')
-    expect(requestBody(fetchMock.mock.calls[2])).toMatchObject({
-      amount: 126000,
+    const intentBody = requestBody(fetchMock.mock.calls[2])
+    // The server prices the payment from the prebook; the browser never sends an amount.
+    expect(intentBody).not.toHaveProperty('amount')
+    expect(intentBody).not.toHaveProperty('currency')
+    expect(intentBody).toMatchObject({
       tripId: 'trip-1',
+      prebookId: 'prebook-1',
       bookingType: 'hotel',
-      currency: 'usd',
       metadata: {
         source_surface: 'web',
         provider: 'liteapi',
@@ -203,9 +206,88 @@ describe('StayGuestBookingClient', () => {
       expect(await screen.findByText(/Payment succeeded, but this booking needs support before it can be shown as confirmed/i)).toBeInTheDocument()
       expect(window.location.href).toBe('')
       expect(fetchMock.mock.calls.at(-1)?.[0]).toBe('/api/booking/hotels/book')
+      // Terminal state: no way back into a second charge.
+      expect(screen.queryByRole('button', { name: /continue to pay/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'Pay and confirm hotel' })).not.toBeInTheDocument()
+      expect(screen.getByText('pi_hotel_1')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'support@bahabuddy.com' })).toBeInTheDocument()
     } finally {
       restoreLocation()
+      window.sessionStorage.clear()
     }
+  })
+
+  async function reachHotelPayment(intent: Record<string, unknown> = { paymentIntentId: 'pi_hotel_1', clientSecret: 'cs_hotel_1' }) {
+    render(<StayGuestBookingClient {...stayProps} />)
+    fireEvent.change(screen.getByLabelText(/email/i), { target: { value: 'traveler@example.com' } })
+    fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Valdez' } })
+    fireEvent.change(screen.getByLabelText(/last name/i), { target: { value: 'Williams' } })
+    fireEvent.click(screen.getByRole('button', { name: /continue to pay/i }))
+    return screen.findByRole('button', { name: 'Pay and confirm hotel' })
+  }
+
+  function hotelFetch(intent: Record<string, unknown> = { paymentIntentId: 'pi_hotel_1', clientSecret: 'cs_hotel_1' }, book?: () => Promise<Response>) {
+    return vi.fn((url: string) => {
+      if (url === '/api/trips/trip-1/items') return mockJsonResponse({ tripItemId: 'stay-item-1' })
+      if (url === '/api/booking/hotels/prebook') return mockJsonResponse({ prebookId: 'prebook-1' })
+      if (url === '/api/booking/payments/intent') return mockJsonResponse(intent)
+      if (url === '/api/booking/hotels/book' && book) return book()
+      return mockJsonResponse({ error: `Unhandled ${url}` }, { status: 500 })
+    })
+  }
+
+  test('keeps the Stripe PaymentElement mounted while the payment is confirming', async () => {
+    let resolvePayment: (value: unknown) => void = () => undefined
+    stripeMocks.confirmPayment.mockReturnValue(new Promise((resolve) => { resolvePayment = resolve }))
+    vi.stubGlobal('fetch', hotelFetch())
+
+    const payButton = await reachHotelPayment()
+    fireEvent.click(payButton)
+
+    await waitFor(() => expect(screen.getByRole('button', { name: /confirming payment/i })).toBeDisabled())
+    expect(screen.getByTestId('payment-element')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /continue to pay/i })).not.toBeInTheDocument()
+
+    resolvePayment({ error: { message: 'Your card was declined.' } })
+    const alert = await screen.findByRole('alert')
+    await waitFor(() => expect(alert).toHaveTextContent('Your card was declined.'))
+    expect(screen.getByTestId('payment-element')).toBeInTheDocument()
+  })
+
+  test('shows a support state instead of the pay form when booking fails after payment', async () => {
+    const restoreLocation = mockWindowLocation()
+    stripeMocks.confirmPayment.mockResolvedValue({ paymentIntent: { id: 'pi_hotel_1', status: 'succeeded' } })
+    vi.stubGlobal('fetch', hotelFetch(undefined, () => mockJsonResponse({
+      error: 'Your payment went through, but the hotel could not confirm this booking, so you are not booked.',
+      code: 'paid_booking_failed',
+    }, { status: 502 })))
+
+    try {
+      fireEvent.click(await reachHotelPayment())
+      expect(await screen.findByText(/hotel could not confirm this booking/i)).toBeInTheDocument()
+      expect(screen.getByText(/please do not pay again/i)).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /continue to pay/i })).not.toBeInTheDocument()
+      expect(screen.queryByTestId('payment-element')).not.toBeInTheDocument()
+    } finally {
+      restoreLocation()
+      window.sessionStorage.clear()
+    }
+  })
+
+  test('shows the server-confirmed total when the prebook price changed', async () => {
+    vi.stubGlobal('fetch', hotelFetch({ paymentIntentId: 'pi_hotel_1', clientSecret: 'cs_hotel_1', amountCents: 130000, currency: 'USD' }))
+    await reachHotelPayment()
+    expect(screen.getByText(/The hotel updated this rate/i)).toHaveTextContent('$1,300.00')
+    expect(screen.getByText(/Total charged/i)).toHaveTextContent('$1,300.00')
+  })
+
+  test('uses autofill tokens and a tel input on the guest form', () => {
+    render(<StayGuestBookingClient {...stayProps} />)
+    expect(screen.getByLabelText(/email/i)).toHaveAttribute('autocomplete', 'email')
+    expect(screen.getByLabelText(/first name/i)).toHaveAttribute('autocomplete', 'given-name')
+    expect(screen.getByLabelText(/last name/i)).toHaveAttribute('autocomplete', 'family-name')
+    expect(screen.getByLabelText(/phone/i)).toHaveAttribute('type', 'tel')
+    expect(screen.getByLabelText(/phone/i)).toHaveAttribute('autocomplete', 'tel')
   })
 })
 

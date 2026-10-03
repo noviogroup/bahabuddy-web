@@ -172,7 +172,7 @@ describe("StaysPage marketplace layout", () => {
     fireEvent.click(screen.getByRole("button", { name: "Edit search" }));
     const searchForm = screen.getByRole("form", { name: "Search stays" });
     expect(within(searchForm).getByRole("button", { name: "Choose destination" })).toHaveTextContent("Paradise Island, Nassau");
-    expect(within(searchForm).getByRole("button", { name: "Choose stay dates" })).toHaveTextContent("Aug 1 – Aug 5");
+    expect(within(searchForm).getByRole("button", { name: /^Choose stay dates: / })).toHaveTextContent("Aug 1 – Aug 5");
     expect(within(searchForm).getByRole("button", { name: "Choose travelers and rooms" })).toHaveTextContent("2 adults, 2 rooms");
     const fields = {island: "Nassau", city: "Paradise Island", checkin: "2026-08-01", checkout: "2026-08-05", adults: "2", children: "1", rooms: "2", type: "Resort", stars: "5", guest_rating: "8", traveler_type: "families", amenities: "Pool,Beachfront"};
     for (const [name, value] of Object.entries(fields)) {

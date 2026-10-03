@@ -47,7 +47,7 @@ import {
 export const revalidate = 300
 
 export const metadata = {
-  title: 'Explore | Baha Buddy',
+  title: 'Explore the Bahamas',
   description: 'Editorial guides, hidden gems, and community moments from across the Bahamas.',
 }
 
@@ -116,99 +116,16 @@ const FALLBACK_ARTICLES: DiscoverArticle[] = [
   },
 ]
 
-// ─── Community fallbacks (ported from mobile in Session 13) ─────────────────
-
-const FALLBACK_SOCIAL_VIDEOS: SocialVideo[] = [
-  {
-    id: 'swim-pigs',
-    title: 'Swimming with pigs in Exuma!',
-    creator: '@islandhopper',
-    platformLabel: 'TikTok',
-    viewsLabel: '2.3M views',
-    imageUrl: BahaImages.swimmingPigs,
-    overlayClass: VIDEO_ACCENT_GRADIENT.sky,
-    buddyPrompt: 'I saw a video of swimming with pigs in Exuma, help me plan that',
-  },
-  {
-    id: 'pink-sand',
-    title: 'Harbour Island pink sand is REAL',
-    creator: '@travelwithlex',
-    platformLabel: 'Instagram',
-    viewsLabel: '890K views',
-    imageUrl: BahaImages.harbourIsland,
-    overlayClass: VIDEO_ACCENT_GRADIENT.coral,
-    buddyPrompt: 'I want to see the pink sand beach at Harbour Island',
-  },
-  {
-    id: 'fish-fry',
-    title: 'Nassau Fish Fry food tour',
-    creator: '@foodiebahamas',
-    platformLabel: 'TikTok',
-    viewsLabel: '1.1M views',
-    imageUrl: BahaImages.nassau,
-    overlayClass: VIDEO_ACCENT_GRADIENT.amber,
-    buddyPrompt: 'I want to do a food tour at Nassau Fish Fry',
-  },
-  {
-    id: 'blue-hole',
-    title: "Dean's Blue Hole is INSANE",
-    creator: '@bahamasdiver',
-    platformLabel: 'TikTok',
-    viewsLabel: '1.8M views',
-    imageUrl: BahaImages.longIsland,
-    overlayClass: VIDEO_ACCENT_GRADIENT.brand,
-    buddyPrompt: "I want to dive at Dean's Blue Hole in Long Island",
-  },
-  {
-    id: 'exuma-cays',
-    title: 'Exuma cays from above',
-    creator: '@droneadventures',
-    platformLabel: 'Instagram',
-    viewsLabel: '650K views',
-    imageUrl: BahaImages.exumas,
-    overlayClass: VIDEO_ACCENT_GRADIENT.sky,
-    buddyPrompt: 'I want to explore the Exuma cays',
-  },
-]
-
-const FALLBACK_TRAVELER_STORIES: TravelerStory[] = [
-  {
-    id: 'sarah-mike',
-    name: 'Sarah & Mike',
-    trip: '5 days in Exuma',
-    quote:
-      'Buddy planned the perfect honeymoon. The swimming pigs were the highlight!',
-    partyTypeLabel: 'Couple',
-    partyToneClass: 'bg-gray-100 text-charcoal',
-    avatarUrl: null,
-  },
-  {
-    id: 'johnsons',
-    name: 'The Johnsons',
-    trip: '7 days island hopping',
-    quote: 'Our kids still talk about Atlantis. Best family trip ever.',
-    partyTypeLabel: 'Family',
-    partyToneClass: 'bg-gray-100 text-charcoal',
-    avatarUrl: null,
-  },
-  {
-    id: 'marcus',
-    name: 'Marcus',
-    trip: '4 days solo in Long Island',
-    quote:
-      "Dean's Blue Hole was life-changing. Buddy found me spots no one else knows about.",
-    partyTypeLabel: 'Solo',
-    partyToneClass: 'bg-gray-100 text-charcoal',
-    avatarUrl: null,
-  },
-]
+// Community sections (Trending Videos, Traveler Stories) render only approved
+// Sanity documents. There are deliberately no hardcoded fallbacks: invented
+// testimonials, creator handles or view counts must never appear as real.
 
 const CATEGORIES = [
   { label: 'All', href: '/explore/places' },
   { label: 'Beaches', href: '/explore/places?category=Beach' },
   { label: 'Food', href: '/explore/places?category=Dining' },
   { label: 'Tours', href: '/explore/places?category=Activity&search=tour' },
-  { label: 'Culture', href: '/explore/places?search=culture+history+museum' },
+  { label: 'Culture', href: '/explore/places?category=Culture' },
   { label: 'Hotels', href: '/stays?sort=stars' },
   { label: 'Transport', href: '/flights' },
 ] as const
@@ -380,7 +297,7 @@ export default async function ExplorePage() {
           overlayClass: VIDEO_ACCENT_GRADIENT[v.accentTone],
           buddyPrompt: v.buddyPrompt,
         }))
-      : FALLBACK_SOCIAL_VIDEOS
+      : []
 
   // Traveler Stories
   const travelerStories: TravelerStory[] =
@@ -394,7 +311,7 @@ export default async function ExplorePage() {
           partyToneClass: partyToneClass(s.partyType),
           avatarUrl: s.avatarUrl,
         }))
-      : FALLBACK_TRAVELER_STORIES
+      : []
 
   return (
     <div className="min-h-screen bg-white">

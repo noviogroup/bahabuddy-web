@@ -30,6 +30,9 @@ export default async function ConciergeOrderPage({ params, searchParams }: { par
 
   if (!order) notFound()
 
+  const isPaid = order.payment_status === 'paid'
+  const isRefunded = order.payment_status === 'refunded'
+
   const createRelatedTripHref = `/dashboard/trips/new?${new URLSearchParams({
     returnTo: `/dashboard/concierge/${order.id}`,
     source: 'concierge_order',
@@ -41,15 +44,17 @@ export default async function ConciergeOrderPage({ params, searchParams }: { par
       <div className="mb-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm md:p-8">
         <p className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-bold uppercase text-charcoal">Concierge order</p>
         <h1 className="mt-4 text-3xl font-bold text-night capitalize">{order.offer_type?.replace(/_/g, ' ')}</h1>
-        <p className="mt-3 leading-relaxed text-charcoal">Your payment and order are linked to your Baha Buddy account. The team will review your details and prepare your plan.</p>
+        <p className="mt-3 leading-relaxed text-charcoal">{isPaid ? 'Your payment and order are linked to your Baha Buddy account. The team will review your details and prepare your plan.' : 'This order is linked to your Baha Buddy account. Planning starts once payment is confirmed.'}</p>
       </div>
 
-      {searchParams?.session_id && <div className="rounded-2xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 mb-6">Payment session received. Stripe reference: <span className="font-mono text-xs">{searchParams.session_id}</span></div>}
-      {searchParams?.saved === 'details' && <div className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-charcoal">Trip details saved. Your order is now in review.</div>}
+      {searchParams?.session_id && (isPaid
+        ? <div role="status" className="rounded-2xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800 mb-6">Payment confirmed. Stripe reference: <span className="font-mono text-xs">{searchParams.session_id}</span></div>
+        : <div role="status" className="rounded-2xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm text-charcoal mb-6">We are confirming your payment with Stripe. This page will show it as paid once it clears. Stripe reference: <span className="font-mono text-xs">{searchParams.session_id}</span></div>)}
+      {searchParams?.saved === 'details' && <div role="status" className="mb-6 rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-charcoal">{order.status === 'in_review' ? 'Trip details saved. Your order is now in review.' : 'Trip details saved. Your order moves into review once payment is confirmed.'}</div>}
 
       <div className="grid md:grid-cols-2 gap-4 mb-6">
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase text-charcoal">Order status</p><p className="mt-2 text-2xl font-bold text-night capitalize">{statusLabel(order.status)}</p><p className="mt-1 text-sm text-charcoal">Payment: <span className="capitalize font-semibold">{statusLabel(order.payment_status)}</span></p></div>
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase text-charcoal">Amount paid</p><p className="mt-2 text-2xl font-bold text-night">{money(order.price_usd)}</p><div className="mt-3 flex flex-wrap gap-2"><Link href={`/dashboard/receipts/${order.id}`} className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700">View receipt</Link><Link href="/dashboard/payments" className="inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">Payments</Link></div></div>
+        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm"><p className="text-xs font-bold uppercase text-charcoal">{isPaid ? 'Amount paid' : isRefunded ? 'Amount refunded' : 'Amount due'}</p><p className="mt-2 text-2xl font-bold text-night">{money(order.price_usd)}</p>{!isPaid && !isRefunded && <p className="mt-1 text-sm text-charcoal">Payment status: <span className="capitalize font-semibold">{statusLabel(order.payment_status)}</span></p>}<div className="mt-3 flex flex-wrap gap-2"><Link href={`/dashboard/receipts/${order.id}`} className="inline-flex items-center gap-2 rounded-full bg-brand-600 px-4 py-2 text-xs font-bold text-white hover:bg-brand-700">View receipt</Link><Link href="/dashboard/payments" className="inline-flex rounded-full border border-gray-300 bg-white px-4 py-2 text-xs font-bold text-night hover:border-gray-400 hover:bg-gray-50">Payments</Link></div></div>
       </div>
 
       <div className="mb-6 rounded-3xl border border-gray-200 bg-white p-6 shadow-sm"><h2 className="text-xl font-bold text-night mb-4">Trip details on file</h2><div className="grid sm:grid-cols-2 gap-4 text-sm text-charcoal"><div><span className="font-bold text-night">Travel dates:</span> {order.travel_dates || 'Not submitted yet'}</div><div><span className="font-bold text-night">Group size:</span> {order.party_size || 'Not submitted yet'}</div><div><span className="font-bold text-night">Budget:</span> {order.budget_range || 'Not submitted yet'}</div><div><span className="font-bold text-night">Preferred islands:</span> {order.destination_interests || 'Not submitted yet'}</div></div>{order.notes && <p className="mt-4 text-sm text-charcoal"><span className="font-bold text-night">Notes:</span> {order.notes}</p>}</div>
