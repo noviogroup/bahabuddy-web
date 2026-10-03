@@ -62,6 +62,7 @@ export default function BahaDateRangePicker({
   const autoId = useId()
   const id = idProp ?? autoId
   const rootRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<HTMLButtonElement>(null)
   const [open, setOpen] = useState(false)
   const months = useCalendarMonths(2)
 
@@ -134,13 +135,26 @@ export default function BahaDateRangePicker({
   const display = formatRangeLabel(start, end, placeholder)
 
   return (
-    <div ref={rootRef} id={id} className={`relative ${className}`}>
+    <div
+      ref={rootRef}
+      id={id}
+      className={`relative ${className}`}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape' && open) {
+          event.preventDefault()
+          event.stopPropagation()
+          setOpen(false)
+          triggerRef.current?.focus()
+        }
+      }}
+    >
       {label && (
         <span className="block text-xs font-semibold text-gray-600 uppercase mb-1">
           {label}
         </span>
       )}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label={ariaLabel}

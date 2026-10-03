@@ -7,6 +7,16 @@ export interface FeaturedExperience {
   category: string
   href: string
   image: string
+  /** Admin Top pick marker, shown as a small gold badge on the photo. */
+  badge?: 'Top pick'
+  /** Photo credit (e.g. "Photo: Google"), shown on the photo when set. */
+  attribution?: string
+  /** `places.trip_styles` slugs, used only to re-rank on the client. */
+  tripStyles?: string[]
+  /** `places.price_tier` (luxury | premium | mid | value), ranking only. */
+  priceTier?: string
+  /** `places.business_status = CLOSED_TEMPORARILY`: small note on the card. */
+  temporarilyClosed?: boolean
 }
 
 interface FeaturedExperiencesCarouselProps {
@@ -23,7 +33,7 @@ export default function FeaturedExperiencesCarousel({
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {experiences.map((experience) => (
           <Link
-            key={experience.title}
+            key={`${experience.href}|${experience.title}`}
             href={experience.href}
             aria-label={`View details for ${experience.title}`}
             data-testid="featured-experience-card"
@@ -41,10 +51,28 @@ export default function FeaturedExperiencesCarousel({
               <span className="absolute left-3 top-3 rounded-full bg-white px-3 py-1 text-xs font-black uppercase text-brand-700 shadow-soft">
                 {experience.category}
               </span>
+              {experience.badge && (
+                <span
+                  data-testid="featured-experience-badge"
+                  className="absolute right-3 top-3 rounded-full bg-gold-400 px-2.5 py-1 text-xs font-bold text-night shadow-soft"
+                >
+                  {experience.badge}
+                </span>
+              )}
+              {experience.attribution && (
+                <span className="absolute bottom-2 right-2 max-w-[80%] truncate rounded bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+                  {experience.attribution}
+                </span>
+              )}
             </div>
 
             <div className="p-4">
               <p className="text-xs font-black uppercase text-brand-700">{experience.island}</p>
+              {experience.temporarilyClosed && (
+                <p data-testid="featured-experience-closed-note" className="mt-1 text-xs font-semibold text-amber-700">
+                  Temporarily closed
+                </p>
+              )}
               <h3
                 data-testid="featured-experience-card-title"
                 className="mt-2 line-clamp-2 min-h-12 text-lg font-bold leading-6 text-night"

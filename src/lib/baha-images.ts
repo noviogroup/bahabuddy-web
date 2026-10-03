@@ -5,8 +5,7 @@ import { TourismPartnerImages } from '@/lib/tourism-partner-images'
  *
  * @deprecated for new code. Pull island imagery from
  *   `src/lib/islands.ts` (DB-driven, server-only) and place imagery
- *   from `src/lib/place-photos.ts` (resolves Supabase cached place photo
- *   references via Supabase Storage or the /api/place-photo proxy).
+ *   from canonical place media fields after rights review.
  *
  * This module remains in the codebase as a bridge — plenty of
  * Client Components still import `BahaImages.X` directly because

@@ -10,7 +10,8 @@ const source = readFileSync(
 describe('destination media policy', () => {
   it('does not fall back to legacy database media after an approved Sanity profile resolves', () => {
     expect(source).toContain('const heroUrl = sanity ? sanity.imageUrl : dbHero;')
-    expect(source).toContain('const gallery = sanity\n    ? sanityGallery')
+    // Formatting-agnostic: an approved Sanity profile uses only its gallery.
+    expect(source).toMatch(/const gallery = sanity\s*\?\s*sanityGallery\s*:/)
     expect(source).not.toContain('sanity?.imageUrl ?? dbHero')
     expect(source).not.toContain('[...sanityGallery, ...galleryImages]')
   })

@@ -1,13 +1,25 @@
 import { render, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import RestaurantsPage from '@/app/restaurants/page'
+import { canonicalPlaceRow, createRecordingSupabase } from '../fixtures/recording-supabase'
 
 const supabaseMocks = vi.hoisted(() => ({
   createClient: vi.fn(),
 }))
 
+// Public catalog reads use the cookie-free client; route them to the same
+// mock client the test configures for the cookie client.
+vi.mock('@/lib/supabase/public', async () => {
+  const { deferredSupabaseClient } = await import('../fixtures/deferred-supabase')
+  return { createPublicClient: () => deferredSupabaseClient(() => supabaseMocks.createClient()) }
+})
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: supabaseMocks.createClient,
+}))
+
+vi.mock('@/lib/supabase/admin', () => ({
+  createAdminClient: () => null,
 }))
 
 vi.mock('@/components/Footer', () => ({
@@ -45,73 +57,27 @@ vi.mock('@/components/marketplace/ImageWithSourcePolicy', () => ({
   ),
 }))
 
-type QueryResult = {
-  data: unknown[] | null
-  error: null
-}
-
-class MockSupabaseQuery {
-  private result: QueryResult = { data: [], error: null }
-
-  constructor(
-    private readonly restaurantRows: unknown[],
-    private readonly cuisineRows: unknown[],
-  ) {}
-
-  select = vi.fn((columns: string) => {
-    this.result = columns === 'cuisine_types'
-      ? { data: this.cuisineRows, error: null }
-      : { data: this.restaurantRows, error: null }
-    return this
-  })
-
-  eq = vi.fn(() => this)
-  order = vi.fn(() => this)
-  limit = vi.fn(() => this)
-  ilike = vi.fn(() => this)
-  contains = vi.fn(() => this)
-  not = vi.fn(() => this)
-
-  then<TResult1 = QueryResult, TResult2 = never>(
-    onfulfilled?: ((value: QueryResult) => TResult1 | PromiseLike<TResult1>) | null,
-    onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
-  ): Promise<TResult1 | TResult2> {
-    return Promise.resolve(this.result).then(onfulfilled, onrejected)
-  }
-}
-
-const restaurantRows = [
-  {
-    id: 'rest-1',
-    location_id: 'fish-fry',
-    category: 'restaurants',
-    island_name: 'Nassau',
-    name: 'Arawak Cay Fish Fry',
-    address: null,
-    rating: 4.7,
-    num_reviews: 1280,
-    price_level: '$$',
-    cuisine_types: ['Bahamian', 'Seafood'],
-    hotel_class: null,
-    amenities: null,
-    photos: null,
-    reviews: null,
-    website: null,
-    tripadvisor_url: null,
-    latitude: null,
-    longitude: null,
-  },
-]
-
-const cuisineRows = [
-  { cuisine_types: ['Bahamian', 'Seafood'] },
-]
+// The restaurant index reads canonical `places` rows (see src/lib/places.ts).
+const fishFry = canonicalPlaceRow({
+  id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+  slug: 'arawak-cay-fish-fry',
+  name: 'Arawak Cay Fish Fry',
+  category: 'restaurant',
+  subcategory: null,
+  island_name: 'Nassau',
+  primary_image_url: null,
+  rating: 4.7,
+  review_count: 1280,
+  price_level: '$$',
+  tags: ['Bahamian', 'Seafood'],
+})
 
 describe('RestaurantsPage marketplace layout', () => {
   beforeEach(() => {
-    supabaseMocks.createClient.mockResolvedValue({
-      from: vi.fn(() => new MockSupabaseQuery(restaurantRows, cuisineRows)),
+    const { client } = createRecordingSupabase({
+      tables: () => ({ data: [fishFry], error: null }),
     })
+    supabaseMocks.createClient.mockResolvedValue(client)
   })
 
   test('renders restaurant search surfaces without gold borders or filled blue panels', async () => {
@@ -148,8 +114,8 @@ describe('RestaurantsPage marketplace layout', () => {
     expect(card).toHaveClass('border-gray-200')
     expect(card).not.toHaveClass('border-gray-100')
     expect(screen.getByTestId('image-policy')).toHaveAttribute('data-tone', 'neutral')
-    expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute('href', '/restaurants/fish-fry')
-    expect(screen.getByRole('link', { name: 'Add to trip' })).toHaveAttribute('href', '/restaurants/fish-fry#trip-actions')
+    expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute('href', `/restaurants/${fishFry.id}`)
+    expect(screen.getByRole('link', { name: 'Add to trip' })).toHaveAttribute('href', `/restaurants/${fishFry.id}#trip-actions`)
     expect(screen.getByRole('link', { name: 'Add to trip' })).toHaveClass('bg-brand-600')
     expect(screen.getByRole('link', { name: 'More food nearby' })).toHaveAttribute(
       'href',
@@ -169,5 +135,15 @@ describe('RestaurantsPage marketplace layout', () => {
     expect(screen.queryByRole('link', { name: 'Chat with Baha Buddy' })).not.toBeInTheDocument()
     expect(container.innerHTML).not.toMatch(/border-sand|bg-offwhite|ring-sand|border-gold|bg-sand/)
     expect(container.innerHTML).not.toMatch(/hover:border-brand|focus:border-brand/)
+  })
+
+  test('an empty result says no restaurants are published instead of promising a reload', async () => {
+    const { client } = createRecordingSupabase({ tables: () => ({ data: [], error: null }) })
+    supabaseMocks.createClient.mockResolvedValue(client)
+
+    const { container } = render(await RestaurantsPage({ searchParams: { island: 'Nassau' } }))
+
+    expect(screen.getByText('No published restaurants for Nassau yet')).toBeInTheDocument()
+    expect(container).not.toHaveTextContent(/being loaded|check back soon/i)
   })
 })

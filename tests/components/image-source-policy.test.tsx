@@ -50,4 +50,31 @@ describe('ImageWithSourcePolicy', () => {
     expect(screen.getByText('Stay')).toBeInTheDocument()
     expect(screen.queryByAltText('Broken provider photo')).not.toBeInTheDocument()
   })
+
+  test('shows the photo credit only while the photo itself is displayed', () => {
+    const { rerender } = render(
+      <ImageWithSourcePolicy
+        src="https://images.example/credited.jpg"
+        alt="Credited photo"
+        title="Fish fry"
+        eyebrow="Restaurant"
+        attribution="Photo: Tripadvisor"
+      />,
+    )
+
+    expect(screen.getByText('Photo: Tripadvisor')).toBeInTheDocument()
+    fireEvent.error(screen.getByAltText('Credited photo'))
+    expect(screen.queryByText('Photo: Tripadvisor')).not.toBeInTheDocument()
+
+    rerender(
+      <ImageWithSourcePolicy
+        src={null}
+        alt="No photo"
+        title="Fish fry"
+        eyebrow="Restaurant"
+        attribution="Photo: Tripadvisor"
+      />,
+    )
+    expect(screen.queryByText('Photo: Tripadvisor')).not.toBeInTheDocument()
+  })
 })

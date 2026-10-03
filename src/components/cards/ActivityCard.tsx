@@ -19,7 +19,8 @@
  *   - On expand: gallery, full description, hours (if the attraction
  *     publishes any), and action row (Call / Website / Directions / Add to trip).
  *
- * Linking: detail page lives at /activities/[id]. Once Viator goes live,
+ * Linking: detail page lives at /explore/activities/[id] (public; the
+ * dashboard's /activities/[id] copy is behind sign-in). Once Viator goes live,
  * `data.product_code` will swap in for booking-specific routing — the
  * Phase 2 work keeps the card prepared for that without changing the
  * compact-view UX.
@@ -27,8 +28,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { approvedActivityDetailHref } from '@/lib/approved-activities'
+import { islandDisplayName } from '@/lib/island-config'
 import {
-  CardShell, Rating, ChipRow, ReviewSnippet, PhotoStrip, ActionRow, HoursBadge, PriceTag,
+  CardShell, Rating, ChipRow, ReviewSnippet, PhotoStrip, ActionRow, HoursBadge,
 } from './shared'
 import type { Action, Chip } from './shared'
 
@@ -51,6 +54,15 @@ export interface ActivityCardData {
   duration?: string
   /** Starting-from price in USD. */
   from_price?: number
+  price_basis_label?: string
+  booking_state_label?: string
+  meeting_pickup_label?: string | null
+  group_age_label?: string | null
+  safety_access_label?: string | null
+  cancellation_label?: string | null
+  source_as_of_label?: string | null
+  source_url?: string | null
+  live_availability_state?: string | null
   /** Viator supplier name when applicable. */
   supplier?: string
   photo_url?: string
@@ -151,12 +163,15 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
   const {
     place_id, name, island, description, duration, supplier,
     rating, review_count, vibe_tags = [], kid_friendly,
-    from_price = 0,
+    price_basis_label, booking_state_label, meeting_pickup_label,
+    group_age_label, safety_access_label, cancellation_label,
+    source_as_of_label, source_url, live_availability_state,
     photo_url, photos = [],
     phone, website, full_address, opening_hours, top_review,
   } = data
 
-  const detailHref = place_id ? `/activities/${encodeURIComponent(place_id)}` : null
+  const detailHref = place_id ? approvedActivityDetailHref(place_id) : null
+  const islandLabel = island ? islandDisplayName(island) : ''
 
   const actions: Action[] = []
   if (phone) actions.push({
@@ -176,6 +191,14 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
   })
 
   const chips = vibeTagsToChips(vibe_tags)
+  // Catalog listings carry no offer facts; show only facts that exist.
+  const factRows = [
+    ['Meeting / pickup', meeting_pickup_label],
+    ['Group / age limits', group_age_label],
+    ['Safety / access', safety_access_label],
+    ['Cancellation', cancellation_label],
+    ['Source status', source_as_of_label],
+  ].filter((row): row is [string, string] => Boolean(row[1]))
 
   // ── Card body ────────────────────────────────────────────────────────
 
@@ -212,15 +235,17 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm text-gray-900 leading-tight line-clamp-2">{name}</p>
-            {(supplier || island) && (
+            {(supplier || islandLabel) && (
               <p className="text-xs text-gray-500 mt-1 inline-flex items-center gap-1.5">
                 <span className="text-gray-400">{I.mapPin}</span>
-                <span className="truncate">{supplier || island}</span>
+                <span className="truncate">{supplier || islandLabel}</span>
               </p>
             )}
           </div>
-          {from_price > 0 && (
-            <PriceTag amount={from_price} variant="from" size="md" align="right" />
+          {price_basis_label && (
+            <span className="max-w-40 text-right text-xs font-bold leading-snug text-night">
+              {price_basis_label}
+            </span>
           )}
         </div>
 
@@ -261,6 +286,12 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
             clamp={expanded ? 4 : 2}
             variant="callout"
           />
+        )}
+
+        {booking_state_label && (
+          <p className="rounded-lg bg-brand-50 px-2.5 py-2 text-xs font-semibold text-brand-800">
+            {booking_state_label}
+          </p>
         )}
 
         {!expanded && size === 'compact' && (
@@ -306,6 +337,35 @@ export function ActivityCard({ data, size = 'compact', onSave, className }: Prop
 
             {opening_hours && opening_hours.length > 0 && (
               <HoursBadge hours={opening_hours} expanded />
+            )}
+
+            {factRows.length > 0 && (
+              <dl className="grid gap-2 rounded-xl border border-gray-200 bg-gray-50 p-3 text-xs">
+                {factRows.map(([label, value]) => (
+                  <div key={label} className="grid grid-cols-[7rem_1fr] gap-2">
+                    <dt className="font-bold text-gray-600">{label}</dt>
+                    <dd className="text-gray-700">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+            )}
+
+            {live_availability_state === 'requires_live_check' && (
+              <p className="text-xs leading-5 text-gray-600">
+                Price and availability are reference facts until the provider confirms them live.
+              </p>
+            )}
+
+            {source_url?.trim() && (
+              <a
+                href={source_url.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="text-xs font-semibold text-brand-700 hover:text-brand-800"
+              >
+                View source<span className="sr-only"> (opens in new tab)</span>
+              </a>
             )}
 
             {actions.length > 0 && <ActionRow actions={actions} align="left" />}

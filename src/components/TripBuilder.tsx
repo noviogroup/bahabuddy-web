@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import {
+  approvedActivityTypeLabel,
+  canonicalAttractionCategory,
+  getActivitiesWithCanonicalFallback,
+} from '@/lib/approved-activities'
+import { normalizeCanonicalIslandSlug } from '@/lib/bahamas-island-bounds'
 import { BahaDateRangePicker } from '@/components/ui'
 import {
   TravelSearchField,
@@ -14,9 +20,8 @@ import {
 interface Attraction {
   id: string
   name: string
-  category: string
-  island: string | null
-  description: string
+  typeLabel: string
+  description: string | null
 }
 
 interface ActivityItem {
@@ -76,21 +81,32 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
 
   const search = useCallback(async (q: string) => {
     setLoading(true)
-    const supabase = createClient()
-    let query_builder = supabase
-      .from('bahamas_attractions')
-      .select('id, name, category, island, description')
-      .limit(10)
-
-    if (island) {
-      query_builder = query_builder.ilike('island', `%${island}%`)
+    try {
+      const supabase = createClient()
+      // Approved activities first; real canonical attractions for the island
+      // fill in while no reviewed non-tour activity exists.
+      const { approved, canonical } = await getActivitiesWithCanonicalFallback(supabase, {
+        islandSlug: island ? normalizeCanonicalIslandSlug(island) : null,
+        search: q.trim() || null,
+        limit: 10,
+      })
+      setResults([
+        ...approved.map((row) => ({
+          id: row.activity_id,
+          name: row.name,
+          typeLabel: approvedActivityTypeLabel(row),
+          description: row.description,
+        })),
+        ...canonical.map((row) => ({
+          id: row.id,
+          name: row.name,
+          typeLabel: canonicalAttractionCategory(row),
+          description: row.short_description ?? row.description,
+        })),
+      ])
+    } catch {
+      setResults([])
     }
-    if (q.trim()) {
-      query_builder = query_builder.ilike('name', `%${q}%`)
-    }
-
-    const { data } = await query_builder
-    setResults((data as Attraction[]) ?? [])
     setLoading(false)
   }, [island])
 
@@ -166,7 +182,7 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
                   <button
                     key={a.id}
                     onClick={() => {
-                      onAdd({ activityName: a.name, activityType: a.category, notes: '' })
+                      onAdd({ activityName: a.name, activityType: a.typeLabel, notes: '' })
                       onClose()
                     }}
                     className="w-full text-left bg-gray-50 hover:bg-brand-50 rounded-xl p-3 transition-colors group"
@@ -174,7 +190,7 @@ function AddActivityModal({ dayNumber, timeSlot, island, onAdd, onClose }: AddAc
                     <div className="flex items-start justify-between gap-2">
                       <p className="text-sm font-medium text-gray-900 group-hover:text-brand-700">{a.name}</p>
                       <span className="text-xs bg-white text-gray-500 rounded-full px-2 py-0.5 shrink-0 border border-gray-100">
-                        {a.category}
+                        {a.typeLabel}
                       </span>
                     </div>
                     {a.description && (

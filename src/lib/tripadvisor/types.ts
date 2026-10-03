@@ -19,6 +19,8 @@ export interface TripAdvisorLocation {
   hotel_class: string | null
   amenities: string[] | null
   photos: { url: string; caption?: string }[] | null
+  /** Credit line for `photos`, e.g. "Photo: Tripadvisor". */
+  image_attribution?: string | null
   reviews: {
     text: string
     rating: number
@@ -29,6 +31,12 @@ export interface TripAdvisorLocation {
   tripadvisor_url: string | null
   latitude: number | null
   longitude: number | null
+  /** Canonical `places.trip_styles` (client-side trip-style ordering). */
+  trip_styles?: string[]
+  /** Canonical `places.price_tier`. */
+  price_tier?: string
+  /** Non-default canonical `places.business_status`. */
+  business_status?: string
 }
 
 export const ISLAND_SLUG_MAP: Record<string, string> = {

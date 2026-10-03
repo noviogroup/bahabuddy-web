@@ -3,52 +3,35 @@ import HomepageStorySections from '@/components/home/HomepageStorySections'
 import Footer from '@/components/Footer'
 import ChatWidget from '@/components/ChatWidget'
 import { getIslandHeroSlides, getIslandHeroes } from '@/lib/islands'
-import { createClient } from '@/lib/supabase/server'
+import { getHomeTopPicks } from '@/lib/top-picks'
 
-export const dynamic = 'force-dynamic'
+// Same page for every visitor: the signed-in greeting is resolved client-side
+// in HeroSection, so the HTML can be ISR-cached and refreshed every 5 minutes.
+export const revalidate = 300
 
 export default async function HomePage() {
   // Hero slides pulled from `islands` table (DB-driven). HeroSection
   // is a Client Component — it can't await, so the server parent
   // fetches and passes down. getIslandHeroSlides falls back to the
   // static map in islands.ts if the DB is unreachable.
-  const supabase = await createClient()
-  const [heroSlides, destinationImages, { data: { user } }] = await Promise.all([
+  // Top picks are admin-managed (places.featured); getHomeTopPicks never
+  // throws and returns [] so the section keeps its static fallback.
+  // Both read public catalog data through the cookie-free client.
+  const [heroSlides, destinationImages, topPicks] = await Promise.all([
     getIslandHeroSlides(),
     getIslandHeroes([
       'nassau-paradise-island', 'the-exumas', 'eleuthera-harbour-island',
       'abacos', 'andros', 'grand-bahama', 'bimini', 'long-island',
     ]),
-    supabase.auth.getUser(),
+    getHomeTopPicks(),
   ])
-  const { data: profile } = user
-    ? await supabase
-        .from('users')
-        .select('display_name')
-        .eq('id', user.id)
-        .maybeSingle()
-    : { data: null }
-  const userDisplayName = getStringValue(profile?.display_name) ?? getAuthDisplayName(user?.user_metadata)
 
   return (
     <main className="min-h-screen bg-white">
-      <HeroSection slides={heroSlides} userEmail={user?.email ?? null} userDisplayName={userDisplayName} />
-      <HomepageStorySections destinationImages={destinationImages} />
+      <HeroSection slides={heroSlides} />
+      <HomepageStorySections destinationImages={destinationImages} topPicks={topPicks} />
       <Footer />
       <ChatWidget />
     </main>
   )
-}
-
-function getAuthDisplayName(metadata: unknown) {
-  if (!metadata || typeof metadata !== 'object') return null
-
-  const record = metadata as Record<string, unknown>
-  return getStringValue(record.display_name) ?? getStringValue(record.full_name) ?? getStringValue(record.name)
-}
-
-function getStringValue(value: unknown) {
-  if (typeof value !== 'string') return null
-  const normalized = value.replace(/\s+/g, ' ').trim()
-  return normalized || null
 }

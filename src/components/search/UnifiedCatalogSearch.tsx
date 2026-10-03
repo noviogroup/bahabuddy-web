@@ -9,6 +9,7 @@ import {
   CATALOG_ISLANDS,
   type CatalogSearchResult,
 } from '@/lib/catalog-search'
+import { readStoredTripStyles } from '@/lib/trip-styles'
 
 type UnifiedCatalogSearchProps = {
   initialQuery?: string
@@ -60,6 +61,10 @@ export default function UnifiedCatalogSearch({
       const params = new URLSearchParams({ q: cleanQuery })
       if (filter !== 'all') params.set('filter', filter)
       if (island) params.set('island', island)
+      // The visitor's stored trip styles personalize ranking. Read at request
+      // time (after mount) and kept out of the shareable page URL.
+      const styles = readStoredTripStyles()
+      if (styles.length > 0) params.set('styles', styles.join(','))
 
       updateSearchUrl(cleanQuery, filter, island)
 

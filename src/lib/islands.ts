@@ -18,12 +18,12 @@
  * Keep the temporary fallback catalog aligned with
  * `DestinationFallbackImages` in `baha-images.ts`.
  *
- * Companion: `src/lib/place-photos.ts` handles cached place imagery.
+ * Place imagery comes from canonical rights-reviewed media fields.
  */
 
 import "server-only";
 import { cache } from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createPublicClient } from "@/lib/supabase/public";
 import { fetchDestinations } from "@/lib/sanity/queries";
 import { TourismPartnerImages } from "@/lib/tourism-partner-images";
 
@@ -116,7 +116,9 @@ export const BAHAMAS_LIFESTYLE_FALLBACK =
  */
 export const getIslands = cache(async (): Promise<IslandRecord[]> => {
   try {
-    const supabase = await createClient();
+    // Public catalog: cookie-free client keeps island pages and the home
+    // page statically renderable.
+    const supabase = createPublicClient();
     const [{ data, error }, destinations] = await Promise.all([
       supabase
         .from("islands")
