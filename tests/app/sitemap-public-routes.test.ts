@@ -23,6 +23,18 @@ describe('public sitemap routes', () => {
     process.env.NEXT_PUBLIC_SITE_URL = 'https://bahabuddy.test'
     sanityMocks.fetchAllArticleSlugs.mockResolvedValue(['ultimate-nassau-guide'])
     supabaseMocks.createClient.mockResolvedValue({
+      // Approved-activity projection backing /explore/activities/[id].
+      rpc: vi.fn(() => Promise.resolve({
+        data: [{
+          activity_id: '24600000-0000-4000-8000-000000000123',
+          source_layer: 'places',
+          island_slug: 'the-exumas',
+          category_tags: ['adventure'],
+          name: 'Exuma Cays Boat Tour',
+          description: 'A guided boat day across the Exuma cays.',
+        }],
+        error: null,
+      })),
       from: vi.fn(() => ({
         select: vi.fn(() => ({
           limit: vi.fn(() => Promise.resolve({
@@ -73,7 +85,7 @@ describe('public sitemap routes', () => {
       expect(urls).toContain(`https://bahabuddy.test/explore/island/${island.slug}`)
     })
 
-    expect(urls).toContain('https://bahabuddy.test/explore/places/place-123')
+    expect(urls).toContain('https://bahabuddy.test/explore/activities/24600000-0000-4000-8000-000000000123')
     expect(urls).toContain('https://bahabuddy.test/guides/ultimate-nassau-guide')
     expect(urls).not.toContain('https://bahabuddy.test/dashboard')
     expect(urls).not.toContain('https://bahabuddy.test/profile')
